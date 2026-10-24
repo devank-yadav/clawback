@@ -1,7 +1,7 @@
 // Thin client for the FastAPI service (api/routes/). Only used when NEXT_PUBLIC_DATA_SOURCE=live.
 // Request and response shapes follow api/contracts.py; nothing here computes money.
 
-import type { Approval, ChargeDetail, LedgerPost } from "./types";
+import type { Approval, ChargeDetail, Dispute, Evidence, LedgerPost, PortalMessage } from "./types";
 
 /** `/api` behind Caddy on the deployed domain (set at build time by web/Dockerfile); the local API in dev. */
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000").replace(/\/$/, "");
@@ -56,3 +56,20 @@ export const resetDemo = () => call<unknown>("/demo/reset", { method: "POST" });
 /** GET /charges/{id}: the evidence behind one row. */
 export const fetchChargeDetail = (chargeId: string, runId: string) =>
   call<ChargeDetail>(`/charges/${encodeURIComponent(chargeId)}?run_id=${encodeURIComponent(runId)}`);
+
+/** GET /evidence/{id}: the sentence, data row, email, rule or person behind one number. */
+export const fetchEvidence = (evidenceId: string, runId?: string) =>
+  call<Evidence>(`/evidence/${encodeURIComponent(evidenceId)}${runId ? `?run_id=${encodeURIComponent(runId)}` : ""}`);
+
+/** Mock Northmart portal (api/routes/portal.py). The dispute id is the demo's D-0417. */
+export const DISPUTE_ID = "D-0417";
+export type PortalPreset = { id: string; label: string; text: string; attachment_doc_id: string | null; expect: string; charge_ids: string[] };
+export const fetchPortalPresets = () => call<PortalPreset[]>("/portal/presets");
+export const fetchDispute = (id = DISPUTE_ID) => call<Dispute>(`/portal/disputes/${encodeURIComponent(id)}`);
+export const fetchPortalMessages = (id = DISPUTE_ID) => call<PortalMessage[]>(`/portal/disputes/${encodeURIComponent(id)}/messages`);
+/** Returns Northmart's message and Clawback's reply (only Northmart's when the reply is held for the owner). */
+export const postPortalMessage = (text: string, attachmentDocId: string | null, id = DISPUTE_ID) =>
+  call<PortalMessage[]>(`/portal/disputes/${encodeURIComponent(id)}/messages`, {
+    method: "POST",
+    body: { text, attachment_doc_id: attachmentDocId },
+  });

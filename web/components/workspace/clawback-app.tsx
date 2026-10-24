@@ -161,7 +161,7 @@ export default function ClawbackApp() {
               <Summary view={view} compact />
               <div className="payment-workspace">
                 <section className="surface charge-main"><div className="list-heading"><div><h2>Payment charges</h2><p>Select a charge to see evidence and allocations.</p></div></div><ChargeList charges={view.charges} selected={selected?.id} onSelect={(charge) => setSelectedId(charge.id)} filter={filter} onFilterChange={setFilter} /><div className="table-footer"><ShieldCheck /> {view.disputeLabel}</div></section>
-                {selected && <EvidencePanel key={selected.id} charge={selected} detail={detail} question={view.question} rule={view.rule} stage={view.stage} onClose={() => setSelectedId(null)} onConfirm={confirmRule} role={role} />}
+                {selected && <EvidencePanel key={selected.id} runId={state.run?.run_id} live={source === 'live'} charge={selected} detail={detail} question={view.question} rule={view.rule} stage={view.stage} onClose={() => setSelectedId(null)} onConfirm={confirmRule} role={role} />}
               </div>
             </>
           )}
