@@ -89,7 +89,9 @@ def canonical(params: dict, quote: str, vocabulary: Iterable[str]) -> dict:
 
 def priced_alike(a: dict, b: dict) -> bool:
     """Two readers' canonical fee_schedule params price the fee the same way. requires_proof is left out: the merge
-    keeps it if either reader found it (a person then checks the backup), rather than disputing the whole fee."""
+    keeps it if either reader found it (a person then checks the backup), rather than disputing the whole fee. `per`
+    is left out too: "per incident" vs "per invoice" names the same single charge (live, Claude and Gemini split on it
+    for KeHE §6.4 while agreeing on 5% and the $65 minimum), and it never changes one charge's amount."""
     def key(p: dict) -> dict:
-        return {k: v for k, v in p.items() if k != "requires_proof"}
+        return {k: v for k, v in p.items() if k not in ("requires_proof", "per")}
     return quote_check.readers_agree({"type": "fee_schedule", "params": key(a)}, {"type": "fee_schedule", "params": key(b)})

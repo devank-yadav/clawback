@@ -116,7 +116,8 @@ def read_document(doc_id: str, base_terms: Sequence[Term] = (), client: anthropi
         if output is not None:
             return ReaderResult(doc, _relabel(reader._check(output, doc, text, base_terms), "gemini"), output.unclear,
                                 source, 1 + len(errors), errors, model="gemini", model_id=model)
-    ans = claude.ask(CLAUDE_B_SERVICE, system, user, schema, check, client, live_first=live_first, doc_id=doc_id)
+    ans = claude.ask(CLAUDE_B_SERVICE, system, user, schema, check, client, live_first=live_first,
+                     timeout=reader.timeout_for(text), doc_id=doc_id)
     errors += ans.errors
     if ans.value is None:
         return ReaderResult(doc, [], [f"{doc_id}: Reader B's output failed validation twice; needs a person"],

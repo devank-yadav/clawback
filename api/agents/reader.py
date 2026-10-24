@@ -152,6 +152,15 @@ def _to_reader_output(raw: dict, doc: Document, text: str, schema: type[Strict] 
     return ReaderOutput(terms=terms, unclear=out.unclear)
 
 
+LONG_DOC_CHARS = 15_000  # a whole vendor policy, not a one-page deal
+LONG_READ_TIMEOUT_S = 150.0  # Opus listing a dozen fee terms with quotes takes well over the 30 s default
+
+
+def timeout_for(text: str) -> float | None:
+    """A longer limit for a long document; None keeps the default (every Peak Bar document)."""
+    return LONG_READ_TIMEOUT_S if len(text) > LONG_DOC_CHARS else None
+
+
 def read_document(doc_id: str, base_terms: Sequence[Term] = (), client: anthropic.Anthropic | None = None,
                   live_first: bool = False) -> ReaderResult:
     """Read one document. `base_terms` are the deal's verified terms, used only to date an extension
@@ -160,7 +169,8 @@ def read_document(doc_id: str, base_terms: Sequence[Term] = (), client: anthropi
     account = documents.account_of(doc_id)
     system, schema = with_fees(prompt(account), account)
     ans = claude.ask(SERVICE, system, _user_message(doc, text), schema,
-                     lambda raw: _to_reader_output(raw, doc, text, schema), client, live_first=live_first, doc_id=doc_id)
+                     lambda raw: _to_reader_output(raw, doc, text, schema), client, live_first=live_first,
+                     timeout=timeout_for(text), doc_id=doc_id)
     if ans.value is None:
         return ReaderResult(doc, [], [f"{doc_id}: reader output failed validation twice; needs a person"],
                             ans.source, ans.attempts, ans.errors)

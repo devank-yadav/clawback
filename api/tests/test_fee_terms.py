@@ -123,12 +123,12 @@ def test_rate_and_limits_in_one_form():
                  "requires_proof": False}
 
 
-def test_priced_alike_ignores_requires_proof_only():
+def test_priced_alike_ignores_requires_proof_and_per():
     a = fee_terms.canonical({"fee_code": "MCB", "basis": "percent", "rate": "5", "min": "65", "requires_proof": True},
                             Q_MCB, VOCAB)
     b = fee_terms.canonical({"fee_code": "MCB fee", "basis": "percent", "rate": "0.05", "min": "65.00"}, Q_MCB, VOCAB)
     assert fee_terms.priced_alike(a, b)
-    assert not fee_terms.priced_alike(a, {**b, "per": "invoice"})
+    assert fee_terms.priced_alike(a, {**b, "per": "invoice"})  # names the same single charge
     assert not fee_terms.priced_alike(a, {**b, "min": "75"})
     tiered = {"fee_code": "Late", "basis": "percent", "tiers": [{"from_days": 0, "to_days": 7, "rate": "5%"}]}
     assert fee_terms.canonical(tiered, "5% if 0 to 7 days late", [])["tiers"] == [
