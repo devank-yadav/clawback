@@ -235,20 +235,22 @@ Amounts come from plain Python with unit tests; the gate applies the owner's wri
 | 4 | The term uses discretion, no rule matches | Ask the owner | No |
 | 5 | Delta within $1 | Accept | Via approvals |
 | 6 | Taken is less than allowed | Accept; note it; never ask for more | Via approvals |
-| 7 | Delta over $1, Investigator confidence at least 0.9, at least two independent sources, comeback answered | Dispute (Split if part is allowed) | No, until resolved |
-| 8 | Same as 7 but delta over $5,000 | Ask the owner before filing | No |
+| 7 | Delta over $1 and up to $5,000, Investigator confidence at least 0.9, at least two independent sources, comeback answered | Dispute (Split if part is allowed) | No, until resolved |
+| 8 | Same support as 7, but delta over $5,000 | Ask the owner before filing | No |
 | 9 | Anything else | Ask the owner | No |
 
 **Approvals (separation of duties):**
 
 | Action | Proposed by | Approved by | If no answer |
 | --- | --- | --- | --- |
-| File a dispute up to $5,000 | Negotiator | Policy (owner set it once) | — |
-| File a dispute over $5,000 | Negotiator | Owner | Held; reminder after 15 minutes |
+| File a dispute whose total is up to $5,000 | Negotiator | Policy (owner set it once) | — |
+| File a dispute whose total is over $5,000 | Negotiator | Owner | Held; reminder after 15 minutes |
 | Credit memo over $1,000 for accepted charges | Bookkeeper | Controller only, never the owner or an agent | Held; board shows "waiting on controller" |
 | Controller refuses | — | — | Nothing posts; note shown on the card; item returns to the owner |
 | New rule from an owner answer | Gate | Owner, by replying; confirmation SMS offers UNDO | Rule stays pending |
 | Post to a closed period | Never automatic | Controller | Flagged |
+
+The $5,000 limit is checked twice. The gate checks each charge (row 8). When the Negotiator files, it checks the dispute's total across all its lines, because several charges under $5,000 can add up to more; over the limit, the whole dispute waits for the owner. D-0417 is $4,120, so the demo files on policy.
 
 **Rules (`rules` table) and matching:**
 

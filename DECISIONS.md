@@ -14,3 +14,4 @@ One line per decision, written the moment it's made: `date time · decision · w
 - 2026-10-24 00:45 · Confirmed Manasv's §6.1 wording: written approval from Dana or broker Jordan Lee changes the deal (matches policy.yaml) · Devank
 - 2026-10-24 00:45 · Eval: "split" counts as a dispute; eval/run.py will accept it and check both amounts · Devank
 - 2026-10-24 01:00 · QBO seed splits INV-3102 into Original 9,000 x $2.40, Chocolate 8,000 x $2.40, Mint 3,700 x $2.00 (= $48,200); payment dated 2026-04-20; Devank to confirm · Manasv
+- 2026-10-24 01:15 · $5,000 auto-dispute limit is checked per charge in the gate (row 8) and on the dispute's total at filing time (Negotiator, D8); design.md gate row 7 now reads "up to $5,000" · Devank
