@@ -2,7 +2,7 @@
 
 Run: python scripts/nessie_deposit.py
 Keys (.env): NESSIE_API_KEY; NESSIE_ACCOUNT_ID once you have it (printed on the first run).
-Optional: NESSIE_BASE_URL (default http://api.nessieisreal.com).
+Optional: NESSIE_BASE_URL (default https://api.nessieisreal.com).
 
 Creates customer "Peak Bar Co." and a checking account only if they don't exist yet, then posts one deposit.
 Endpoints and fields follow Nessie's official SDK (github.com/nessieisreal/nessie-android-sdk):
@@ -81,11 +81,12 @@ def find_or_create_account(client):
 def main():
     load_dotenv(ROOT / ".env")
     (key,) = require("NESSIE_API_KEY")
-    base = os.getenv("NESSIE_BASE_URL") or "http://api.nessieisreal.com"
+    base = os.getenv("NESSIE_BASE_URL") or "https://api.nessieisreal.com"
 
     with httpx.Client(base_url=base, params={"key": key}, timeout=TIMEOUT) as client:
         acct_id = os.getenv("NESSIE_ACCOUNT_ID") or find_or_create_account(client)
-        deposit = {"medium": "balance", "transaction_date": date.today().isoformat(),
+        # status is required by the live API (400 without it); "pending" is the value Nessie's SDK README uses
+        deposit = {"medium": "balance", "transaction_date": date.today().isoformat(), "status": "pending",
                    "amount": AMOUNT, "description": DESCRIPTION}
         dep_id = created_id(call(client, "POST", f"/accounts/{acct_id}/deposits", json=deposit))
 
