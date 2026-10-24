@@ -22,7 +22,7 @@ npm run build && npm start
 accounts (Peak Bar Co. replays the recorded run in `web/fixtures/`; three more brands get generated runs with
 shortage, pricing and spoilage charges). Optional env for it: `MOCK_SPEED` (1 = live-like pacing, 0.2 = fast),
 `MOCK_ADMIN_TOKEN`, `MOCK_OWNER_TOKEN` / `MOCK_CONTROLLER_TOKEN` (to try the sign-in and the reset prompt), and
-`MOCK_RUNS_PER_VISITOR` (to try the per-visitor limit). The app itself never imports the mock.
+`MOCK_RUNS_PER_VISITOR` (to try the per-visitor limit), and `MOCK_NO_LOOKBACK=1` (the lookback answers 404, so the card hides). The app itself never imports the mock.
 
 ## Environment variables
 
@@ -51,7 +51,9 @@ account from `GET /accounts` is used.
 | Screen action | Call |
 | --- | --- |
 | Brand menu, every page | `GET /accounts` (cached for the page) |
-| Overview | `GET /accounts/{id}/overview`, read again as the run moves (dispute filed, entry posted) |
+| Overview | `GET /accounts/{id}/overview`, read again as the run moves (dispute filed, entry posted); `GET /accounts/{id}/lookback` for “Before Clawback” (a 404 hides the card) |
+| Value strip | `value` on the run's final `totals` event, else `current.value` from the overview |
+| Download dispute packet | `GET /portal/disputes/{id}/packet.pdf` (a link, opened in a new tab) |
 | Open or reload | `GET /runs/latest?account=` (404 = no payment yet), then `GET /runs/{id}/events` (SSE, resumes with `Last-Event-ID` / `?after=`). Never starts a run. |
 | “<Distributor> pays” | `POST /payments/{account}`, once per click; with Nessie the run id may be null, then `GET /runs/latest?account=` is polled |
 | Evidence panel | `GET /charges/{id}?run_id=`; a clicked number not in its list: `GET /evidence/{id}?run_id=` |

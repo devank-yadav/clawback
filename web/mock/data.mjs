@@ -216,6 +216,60 @@ export const accountOf = (a, latestRunId) => ({
   id: a.id, brand: a.brand, distributor: a.distributor, invoice: a.invoice, latest_run_id: latestRunId ?? null,
 });
 
+// ---- The six-month lookback (GET /accounts/{id}/lookback): the earlier remittances' charges, checked after the fact.
+// "Today" for the mock is a week after the March remittance, so a few January lines are close to their window.
+const LOOKBACK_AS_OF = "2026-04-08";
+const DISPUTE_WINDOW_DAYS = 75;
+const DAY = 86400000;
+const addDays = (ymd, n) => new Date(Date.parse(`${ymd}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
+const daysBetween = (from, to) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY);
+
+export function lookbackOf(a) {
+  const codes = a.types.map(([code, label]) => [code, label]);
+  const earlier = a.remittances.slice(1);
+  // One older remittance (October) so the chart spans six months.
+  const oldest = [`${a.months[0].month}-30`, `INV-${Number(earlier.at(-1)[1].slice(4)) - 57}`, 0, a.months[0].deducted];
+  const rows = [];
+  [...earlier, oldest].forEach(([date, invoice, , deducted], i) => {
+    const parts = [Math.round(deducted * 0.45), Math.round(deducted * 0.35)];
+    parts.push(deducted - parts[0] - parts[1]);
+    parts.forEach((taken, k) => {
+      const [code, label] = codes[(i + k) % codes.length];
+      const wrongly = k === 0 ? 0 : k === 1 ? Math.round(taken * 0.6) : taken;
+      const fileBy = addDays(date, DISPUTE_WINDOW_DAYS);
+      const daysLeft = daysBetween(LOOKBACK_AS_OF, fileBy);
+      const notChecked = a.id === "fernway" && i === earlier.length && k === 1;
+      const settled = wrongly > 0 && daysLeft < 0 && k === 2 && i % 2 === 0;
+      const status = notChecked ? "not_checked" : wrongly === 0 ? "fair" : settled ? "settled" : daysLeft >= 0 ? "claimable" : "past_window";
+      rows.push({
+        ref: `${invoice.replace("INV-", "")}-${k + 1}`, month: date.slice(0, 7), code, description: `${label}, ${invoice}`,
+        taken, allowed: notChecked ? null : taken - wrongly, wrongly_taken: notChecked ? 0 : wrongly,
+        outcome: status === "settled" ? "Repaid after a dispute" : status === "fair" ? "Matches the deal" : status === "not_checked" ? "No deal term to check against" : "Never disputed",
+        recovered: status === "settled" ? wrongly : 0, deducted_on: date,
+        file_by: status === "fair" || status === "not_checked" ? null : fileBy, days_left: status === "claimable" ? daysLeft : null, status,
+      });
+    });
+  });
+  rows.sort((x, y) => x.deducted_on.localeCompare(y.deducted_on));
+  const sum = (st) => rows.filter((r) => st.includes(r.status)).reduce((t, r) => t + r.wrongly_taken, 0);
+  return {
+    account_id: a.id, as_of: LOOKBACK_AS_OF, dispute_window_days: DISPUTE_WINDOW_DAYS, rows,
+    totals: {
+      wrongly_taken: sum(["claimable", "past_window", "settled"]), lost_past_window: sum(["past_window"]), claimable_now: sum(["claimable"]),
+      checked: rows.filter((r) => r.status !== "not_checked").length, not_checked: rows.filter((r) => r.status === "not_checked").length,
+    },
+  };
+}
+
+/** Days left to file each dispute line, by its place on the dispute (one under two weeks, so the urgent look shows). */
+export function withFileBy(dispute) {
+  const left = [9, 23, 41, 58, 67];
+  return {
+    ...dispute,
+    lines: dispute.lines.map((l, i) => (l.days_left !== undefined ? l : { ...l, days_left: left[i % left.length], file_by: addDays(LOOKBACK_AS_OF, left[i % left.length]) })),
+  };
+}
+
 export function overviewOf(a, run) {
   const sum = (k) => a.months.reduce((s, m) => s + m[k], 0);
   const deducted = sum("deducted");
@@ -232,13 +286,16 @@ export function overviewOf(a, run) {
       recovery_rate: Math.round((recovered / disputedEarlier) * 1000) / 1000,
       open_disputes: run?.dispute ? 1 : 0,
       open_balance: totals ? totals.disputed + totals.waiting : 0,
+      wrongly_taken_6m: lookbackOf(a).totals.wrongly_taken,
+      lost_past_window: lookbackOf(a).totals.lost_past_window,
+      claimable_now: lookbackOf(a).totals.claimable_now,
     },
     months: a.months,
     deductions_by_type: a.types.map(([code, label, count, amount]) => ({ code, label, count, amount })),
     recent_remittances: (run ? a.remittances : a.remittances.slice(1)).map(([date, invoice, paid, d]) => ({ date, invoice, paid, deducted: d })),
     current: {
       invoice: a.invoice.id, expected: a.invoice.expected, received: run ? a.invoice.received : 0, deducted: run ? a.invoice.expected - a.invoice.received : 0,
-      run_id: run?.id ?? null, status: run ? run.status : "awaiting_payment",
+      run_id: run?.id ?? null, status: run ? run.status : "awaiting_payment", value: totals?.value ?? null,
     },
   };
 }

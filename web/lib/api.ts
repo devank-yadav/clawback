@@ -3,7 +3,7 @@
 // `npm run dev:mock` serves the same shapes from web/mock/.
 
 import type {
-  Account, Approval, AuditEntry, AuditVerify, ChargeDetail, CoachResponse, Dispute, EvalReport, Evidence, LedgerPost,
+  Account, Approval, Lookback, AuditEntry, AuditVerify, ChargeDetail, CoachResponse, Dispute, EvalReport, Evidence, LedgerPost,
   Overview, PortalMessage, RunEvent, ScenarioExample, ScenarioRequest, ScenarioResponse, TraceStep, TraceSummary,
 } from "./types";
 import { adminToken } from "./tokens";
@@ -66,6 +66,16 @@ export const unreachable = (e: Error) => `Can't reach Clawback right now (${e.me
 // ---- Accounts
 export const fetchAccounts = () => call<Account[]>("/accounts");
 export const fetchOverview = (account: string) => call<Overview>(`/accounts/${q(account)}/overview`);
+
+/** GET /accounts/{id}/lookback, or null when this API doesn't have it yet (404), so the card can hide. */
+export async function fetchLookback(account: string): Promise<Lookback | null> {
+  try {
+    return await call<Lookback>(`/accounts/${q(account)}/lookback`);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return null;
+    throw e;
+  }
+}
 
 // ---- Runs
 export type StartedRun = { run_id: string; events_url: string };
@@ -131,6 +141,8 @@ export const fetchTraceSummary = (runId: string) => call<TraceSummary>(`/runs/${
 
 // ---- The distributor's portal (by dispute id)
 export type PortalPreset = { id: string; label: string; text: string; attachment_doc_id: string | null; expect: string; charge_ids: string[] };
+/** The dispute's printable packet: every line, its quote, its rows and its math, as one PDF. A plain link, opened in a new tab. */
+export const disputePacketUrl = (id: string) => apiUrl(`/portal/disputes/${q(id)}/packet.pdf`);
 export const fetchPortalPresets = (account: string, disputeId: string) =>
   call<PortalPreset[]>(`/portal/presets?account=${q(account)}&dispute_id=${q(disputeId)}`);
 export const fetchDispute = (id: string) => call<Dispute>(`/portal/disputes/${q(id)}`);

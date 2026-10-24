@@ -6,15 +6,16 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowRight, Check, CircleHelp, ClipboardCheck, FileCheck2, Info, KeyRound, Layers3, ShieldCheck } from 'lucide-react'
 import AppShell, { DistributorMark, type View } from '@/components/shell/AppShell'
 import { firstName, useCurrentAccount, withAccount } from '@/lib/accounts'
-import { fetchOverview } from '@/lib/api'
+import { fetchLookback, fetchOverview } from '@/lib/api'
 import { anyDay, dollars, money, monthLabel, percent, share } from '@/lib/format'
 import { askAdminToken, LIMIT_ADMIN_REASON, useSession, type Role } from '@/lib/session'
-import type { Account, Overview } from '@/lib/types'
+import type { Account, Lookback, Overview, RunValue } from '@/lib/types'
 import { useFetched } from '@/lib/useFetched'
 import { useRunEvents } from '@/lib/useRunEvents'
 import { postingSentence, selectWorkspace, type ChargeView, type WorkspaceView } from '@/lib/workspace'
 import { ChargeList, EvidencePanel, Status, type ChargeFilter } from './charge-workspace'
 import { MonthlyChart, TypeBars } from './charts'
+import { LookbackCard, PacketLink, ValueStrip } from './impact'
 import { RunProgress } from './run-progress'
 
 const VIEWS: View[] = ['overview', 'payments', 'approvals', 'rules']
@@ -56,6 +57,10 @@ function Workspace({ account, accounts, view }: { account: Account; accounts: Ac
   const overviewKey = `${runId}:${state.run?.status}:${state.dispute?.status}:${state.approval?.status}:${state.ledger.length}:${ws.reviewed}`
   const loadOverview = useMemo(() => () => fetchOverview(account.id), [account.id])
   const overview = useFetched<Overview>(loadOverview, overviewKey)
+  // The lookback is history: read once per account (and on reset). null = this API doesn't have it, so the card hides.
+  const loadLookback = useMemo(() => () => fetchLookback(account.id), [account.id])
+  const lookback = useFetched<Lookback | null>(loadLookback)
+  const value = ws.value ?? overview.data?.current.value ?? null
 
   const selected = view === 'payments' ? (ws.charges.find((charge) => charge.id === selectedId) ?? null) : null
   const askedCharge = ws.charges.find((charge) => charge.id === ws.question?.charge_id)
@@ -69,6 +74,7 @@ function Workspace({ account, accounts, view }: { account: Account; accounts: Ac
     setFilter('All')
     refresh()
     overview.reload()
+    lookback.reload()
   }
 
   const heading = view === 'overview'
@@ -95,15 +101,16 @@ function Workspace({ account, accounts, view }: { account: Account; accounts: Ac
         {feedback && view !== 'overview' && <div className={`feedback ${ws.stage === 'refused' ? 'notice' : ''}`} role="status">{ws.stage === 'refused' ? <Info /> : <Check />}{feedback}</div>}
 
         {view === 'overview' && state.run?.status === 'started' && <RunProgress account={account} state={state} ws={ws} />}
-        {view === 'overview' && <OverviewPage account={account} overview={overview.data} overviewError={overview.error} ws={ws} awaitingPayment={awaitingPayment} reviewHref={reviewHref} feedback={feedback} onOpenCharge={(id) => router.push(withAccount('/', account.id, { view: 'payments', charge: id }))} />}
+        {view === 'overview' && <OverviewPage account={account} overview={overview.data} lookback={lookback.data} value={value} overviewError={overview.error} ws={ws} awaitingPayment={awaitingPayment} reviewHref={reviewHref} feedback={feedback} onOpenCharge={(id) => router.push(withAccount('/', account.id, { view: 'payments', charge: id }))} />}
 
         {view === 'payments' && (
           <>
             <PaymentStrip account={account} ws={ws} awaitingPayment={awaitingPayment} />
+            {value && !awaitingPayment && <ValueStrip value={value} />}
             <Summary ws={ws} compact />
             <RunProgress account={account} state={state} ws={ws} />
             <div className="payment-workspace">
-              <section className="surface charge-main"><div className="list-heading"><div><h2>Charges</h2><p>{awaitingPayment ? `Waiting for ${distributor}’s payment.` : 'Select a charge to see its evidence and how it was decided.'}</p></div></div><ChargeList charges={ws.charges} selected={selected?.id} onSelect={(charge) => setSelectedId(charge.id)} filter={filter} onFilterChange={setFilter} waiting={awaitingPayment} pending={pendingCharges} /><div className="table-footer"><ShieldCheck /> {ws.disputeId ? <>{ws.disputeLabel} · <a href={withAccount('/portal', account.id, { dispute: ws.disputeId })} target="_blank" rel="noreferrer">Open on {account.distributor.portal_name}</a></> : ws.disputeLabel}</div></section>
+              <section className="surface charge-main"><div className="list-heading"><div><h2>Charges</h2><p>{awaitingPayment ? `Waiting for ${distributor}’s payment.` : 'Select a charge to see its evidence and how it was decided.'}</p></div></div><ChargeList charges={ws.charges} selected={selected?.id} onSelect={(charge) => setSelectedId(charge.id)} filter={filter} onFilterChange={setFilter} waiting={awaitingPayment} pending={pendingCharges} /><div className="table-footer"><ShieldCheck /> {ws.disputeId ? <>{ws.disputeLabel} · <a href={withAccount('/portal', account.id, { dispute: ws.disputeId })} target="_blank" rel="noreferrer">Open on {account.distributor.portal_name}</a><PacketLink disputeId={ws.disputeId} /></> : ws.disputeLabel}</div></section>
               {selected && <EvidencePanel key={selected.id} account={account} state={state} runId={runId} charge={selected} question={ws.question} rule={ws.rule} stage={ws.stage} role={role} onClose={() => setSelectedId(null)} onAnswer={answerQuestion} />}
             </div>
           </>
@@ -136,7 +143,7 @@ function statusWord(ws: WorkspaceView, awaitingPayment: boolean, overview: Overv
   return 'Reviewed'
 }
 
-function OverviewPage({ account, overview, overviewError, ws, awaitingPayment, reviewHref, feedback, onOpenCharge }: { account: Account; overview: Overview | null; overviewError: string | null; ws: WorkspaceView; awaitingPayment: boolean; reviewHref: string; feedback: string; onOpenCharge: (id: string) => void }) {
+function OverviewPage({ account, overview, lookback, value, overviewError, ws, awaitingPayment, reviewHref, feedback, onOpenCharge }: { account: Account; overview: Overview | null; lookback: Lookback | null; value: RunValue | null; overviewError: string | null; ws: WorkspaceView; awaitingPayment: boolean; reviewHref: string; feedback: string; onOpenCharge: (id: string) => void }) {
   const k = overview?.kpis
   const tiles: { label: string; value: string; note?: string; tone?: string }[] = k ? [
     { label: 'Invoiced', value: money(k.invoiced_6m), note: 'Last 6 months' },
@@ -156,10 +163,13 @@ function OverviewPage({ account, overview, overviewError, ws, awaitingPayment, r
         {k ? tiles.map((t) => <div key={t.label} className={`kpi surface ${t.tone ?? ''}`}><span>{t.label}</span><strong>{t.value}</strong>{t.note && <small>{t.note}</small>}</div>) : Array.from({ length: 7 }, (_, i) => <div key={i} className="kpi surface skeleton" aria-hidden><span /><strong /></div>)}
       </section>
 
+      {value && !awaitingPayment && <ValueStrip value={value} />}
       <div className="overview-grid">
         <CurrentPayment account={account} overview={overview} ws={ws} awaitingPayment={awaitingPayment} reviewHref={reviewHref} />
         <AttentionCard account={account} ws={ws} awaitingPayment={awaitingPayment} reviewHref={reviewHref} />
       </div>
+
+      {lookback && <LookbackCard lookback={lookback} distributor={account.distributor.name} />}
 
       <div className="insight-grid">
         <section className="surface chart-card" aria-labelledby="months-h">

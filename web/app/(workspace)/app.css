@@ -235,3 +235,40 @@ a.secondary{color:var(--ink)}
 .preview-section+.preview-section{margin-top:22px}
 .row-table th.num{text-align:right}
 .tool-body{display:grid;gap:18px;min-width:0}
+
+/* What a run was worth, the six-month lookback, file-by dates and the dispute packet */
+.value-strip{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px;margin:0 0 22px;padding:14px 20px;background:var(--green-soft);border:1px solid #d5e5df;border-radius:14px;font-size:15px;color:#3f5f55}
+.value-strip strong{font-size:22px;font-weight:600;letter-spacing:-.5px;color:var(--ink)}
+.value-strip span{white-space:nowrap}
+.value-strip span::before{content:'·';margin-right:18px;color:#9db5ad}
+.payment-strip+.value-strip{margin-top:16px}
+.file-by{display:inline-flex;align-items:center;gap:5px;margin-top:6px;padding:2px 9px;border-radius:999px;background:#f3f2f5;color:var(--sub);font-size:12px;font-weight:600;white-space:nowrap;width:max-content;max-width:100%}
+.file-by svg{width:13px!important;height:13px!important}
+.file-by.urgent{background:var(--red-soft);color:#8a3b3b}
+.file-by.in-row{display:flex}
+.file-by.in-panel{margin:0 0 4px}
+.table-footer{flex-wrap:wrap}
+.packet-link{display:inline-flex;align-items:center;gap:6px;margin-left:auto;color:#5d55b8;font-weight:600;font-size:12px}
+.packet-link svg{width:15px;height:15px}
+.lookback-card{padding:20px 22px;margin:22px 0;min-width:0}
+.lookback-card .card-heading{flex-wrap:wrap}
+.lookback-numbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:4px 0 18px}
+.lookback-numbers>div{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:10px;background:#f7f7f5;min-width:0}
+.lookback-numbers span{font-size:12px;color:var(--sub);font-weight:500}
+.lookback-numbers strong{font-size:26px;font-weight:600;letter-spacing:-.7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lookback-numbers small{font-size:11px;color:var(--sub)}
+.lookback-numbers .lost strong{color:#9a5757}
+.lookback-numbers .claimable{background:#fdf0ea}
+.lookback-numbers .claimable strong{color:#b4481d}
+.lookback-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr);gap:24px}
+.chart-legend i.hatched{background:repeating-linear-gradient(45deg,currentColor 0 2px,#f3e6e6 2px 4px)!important;outline:1px solid currentColor}
+.chart-tip i.hatched{height:8px;width:12px}
+.claim-now h3{font-size:15px;margin-bottom:8px}
+.claim-now ul{list-style:none;margin:0 0 8px;padding:0}
+.claim-now li{padding:10px 0;border-bottom:1px solid #f0eff2}
+.claim-now li:last-child{border-bottom:0}
+.claim-top{display:flex;justify-content:space-between;gap:12px;font-size:13px;font-weight:600}
+.claim-top>span{min-width:0}
+.claim-top strong{font-weight:600;white-space:nowrap}
+@media(max-width:1120px){.lookback-grid{grid-template-columns:1fr}}
+@media(max-width:760px){.lookback-card{padding:16px}.lookback-numbers{grid-template-columns:1fr;gap:8px}.lookback-numbers strong{font-size:23px}.value-strip{padding:12px 16px}.value-strip strong{font-size:19px;width:100%}.value-strip span::before{display:none}.value-strip span{white-space:normal}}

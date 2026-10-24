@@ -11,6 +11,7 @@ import { useChargeDetail } from '@/lib/useChargeDetail'
 import type { RunState } from '@/lib/useRunEvents'
 import { orderedEvidence, type ChargeView, type Stage } from '@/lib/workspace'
 import { DecisionTrace } from './decision-trace'
+import { FileBy } from './impact'
 import { QuoteBlock, SourceBody, sourceTitle } from './evidence-parts'
 
 export type ChargeFilter = 'All' | 'Disputed' | 'Accepted' | 'Needs input'
@@ -40,7 +41,7 @@ export function ChargeList({ charges, selected, onSelect, preview = false, filte
   return <div className={`charge-table ${preview ? 'preview-table' : ''}`}>
     {onFilterChange && <div className="charge-filters" aria-label="Filter charges">{(['All', 'Disputed', 'Accepted', 'Needs input'] as ChargeFilter[]).map((value) => <button key={value} className={filter === value ? 'active' : ''} aria-pressed={filter === value} onClick={() => onFilterChange(value)}>{value}</button>)}</div>}
     <div className="table-head"><span>Charge</span><span>Amount</span><span>Decision</span>{preview && <span>What we found</span>}<span /></div>
-    {visibleCharges.map((charge) => <button className={`charge-row ${selected === charge.id ? 'selected' : ''}`} key={charge.id} onClick={() => onSelect(charge)} aria-label={`Review ${charge.title}`}><span className="charge-name"><span className="charge-icon"><FileText /></span><span><span className="charge-kind">{charge.kind} · {charge.ref}</span>{charge.title}{!preview && <small>{charge.reason}</small>}</span></span><span className="money">{dollars(charge.amount)}</span><Status value={charge.status} />{preview && <span className="row-reason">{charge.reason}</span>}<ChevronRight /></button>)}
+    {visibleCharges.map((charge) => <button className={`charge-row ${selected === charge.id ? 'selected' : ''}`} key={charge.id} onClick={() => onSelect(charge)} aria-label={`Review ${charge.title}`}><span className="charge-name"><span className="charge-icon"><FileText /></span><span><span className="charge-kind">{charge.kind} · {charge.ref}</span>{charge.title}{!preview && <small>{charge.reason}</small>}<FileBy fileBy={charge.fileBy} daysLeft={charge.daysLeft} className="in-row" /></span></span><span className="money">{dollars(charge.amount)}</span><Status value={charge.status} />{preview && <span className="row-reason">{charge.reason}</span>}<ChevronRight /></button>)}
     {filter === 'All' && Array.from({ length: Math.max(0, pending) }, (_, i) => <div className="charge-row placeholder" key={`pending-${i}`} aria-hidden><span className="charge-name"><span className="charge-icon"><FileText /></span><span><span className="charge-kind">Next on the remittance</span>Waiting to be read</span></span><span className="money">—</span><span className="status working"><i />Queued</span>{preview && <span className="row-reason" />}<span /></div>)}
     {charges.length === 0 && pending === 0 && <div className="filtered-empty"><FileText /><h3>{waiting ? 'No payment yet' : 'Checking the charges'}</h3><p>{waiting ? 'Each deduction is listed here once the payment arrives.' : 'Each deduction appears here as it is checked against the deal.'}</p></div>}
     {charges.length > 0 && visibleCharges.length === 0 && <div className="filtered-empty"><FileText /><h3>No charges match this filter</h3><p>Try another status to see the {charges.length} deductions.</p></div>}
@@ -90,6 +91,7 @@ export function EvidencePanel({ account, state, runId, charge, question, rule, s
       <h2>{charge.title}</h2>
       <p className="finding">{charge.finding}</p>
       <div className="allocation"><div><small>Charged</small><strong>{dollars(charge.amount)}</strong></div><div><small>Accepted</small><strong>{amountLabel(charge, charge.accepted)}</strong></div><div><small>Disputed</small><strong>{amountLabel(charge, charge.disputed)}</strong></div></div>
+      <FileBy fileBy={charge.fileBy} daysLeft={charge.daysLeft} className="in-panel" />
       {charge.status === 'Split decision' && charge.accepted !== null && charge.disputed !== null && <p className="muted small">One {dollars(charge.amount)} charge: {dollars(charge.accepted)} accepted and {dollars(charge.disputed)} disputed.</p>}
 
       {asksOwner && <OwnerQuestion key={question.id} question={question} code={charge.code} owner={owner} controller={account.brand.controller.name} role={role} onAnswer={onAnswer} />}

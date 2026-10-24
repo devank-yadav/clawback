@@ -2,7 +2,7 @@
 // Pure reads and wording: every amount and every decision below arrived in an event, none is computed here.
 
 import { codeLabel } from "./accounts";
-import type { Account, Approval, Charge, ChargeDetail, Decision, Evidence, LedgerPost, Question, Remittance, Rule, Totals } from "./types";
+import type { Account, Approval, Charge, ChargeDetail, Decision, Evidence, LedgerPost, Question, Remittance, Rule, RunValue, Totals } from "./types";
 import type { RunState } from "./useRunEvents";
 
 export type ChargeStatus = "Reviewing" | "Split decision" | "Disputed" | "Accepted" | "Needs your input" | "Can’t verify";
@@ -24,6 +24,9 @@ export type ChargeView = {
   disputed: number | null;
   waiting: number | null;
   ruleId: string | null;
+  /** From the filed dispute's line for this charge: last day to file, and days left. */
+  fileBy: string | null;
+  daysLeft: number | null;
 };
 
 /** owner: waiting on the owner's policy answer. controller: waiting on the controller. posted / refused: the controller answered. */
@@ -49,6 +52,8 @@ export type WorkspaceView = {
   postingProblem: string | null;
   disputeLabel: string;
   disputeId: string | null;
+  /** On the final totals event, once every charge is decided. */
+  value: RunValue | null;
 };
 
 const STATUS: Record<Decision["decision"], ChargeStatus> = {
@@ -79,6 +84,8 @@ function chargeView(c: Charge, state: RunState): ChargeView {
     disputed: d ? d.disputed : null,
     waiting: d ? d.waiting : null,
     ruleId: d?.rule_id ?? null,
+    fileBy: null,
+    daysLeft: null,
   };
 }
 
@@ -116,7 +123,12 @@ export function postingProblem(ledger: LedgerPost[]): string | null {
 }
 
 export function selectWorkspace(state: RunState, account: Account | null): WorkspaceView {
-  const charges = state.order.map((id) => chargeView(state.charges[id], state));
+  const lines = Object.fromEntries((state.dispute?.lines ?? []).map((l) => [l.charge_id, l]));
+  const charges = state.order.map((id) => {
+    const c = chargeView(state.charges[id], state);
+    const line = lines[id];
+    return line ? { ...c, fileBy: line.file_by ?? null, daysLeft: line.days_left ?? null } : c;
+  });
   const question = Object.values(state.questions)[0] ?? null;
   const rule = Object.values(state.rules).find((r) => r.status === "active") ?? null;
   const approval = state.approval;
@@ -156,6 +168,7 @@ export function selectWorkspace(state: RunState, account: Account | null): Works
           ? `Dispute ${dispute.id} · ${dispute.status}`
           : "Disputes are filed once every charge is checked",
     disputeId: dispute?.id ?? null,
+    value: state.totals?.value ?? null,
   };
 }
 
