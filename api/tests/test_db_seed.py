@@ -18,7 +18,7 @@ from types import SimpleNamespace
 import pytest
 
 from api import documents, rows
-from api.db import migration, seed
+from api.db import migration, migrations, seed
 
 DATA = rows.DATA
 DESIGN = DATA.parent / "docs" / "design.md"
@@ -35,6 +35,9 @@ def _columns(table):
     plain, _ = migration()
     body = re.search(rf"CREATE TABLE IF NOT EXISTS {table} \((.*?)\n\);", plain, re.S).group(1)
     names = [line.split()[0] for line in body.splitlines() if line.strip()]
+    for name in migrations():  # columns later migrations add
+        for statement in re.findall(rf"ALTER TABLE {table}\b(.*?);", migration(name)[0], re.S):
+            names += re.findall(r"ADD COLUMN IF NOT EXISTS (\w+)", statement)
     return {n for n in names if n not in ("PRIMARY", "CHECK", "UNIQUE", "--")}
 
 

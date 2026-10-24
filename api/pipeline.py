@@ -23,6 +23,7 @@ from api.contracts import (
     Answer, Approval, ApprovalLine, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, Dispute, DisputeLine, Event, EventAdapter,
     Evidence, Finding, LogLine, MathPart, Question, Rehearsal, Remittance, Rule, RunInfo, Term, Totals,
 )
+from api.db import events as saved_events
 from api.engine import gate, totals
 from api.engine import types as eng
 from api.engine.allowed import compute_allowed
@@ -79,6 +80,7 @@ class Run:
                                                "type": type_, "data": data.model_dump(mode="json")})
             self.events.append(ev)
             audit.record(ev)  # every decision, question, answer, rule, approval, posting, dispute and portal message
+            saved_events.record(ev)  # the events table, off this thread, so a restart can replay the run
         return ev
 
     def log(self, text: str, level: str = "info", actor: str = "system", charge_id: str | None = None) -> None:

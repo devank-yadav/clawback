@@ -1,7 +1,9 @@
 """Data rows under data/: charges, store sales, prior payments and the promo plan, as api/contracts.py models.
 
-The sibling of api/documents.py (which loads the text documents). The seed copies these into Postgres; until
-then the pipeline and tests read them straight from the files.
+The sibling of api/documents.py (which loads the text documents). charges(), sales(), prior_payments() and
+promo_plan() read Postgres when the database is on (DATABASE_URL set, not DEMO_MODE, api/db/conn.py) and holds the
+seeded rows, which api/db/reads.py gives back exactly as the files do; otherwise, or on any database error, the files.
+The *_from_files loaders always read data/: the seed copies them in, and a test's own data directory uses them.
 
 Display-fee charges get their notice_date from data/notices/. Matching is strict, because a wrong or missing
 notice date silently flips Rule #1 (no date means "notice unknown", which disputes the fee):
@@ -22,11 +24,15 @@ from pathlib import Path
 
 from api import documents
 from api.contracts import Charge, PriorPayment, PromoPlan, SalesRow
+from api.db import reads
 
 DATA = documents.DATA
 FEE_CODES = frozenset({"DF"})
 
 CHARGE_FILES = {"march": "charges/northmart-march.csv", "april": "charges/northmart-april.csv"}
+SALES_FILE = "sales/store-sales.csv"
+PRIOR_FILE = "payments/prior.csv"
+PLAN_FILE = "plan/promo-plan.csv"
 
 _REF = re.compile(r"\*\*Charge ref:\*\*\s*(\S+)")
 _FEE = re.compile(r"\bfee of \$([\d,]+(?:\.\d\d)?)")  # "will charge a display fee of $1,200.00"
@@ -102,10 +108,36 @@ def notice_for(charge: Charge, pool: list[Notice]) -> Notice:
     raise DataError(f"{charge.id} ({charge.ref}): {len(loose)} notices without a ref fit; add **Charge ref:** lines")
 
 
-# ---------------------------------------------------------------- rows
+# ---------------------------------------------------------------- rows: Postgres when it's on, else the files
 
 def charges(month: str, data: Path = DATA) -> list[Charge]:
     """One month's charges ("march" or "april"), display fees with their notice date attached."""
+    return _database_or(lambda: charges_from_files(month, data), data, "charges", CHARGE_FILES[month])
+
+
+def sales(data: Path = DATA) -> list[SalesRow]:
+    return _database_or(lambda: sales_from_files(data), data, "store_sales")
+
+
+def prior_payments(data: Path = DATA) -> list[PriorPayment]:
+    return _database_or(lambda: prior_payments_from_files(data), data, "prior_payments")
+
+
+def promo_plan(data: Path = DATA) -> list[PromoPlan]:
+    return _database_or(lambda: promo_plan_from_files(data), data, "promo_plan")
+
+
+def _database_or(files, data: Path, table: str, *args):
+    if data == DATA:
+        got = reads.load(table, *args)  # None: no database, it failed, or it isn't seeded
+        if got is not None:
+            return got
+    return files()
+
+
+# ---------------------------------------------------------------- rows from the files
+
+def charges_from_files(month: str, data: Path = DATA) -> list[Charge]:
     pool = notices(data)
     out = []
     for r in _csv(CHARGE_FILES[month], data):
@@ -118,21 +150,21 @@ def charges(month: str, data: Path = DATA) -> list[Charge]:
     return out
 
 
-def sales(data: Path = DATA) -> list[SalesRow]:
+def sales_from_files(data: Path = DATA) -> list[SalesRow]:
     return [SalesRow(week_start=date.fromisoformat(r["week_start"]), week_end=date.fromisoformat(r["week_end"]),
                      product=r["product"], promo_units=int(r["promo_units"]), total_units=int(r["total_units"]))
-            for r in _csv("sales/store-sales.csv", data)]
+            for r in _csv(SALES_FILE, data)]
 
 
-def prior_payments(data: Path = DATA) -> list[PriorPayment]:
+def prior_payments_from_files(data: Path = DATA) -> list[PriorPayment]:
     return [PriorPayment(ref=r["ref"], paid_on=date.fromisoformat(r["paid_on"]), promo_id=r["promo_id"],
                          product=r["product"], period_start=date.fromisoformat(r["period_start"]),
                          period_end=date.fromisoformat(r["period_end"]), units=int(r["units"]),
                          amount=Decimal(r["amount"]))
-            for r in _csv("payments/prior.csv", data)]
+            for r in _csv(PRIOR_FILE, data)]
 
 
-def promo_plan(data: Path = DATA) -> list[PromoPlan]:
+def promo_plan_from_files(data: Path = DATA) -> list[PromoPlan]:
     return [PromoPlan(promo_id=r["promo_id"], products=_products(r["product"]), rate=Decimal(r["rate"]),
                       starts=date.fromisoformat(r["starts"]), ends=date.fromisoformat(r["ends"]), cap=int(r["cap"]))
-            for r in _csv("plan/promo-plan.csv", data)]
+            for r in _csv(PLAN_FILE, data)]

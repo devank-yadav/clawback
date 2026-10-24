@@ -1,6 +1,7 @@
 """Runs, the live event stream, the evidence drawer, owner answers and the read-only summary.
 
-Live runs come from api/pipeline.py (POST /runs). The recorded fake runs (run-march-demo, run-april-demo,
+Live runs come from api/pipeline.py (POST /runs). A run that is no longer in memory (the API restarted) replays,
+read-only, from the events table (api/db/events.py). The recorded fake runs (run-march-demo, run-april-demo,
 run-march-refused) still replay for screens built against web/fixtures.
 """
 
@@ -15,6 +16,7 @@ from api.contracts import (
     AnswerRequest, AnswerResponse, ChargeDetail, Evidence, RunFixture, StartRunRequest, StartRunResponse, Summary,
 )
 from api import pipeline
+from api.db import events as saved_events
 from api.routes import portal
 from api.stubs import fixtures
 
@@ -70,12 +72,18 @@ async def run_events(
 ) -> StreamingResponse:
     live = pipeline.RUNS.get(run_id)
     run = live or _runs().get(run_id)
-    if run is None:
+    saved = None if run else await asyncio.to_thread(saved_events.load, run_id)  # a run from before a restart
+    if run is None and saved is None:
         raise HTTPException(404, f"unknown run {run_id}")
     # A browser reconnect resends Last-Event-ID but keeps the ?after= it first opened with: the larger one wins.
     start_after = max(after or 0, last_event_id or 0)
-    pending = (lambda sent: live.events_after(sent)) if live else (lambda sent: [e for e in _events(run) if e.id > sent])
-    pace = 0 if live else delay_ms  # a live run is paced by the work itself
+    if live:
+        pending = live.events_after
+    elif saved is not None:  # read once: nothing adds to a run that isn't in memory
+        pending = lambda sent: [e for e in saved if e.id > sent]  # noqa: E731
+    else:
+        pending = lambda sent: [e for e in _events(run) if e.id > sent]  # noqa: E731
+    pace = 0 if live or saved else delay_ms  # a live run is paced by the work itself; a saved one replays at once
 
     async def stream() -> AsyncIterator[str]:
         yield "retry: 2000\n\n"
@@ -150,8 +158,10 @@ def summary(authorization: str | None = Header(default=None)) -> Summary:
 
 @router.get("/runs/latest", response_model=StartRunResponse)
 def latest_run(kind: str = Query(default="march")) -> StartRunResponse:
-    """The newest live run (the payment screen finds the run Nessie's deposit started)."""
+    """The newest live run (the payment screen finds the run Nessie's deposit started); with none in memory, the
+    newest saved one (the API restarted)."""
     run = pipeline.latest(kind)
-    if run is None:
+    run_id = run.id if run else saved_events.latest_run(kind)
+    if run_id is None:
         raise HTTPException(404, f"no live {kind} run yet")
-    return StartRunResponse(run_id=run.id, events_url=f"/runs/{run.id}/events")
+    return StartRunResponse(run_id=run_id, events_url=f"/runs/{run_id}/events")
