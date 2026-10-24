@@ -171,6 +171,14 @@ def test_row_4_discretion_word_in_quote_counts_even_without_flag():
     assert decide(C6, allowance("1200", "1200", (unflagged,)), None, POLICY).gate_row == 4
 
 
+def test_may_be_permitted_by_law_is_not_discretion():
+    interest = replace(T["T-cap"], exact_quote="Company reserves the right to charge Supplier interest at the rate of 12% "
+                       "per annum or such lower rate as may be permitted under applicable law")
+    assert not uses_discretion(interest, POLICY)
+    assert not uses_discretion(replace(interest, exact_quote="Deductions already paid may not be taken again."), POLICY)
+    assert uses_discretion(replace(interest, exact_quote="Northmart may charge a fee, and it may be waived."), POLICY)
+
+
 @pytest.mark.parametrize("taken, allowed", [("1200.00", "1200.00"), ("1200.99", "1200.00"), ("1199.00", "1200.00")])
 def test_row_5_within_one_dollar_accepts(taken, allowed):
     d = decide(C1, allowance(taken, allowed), None, POLICY)

@@ -35,11 +35,13 @@ ZERO = money(0)
 
 
 def uses_discretion(term: Term, policy: Policy) -> bool:
-    """The reader's flag, or a policy discretion word in the quote (whole words only)."""
+    """The reader's flag, or a policy discretion word in the quote (whole words only). "may be" and "may not" are
+    left out: "such lower rate as may be permitted under applicable law" (Walmart's interest clause) or "may not be
+    taken again" is the law or a limit, not anyone's judgment."""
     if term.discretion:
         return True
     quote = term.exact_quote.lower()
-    return any(re.search(rf"\b{re.escape(w.lower())}\b", quote) for w in policy.discretion_words)
+    return any(re.search(rf"\b{re.escape(w.lower())}\b(?!\s+(?:be|not)\b)", quote) for w in policy.discretion_words)
 
 
 def discretion_terms(allowance: Allowance, policy: Policy) -> list[Term]:
