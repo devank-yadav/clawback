@@ -152,6 +152,14 @@ LATE = {"fee_code": "Late Shipment", "basis": "percent", "rate": "5", "per": "in
 MISSED = {"fee_code": "Missed", "basis": "percent", "rate": "3", "max": "750", "per": "incident"}
 
 
+def test_tiers_drop_a_top_level_rate():
+    # live, Gemini put Five Below's first tier ($100) in rate too
+    tiers = [{"from_days": 1, "to_days": 7, "rate": "100"}, {"from_days": 8, "to_days": None, "rate": "200"}]
+    p = fee_terms.canonical({"fee_code": "Documents not uploaded", "basis": "flat", "rate": "100", "tiers": tiers},
+                            "1-7 days Late $100 8+ days late $200", [])
+    assert "rate" not in p and p["tiers"][0]["rate"] == "100"
+
+
 def test_per_po_and_flat_are_one_price_and_agree():
     flat = {**ADMIN, "basis": "flat"}
     assert fee_terms.priced_alike(ADMIN, flat)

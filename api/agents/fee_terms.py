@@ -101,6 +101,8 @@ def canonical(params: dict, quote: str, vocabulary: Iterable[str]) -> dict:
         tiers = [{"from_days": int(t["from_days"]), "to_days": None if t.get("to_days") is None else int(t["to_days"]),
                   "rate": rate(t["rate"], basis, quote)} for t in tiers]
     out["tiers"] = tiers
+    if tiers:  # the tier's rate prices each line (allowed.py _line_rate); a top-level rate beside it is ignored there
+        out["rate"] = None
     return {k: v for k, v in out.items() if v is not None}
 
 
