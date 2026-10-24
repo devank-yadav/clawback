@@ -11,3 +11,5 @@ Northmart will charge a display fee of $1,200.00 for the month ending March 31, 
 placement of Peak Bar products. This notice is given 20 days before the end of the month.
 
 The fee will be taken as a deduction (code DF) from Supplier's next remittance.
+
+**Charge ref:** NM-2238
