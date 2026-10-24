@@ -124,7 +124,16 @@ def test_no_notice_is_an_error_not_a_silent_none(data):
         rows.charges("march", data)
 
 
+def test_c6_takes_its_notice_by_ref(data):
+    # The Mar 11 notice names NM-2238 (on its last line), so a stray $1,200 March notice can't take C6.
+    assert next(n for n in rows.notices(data) if n.doc_id == "display-fee-2026-03-11").ref == "NM-2238"
+    _notice(data / "notices" / "display-fee-2026-03-12.md", when="March 12, 2026")
+    c6 = next(c for c in rows.charges("march", data) if c.id == "C6")
+    assert c6.notice_date == date(2026, 3, 11)
+
+
 def test_two_loose_notices_that_fit_are_an_error(data):
+    _notice(data / "notices" / "display-fee-2026-03-11.md")
     _notice(data / "notices" / "display-fee-2026-03-12.md", when="March 12, 2026")
     with pytest.raises(rows.DataError, match="2 notices without a ref"):
         rows.charges("march", data)
