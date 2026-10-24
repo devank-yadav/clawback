@@ -57,7 +57,10 @@ export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: 
   return (
     <>
       <section className="fl-done-hero" aria-live="polite">
-        <span className="cx-eyebrow">{account ? `${account.brand.name} · ${distributor}${r?.invoice_id ? ` · invoice ${r.invoice_id}` : ""}` : " "}</span>
+        <div className="fl-done-top">
+          <span className="cx-eyebrow">{account ? `${account.brand.name} · ${distributor}${r?.invoice_id ? ` · invoice ${r.invoice_id}` : ""}` : " "}</span>
+          <button className="cx-btn" onClick={onNew}>Check a new payment</button>
+        </div>
         {failed ? (
           <h1>The agents stopped before finishing</h1>
         ) : (
@@ -124,7 +127,7 @@ export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: 
         <span className="cx-small cx-muted">
           Every decision is traceable: <a href={link("/workspace", { view: "payments" })}>every charge</a> · <a href={link("/audit")}>audit trail</a>
         </span>
-        <button className="cx-btn is-ghost" onClick={onNew}>Back to watching</button>
+        <button className="cx-btn is-ghost" onClick={onNew}>Check a new payment</button>
       </div>
     </>
   );

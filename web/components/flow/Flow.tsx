@@ -61,6 +61,9 @@ function FlowFor() {
   // The run this tab was following when it started one; any newer run is "ours" from then on.
   const [startedFrom, setStartedFrom] = useState<string | null | undefined>(undefined);
   const [opened, setOpened] = useState(false);
+  // "Check a new payment" pressed: the start screen shows even while an older run waits on you (it stays one click
+  // away). A new payment then replaces that run, and its open question closes on the server.
+  const [fresh, setFresh] = useState(false);
   const [drawer, setDrawer] = useState<string | null>(null);
   const [, setCleared] = useState(0); // a re-render after forgetting the watched run
 
@@ -75,20 +78,22 @@ function FlowFor() {
   const watched = !!runId && followed === runId;
   const phase: "start" | "run" | "done" =
     starting || (mine && !state.run) ? "run"
+      : fresh && !mine ? "start"
       : !state.run ? "start"
         : working ? "run"
           : mine || opened || openLatest || watched || waitingOnPerson ? "done"
             : "start";
 
   useEffect(() => {
-    if (runId && (live || mine)) writeFollowed(account?.id, runId);
-  }, [runId, live, mine, account?.id]);
+    if (runId && (mine || (live && !fresh))) writeFollowed(account?.id, runId);
+  }, [runId, live, mine, fresh, account?.id]);
 
   /** Back to the start screen: forget the watched run for this tab. */
   const restart = () => {
     writeFollowed(account?.id, null);
     setStartedFrom(undefined);
     setOpened(false);
+    setFresh(true);
     setCleared((n) => n + 1);
   };
 
@@ -104,7 +109,7 @@ function FlowFor() {
 
       {phase === "start" && (
         <main className="fl-main" style={{ paddingTop: 0, paddingBottom: 0 }}>
-          <StartPanel onStart={() => setStartedFrom(runId ?? null)} onOpenLast={() => setOpened(true)} />
+          <StartPanel onStart={() => setStartedFrom(runId ?? null)} onOpenLast={() => { setOpened(true); setFresh(false); }} />
         </main>
       )}
 

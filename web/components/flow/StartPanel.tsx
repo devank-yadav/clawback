@@ -30,6 +30,7 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
   const [text, setText] = useState("");
   const busy = !!reading || starting;
   const last = state.run && view.totals ? view.totals : null;
+  const waitingOnYou = view.stage === "owner" || view.approval?.status === "pending";
 
   async function read(input: { file: File } | { text: string }, name: string) {
     if (!account || busy) return;
@@ -124,14 +125,19 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
         </div>
         <p className="cx-tiny">AI reads and writes. Tested code does every calculation. You decide only what the deal leaves open.</p>
 
-        {last && state.run && (
+        {state.run && (waitingOnYou ? (
+          <div className="fl-last is-waiting">
+            <span><strong>Your previous payment is waiting on your decision.</strong> Starting a new one replaces it, and its open question closes.</span>
+            <button className="cx-btn" onClick={onOpenLast}>Open it</button>
+          </div>
+        ) : last ? (
           <div className="fl-last">
             <span>
               Last payment: {state.run.status === "failed" ? "the agents stopped" : `${money(last.disputed)} disputed · ${money(last.accepted)} fair${last.questions ? ` · ${last.questions} question${last.questions === 1 ? "" : "s"}` : ""}`}
             </span>
             <button className="cx-btn is-ghost" onClick={onOpenLast}>See the result</button>
           </div>
-        )}
+        ) : null)}
       </section>
     </div>
   );
