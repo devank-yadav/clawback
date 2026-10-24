@@ -1015,6 +1015,7 @@ class AccountConfig(Contract):
     dispute numbers must not clash across accounts)."""
 
     id: str  # the folder name, "peak-bar"
+    supplier: str | None = None  # the supplier workspace it belongs to: the brand's account id, "peak-bar"
     brand: Brand
     distributor: Distributor
     invoice: AccountInvoice
