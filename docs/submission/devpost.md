@@ -454,7 +454,7 @@ checked against commit f55757a. Tag a track on Devpost only when every row says 
 
 | Devpost must show | In the repo now? |
 | --- | --- |
-| Before/after: a differently worded clause matched to Rule #1 | Code yes: `api/integrations/moss.py` (Moss SDK 1.21.0), similarity floor 0.85 in `config/policy.yaml`, tested with a fake. TODO (needs Devank): redeem CALHACKS in the Moss portal, set `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY`, run `python -m api.integrations.moss` for the real scores, record one run, and screenshot the scenario box with a reworded clause |
+| Before/after: a differently worded clause matched to Rule #1 | Yes, live (Oct 24): `python -m api.integrations.moss` on the `clawback-rules` index (`moss-mediumlm`) scores Rule #1's own §5.4 sentence 1.00, a reworded display-fee clause ("in its sole judgment … once it has told Supplier in writing") 1.00, a late-delivery penalty 0.79, a spoilage fee 0.67 and the promo-rate clause 0.35; the 0.85 floor sits between them. March and April are recorded with Moss, so the card reads "matched by Moss, similarity 1.00" offline too. Honest limit: Moss scores any similar discretionary fee (a slotting fee, a circular-ad fee) at 1.00 as well. TODO (needs Devank): screenshot the scenario box with the reworded clause |
 
 ### MLH: Best Use of Gemini API
 

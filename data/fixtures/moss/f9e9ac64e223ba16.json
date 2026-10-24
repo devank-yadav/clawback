@@ -1,0 +1,17 @@
+{
+  "recorded_at": "2026-10-24T12:44:52+00:00",
+  "request": {
+    "index": "clawback-rules",
+    "op": "query",
+    "text": "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.",
+    "top_k": 5
+  },
+  "request_hash": "f9e9ac64e223ba16",
+  "response": [
+    {
+      "id": "rule-1",
+      "score": 1.0
+    }
+  ],
+  "service": "moss"
+}
