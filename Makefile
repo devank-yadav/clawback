@@ -31,7 +31,7 @@ eval:
 	$(PYTHON) eval/run.py
 
 record:
-	RECORD_FIXTURES=1 $(PYTHON) -m api.run_demo
+	RECORD_FIXTURES=1 $(PYTHON) -m api.run_demo --portal
 
 demo:
 	DEMO_MODE=true $(MAKE) dev

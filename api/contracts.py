@@ -621,6 +621,17 @@ class PortalReplyRequest(Contract):
     attachment_doc_id: str | None = None  # "amendment-1" when the judge attaches the signed amendment
 
 
+class PortalPreset(Contract):
+    """GET /portal/presets: the replies the judge can pick on the Northmart portal."""
+
+    id: str
+    label: str  # button text
+    text: str
+    attachment_doc_id: str | None = None
+    expect: ReplyClass  # how the Negotiator should read it (the acceptance test checks this)
+    charge_ids: list[str] = []
+
+
 class ScenarioCharge(Contract):
     description: str
     amount: Money

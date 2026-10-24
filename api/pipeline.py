@@ -304,13 +304,17 @@ def _file_dispute(run: Run, charge_ids: list[str], policy: eng.Policy) -> None:
             f"{OWNER.split()[0]}.", "good" if by_policy else "warn", "negotiator")
 
 
-def _request_credit_memo(run: Run, policy: eng.Policy) -> None:
-    accepted = [(cid, d.accepted) for cid, d in run.decisions.items() if d.accepted > 0]
+def _request_credit_memo(run: Run, policy: eng.Policy, accepted: list[tuple[str, Decimal]] | None = None) -> None:
+    """A credit memo for the accepted amounts (every accepted decision by default; a concession passes its own)."""
+    if accepted is None:
+        accepted = [(cid, d.accepted) for cid, d in run.decisions.items() if d.accepted > 0]
     if not accepted:
         return
     amount = totals.total_of(a for _, a in accepted)
     needs_sam = gate.needs_controller(amount, policy)
-    run.emit("approval", Approval(id=f"AP-{run.id}", kind="credit_memo", amount=amount,
+    n = len({e.data.id for e in run.events if e.type == "approval"}) + 1
+    approval_id = f"AP-{run.id}" if n == 1 else f"AP-{run.id}-{n}"
+    run.emit("approval", Approval(id=approval_id, kind="credit_memo", amount=amount,
                                   lines=[ApprovalLine(charge_id=cid, amount=a) for cid, a in accepted],
                                   proposed_by="bookkeeper", approver_role="controller",
                                   status="pending" if needs_sam else "approved",

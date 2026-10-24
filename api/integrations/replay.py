@@ -106,7 +106,7 @@ def _secrets(env: Mapping[str, str]) -> list[str]:
 
 def save_fixture(service: str, key: str, request: Any, response: Any, fixtures_dir: Path | None = None,
                  env: Mapping[str, str] | None = None) -> Path:
-    body = json.dumps({"service": service, "key": key, "request": request, "response": response,
+    body = json.dumps({"service": service, "request_hash": key, "request": request, "response": response,
                        "recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds")},
                       indent=2, sort_keys=True, ensure_ascii=False, default=_default)
     leaked = [s for s in _secrets(os.environ if env is None else env) if s in body]

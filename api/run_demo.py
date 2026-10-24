@@ -1,6 +1,7 @@
 """One full demo run from the command line: March, the owner's answer, then April.
 
 `make record` runs it with RECORD_FIXTURES=1 so every AI answer is saved for DEMO_MODE; `make demo` replays.
+--portal also sends the judge's preset replies on D-0417 (claims, an agreement, then the signed amendment).
 """
 
 from __future__ import annotations
@@ -35,6 +36,18 @@ def _print(run: pipeline.Run, since: int = 0) -> int:
     return since
 
 
+def _portal(march: pipeline.Run) -> None:
+    """The judge's preset replies on the Northmart portal, the signed amendment last."""
+    from api import disputes
+
+    for p in disputes.PRESETS:
+        print(f"  NORTHMART    [{p.label}] {p.text}" + (f" (attached {p.attachment_doc_id})" if p.attachment_doc_id else ""))
+        for m in disputes.post("D-0417", p.text, p.attachment_doc_id)[1:]:
+            print(f"  CLAWBACK     {m.text}")
+    t = [e.data for e in march.events if e.type == "totals"][-1]
+    print(f"\nAfter the portal: disputed ${t.disputed:,.0f} · accepted ${t.accepted:,.0f}\n")
+
+
 def main() -> int:
     load_dotenv()
     march = pipeline.start("march", background=False)
@@ -48,6 +61,8 @@ def main() -> int:
         _print(march, seen)
     t = [e.data for e in march.events if e.type == "totals"][-1]
     print(f"\nMarch: disputed ${t.disputed:,.0f} · accepted ${t.accepted:,.0f} · questions {t.questions}\n")
+    if "--portal" in sys.argv:
+        _portal(march)
     april = pipeline.start("april", background=False)
     _print(april)
     t = [e.data for e in april.events if e.type == "totals"][-1]
