@@ -22,7 +22,8 @@ import type {
   Totals,
 } from "./types";
 
-export type FeedLine = LogLine & { id: number };
+/** `at` is the event's own timestamp, so screens can show when each agent acted. */
+export type FeedLine = LogLine & { id: number; at: string };
 
 export type RunState = {
   run: RunInfo | null;
@@ -78,7 +79,7 @@ function reduce(state: RunState, action: Action): RunState {
       // Later run events (waiting, finished) carry no remittance; keep the one from the start.
       return { ...s, run: { ...e.data, remittance: e.data.remittance ?? s.run?.remittance ?? null } };
     case "log":
-      return { ...s, feed: [...s.feed, { id: e.id, ...e.data }] };
+      return { ...s, feed: [...s.feed, { id: e.id, at: e.at, ...e.data }] };
     case "charge":
       return {
         ...s,

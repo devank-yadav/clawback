@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 const LINKS = [
-  { href: "/", label: "Workspace" },
+  { href: "/classic", label: "Workspace" },
   { href: "/results", label: "Results" },
   { href: "/april", label: "April" },
   { href: "/coach", label: "Deal Coach" },
@@ -16,7 +16,7 @@ export default function ToolShell({ title, lead, current, children }: { title: s
   return (
     <div className="tool">
       <header className="tool-top">
-        <Link href="/" className="tool-word" aria-label="Clawback workspace">clawback<span>.</span></Link>
+        <Link href="/classic" className="tool-word" aria-label="Clawback workspace">clawback<span>.</span></Link>
         <nav aria-label="Screens">
           {LINKS.map((l) => (
             <Link key={l.href} href={l.href} aria-current={l.href === current ? "page" : undefined}>{l.label}</Link>

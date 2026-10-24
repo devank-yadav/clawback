@@ -23,7 +23,8 @@ log {text, level} · finding {charge_id, expected, taken, delta, type, finding, 
 · /results · /april · /coach · /scenario · /audit · /inbox (fallback for SMS questions)
 
 ## Workspace screens (current visual baseline)
-`/` is the v0 workspace (Overview, Payments, Approvals, Rules) in `app/(workspace)/` and `components/workspace/`.
+`/` now opens the dark console designed in Figma Make (`app/(console)/`, `components/console/`, see docs/figma/README.md).
+The v0 workspace (Overview, Payments, Approvals, Rules) moved to `/classic` in `app/(workspace)/` and `components/workspace/`.
 Rishi chose it over the older tokens below; keep its styles as they are and read web/README.md before changing data
 flow. The tokens below still apply to `/board/demo`, which keeps its own root layout.
 
