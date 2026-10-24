@@ -38,6 +38,10 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - Nessie (api/integrations/nessie.py): with NESSIE_API_KEY and NESSIE_ACCOUNT_ID the app polls the account every 5 s
   and a new Northmart deposit starts the March run; POST /payments/northmart is the "Northmart pays" button (posts the
   deposit, or starts the run directly without keys or in DEMO_MODE); GET /runs/latest finds the run.
+- Moss (api/integrations/moss.py, F16): with MOSS_PROJECT_ID and MOSS_API_KEY each saved rule is indexed by its clause,
+  and a discretion clause is searched against them; a match at or above `rule_match_similarity` (config/policy.yaml)
+  with the same clause type and counterparty applies the rule, otherwise the exact match on type + counterparty does.
+  `python -m api.integrations.moss` indexes Rule #1 and prints the similarity of a reworded clause (the Devpost proof).
 - Tests never call live services: api/conftest.py blanks every live key for the session and blocks real Claude clients.
 - POST /coach redlines summer-draft from the newest finished March run (api/agents/coach.py); POST /scenario runs a
   pasted clause and charge (api/scenario.py); GET /scenario/examples has three recorded cases.
