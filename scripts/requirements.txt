@@ -1,0 +1,5 @@
+# For scripts/ only: python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements.txt
+python-dotenv==1.2.4
+httpx==0.28.1
+twilio==9.12.0
+intuit-oauth==1.2.7
