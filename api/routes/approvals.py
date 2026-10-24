@@ -1,9 +1,14 @@
-"""Controller approvals: the in-app Yes / No buttons (fallback for the SMS reply). Stub: decides AP-1 once."""
+"""Controller approvals: the in-app Yes / No buttons (fallback for the SMS reply).
+
+A live run's approvals (AP-run-…) are decided in api/pipeline.py; the recorded fixture's AP-1 still works for
+screens built against web/fixtures.
+"""
 
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
 
+from api import pipeline
 from api.contracts import Approval, ApprovalDecisionRequest, ApprovalDecisionResponse
 from api.stubs import fixtures
 
@@ -24,7 +29,13 @@ reset()
 
 @router.post("/approvals/{approval_id}", response_model=ApprovalDecisionResponse)
 def decide(approval_id: str, req: ApprovalDecisionRequest) -> ApprovalDecisionResponse:
-    """Approve posts the credit memo; refuse posts nothing and keeps the note for the card."""
+    """Approve queues the credit memo; refuse posts nothing and keeps the note for the card."""
+    if pipeline.find_approval(approval_id):
+        try:
+            approval, post = pipeline.decide_approval(approval_id, req.approve, req.note)
+        except ValueError as e:
+            raise HTTPException(409, str(e)) from e
+        return ApprovalDecisionResponse(approval=approval, ledger_post=post)
     approval = _approvals.get(approval_id)
     if approval is None:
         raise HTTPException(404, f"unknown approval {approval_id}")

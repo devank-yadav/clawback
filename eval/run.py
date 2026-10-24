@@ -1,6 +1,8 @@
 """Eval harness (F12): run the 30 planted charges in data/eval/ and score them against the answer key.
 
-Run: make eval   (or: python eval/run.py [--data DIR] [--json])
+Run: make eval   (or: python eval/run.py [--data DIR] [--json] [--out FILE | --no-save])
+
+Each run saves its summary to eval/latest.json (gitignored); GET /eval/latest serves it to the scoreboard.
 
 Mode today is "engine": the reading and investigating are stood in by the case row itself (the deal terms the
 row states, a reader disagreement where the key says readers disagree, a strong finding everywhere), so the
@@ -20,7 +22,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -45,6 +47,7 @@ from api.engine.types import (  # noqa: E402
 )
 
 DEFAULT_DATA = Path(os.environ.get("CLAWBACK_DATA_DIR", ROOT / "data"))
+LATEST = ROOT / "eval" / "latest.json"  # the newest summary, for GET /eval/latest
 COUNTERPARTY = "Northmart"
 ACTS = {DecisionKind.DISPUTE, DecisionKind.SPLIT, DecisionKind.ACCEPT}  # automatic actions; Ask and Skip are not
 
@@ -235,10 +238,21 @@ def summary(results: list[Result]) -> dict:
     }
 
 
+def save(s: dict, path: Path = LATEST) -> dict:
+    """Write the summary with the time it ran; written whole to a temp file first, so a reader never sees half."""
+    saved = {**s, "run_at": datetime.now().astimezone().isoformat()}
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(saved, indent=2) + "\n")
+    tmp.replace(path)
+    return saved
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--data", type=Path, default=DEFAULT_DATA, help="data directory (default: data/)")
     ap.add_argument("--json", action="store_true", help="print the summary and misses as JSON")
+    ap.add_argument("--out", type=Path, default=LATEST, help="where to save the summary (default: eval/latest.json)")
+    ap.add_argument("--no-save", action="store_true", help="don't save the summary")
     args = ap.parse_args(argv)
     if not (args.data / "eval" / "charges-30.csv").exists():
         print(f"No eval set at {args.data / 'eval'}; merge the story branch or pass --data.", file=sys.stderr)
@@ -247,6 +261,8 @@ def main(argv: list[str] | None = None) -> int:
     results = run(args.data)
     s = summary(results)
     misses = [r for r in results if r.verdict != "correct"]
+    if not args.no_save:
+        save(s, args.out)
     if args.json:
         s["misses"] = [{"case": r.case_id, "tag": r.tag, "verdict": r.verdict, "got": r.decision.value,
                         "expected": r.expected.decision.value, "gate_row": r.gate_row, "notes": r.notes} for r in misses]
