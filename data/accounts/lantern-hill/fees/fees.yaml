@@ -1,0 +1,12 @@
+# Fee-schedule wiring for this account (api/fee_accounts.py). account.yaml keeps the AccountConfig shape.
+# The governing deal: KeHE's Vendor Policies & Procedures, real and unedited, read before account.yaml's deal_docs.
+contract: {id: kehe-vendor-policies-2015, path: contracts/kehe-vendor-policies-2015.txt, date: 2015-05-31}  # path under data/
+# Charge code -> the fee as the policy names it (the fee_code both readers return).
+codes: {MCBF: MCB, EP: Extra Performance, FP: Free Placements, SPL: Spoils}
+# Documents that change the policy under §10.7: a change applies no sooner than their notice date + the notice period.
+policy_changes: [kehe-ep-admin-2026-03-02]
+# The day the remittance arrived and any dispute would be filed; the invoice date (for a window counted from it).
+as_of: 2026-04-10
+invoice_date: 2026-03-31
+# Older deductions reviewed with this payment (taken from earlier payments, so not in its total).
+older_charges: charges/older.csv

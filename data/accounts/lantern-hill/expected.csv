@@ -1,0 +1,11 @@
+charge_id,decision,disputed,accepted,gate_row,asked,why
+K1,accept,0.00,3525.00,5,no,"2,350 cases on POs written Mar 3 and Mar 10 x $1.50 (submission 1.1); under the 4,000-case cap"
+K2,split,900.00,2475.00,7,no,"2,250 cases claimed; the 4,000-case cap (submission 1.2) leaves 1,650 after Mar 1-14's 2,350; 1,650 x $1.50 = $2,475"
+K3,accept,0.00,615.00,5,no,"POs of Mar 31 are after the Mar 28 buy dates, but the broker's Mar 24 email extends them through Apr 4 with up to 600 more cases: 410 x $1.50"
+K4,accept,0.00,65.00,5,no,"§6.4: 5% of the $940.00 MCB amount is $47.00, raised to the $65 minimum; the backup came"
+K5,split,156.00,156.00,7,no,"§6.4: 5% of the $3,120.00 MCB amount is $156.00; $312.00 (10%) was taken"
+K6,split,95.00,175.00,7,no,"§6.5: 5% of retailer invoice R-55120's $5,400.00 is $270.00, capped at $175 per invoice"
+K7,split,52.00,130.00,7,no,"KeHE's Mar 2 notice set 7% from Mar 9, but §10.7 needs 30 days' notice (Apr 1); the Mar 18 invoice keeps 5% of $2,600.00 = $130.00"
+K8,split,185.76,1032.00,3,yes,"§6.6: landed cost $1,032.00 plus 18% ($185.76) 'depending on retailer relationship': asked once; the owner's rule pays the fee only up to $150"
+K9,split,48.00,333.60,7,no,"§7.2: landed cost $264.00 + 240 units x $0.29 = $333.60; KeHE charged $0.49 a unit"
+K10,accept,0.00,286.20,10,no,"§3.4: deducted Oct 1, 2025; the 180-day window closed Mar 30, 2026, so it's accepted and noted although §7.2 allows $250.20"
