@@ -730,3 +730,14 @@ class Summary(Contract):
     totals: Totals
     open_disputes: list[Dispute]
     pending_question: Question | None
+    pending_approvals: list[Approval] = []
+    run_id: str | None = None  # the live run it describes; None: the recorded fake run
+
+
+class PaymentResponse(Contract):
+    """POST /payments/northmart: the payment screen's "Northmart pays" button."""
+
+    via: Literal["nessie", "direct"]  # nessie: a real sandbox deposit was posted; direct: no Nessie, run started
+    deposit_id: str | None
+    run_id: str | None  # None while the poller hasn't seen the deposit yet: GET /runs/latest gives it
+    message: str

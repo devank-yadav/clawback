@@ -3382,6 +3382,135 @@
   },
   "Summary": {
     "$defs": {
+      "Approval": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "credit_memo",
+              "dispute_over_limit",
+              "closed_period"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "lines": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/ApprovalLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "proposed_by": {
+            "enum": [
+              "system",
+              "reader",
+              "investigator",
+              "gate",
+              "negotiator",
+              "bookkeeper",
+              "coach",
+              "owner",
+              "controller",
+              "northmart",
+              "policy"
+            ],
+            "title": "Proposed By",
+            "type": "string"
+          },
+          "approver_role": {
+            "enum": [
+              "owner",
+              "controller"
+            ],
+            "title": "Approver Role",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "approved",
+              "refused"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Note"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Decided At"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "amount",
+          "proposed_by",
+          "approver_role",
+          "status",
+          "text",
+          "requested_at"
+        ],
+        "title": "Approval",
+        "type": "object"
+      },
+      "ApprovalLine": {
+        "additionalProperties": false,
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          }
+        },
+        "required": [
+          "charge_id",
+          "amount"
+        ],
+        "title": "ApprovalLine",
+        "type": "object"
+      },
       "Dispute": {
         "additionalProperties": false,
         "properties": {
@@ -3679,6 +3808,26 @@
             "type": "null"
           }
         ]
+      },
+      "pending_approvals": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/Approval"
+        },
+        "title": "Pending Approvals",
+        "type": "array"
+      },
+      "run_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Run Id"
       }
     },
     "required": [

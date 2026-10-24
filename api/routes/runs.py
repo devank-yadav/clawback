@@ -140,4 +140,14 @@ def summary(authorization: str | None = Header(default=None)) -> Summary:
         raise HTTPException(503, "CLAWBACK_READONLY_TOKEN is not set")
     if authorization != f"Bearer {token}":
         raise HTTPException(401, "bad token")
-    return fixtures.summary()
+    run = pipeline.latest("march")
+    return pipeline.summary_of(run) if run else fixtures.summary()
+
+
+@router.get("/runs/latest", response_model=StartRunResponse)
+def latest_run(kind: str = Query(default="march")) -> StartRunResponse:
+    """The newest live run (the payment screen finds the run Nessie's deposit started)."""
+    run = pipeline.latest(kind)
+    if run is None:
+        raise HTTPException(404, f"no live {kind} run yet")
+    return StartRunResponse(run_id=run.id, events_url=f"/runs/{run.id}/events")

@@ -66,6 +66,7 @@ class Run:
     coach: Any = None  # the Deal Coach's redlines for this run, once asked for (POST /coach)
     reader_models: tuple[str, str] = ("claude", "claude-b")  # who read the deal; Devpost claims two models only if "gemini"
     disagreements: dict[str, str] = field(default_factory=dict)  # term type -> what each reader read
+    deposit: Any = None  # the Nessie deposit that started this run, if one did
     texts: list[tuple[str, str]] = field(default_factory=list)  # (role, SMS body) sent back; the webhook replies with them
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -107,10 +108,13 @@ def reset() -> None:
     qbo.reset()
     sms.outbox.clear()
     audit.reset()
+    _deposit_runs.clear()
 
 
-def start(kind: str = "march", client: anthropic.Anthropic | None = None, background: bool = True) -> Run:
-    run = Run(id=f"run-{kind}-{uuid.uuid4().hex[:8]}", kind=kind)
+def start(kind: str = "march", client: anthropic.Anthropic | None = None, background: bool = True,
+          deposit: Any = None) -> Run:
+    """A new run. `deposit` is the Nessie deposit that triggered it (api/integrations/nessie.Deposit), if any."""
+    run = Run(id=f"run-{kind}-{uuid.uuid4().hex[:8]}", kind=kind, deposit=deposit)
     RUNS[run.id] = run
     work = lambda: _guarded(run, client)  # noqa: E731
     threading.Thread(target=work, daemon=True).start() if background else work()
@@ -179,14 +183,18 @@ def _process(run: Run, client) -> None:
     taken = totals.taken(eng_charges.values())
     remittance = None
     if run.kind == "march":
+        dep = run.deposit
         remittance = Remittance(id=remittance_id, counterparty=COUNTERPARTY, invoice_id=INVOICE_ID,
-                                expected=EXPECTED, received=RECEIVED, taken=taken, charge_count=len(charges),
-                                received_at=_now())
+                                expected=EXPECTED, received=dep.amount if dep else RECEIVED, taken=taken,
+                                charge_count=len(charges), received_at=_now(), nessie_tx_id=dep.id if dep else None)
     run.emit("run", RunInfo(run_id=run.id, kind=run.kind, status="started", remittance=remittance,
                             demo_mode=replay.demo_mode()))
     if remittance:
-        short = totals.remittance_short(EXPECTED, RECEIVED)
-        run.log(f"{COUNTERPARTY} paid ${RECEIVED:,.0f} on invoice {INVOICE_ID} for ${EXPECTED:,.0f}. "
+        short = totals.remittance_short(EXPECTED, remittance.received)
+        if run.deposit:
+            run.log(f"Nessie: {COUNTERPARTY}'s deposit of ${remittance.received:,.0f} arrived (deposit {run.deposit.id}).",
+                    actor="system")
+        run.log(f"{COUNTERPARTY} paid ${remittance.received:,.0f} on invoice {INVOICE_ID} for ${EXPECTED:,.0f}. "
                 f"${taken:,.0f} was taken out in {len(charges)} charges.",
                 "info" if short == taken else "warn")
     else:
@@ -585,3 +593,39 @@ def coach_costs(run: Run) -> list:
             out.append(Cost(f.id, q.charge_id, run.charges[q.charge_id].ref, f.type, f.finding,
                             run.charges[q.charge_id].amount, "needed a question to the owner"))
     return out
+
+
+_deposit_runs: dict[str, str] = {}  # Nessie deposit id -> the run it started
+
+
+def start_for_deposit(deposit: Any, client: anthropic.Anthropic | None = None, background: bool = True) -> Run:
+    """The March run for Northmart's deposit, once per deposit (the poller and the button can both see it)."""
+    with _state:
+        if deposit.id in _deposit_runs:
+            return RUNS[_deposit_runs[deposit.id]]
+        _deposit_runs[deposit.id] = ""
+    run = start("march", client, background, deposit=deposit)
+    _deposit_runs[deposit.id] = run.id
+    return run
+
+
+def latest(kind: str | None = None) -> Run | None:
+    return next((r for r in reversed(list(RUNS.values())) if kind is None or r.kind == kind), None)
+
+
+def summary_of(run: Run):
+    """GET /summary: totals, disputes still open, the question and approvals still waiting (read-only)."""
+    from api.contracts import Summary
+
+    totals_ = [e.data for e in run.events if e.type == "totals"]
+    disputes: dict[str, Dispute] = {}
+    approvals: dict[str, Approval] = {}
+    for e in run.events:
+        if e.type == "dispute":
+            disputes[e.data.id] = e.data
+        elif e.type == "approval":
+            approvals[e.data.id] = e.data
+    question = next((q for q in reversed(list(run.questions.values())) if q.answer is None), None)
+    return Summary(totals=totals_[-1] if totals_ else _meters(run), run_id=run.id, pending_question=question,
+                   open_disputes=[d for d in disputes.values() if d.status not in ("resolved", "withdrawn")],
+                   pending_approvals=[a for a in approvals.values() if a.status == "pending"])
