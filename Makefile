@@ -1,8 +1,9 @@
 # Targets are wired up as each part lands. Keep target names stable; the guides and the demo checklist use them.
 .PHONY: dev api web test acceptance seed eval eval-agent record demo reset check-data deploy-check
 
-# Macs often have only python3. Override with: make test PYTHON=python
-PYTHON ?= python3
+# The repo's .venv when there is one (it has the packages), else python3 (Macs often have no "python").
+# Override with: make test PYTHON=python
+PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 
 api:
 	$(PYTHON) -m uvicorn api.main:app --reload --reload-dir api --port 8000

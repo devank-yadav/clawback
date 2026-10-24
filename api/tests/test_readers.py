@@ -105,7 +105,7 @@ def test_gemini_reads_when_configured():
     m = readers.read_both("spring-promo", client=TwoReaders(), gemini=gemini)
     assert m.models == ("claude", "gemini") and set(statuses(m).values()) == {"verified"}
     req = gemini.requests[0]
-    assert (req["model"], req["store"], req["system_instruction"]) == (reader_b.GEMINI_MODEL, False, reader_b.PROMPT)
+    assert (req["model"], req["store"], req["system_instruction"]) == ("gemini-2.5-flash", False, reader_b.PROMPT)
     assert req["response_format"]["mime_type"] == "application/json" and "properties" in req["response_format"]["schema"]
     assert "Document ID: spring-promo" in req["input"]
 

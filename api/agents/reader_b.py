@@ -25,7 +25,8 @@ from api.agents.reader import LLMOutput, ReaderResult
 from api.contracts import Term
 from api.integrations import replay
 
-GEMINI_MODEL = "gemini-3.8-flash"
+# GEMINI_MODEL in .env picks another model. gemini-2.5-flash is in the team key's model list (gemini-3.8-flash isn't).
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_SERVICE = "gemini-reader"
 CLAUDE_B_SERVICE = "claude-reader-b"
 PROMPT = (Path(__file__).parent / "prompts" / "reader_b.md").read_text()
@@ -35,13 +36,17 @@ def gemini_configured() -> bool:
     return bool(os.getenv("GEMINI_API_KEY"))
 
 
+def gemini_model() -> str:
+    return os.getenv("GEMINI_MODEL", "").strip() or DEFAULT_GEMINI_MODEL
+
+
 def _ask_gemini(gemini, user: str, timeout: float) -> dict:
     if gemini is None:
         from google import genai
 
         gemini = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
     interaction = gemini.interactions.create(
-        model=GEMINI_MODEL, input=user, system_instruction=PROMPT, store=False, timeout=timeout,
+        model=gemini_model(), input=user, system_instruction=PROMPT, store=False, timeout=timeout,
         response_format={"type": "text", "mime_type": "application/json", "schema": LLMOutput.model_json_schema()},
     )
     return json.loads(interaction.output_text)
@@ -53,7 +58,7 @@ def _gemini(doc_id: str, user: str, check, gemini, live_first: bool):
     for _ in (1, 2):
         prompt = user if not errors else (f"{user}\n\nYour previous answer failed validation:\n{errors[-1]}\n"
                                           "Return the complete answer again, fixed.")
-        request = {"model": GEMINI_MODEL, "system": PROMPT, "user": prompt, "doc_id": doc_id}
+        request = {"model": gemini_model(), "system": PROMPT, "user": prompt, "doc_id": doc_id}
         try:
             res = replay.call_outside(GEMINI_SERVICE, request, live_first=live_first,
                                       fn=lambda req, timeout: _ask_gemini(gemini, req["user"], timeout))

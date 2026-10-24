@@ -24,12 +24,15 @@ class FakeNessie:
     def __call__(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
         assert request.url.params["key"] == "test-nessie-key" and request.url.path == "/accounts/acct-1/deposits"
+        assert request.url.scheme == "https"  # the live API is HTTPS only
         if self.fail:
             self.fail -= 1
             return httpx.Response(503)
         if request.method == "GET":
             return httpx.Response(200, json=self.deposits)
         body = json.loads(request.content)
+        if "status" not in body:  # the live API answers 400 without it
+            return httpx.Response(400, json={"code": 400, "message": "status is required"})
         made = {"_id": f"dep-{len(self.deposits) + 1}", "type": "deposit", "status": "pending", **body}
         self.deposits.append(made)
         return httpx.Response(201, json={"code": 201, "message": "Created deposit", "objectCreated": made})
@@ -75,6 +78,20 @@ def test_new_northmart_deposit_starts_one_march_run():
     assert any("Nessie: Northmart's deposit of $41,350 arrived (deposit dep-new)" in e.data.text
                for e in run.events if e.type == "log")
     assert poller.tick() == [] and len(pipeline.RUNS) == 1  # seen once, started once
+
+
+# Manasv posted this $41,350 Northmart deposit while setting up the account (DECISIONS.md, 02:30). It's history.
+SETUP_DEPOSIT = {"_id": "9dce7f01-d664-4826-8d9a-84aaa4d09723", "amount": 41350.0, "status": "pending",
+                 "description": "Northmart remittance INV-3102", "transaction_date": "2026-10-24"}
+
+
+def test_a_deposit_posted_before_the_poller_starts_never_starts_a_run():
+    fake = FakeNessie([SETUP_DEPOSIT])
+    poller = nessie.Poller(client_for(fake), starter(ScenarioClaude()))
+    assert poller.tick() == [] and poller.tick() == [] and not pipeline.RUNS
+    made = client_for(fake).post_deposit()  # the "Northmart pays" button during the demo
+    assert [d.id for d in poller.tick()] == [made.id] and len(pipeline.RUNS) == 1
+    assert pipeline.latest("march").events[0].data.remittance.nessie_tx_id == made.id
 
 
 def test_the_same_deposit_from_the_button_and_the_poller_starts_one_run():
@@ -141,7 +158,8 @@ def test_pay_button_posts_the_deposit_to_nessie(api, monkeypatch):
     r = api.post("/payments/northmart").json()
     assert (r["via"], r["deposit_id"]) == ("nessie", "dep-1") and r["run_id"]  # no poller: it starts the run
     body = json.loads(fake.requests[-1].content)
-    assert (body["amount"], body["description"], body["medium"]) == (41350.0, "Northmart remittance INV-3102", "balance")
+    assert (body["amount"], body["description"], body["medium"], body["status"]) == (
+        41350.0, "Northmart remittance INV-3102", "balance", "pending")
     run = pipeline.RUNS[r["run_id"]]
     assert wait_for(run, "waiting") and run.events[0].data.remittance.nessie_tx_id == "dep-1"
 
