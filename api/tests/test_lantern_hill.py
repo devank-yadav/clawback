@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pytest
 
 from api import accounts, documents, fee_accounts, pipeline
-from api.agents import reader, reader_b
+from api.agents import prompts, reader, reader_b
 from api.agents.investigator import LLMFinding
 from api.agents.negotiator import LLMRehearsal
 from api.agents.reader import LLMFeeOutput, LLMOutput
@@ -30,8 +30,10 @@ class FakeClaude:
     """Answers both readers, the Investigator, the rehearsal and the rule writer from lantern_hill_answers, citing
     only evidence IDs the request holds: a clause and the charge's backup or purchase orders."""
 
-    def __init__(self):
+    def __init__(self, readers=None):
         self.calls: list[tuple[str, str]] = []
+        self.systems: dict[str, str] = {}  # agent -> the system prompt it was sent
+        self.readers = readers or fake.READERS
         self.beta = SimpleNamespace(messages=SimpleNamespace(parse=self._parse))
 
     def with_options(self, **_):
@@ -43,10 +45,11 @@ class FakeClaude:
             doc = re.search(r"Document ID: (\S+)", user).group(1)
             b = "A second reader reads the same document separately" in system
             self.calls.append(("B" if b else "A", doc))
-            out = fake.READERS[doc][1 if b else 0]
+            out = self.readers[doc][1 if b else 0]
         elif output_format is LLMFinding:
             payload = json.loads(user)
             self.calls.append(("investigator", payload["charge"]["id"]))
+            self.systems["investigator"] = system
             out = {"finding": "The policy and the backup explain this charge.", "type": "matches_deal",
                    "evidence_ids": self._cite(payload), "confidence": 0.95, "open_questions": []}
         elif output_format is LLMRehearsal:
@@ -84,16 +87,20 @@ def lantern_hill(monkeypatch, tmp_path):
     accounts.clear()
 
 
-@pytest.fixture
-def run():
+def decide_month(readers=None):
     """The month decided by the pipeline, then the owner's one answer."""
-    client = FakeClaude()
+    client = FakeClaude(readers)
     r = pipeline.start(account=ACCOUNT, client=client, background=False)
     first = dict(r.shown)
     asked = [q.charge_id for q in r.questions.values()]
     for qid in list(r.questions):
         pipeline.answer(qid, fake.OWNER_ANSWER, client=client)
-    return SimpleNamespace(run=r, first=first, asked=asked, calls=client.calls)
+    return SimpleNamespace(run=r, first=first, asked=asked, calls=client.calls, systems=client.systems)
+
+
+@pytest.fixture
+def run():
+    return decide_month()
 
 
 def money(v) -> Decimal:
@@ -232,3 +239,39 @@ def test_every_fee_charge_cites_its_backup(run):
 def test_the_run_files_the_disputes_and_asks_the_controller(run):
     events = [e.type for e in run.run.events]
     assert "dispute" in events and "approval" in events
+
+
+def test_readers_that_differ_only_in_form_change_no_decision(lantern_hill):
+    """Reader B writes every fee differently (names, signs, a fraction for a percent, defaults left out, the MCB
+    quote without its backup sentence, §6.6 unflagged): every fee term still verifies, and expected.csv still holds."""
+    month = decide_month(fake.READERS_B_VARIANT)
+    fees = {t.params["fee_code"]: t for t in month.run.terms if t.type == "fee_schedule"}
+    for code in ("MCB", "Extra Performance", "Free Placements", "Spoils"):
+        assert fees[code].status == "verified", (code, fees[code].reasons)
+    assert fees["MCB"].params["requires_proof"] is True  # Reader A found the backup sentence
+    assert fees["Free Placements"].discretion is True  # Reader A flagged it: still a judgment call
+    notice = next(t for t in month.run.terms if t.source_doc_id == "lantern-hill-kehe-ep-admin-2026-03-02")
+    assert notice.status == "verified" and notice.params["fee_code"] == "Extra Performance"
+    for cid, r in expected(lantern_hill).items():
+        d = month.run.shown[cid]
+        assert (d.decision, d.disputed, d.accepted, d.gate_row) == (
+            r["decision"], money(r["disputed"]), money(r["accepted"]), int(r["gate_row"])), cid
+
+
+def test_a_real_difference_in_pricing_is_still_disputed(lantern_hill):
+    """Same fee, but Reader B applies the $65 minimum per invoice: that changes the price, so K4 and K5 go to a person."""
+    variant = [t if not t["exact_quote"].startswith("KeHE will charge a bi weekly") else
+               {**t, "params": {**t["params"], "per": "invoice"}} for t in fake.POLICY]
+    readers = {**fake.READERS, "kehe-vendor-policies-2015": (fake.READERS["kehe-vendor-policies-2015"][0],
+                                                             {"terms": variant, "unclear": []})}
+    month = decide_month(readers)
+    mcb = next(t for t in month.run.terms if t.params.get("fee_code") == "MCB")
+    assert mcb.status == "disputed"
+    assert (month.first["K4"].decision, month.first["K4"].gate_row) == ("ask", 2)
+    assert (month.first["K5"].decision, month.first["K5"].gate_row) == ("ask", 2)
+
+
+def test_the_investigator_is_told_to_cite_the_backup(run, lantern_hill):
+    assert run.systems["investigator"].endswith(prompts.render("investigator_fees", lantern_hill))
+    system, _ = reader.with_fees(reader.prompt(lantern_hill), lantern_hill)
+    assert "fee names, for fee_code: MCB; Extra Performance; Free Placements; Spoils." in system

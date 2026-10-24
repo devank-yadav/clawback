@@ -12,7 +12,7 @@ from decimal import Decimal
 import anthropic
 
 from api import accounts
-from api.agents import claude, prompts
+from api.agents import claude, prompts, reader
 from api.agents.claude import Strict
 from api.contracts import Charge, Evidence, FindingType, InvestigatorOutput
 from api.engine import quote_check
@@ -81,6 +81,8 @@ def investigate(charge: Charge, allowance: Allowance, evidence: dict[str, Eviden
             raise ValueError("; ".join(problems))
         return out
 
-    ans = claude.ask(SERVICE, prompts.render("investigator", account), user, LLMFinding, check, client,
-                     live_first=live_first, charge_id=charge.id)
+    system = prompts.render("investigator", account)
+    if reader.reads_fees(account):  # an account with fee schedules: cite the backup too (Peak Bar's prompt unchanged)
+        system += "\n" + prompts.render("investigator_fees", account)
+    ans = claude.ask(SERVICE, system, user, LLMFinding, check, client, live_first=live_first, charge_id=charge.id)
     return Investigation(ans.value, ans.source, ans.errors)
