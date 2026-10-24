@@ -265,7 +265,7 @@ def _record(run: Run, charge_id: str, d: eng.Decision, decided_by: str) -> eng.D
     run.emit("decision", shown)
     if d.rule_id:
         rule = next(r for r in RULES if r.id == d.rule_id)
-        run.log(f"Applied {rule.label} (learned {rule.learned_at:%b %-d}, approved by {rule.approver.split()[0]}) to "
+        run.log(f"Applied {rule.label} (learned {evidence_mod.day(rule.learned_at)}, approved by {rule.approver.split()[0]}) to "
                 f"{charge_id}.", "good", "gate", charge_id)
     if d.kind == eng.DecisionKind.ASK and not any(q.charge_id == charge_id for q in run.questions.values()):
         _ask_owner(run, charge_id)  # one question per charge per run, never a second

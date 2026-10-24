@@ -14,7 +14,7 @@ Nothing here needs a key in the repo. Credentials for Vultr, GoDaddy and `.env` 
 | --- | --- |
 | `docker-compose.yml` | Three services: `api` (FastAPI, port 8000 inside), `web` (Next.js, port 3000 inside), `caddy` (the only one with public ports, 80 and 443) |
 | `api/Dockerfile` | Python 3.11 image with `api/`, `config/`, `data/`, `eval/` and `web/fixtures/`; one uvicorn worker, because runs and questions live in memory |
-| `web/Dockerfile` | `npm ci`, `npm run build`, `npm start` on port 3000 |
+| `web/Dockerfile` | `npm ci`, `npm run build`, `npm start` on port 3000. Builds with `NEXT_PUBLIC_DATA_SOURCE=live` (the board follows the API); `--build-arg NEXT_PUBLIC_DATA_SOURCE=fixture` replays `web/fixtures/` instead |
 | `deploy/Caddyfile` | `{$DOMAIN}` with automatic HTTPS. `/api/*` goes to the API with `/api` stripped, `/webhooks/*` goes to the API unchanged, everything else goes to the web app |
 | `make deploy-check` | Offline check: route tests, `docker compose config`, and `caddy validate` when caddy or a Docker daemon is around |
 
