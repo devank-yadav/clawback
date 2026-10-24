@@ -123,7 +123,10 @@ def load(doc_id: str) -> tuple[Document, str]:
                 sender = e.group()
         if m := _MD_DATE.search(text):
             received_at = datetime.strptime(m.group(1), "%B %d, %Y")
-    signed = kind == "amendment" or (kind == "deal" and doc_id == account.config.deal_docs[0])
+    # The deal the account reads first is signed by both, and so is every real contract it names (Five Below's two
+    # versions: which one governs a purchase order is its date's business, not the signature's).
+    contracts = {Path(n).stem for n in account.config.contracts}
+    signed = kind == "amendment" or (kind == "deal" and (doc_id == account.config.deal_docs[0] or doc_id in contracts))
     doc = Document(id=doc_id, kind=kind, path=_rel(account, path), sender=sender,
                    approved_sender=_approved(sender, account), signed_by_both=signed, received_at=received_at,
                    sha256=hashlib.sha256(text.encode()).hexdigest())

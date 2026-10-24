@@ -87,14 +87,18 @@ class LLMFeeParams(LLMParams):
     model_config = ConfigDict(extra="forbid", serialize_by_alias=True, validate_by_name=True, validate_by_alias=True)
 
     fee_code: str | None
-    basis: Literal["percent", "per_unit", "per_po", "per_carton", "flat"] | None
+    basis: Literal["percent", "per_unit", "per_po", "per_carton", "flat", "annual_percent", "as_assessed"] | None
     min: str | None
     max: str | None
     per: Literal["invoice", "po", "incident", "month"] | None
     tiers: list[LLMTier] | None
     requires_proof: bool | None
+    applies_to: str | None
+    requires_fault: bool | None
+    add_on: bool | None
     days: int | None
     from_: Literal["deduction", "invoice"] | None = Field(alias="from")
+    pct: str | None
 
 
 class LLMFeeTerm(LLMTerm):

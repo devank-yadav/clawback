@@ -53,7 +53,7 @@ Actor = Literal[
     "owner", "controller", "northmart", "policy",
 ]
 TermType = Literal["promo_rate", "product_scope", "unit_cap", "date_range", "fee_discretion", "amendment",
-                   "fee_schedule", "dispute_window", "notice_period"]
+                   "fee_schedule", "dispute_window", "notice_period", "quantity_variance"]
 TermStatus = Literal["pending", "verified", "rejected", "disputed"]
 FindingType = Literal[
     "rate_over", "duplicate", "outside_dates", "amended_by_email", "over_cap",
@@ -125,20 +125,25 @@ class FeeTier(Contract):
 
 class FeeScheduleParams(Contract):
     """How a fee is priced (api/engine/allowed.py, "Fee schedules"). rate is a percent for basis percent ("5" is
-    5%), else dollars per unit / carton / PO, or the flat fee. min and max clamp each `per` group's fee."""
+    5%) and annual_percent ("12" is 12% a year, for the backup line's days), else dollars per unit / carton / PO, or
+    the flat fee; as_assessed is an amount the other side sets (a fine at its discretion), so it has no rate. min and
+    max clamp each `per` group's fee."""
 
     fee_code: str  # the fee's name as the deal writes it: its defined abbreviation ("MCB") or its heading
-    basis: Literal["percent", "per_unit", "per_po", "per_carton", "flat"]
-    rate: Rate | None = None  # None only with tiers
+    basis: Literal["percent", "per_unit", "per_po", "per_carton", "flat", "annual_percent", "as_assessed"]
+    rate: Rate | None = None  # None only with tiers, or for as_assessed
     min: Money | None = None
     max: Money | None = None
     per: Literal["invoice", "po", "incident", "month"] = "incident"
     tiers: list[FeeTier] | None = None
     requires_proof: bool = False  # the deal says backup comes with the fee; without it the gate asks
+    applies_to: str | None = None  # the only kind of purchase order the fee applies to ("new store"), else all
+    requires_fault: bool = False  # a remedy for the supplier's own failure: not owed when the other side caused it
+    add_on: bool = False  # charged in addition to every other fee for the same incident (an admin fee per PO)
 
     @model_validator(mode="after")
     def _rate_or_tiers(self) -> "FeeScheduleParams":
-        if self.rate is None and not self.tiers:
+        if self.rate is None and not self.tiers and self.basis != "as_assessed":
             raise ValueError("a fee schedule needs a rate or tiers")
         return self
 
@@ -159,6 +164,13 @@ class NoticePeriodParams(Contract):
     days: int
 
 
+class QuantityVarianceParams(Contract):
+    """The buyer may accept a delivery up to `pct` percent over or short of the order, at its discretion: a quantity
+    fee on a delivery within it depends on that discretion."""
+
+    pct: Rate
+
+
 TERM_PARAMS: dict[str, type[Contract]] = {
     "promo_rate": PromoRateParams,
     "product_scope": ProductScopeParams,
@@ -169,6 +181,7 @@ TERM_PARAMS: dict[str, type[Contract]] = {
     "fee_schedule": FeeScheduleParams,
     "dispute_window": DisputeWindowParams,
     "notice_period": NoticePeriodParams,
+    "quantity_variance": QuantityVarianceParams,
 }
 
 

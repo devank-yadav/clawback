@@ -1,7 +1,8 @@
 # Fizzwick Toys Co. <- Five Below. The deal is Five Below's real Vendor Agreement: the 2025 version for purchase
-# orders issued from March 1, 2026, the August 2023 version before that. Both are verbatim excerpts of the SEC filings
-# (data/contracts/*-excerpt.txt, line ranges in fees/fees.yaml and data/contracts/README.md); everything else here is
-# written by our side, or is Five Below's own backup. This file has exactly the AccountConfig shape.
+# orders written from March 1, 2026, the August 2023 version before that. Both are verbatim excerpts of the SEC
+# filings (data/contracts/*-excerpt.txt, named in `contracts`; line ranges in fees/fees.yaml and
+# data/contracts/README.md); everything else here is written by our side, or is Five Below's own backup or email.
+# This file has exactly the AccountConfig shape.
 id: fizzwick
 brand:
   name: Fizzwick Toys Co.
@@ -23,9 +24,11 @@ invoice:
   month: march
   period_start: 2026-03-01
   period_end: 2026-03-31
-# Five Below's Vendor Agreement (data/contracts/, see fees/fees.yaml) is read first; then our signed acceptance that
-# says which version governs which purchase orders, and the DC's appointment email.
-deal_docs: [fizzwick-vendor-agreement-acceptance-2026, fizzwick-forsyth-reschedule-2026-03-11]
+contracts: [five-below-vendor-agreement-2023-excerpt.txt, five-below-vendor-agreement-2025-excerpt.txt]
+# Both versions of Five Below's Vendor Agreement are read first; then our signed acceptance that says which version
+# governs which purchase orders, and the DC's appointment email.
+deal_docs: [five-below-vendor-agreement-2023-excerpt, five-below-vendor-agreement-2025-excerpt,
+            fizzwick-vendor-agreement-acceptance-2026, fizzwick-forsyth-reschedule-2026-03-11]
 approved_senders: [priya@fizzwicktoys.example]
 dispute_start: 920
 qbo:

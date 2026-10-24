@@ -7,7 +7,8 @@ from __future__ import annotations
 
 NULLS = {"rate": None, "products": None, "start": None, "end": None, "max_units": None, "max_fee": None,
          "extra_units": None, "fee_code": None, "basis": None, "min": None, "max": None, "per": None, "tiers": None,
-         "requires_proof": None, "days": None, "from": None}
+         "requires_proof": None, "applies_to": None, "requires_fault": None, "add_on": None, "days": None,
+         "from": None, "pct": None}
 GL, BO = "Lantern Hill Ginger Lime Soda", "Lantern Hill Blood Orange Soda"
 
 

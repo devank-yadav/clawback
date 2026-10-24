@@ -1,6 +1,6 @@
 # Copperline Home Co. <- Walmart. The deal is Walmart's real Supplier Agreement (effective 04/18/2013), word for word
-# in data/contracts/walmart-supplier-agreement-2013.txt (fees/fees.yaml points at it); everything else here is written
-# by our side, or is Walmart's own notice or backup. This file has exactly the AccountConfig shape.
+# in data/contracts/walmart-supplier-agreement-2013.txt (named in `contracts`); everything else here is written by our
+# side, or is Walmart's own notice or backup. This file has exactly the AccountConfig shape.
 id: copperline
 brand:
   name: Copperline Home Co.
@@ -18,13 +18,15 @@ distributor:
 invoice:
   id: CH-2603
   expected: 83708.00
-  received: 74373.01
+  received: 74220.22
   month: march
   period_start: 2026-03-01
   period_end: 2026-03-31
-# The Supplier Agreement (data/contracts/, see fees/fees.yaml) is read first; then our item setup with Walmart's
-# acceptance, and Walmart's own notices and backup for the month's deductions.
+contracts: [walmart-supplier-agreement-2013.txt]
+# The Supplier Agreement is read first; then our item setup with Walmart's acceptance, and Walmart's own notices and
+# backup for the month's deductions.
 deal_docs:
+  - walmart-supplier-agreement-2013
   - copperline-item-setup-2026
   - copperline-walmart-rejection-2026-03-18
   - copperline-walmart-fine-2026-03-26

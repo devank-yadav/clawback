@@ -360,3 +360,109 @@ def test_peak_bar_unchanged_with_fee_data_present():
         out.append(decide(c, a, s.strong_finding(c.id), POLICY, [s.rule_1()]))
     t = summarize(out)
     assert (t.disputed, t.accepted) == money("4120.00", "2730.00")
+
+
+# --- Scope, fault, add-ons, interest, assessed fines, a deal that contradicts itself, quantity variance ----------
+# (Walmart's Supplier Agreement and Five Below's Vendor Agreement; quotes shortened, numbers as written.)
+
+WM_CODES = {"SA": "New Store/Club Discount", "FN": "Assessment of monetary fines", "IN": "Interest",
+            "OV": "Overage quantity received", "LS": "Late Shipment", "DU": "Documents not uploaded"}
+SA = fee("T-sa", "New Store/Club Discount", "percent", "10", "New Store/Club Discount | 10", per="po",
+         applies_to="new store")
+FINES = replace(fee("T-fn", "Assessment of monetary fines", "as_assessed", None,
+                    "(d) Assessment of monetary fines as determined in Company's reasonable discretion;",
+                    requires_fault=True), discretion=True)
+INTEREST = fee("T-in", "Interest", "annual_percent", "12", "interest at the rate of 12% per annum")
+ADMIN = fee("T-admin", "administrative fee", "flat", "100", "a $100 per Purchase Order administrative fee", per="po",
+            add_on=True)
+OVERAGE = fee("T-ov", "Overage quantity received", "percent", "3", "3% of PO cost for overage up to $750", max="750",
+              per="po")
+LATE_BOOKING = fee("T-ls", "Late Shipment", "percent", "5", "Late Shipment ... because of late booking | 5% cost of order",
+           per="po", requires_fault=True)
+VARIANCE = replace(Term("T-var", T.QUANTITY_VARIANCE, {"pct": "5"}, "Buyer may permit Vendor ... 5% of quantity",
+                        D(2015, 5, 31), source_doc_id="kehe-policies"), discretion=True)
+
+
+def fee_run(c, lines, terms, rules=()):
+    data = FeeData(lines=tuple(lines), codes=WM_CODES, proof_docs=PROOF)
+    a = compute_allowed(c, terms, fees=data)
+    return a, decide(c, a, s.strong_finding(c.id), POLICY, rules)
+
+
+def test_a_fee_for_one_kind_of_po_is_not_owed_on_another():
+    c = charge("S1", "SA", "1278.00")
+    a, d = fee_run(c, [line(c, group="8840151", base_amount="12780.00", po_type="Regular")], [SA])
+    assert a.allowed == Decimal("0.00") and a.facts["not_owed"]
+    assert a.steps[0] == "No New Store/Club Discount fee: 8840151 is a regular order; the fee applies only to new store."
+    assert (d.kind, d.disputed, d.gate_row) == (K.DISPUTE, Decimal("1278.00"), 7)
+    c2 = charge("S2", "SA", "340.80")
+    a2, d2 = fee_run(c2, [line(c2, group="8840135", base_amount="3408.00", po_type="New Store")], [SA])
+    assert (a2.allowed, d2.kind) == (Decimal("340.80"), K.ACCEPT)  # 10% of $3,408.00
+    a3, d3 = fee_run(c2, [line(c2, group="8840135", base_amount="3408.00")], [SA])  # no PO type on record: ask
+    assert a3.missing == ("the purchase order type for 8840135",) and d3.kind == K.ASK
+
+
+def test_a_fine_for_a_failure_the_carrier_caused_is_not_owed_whatever_the_discretion():
+    c = charge("N1", "FN", "331.20")
+    a, d = fee_run(c, [line(c, group="8840204", base_amount="331.20", caused_by="carrier")], [FINES])
+    assert a.allowed == Decimal("0.00") and a.facts["not_owed"]
+    assert (d.kind, d.disputed, d.gate_row) == (K.DISPUTE, Decimal("331.20"), 7)  # discretion can't make it owed
+    c2 = charge("N2", "FN", "250.00")
+    a2, d2 = fee_run(c2, [line(c2, group="8840229", base_amount="250.00", caused_by="supplier")], [FINES])
+    assert a2.allowed == Decimal("250.00") and a2.steps[0] == "Fee 8840229: $250.00 as assessed = $250.00 -> $250.00."
+    assert (d2.kind, d2.gate_row) == (K.ASK, 4)  # our own failure, an amount at their discretion: the owner decides
+
+
+def test_interest_at_a_yearly_rate_for_the_days_late():
+    c = charge("I1", "IN", "216.69")  # charged at 18%
+    a, d = fee_run(c, [line(c, group="DB-2512-0097", base_amount="8450.00", days=52)], [INTEREST])
+    assert a.allowed == Decimal("144.46")  # 12% x $8,450.00 x 52 / 365 = $144.4603
+    assert (d.kind, d.disputed, d.accepted) == (K.SPLIT, Decimal("72.23"), Decimal("144.46"))
+    a2, _ = fee_run(c, [line(c, group="DB-2512-0097", base_amount="8450.00")], [INTEREST])
+    assert a2.missing == ("the days for DB-2512-0097",)
+
+
+def test_an_add_on_fee_joins_each_incident_that_owes_a_fee_and_no_other():
+    c = charge("O1", "OV", "1360.00")
+    a, d = fee_run(c, [line(c, group="4500912", base_amount="25200.00")], [OVERAGE, ADMIN])
+    assert a.allowed == Decimal("850.00")  # 3% of $25,200.00 = $756.00, capped at $750, + $100
+    assert a.steps[1] == "Plus the administrative fee for 4500912: $100.00." and ADMIN in a.terms
+    assert (d.kind, d.disputed, d.accepted) == (K.SPLIT, Decimal("510.00"), Decimal("850.00"))
+    c2 = charge("L1", "LS", "840.00")
+    a2, d2 = fee_run(c2, [line(c2, group="4500861", base_amount="14800.00", caused_by="retailer")], [LATE_BOOKING, ADMIN])
+    assert a2.allowed == Decimal("0.00") and ADMIN not in a2.terms  # no violation, no admin fee
+    assert (d2.kind, d2.disputed) == (K.DISPUTE, Decimal("840.00"))
+
+
+def test_a_newer_version_prices_purchases_from_its_date_only():
+    old = replace(fee("T-ov23", "Overage quantity received", "percent", "5", "5% of cost for overage quantity",
+                      per="po"), effective_from=D(2023, 8, 1))
+    new = replace(OVERAGE, effective_from=D(2026, 3, 1))
+    c = charge("O2", "OV", "64.75")
+    a, _ = fee_run(c, [line(c, on=D(2026, 2, 16), group="4500815", base_amount="1295.00")], [old, new])
+    assert a.allowed == Decimal("64.75")  # a February PO: the 2023 version's 5%
+    a2, _ = fee_run(c, [line(c, on=D(2026, 3, 2), group="4500912", base_amount="1295.00")], [old, new])
+    assert a2.allowed == Decimal("38.85")  # a March PO: the 2025 version's 3%
+
+
+def test_two_rules_for_one_fee_in_the_same_deal_ask():
+    table = fee("T-du1", "Documents not uploaded", "per_unit", "100", "Documents not uploaded within 3 working days")
+    section = fee("T-du2", "Documents not uploaded", "per_unit", "150", "within 5 working days ... $150 USD")
+    c = charge("U1", "DU", "400.00")
+    a, d = fee_run(c, [line(c, group="4500788", units=3, days=1)], [table, section])
+    assert a.missing == ("one rule for Documents not uploaded (the deal states 2)",)
+    assert (d.kind, d.gate_row) == (K.ASK, 9)
+    same = replace(section, params=dict(table.params))
+    a2, _ = fee_run(c, [line(c, group="4500788", units=3, days=1)], [table, same])  # the same rule twice is one rule
+    assert not a2.missing and a2.allowed == Decimal("300.00")
+
+
+def test_a_quantity_fee_within_the_variance_the_buyer_may_permit_is_discretion():
+    over5 = fee("T-ov5", "Overage quantity received", "percent", "5", "5% of cost for overage quantity", per="po")
+    c = charge("O3", "OV", "64.75")
+    near = line(c, group="4500815", base_amount="1295.00", variance_pct=Decimal("3.50"))
+    a, d = fee_run(c, [near], [over5, VARIANCE])
+    assert VARIANCE in a.terms and (d.kind, d.gate_row) == (K.ASK, 4)
+    far = line(c, group="4500912", base_amount="1295.00", variance_pct=Decimal("10.91"))
+    a2, d2 = fee_run(c, [far], [over5, VARIANCE])
+    assert VARIANCE not in a2.terms and d2.kind == K.ACCEPT

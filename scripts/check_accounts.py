@@ -16,8 +16,8 @@ For every account:
 - document stems are unique across accounts (and start with the account id, except Peak Bar's original ones).
 
 An account with fees/fees.yaml and terms/fee-terms.csv (a real contract priced by fee schedules: Copperline <- Walmart,
-Fizzwick <- Five Below) gets its own checks instead of the promo, delivery and history ones: every contract file exists
-and an excerpt is exactly its source's line ranges; every fee-term quote appears in its source (whitespace aside), its
+Fizzwick <- Five Below) gets its own checks instead of the promo, delivery and history ones: every contract account.yaml
+names exists and an excerpt (fees.yaml excerpts) is exactly its source's line ranges; every fee-term quote appears in its source (whitespace aside), its
 numbers are written in the quote and its discretion flag matches its wording; POs, backup and charges add up to the
 invoice and the remittance; the backup's bases match our records; every expected row cites known clauses and source
 documents, and its decision, amounts and gate row follow from the files.
@@ -666,24 +666,21 @@ def fee_numbers_in(value, quote):
 
 
 def check_fee_contracts(acct, fees):
-    """The contract files exist under data/, and an excerpt is exactly its source's lines joined by '[...]'."""
+    """account.yaml names its contracts, each under data/contracts/; an excerpt (fees.yaml excerpts) is exactly its
+    source's lines joined by '[...]'."""
     print(f"{acct.label}: contracts")
+    names = (acct.yaml or {}).get("contracts") or []
+    check(f"{acct.label}: account.yaml names its contracts", bool(names))
     out = {}
-    for c in [fees.get("contract")] + list(fees.get("earlier_contracts") or []):
-        if not c:
-            check(f"{acct.label}: fees.yaml names a contract", False)
-            continue
-        path = DATA / c["path"]
-        if not check(f"{acct.label}: contract {c['id']} exists at data/{c['path']}", path.is_file()):
-            continue
-        text = path.read_text(encoding="utf-8")
-        out[c["id"]] = text
-        ex = c.get("excerpt_of")
-        if ex:
-            lines = (DATA / ex["source"]).read_text(encoding="utf-8").split("\n")
-            parts = ["\n".join(lines[a - 1:b]) for a, b in ex["lines"]]
-            check(f"{acct.label}: {c['id']} is {ex['source']} lines {ex['lines']} word for word",
-                  text == "\n\n[...]\n\n".join(parts) + "\n")
+    for name in names:
+        path = DATA / "contracts" / name
+        if check(f"{acct.label}: contract {name} exists in data/contracts/", path.is_file()):
+            out[path.stem] = path.read_text(encoding="utf-8")
+    for doc_id, ex in (fees.get("excerpts") or {}).items():
+        lines = (DATA / ex["source"]).read_text(encoding="utf-8").split("\n")
+        parts = ["\n".join(lines[a - 1:b]) for a, b in ex["lines"]]
+        check(f"{acct.label}: {doc_id} is {ex['source']} lines {ex['lines']} word for word",
+              out.get(doc_id) == "\n\n[...]\n\n".join(parts) + "\n")
     return out
 
 
@@ -813,8 +810,11 @@ def check_fee_facts(acct, f, charges):
         base = sum((money(ln["base_amount"]) for ln in lines), Decimal(0))
         if p is None:
             continue
-        check(f"{acct.label}: {c['charge_id']} backup date is PO {p['po']}'s issue date", lines[0]["on"] == p["issued_on"]
-              or c["code"] in ("RJ", "FN"))
+        if c["code"] == "FN":  # dated by Walmart's notice; a fine's base is the amount it assessed
+            check(f"{acct.label}: {c['charge_id']} assessed amount is the charge", base == money(c["amount"]))
+            continue
+        if c["code"] != "RJ":  # a rejection is dated by Walmart's notice
+            check(f"{acct.label}: {c['charge_id']} backup date is PO {p['po']}'s date", lines[0]["on"] == p["written_on"])
         cost = Decimal(p["unit_cost"])
         if c["code"] == "OV":
             want = money((int(p["received_units"]) - int(p["units"])) * cost)

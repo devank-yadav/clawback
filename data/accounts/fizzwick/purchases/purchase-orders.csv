@@ -1,4 +1,4 @@
-po,issued_on,order_terms,ship_to,product,units,unit_cost,po_cost,cancel_date,sail_date,received_on,received_units,invoiced_units,invoiced_amount
+po,written_on,order_terms,ship_to,product,units,unit_cost,po_cost,cancel_date,sail_date,received_on,received_units,invoiced_units,invoiced_amount
 4500655,2025-10-20,domestic,DC003 Pedricktown,Fizzwick Squish Pals 4-Pack,15000,2.10,31500.00,2025-11-21,,2025-11-18,15000,15000,31500.00
 4500788,2026-01-26,FOB,DC003 Pedricktown,Fizzwick Glow Slime Kit,40000,1.85,74000.00,2026-03-31,2026-02-27,2026-03-26,40000,40000,74000.00
 4500815,2026-02-16,domestic,DC004 Forsyth,Fizzwick Glow Slime Kit,20000,1.85,37000.00,2026-03-13,,2026-03-10,20700,20000,37000.00

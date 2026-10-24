@@ -42,6 +42,14 @@ def uses_discretion(term: Term, policy: Policy) -> bool:
     return any(re.search(rf"\b{re.escape(w.lower())}\b", quote) for w in policy.discretion_words)
 
 
+def discretion_terms(allowance: Allowance, policy: Policy) -> list[Term]:
+    """The discretionary terms the charge depends on. None when the engine found the fee isn't owed at all (out of its
+    scope, or a remedy for a failure the supplier didn't make): no one's discretion can make it owed."""
+    if allowance.facts.get("not_owed"):
+        return []
+    return [t for t in allowance.terms if uses_discretion(t, policy)]
+
+
 def decide(
     charge: Charge,
     allowance: Allowance,
@@ -93,7 +101,7 @@ def _decide(
                    accepted=taken)
 
     # Rows 3 and 4: discretion.
-    discretion = [t for t in allowance.terms if uses_discretion(t, policy)]
+    discretion = discretion_terms(allowance, policy)
     if discretion:
         term = discretion[0]
         matched = match_rule(rules, matches, term.type, charge.counterparty, policy.rule_match_similarity)

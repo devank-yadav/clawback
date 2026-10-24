@@ -319,7 +319,7 @@ def _process(run: Run, client) -> None:
             else:
                 run.log(f"Couldn't explain {c.id} from the evidence, so a person decides.", "warn", "investigator", c.id)
                 kinds = set()
-            discretion = any(gate.uses_discretion(t, policy) for t in a.terms)
+            discretion = bool(gate.discretion_terms(a, policy))
             if found.output and a.delta > policy.match_tolerance and not discretion and not a.missing:
                 run.log(f"Predicting {them}'s comeback before filing.", actor="negotiator", charge_id=c.id)
                 r = negotiator.rehearse(c, run.findings[c.id], a, run.evidence, run.terms, client, account=account)

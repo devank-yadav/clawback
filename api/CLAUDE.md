@@ -85,4 +85,12 @@ decision gate and approvals; Data model; API, live updates and integrations.
   (row 10). An account with data/accounts/<id>/fees/fees.yaml (api/fee_accounts.py: codes, policy changes, as_of,
   older charges, fees/backup.csv, purchases/) runs through the same pipeline with those passed in; its readers also get
   prompts/reader_fees.md (reader.with_fees), so Peak Bar's requests stay byte for byte as recorded. account.yaml
-  `contracts:` names real contracts under data/contracts/ that are the account's documents (KeHE's for lantern-hill).
+  `contracts:` names real contracts under data/contracts/ that are the account's documents (KeHE's for lantern-hill;
+  Walmart's for copperline; Five Below's two versions for fizzwick, each signed by both). A fee_schedule can also say
+  which PO type it applies to (applies_to, against purchases' po_type), that it's a remedy for the supplier's own
+  failure (requires_fault, against deliveries/appointments.csv's cause: a carrier or retailer miss owes nothing, and
+  discretion can't make it owed, gate.discretion_terms), that it rides on every other fee (add_on: Five Below's $100
+  per PO), and bases annual_percent (interest for the line's days) and as_assessed (a fine the other side sets). Two
+  schedules for one fee in force from the same day that price it differently ask (row 9); a quantity_variance term
+  {pct} makes a quantity fee within it discretion (fees.yaml quantity_codes). fees.yaml governs dates a contract
+  version's terms (Five Below 2023 / 2025 by PO date). test_real_contract_accounts.py runs both accounts.
