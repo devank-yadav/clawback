@@ -2,9 +2,13 @@
 # /api/*      -> FastAPI with the /api prefix stripped (so /api/health is the API's /health)
 # /webhooks/* -> FastAPI as is (Twilio signs https://DOMAIN/webhooks/twilio/sms)
 # everything else -> Next.js (board, portal, inbox, ...)
+# DOMAIN is substituted before parsing, so it may hold two names, e.g. DOMAIN="clawback.biz www.clawback.biz"; each
+# needs an A record at the VM first. Laptop fallback: DOMAIN=:80 (plain HTTP behind a tunnel). Runbook: docs/deploy.md.
 {$DOMAIN} {
-	encode zstd gzip
+	# One access line per request in `docker compose logs caddy`, e.g. to see whether Twilio's webhook arrived.
+	log
 
+	# The event stream (/api/runs/<id>/events) goes out frame by frame: flushed at once, never compressed.
 	handle_path /api/* {
 		reverse_proxy api:8000 {
 			flush_interval -1
@@ -15,7 +19,9 @@
 		reverse_proxy api:8000
 	}
 
+	# Compression only for the web app's pages and assets, so it can never hold back a server-sent event.
 	handle {
+		encode zstd gzip
 		reverse_proxy web:3000
 	}
 }
