@@ -19,3 +19,10 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - Only approved senders or documents signed by both parties change a deal (config/policy.yaml).
 - No agent posts to QuickBooks. Credit memos over $1,000 need the controller.
 - Every outside call: timeout 30 s, one retry, DEMO_MODE fixture fallback. Every action written to audit_log.
+
+## Run it
+- `python3.11 -m venv .venv && .venv/bin/pip install -r api/requirements.txt -r requirements-dev.txt`,
+  then `source .venv/bin/activate`.
+- `make api` serves the stub API on :8000; `make test` runs every test in api/.
+- Stub routes serve the fixture run in api/stubs/fixtures.py. After changing it, run `python -m api.stubs.fixtures`
+  to rewrite web/fixtures/*.json (a test fails if they're stale).

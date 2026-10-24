@@ -1,0 +1,4178 @@
+{
+  "RunFixture": {
+    "$defs": {
+      "Answer": {
+        "additionalProperties": false,
+        "properties": {
+          "question_id": {
+            "title": "Question Id",
+            "type": "string"
+          },
+          "from_role": {
+            "enum": [
+              "owner",
+              "controller"
+            ],
+            "title": "From Role",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "answered_at": {
+            "format": "date-time",
+            "title": "Answered At",
+            "type": "string"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rule Id"
+          }
+        },
+        "required": [
+          "question_id",
+          "from_role",
+          "text",
+          "answered_at"
+        ],
+        "title": "Answer",
+        "type": "object"
+      },
+      "AnswerEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "const": "answer",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/$defs/Answer"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "at",
+          "type",
+          "data"
+        ],
+        "title": "AnswerEvent",
+        "type": "object"
+      },
+      "Approval": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "credit_memo",
+              "dispute_over_limit",
+              "closed_period"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "lines": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/ApprovalLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "proposed_by": {
+            "enum": [
+              "system",
+              "reader",
+              "investigator",
+              "gate",
+              "negotiator",
+              "bookkeeper",
+              "coach",
+              "owner",
+              "controller",
+              "northmart",
+              "policy"
+            ],
+            "title": "Proposed By",
+            "type": "string"
+          },
+          "approver_role": {
+            "enum": [
+              "owner",
+              "controller"
+            ],
+            "title": "Approver Role",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "approved",
+              "refused"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Note"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Decided At"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "amount",
+          "proposed_by",
+          "approver_role",
+          "status",
+          "text",
+          "requested_at"
+        ],
+        "title": "Approval",
+        "type": "object"
+      },
+      "ApprovalEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "const": "approval",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/$defs/Approval"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "at",
+          "type",
+          "data"
+        ],
+        "title": "ApprovalEvent",
+        "type": "object"
+      },
+      "ApprovalLine": {
+        "additionalProperties": false,
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          }
+        },
+        "required": [
+          "charge_id",
+          "amount"
+        ],
+        "title": "ApprovalLine",
+        "type": "object"
+      },
+      "Charge": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "remittance_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Remittance Id"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product"
+          },
+          "units": {
+            "title": "Units",
+            "type": "integer"
+          },
+          "rate": {
+            "title": "Rate",
+            "type": "number"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "notice_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Notice Date"
+          }
+        },
+        "required": [
+          "id",
+          "ref",
+          "code",
+          "description",
+          "product",
+          "units",
+          "rate",
+          "amount",
+          "period_start",
+          "period_end"
+        ],
+        "title": "Charge",
+        "type": "object"
+      },
+      "ChargeDetail": {
+        "additionalProperties": false,
+        "description": "GET /charges/{id}: everything the evidence drawer shows.",
+        "properties": {
+          "charge": {
+            "$ref": "#/$defs/Charge"
+          },
+          "finding": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Finding"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Decision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rehearsal": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Rehearsal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/Evidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "charge",
+          "finding",
+          "decision",
+          "rehearsal",
+          "evidence"
+        ],
+        "title": "ChargeDetail",
+        "type": "object"
+      },
+      "ChargeEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "const": "charge",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/$defs/Charge"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "at",
+          "type",
+          "data"
+        ],
+        "title": "ChargeEvent",
+        "type": "object"
+      },
+      "Decision": {
+        "additionalProperties": false,
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "dispute",
+              "accept",
+              "split",
+              "ask",
+              "skip"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "disputed": {
+            "default": 0.0,
+            "title": "Disputed",
+            "type": "number"
+          },
+          "accepted": {
+            "default": 0.0,
+            "title": "Accepted",
+            "type": "number"
+          },
+          "waiting": {
+            "default": 0.0,
+            "title": "Waiting",
+            "type": "number"
+          },
+          "gate_row": {
+            "maximum": 9,
+            "minimum": 1,
+            "title": "Gate Row",
+            "type": "integer"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rule Id"
+          },
+          "decided_by": {
+            "enum": [
+              "system",
+              "reader",
+              "investigator",
+              "gate",
+              "negotiator",
+              "bookkeeper",
+              "coach",
+              "owner",
+              "controller",
+              "northmart",
+              "policy"
+            ],
+            "title": "Decided By",
+            "type": "string"
+          },
+          "decided_at": {
+            "format": "date-time",
+            "title": "Decided At",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "charge_id",
+          "decision",
+          "gate_row",
+          "decided_by",
+          "decided_at",
+          "reason"
+        ],
+        "title": "Decision",
+        "type": "object"
+      },
+      "DecisionEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "const": "decision",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/$defs/Decision"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "at",
+          "type",
+          "data"
+        ],
+        "title": "DecisionEvent",
+        "type": "object"
+      },
+      "Dispute": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "remittance_id": {
+            "title": "Remittance Id",
+            "type": "string"
+          },
+          "counterparty": {
+            "title": "Counterparty",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/$defs/DisputeLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "filed",
+              "answered",
+              "resolved",
+              "withdrawn"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "approved_by": {
+            "enum": [
+              "policy",
+              "owner"
+            ],
+            "title": "Approved By",
+            "type": "string"
+          },
+          "filed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filed At"
+          }
+        },
+        "required": [
+          "id",
+          "remittance_id",
+          "counterparty",
+          "lines",
+          "total",
+          "status",
+          "approved_by",
+          "filed_at"
+        ],
+        "title": "Dispute",
+        "type": "object"
+      },
+      "DisputeEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "const": "dispute",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/$defs/Dispute"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "at",
+          "type",
+          "data"
+        ],
+        "title": "DisputeEvent",
+        "type": "object"
+      },
+      "DisputeLine": {
+        "additionalProperties": false,
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "clause_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clause Ref"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote"
+          },
+          "math": {
+            "title": "Math",
+            "type": "string"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "charge_id",
+          "ref",
+          "amount",
+          "reason",
+          "clause_ref",
+          "quote",
+          "math",
+          "evidence_ids"
+        ],
+        "title": "DisputeLine",
+        "type": "object"
+      },
+      "Evidence": {
+        "additionalProperties": false,
+        "description": "The source behind a number: a deal sentence, a data row, an email, a rule or a person's answer.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "clause",
+              "email",
+              "claim",
+              "notice",
+              "sales",
+              "charge",
+              "prior_payment",
+              "rule",
+              "person",
+              "approval"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Quote"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "rows": {
+            "default": [],
+            "items": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "sender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sender"
+          },
+          "approved_sender": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Approved Sender"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sent At"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rule Id"
+          },
+          "approval_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Approval Id"
+          },
+          "person": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Person"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "summary"
+        ],
+        "title": "Evidence",
+        "type": "object"
+      },
+      "Finding": {
+        "additionalProperties": false,
+        "description": "Investigator output joined with the engine's numbers for that charge.",
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "finding": {
+            "title": "Finding",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "rate_over",
+              "duplicate",
+              "outside_dates",
+              "amended_by_email",
+              "over_cap",
+              "product_not_covered",
+              "discretionary_fee",
+              "matches_deal"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "confidence": {
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "open_questions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Open Questions",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "expected": {
+            "title": "Expected",
+            "type": "number"
+          },
+          "taken": {
+            "title": "Taken",
+            "type": "number"
+          },
+          "delta": {
+            "title": "Delta",
+            "type": "number"
+          },
+          "readers_agree": {
+            "default": true,
+            "title": "Readers Agree",
+            "type": "boolean"
+          },
+          "math": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/MathPart"
+            },
+            "title": "Math",
+            "type": "array"
+          }
+        },
+        "required": [
+          "charge_id",
+          "finding",
+          "type",
+          "evidence_ids",
+          "confidence",
+          "id",
+          "expected",
+          "taken",
+          "delta"
+        ],
+        "title": "Finding",
+        "type": "object"
+      },
+      "FindingEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "const": "finding",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/$defs/Finding"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "at",
+          "type",
+          "data"
+        ],
+        "title": "FindingEvent",
+        "type": "object"
+      },
+      "LedgerLine": {
+        "additionalProperties": false,
+        "properties": {
+          "charge_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Charge Id"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          }
+        },
+        "required": [
+          "charge_id",
+          "description",
+          "amount"
+        ],
+        "title": "LedgerLine",
+        "type": "object"
+      },
+      "LedgerPost": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "qbo_entity": {
+            "enum": [
+              "customer",
+              "item",
+              "invoice",
+              "payment",
+              "credit_memo",
+              "invoice_note"
+            ],
+            "title": "Qbo Entity",
+            "type": "string"
+          },
+          "qbo_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qbo Id"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "lines": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/LedgerLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "posted",
+              "held",
+              "failed",
+              "voided"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "approval_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Approval Id"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Note"
+          },
+          "posted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Posted At"
+          }
+        },
+        "required": [
+          "id",
+          "qbo_entity",
+          "qbo_id",
+          "amount",
+          "status"
+        ],
+        "title": "LedgerPost",
+        "type": "object"
+      },
+      "LedgerPostEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "const": "ledger_post",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/$defs/LedgerPost"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "at",
+          "type",
+          "data"
+        ],
+        "title": "LedgerPostEvent",
+        "type": "object"
+      },
+      "LogEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "const": "log",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/$defs/LogLine"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "at",
+          "type",
+          "data"
+        ],
+        "title": "LogEvent",
+        "type": "object"
+      },
+      "LogLine": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "level": {
+            "default": "info",
+            "enum": [
+              "info",
+              "good",
+              "warn",
+              "error"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "actor": {
+            "default": "system",
+            "enum": [
+              "system",
+              "reader",
+              "investigator",
+              "gate",
+              "negotiator",
+              "bookkeeper",
+              "coach",
+              "owner",
+              "controller",
+              "northmart",
+              "policy"
+            ],
+            "title": "Actor",
+            "type": "string"
+          },
+          "charge_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Charge Id"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "LogLine",
+        "type": "object"
+      },
+      "MathPart": {
+        "additionalProperties": false,
+        "description": "One piece of the math line on a card. Parts with an evidence_id are clickable.",
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "evidence_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Evidence Id"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "MathPart",
+        "type": "object"
+      },
+      "PortalMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "dispute_id": {
+            "title": "Dispute Id",
+            "type": "string"
+          },
+          "from_party": {
+            "enum": [
+              "northmart",
+              "clawback"
+            ],
+            "title": "From Party",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "attachment_doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Attachment Doc Id"
+          },
+          "classification": {
+            "anyOf": [
+              {
+                "enum": [
+                  "new_document",
+                  "claim_without_document",
+                  "agrees",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Classification"
+          },
+          "charge_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Charge Ids",
+            "type": "array"
+          },
+          "evidence_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "dispute_id",
+          "from_party",
+          "text",
+          "created_at"
+        ],
+        "title": "PortalMessage",
+        "type": "object"
+      },
+      "PortalMessageEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "const": "portal_message",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/$defs/PortalMessage"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "at",
+          "type",
+          "data"
+        ],
+        "title": "PortalMessageEvent",
+        "type": "object"
+      },
+      "Question": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "to_role": {
+            "enum": [
+              "owner",
+              "controller"
+            ],
+            "title": "To Role",
+            "type": "string"
+          },
+          "charge_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Charge Id"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "channel": {
+            "default": "sms",
+            "enum": [
+              "sms",
+              "inbox"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          },
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Answer"
+          },
+          "answered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Answered At"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rule Id"
+          }
+        },
+        "required": [
+          "id",
+          "to_role",
+          "charge_id",
+          "text",
+          "sent_at"
+        ],
+        "title": "Question",
+        "type": "object"
+      },
+      "QuestionEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "const": "question",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/$defs/Question"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "at",
+          "type",
+          "data"
+        ],
+        "title": "QuestionEvent",
+        "type": "object"
+      },
+      "Quote": {
+        "additionalProperties": false,
+        "properties": {
+          "doc_id": {
+            "title": "Doc Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "char_start": {
+            "title": "Char Start",
+            "type": "integer"
+          },
+          "char_end": {
+            "title": "Char End",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "doc_id",
+          "text",
+          "char_start",
+          "char_end"
+        ],
+        "title": "Quote",
+        "type": "object"
+      },
+      "Rehearsal": {
+        "additionalProperties": false,
+        "description": "Negotiator, before filing: the comeback it predicts and the answer it would give.",
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "predicted_rebuttal": {
+            "title": "Predicted Rebuttal",
+            "type": "string"
+          },
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "answer_evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Answer Evidence Ids",
+            "type": "array"
+          },
+          "answered": {
+            "title": "Answered",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "charge_id",
+          "predicted_rebuttal",
+          "answer",
+          "answer_evidence_ids",
+          "answered"
+        ],
+        "title": "Rehearsal",
+        "type": "object"
+      },
+      "RehearsalEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "const": "rehearsal",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/$defs/Rehearsal"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "at",
+          "type",
+          "data"
+        ],
+        "title": "RehearsalEvent",
+        "type": "object"
+      },
+      "Remittance": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "counterparty": {
+            "title": "Counterparty",
+            "type": "string"
+          },
+          "invoice_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Id"
+          },
+          "expected": {
+            "title": "Expected",
+            "type": "number"
+          },
+          "received": {
+            "title": "Received",
+            "type": "number"
+          },
+          "taken": {
+            "title": "Taken",
+            "type": "number"
+          },
+          "charge_count": {
+            "title": "Charge Count",
+            "type": "integer"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Received At"
+          },
+          "nessie_tx_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Nessie Tx Id"
+          }
+        },
+        "required": [
+          "id",
+          "counterparty",
+          "invoice_id",
+          "expected",
+          "received",
+          "taken",
+          "charge_count"
+        ],
+        "title": "Remittance",
+        "type": "object"
+      },
+      "Rule": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "pattern_text": {
+            "title": "Pattern Text",
+            "type": "string"
+          },
+          "term_type": {
+            "enum": [
+              "promo_rate",
+              "product_scope",
+              "unit_cap",
+              "date_range",
+              "fee_discretion",
+              "amendment"
+            ],
+            "title": "Term Type",
+            "type": "string"
+          },
+          "counterparty": {
+            "title": "Counterparty",
+            "type": "string"
+          },
+          "condition": {
+            "title": "Condition",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "accept",
+              "dispute",
+              "ask"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "else_decision": {
+            "enum": [
+              "accept",
+              "dispute",
+              "ask"
+            ],
+            "title": "Else Decision",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "approver": {
+            "title": "Approver",
+            "type": "string"
+          },
+          "approver_role": {
+            "enum": [
+              "owner",
+              "controller"
+            ],
+            "title": "Approver Role",
+            "type": "string"
+          },
+          "learned_at": {
+            "format": "date-time",
+            "title": "Learned At",
+            "type": "string"
+          },
+          "source_question_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Question Id"
+          },
+          "status": {
+            "default": "active",
+            "enum": [
+              "pending",
+              "active",
+              "undone"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "pattern_text",
+          "term_type",
+          "counterparty",
+          "condition",
+          "decision",
+          "else_decision",
+          "summary",
+          "approver",
+          "approver_role",
+          "learned_at",
+          "source_question_id"
+        ],
+        "title": "Rule",
+        "type": "object"
+      },
+      "RuleEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "const": "rule",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/$defs/Rule"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "at",
+          "type",
+          "data"
+        ],
+        "title": "RuleEvent",
+        "type": "object"
+      },
+      "RunEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "const": "run",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/$defs/RunInfo"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "at",
+          "type",
+          "data"
+        ],
+        "title": "RunEvent",
+        "type": "object"
+      },
+      "RunInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "march",
+              "april",
+              "scenario",
+              "eval"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "started",
+              "waiting",
+              "finished",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "remittance": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Remittance"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "demo_mode": {
+            "default": false,
+            "title": "Demo Mode",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "run_id",
+          "kind",
+          "status"
+        ],
+        "title": "RunInfo",
+        "type": "object"
+      },
+      "Totals": {
+        "additionalProperties": false,
+        "description": "Meters. taken = disputed + accepted + waiting + undecided; a skipped charge's amount stays undecided.",
+        "properties": {
+          "taken": {
+            "title": "Taken",
+            "type": "number"
+          },
+          "disputed": {
+            "title": "Disputed",
+            "type": "number"
+          },
+          "accepted": {
+            "title": "Accepted",
+            "type": "number"
+          },
+          "waiting": {
+            "title": "Waiting",
+            "type": "number"
+          },
+          "undecided": {
+            "title": "Undecided",
+            "type": "number"
+          },
+          "questions": {
+            "title": "Questions",
+            "type": "integer"
+          },
+          "skipped": {
+            "default": 0,
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "taken",
+          "disputed",
+          "accepted",
+          "waiting",
+          "undecided",
+          "questions"
+        ],
+        "title": "Totals",
+        "type": "object"
+      },
+      "TotalsEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "const": "totals",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/$defs/Totals"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "at",
+          "type",
+          "data"
+        ],
+        "title": "TotalsEvent",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "description": "web/fixtures/run-events.json and april-events.json: one recorded run plus what its drawer reads.",
+    "properties": {
+      "run_id": {
+        "title": "Run Id",
+        "type": "string"
+      },
+      "events": {
+        "items": {
+          "discriminator": {
+            "mapping": {
+              "answer": "#/$defs/AnswerEvent",
+              "approval": "#/$defs/ApprovalEvent",
+              "charge": "#/$defs/ChargeEvent",
+              "decision": "#/$defs/DecisionEvent",
+              "dispute": "#/$defs/DisputeEvent",
+              "finding": "#/$defs/FindingEvent",
+              "ledger_post": "#/$defs/LedgerPostEvent",
+              "log": "#/$defs/LogEvent",
+              "portal_message": "#/$defs/PortalMessageEvent",
+              "question": "#/$defs/QuestionEvent",
+              "rehearsal": "#/$defs/RehearsalEvent",
+              "rule": "#/$defs/RuleEvent",
+              "run": "#/$defs/RunEvent",
+              "totals": "#/$defs/TotalsEvent"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/RunEvent"
+            },
+            {
+              "$ref": "#/$defs/LogEvent"
+            },
+            {
+              "$ref": "#/$defs/ChargeEvent"
+            },
+            {
+              "$ref": "#/$defs/FindingEvent"
+            },
+            {
+              "$ref": "#/$defs/RehearsalEvent"
+            },
+            {
+              "$ref": "#/$defs/DecisionEvent"
+            },
+            {
+              "$ref": "#/$defs/QuestionEvent"
+            },
+            {
+              "$ref": "#/$defs/AnswerEvent"
+            },
+            {
+              "$ref": "#/$defs/RuleEvent"
+            },
+            {
+              "$ref": "#/$defs/ApprovalEvent"
+            },
+            {
+              "$ref": "#/$defs/DisputeEvent"
+            },
+            {
+              "$ref": "#/$defs/PortalMessageEvent"
+            },
+            {
+              "$ref": "#/$defs/LedgerPostEvent"
+            },
+            {
+              "$ref": "#/$defs/TotalsEvent"
+            }
+          ]
+        },
+        "title": "Events",
+        "type": "array"
+      },
+      "charges": {
+        "additionalProperties": {
+          "$ref": "#/$defs/ChargeDetail"
+        },
+        "title": "Charges",
+        "type": "object"
+      },
+      "evidence": {
+        "additionalProperties": {
+          "$ref": "#/$defs/Evidence"
+        },
+        "title": "Evidence",
+        "type": "object"
+      }
+    },
+    "required": [
+      "run_id",
+      "events",
+      "charges",
+      "evidence"
+    ],
+    "title": "RunFixture",
+    "type": "object"
+  },
+  "ChargeDetail": {
+    "$defs": {
+      "Charge": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "remittance_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Remittance Id"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product"
+          },
+          "units": {
+            "title": "Units",
+            "type": "integer"
+          },
+          "rate": {
+            "title": "Rate",
+            "type": "number"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "notice_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Notice Date"
+          }
+        },
+        "required": [
+          "id",
+          "ref",
+          "code",
+          "description",
+          "product",
+          "units",
+          "rate",
+          "amount",
+          "period_start",
+          "period_end"
+        ],
+        "title": "Charge",
+        "type": "object"
+      },
+      "Decision": {
+        "additionalProperties": false,
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "dispute",
+              "accept",
+              "split",
+              "ask",
+              "skip"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "disputed": {
+            "default": 0.0,
+            "title": "Disputed",
+            "type": "number"
+          },
+          "accepted": {
+            "default": 0.0,
+            "title": "Accepted",
+            "type": "number"
+          },
+          "waiting": {
+            "default": 0.0,
+            "title": "Waiting",
+            "type": "number"
+          },
+          "gate_row": {
+            "maximum": 9,
+            "minimum": 1,
+            "title": "Gate Row",
+            "type": "integer"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rule Id"
+          },
+          "decided_by": {
+            "enum": [
+              "system",
+              "reader",
+              "investigator",
+              "gate",
+              "negotiator",
+              "bookkeeper",
+              "coach",
+              "owner",
+              "controller",
+              "northmart",
+              "policy"
+            ],
+            "title": "Decided By",
+            "type": "string"
+          },
+          "decided_at": {
+            "format": "date-time",
+            "title": "Decided At",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "charge_id",
+          "decision",
+          "gate_row",
+          "decided_by",
+          "decided_at",
+          "reason"
+        ],
+        "title": "Decision",
+        "type": "object"
+      },
+      "Evidence": {
+        "additionalProperties": false,
+        "description": "The source behind a number: a deal sentence, a data row, an email, a rule or a person's answer.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "clause",
+              "email",
+              "claim",
+              "notice",
+              "sales",
+              "charge",
+              "prior_payment",
+              "rule",
+              "person",
+              "approval"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Quote"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "rows": {
+            "default": [],
+            "items": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "sender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sender"
+          },
+          "approved_sender": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Approved Sender"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sent At"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rule Id"
+          },
+          "approval_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Approval Id"
+          },
+          "person": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Person"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "summary"
+        ],
+        "title": "Evidence",
+        "type": "object"
+      },
+      "Finding": {
+        "additionalProperties": false,
+        "description": "Investigator output joined with the engine's numbers for that charge.",
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "finding": {
+            "title": "Finding",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "rate_over",
+              "duplicate",
+              "outside_dates",
+              "amended_by_email",
+              "over_cap",
+              "product_not_covered",
+              "discretionary_fee",
+              "matches_deal"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "confidence": {
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "open_questions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Open Questions",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "expected": {
+            "title": "Expected",
+            "type": "number"
+          },
+          "taken": {
+            "title": "Taken",
+            "type": "number"
+          },
+          "delta": {
+            "title": "Delta",
+            "type": "number"
+          },
+          "readers_agree": {
+            "default": true,
+            "title": "Readers Agree",
+            "type": "boolean"
+          },
+          "math": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/MathPart"
+            },
+            "title": "Math",
+            "type": "array"
+          }
+        },
+        "required": [
+          "charge_id",
+          "finding",
+          "type",
+          "evidence_ids",
+          "confidence",
+          "id",
+          "expected",
+          "taken",
+          "delta"
+        ],
+        "title": "Finding",
+        "type": "object"
+      },
+      "MathPart": {
+        "additionalProperties": false,
+        "description": "One piece of the math line on a card. Parts with an evidence_id are clickable.",
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "evidence_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Evidence Id"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "MathPart",
+        "type": "object"
+      },
+      "Quote": {
+        "additionalProperties": false,
+        "properties": {
+          "doc_id": {
+            "title": "Doc Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "char_start": {
+            "title": "Char Start",
+            "type": "integer"
+          },
+          "char_end": {
+            "title": "Char End",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "doc_id",
+          "text",
+          "char_start",
+          "char_end"
+        ],
+        "title": "Quote",
+        "type": "object"
+      },
+      "Rehearsal": {
+        "additionalProperties": false,
+        "description": "Negotiator, before filing: the comeback it predicts and the answer it would give.",
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "predicted_rebuttal": {
+            "title": "Predicted Rebuttal",
+            "type": "string"
+          },
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "answer_evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Answer Evidence Ids",
+            "type": "array"
+          },
+          "answered": {
+            "title": "Answered",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "charge_id",
+          "predicted_rebuttal",
+          "answer",
+          "answer_evidence_ids",
+          "answered"
+        ],
+        "title": "Rehearsal",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "description": "GET /charges/{id}: everything the evidence drawer shows.",
+    "properties": {
+      "charge": {
+        "$ref": "#/$defs/Charge"
+      },
+      "finding": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Finding"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "decision": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Decision"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "rehearsal": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Rehearsal"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "evidence": {
+        "items": {
+          "$ref": "#/$defs/Evidence"
+        },
+        "title": "Evidence",
+        "type": "array"
+      }
+    },
+    "required": [
+      "charge",
+      "finding",
+      "decision",
+      "rehearsal",
+      "evidence"
+    ],
+    "title": "ChargeDetail",
+    "type": "object"
+  },
+  "Evidence": {
+    "$defs": {
+      "Quote": {
+        "additionalProperties": false,
+        "properties": {
+          "doc_id": {
+            "title": "Doc Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "char_start": {
+            "title": "Char Start",
+            "type": "integer"
+          },
+          "char_end": {
+            "title": "Char End",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "doc_id",
+          "text",
+          "char_start",
+          "char_end"
+        ],
+        "title": "Quote",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "description": "The source behind a number: a deal sentence, a data row, an email, a rule or a person's answer.",
+    "properties": {
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "kind": {
+        "enum": [
+          "clause",
+          "email",
+          "claim",
+          "notice",
+          "sales",
+          "charge",
+          "prior_payment",
+          "rule",
+          "person",
+          "approval"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "label": {
+        "title": "Label",
+        "type": "string"
+      },
+      "summary": {
+        "title": "Summary",
+        "type": "string"
+      },
+      "quote": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Quote"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "rows": {
+        "default": [],
+        "items": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": "object"
+        },
+        "title": "Rows",
+        "type": "array"
+      },
+      "sender": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Sender"
+      },
+      "approved_sender": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Approved Sender"
+      },
+      "sent_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Sent At"
+      },
+      "rule_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Rule Id"
+      },
+      "approval_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Approval Id"
+      },
+      "person": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Person"
+      }
+    },
+    "required": [
+      "id",
+      "kind",
+      "label",
+      "summary"
+    ],
+    "title": "Evidence",
+    "type": "object"
+  },
+  "CoachResponse": {
+    "$defs": {
+      "Redline": {
+        "additionalProperties": false,
+        "properties": {
+          "clause_ref": {
+            "title": "Clause Ref",
+            "type": "string"
+          },
+          "original_quote": {
+            "title": "Original Quote",
+            "type": "string"
+          },
+          "suggested_text": {
+            "title": "Suggested Text",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "dollars_at_stake": {
+            "title": "Dollars At Stake",
+            "type": "number"
+          },
+          "finding_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Finding Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "clause_ref",
+          "original_quote",
+          "suggested_text",
+          "reason",
+          "dollars_at_stake",
+          "finding_ids"
+        ],
+        "title": "Redline",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "draft_doc_id": {
+        "title": "Draft Doc Id",
+        "type": "string"
+      },
+      "redlines": {
+        "items": {
+          "$ref": "#/$defs/Redline"
+        },
+        "title": "Redlines",
+        "type": "array"
+      }
+    },
+    "required": [
+      "draft_doc_id",
+      "redlines"
+    ],
+    "title": "CoachResponse",
+    "type": "object"
+  },
+  "EvalReport": {
+    "additionalProperties": false,
+    "properties": {
+      "status": {
+        "enum": [
+          "not_run",
+          "running",
+          "done"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "run_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Run At"
+      },
+      "cases": {
+        "title": "Cases",
+        "type": "integer"
+      },
+      "correct": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Correct"
+      },
+      "amounts_correct": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Amounts Correct"
+      },
+      "asked": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Asked"
+      },
+      "wrong_automatic": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Wrong Automatic"
+      },
+      "unnecessary_questions": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Unnecessary Questions"
+      }
+    },
+    "required": [
+      "status",
+      "cases"
+    ],
+    "title": "EvalReport",
+    "type": "object"
+  },
+  "AuditEntry": {
+    "additionalProperties": false,
+    "description": "One audit_log row as api/engine/audit_chain.py writes it (the hash covers `at` as this exact string).",
+    "properties": {
+      "id": {
+        "title": "Id",
+        "type": "integer"
+      },
+      "at": {
+        "title": "At",
+        "type": "string"
+      },
+      "actor": {
+        "title": "Actor",
+        "type": "string"
+      },
+      "action": {
+        "title": "Action",
+        "type": "string"
+      },
+      "object_ref": {
+        "title": "Object Ref",
+        "type": "string"
+      },
+      "evidence": {
+        "additionalProperties": true,
+        "default": {},
+        "title": "Evidence",
+        "type": "object"
+      },
+      "prev_hash": {
+        "title": "Prev Hash",
+        "type": "string"
+      },
+      "hash": {
+        "title": "Hash",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "at",
+      "actor",
+      "action",
+      "object_ref",
+      "prev_hash",
+      "hash"
+    ],
+    "title": "AuditEntry",
+    "type": "object"
+  },
+  "AuditVerify": {
+    "additionalProperties": false,
+    "properties": {
+      "ok": {
+        "title": "Ok",
+        "type": "boolean"
+      },
+      "checked": {
+        "title": "Checked",
+        "type": "integer"
+      },
+      "broken_at": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Broken At"
+      },
+      "reason": {
+        "default": "",
+        "title": "Reason",
+        "type": "string"
+      }
+    },
+    "required": [
+      "ok",
+      "checked"
+    ],
+    "title": "AuditVerify",
+    "type": "object"
+  },
+  "Summary": {
+    "$defs": {
+      "Dispute": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "remittance_id": {
+            "title": "Remittance Id",
+            "type": "string"
+          },
+          "counterparty": {
+            "title": "Counterparty",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/$defs/DisputeLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "filed",
+              "answered",
+              "resolved",
+              "withdrawn"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "approved_by": {
+            "enum": [
+              "policy",
+              "owner"
+            ],
+            "title": "Approved By",
+            "type": "string"
+          },
+          "filed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filed At"
+          }
+        },
+        "required": [
+          "id",
+          "remittance_id",
+          "counterparty",
+          "lines",
+          "total",
+          "status",
+          "approved_by",
+          "filed_at"
+        ],
+        "title": "Dispute",
+        "type": "object"
+      },
+      "DisputeLine": {
+        "additionalProperties": false,
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "clause_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clause Ref"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote"
+          },
+          "math": {
+            "title": "Math",
+            "type": "string"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "charge_id",
+          "ref",
+          "amount",
+          "reason",
+          "clause_ref",
+          "quote",
+          "math",
+          "evidence_ids"
+        ],
+        "title": "DisputeLine",
+        "type": "object"
+      },
+      "Question": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "to_role": {
+            "enum": [
+              "owner",
+              "controller"
+            ],
+            "title": "To Role",
+            "type": "string"
+          },
+          "charge_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Charge Id"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "channel": {
+            "default": "sms",
+            "enum": [
+              "sms",
+              "inbox"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          },
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Answer"
+          },
+          "answered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Answered At"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rule Id"
+          }
+        },
+        "required": [
+          "id",
+          "to_role",
+          "charge_id",
+          "text",
+          "sent_at"
+        ],
+        "title": "Question",
+        "type": "object"
+      },
+      "Totals": {
+        "additionalProperties": false,
+        "description": "Meters. taken = disputed + accepted + waiting + undecided; a skipped charge's amount stays undecided.",
+        "properties": {
+          "taken": {
+            "title": "Taken",
+            "type": "number"
+          },
+          "disputed": {
+            "title": "Disputed",
+            "type": "number"
+          },
+          "accepted": {
+            "title": "Accepted",
+            "type": "number"
+          },
+          "waiting": {
+            "title": "Waiting",
+            "type": "number"
+          },
+          "undecided": {
+            "title": "Undecided",
+            "type": "number"
+          },
+          "questions": {
+            "title": "Questions",
+            "type": "integer"
+          },
+          "skipped": {
+            "default": 0,
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "taken",
+          "disputed",
+          "accepted",
+          "waiting",
+          "undecided",
+          "questions"
+        ],
+        "title": "Totals",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "description": "GET /summary for the Fetch.ai agent (read-only).",
+    "properties": {
+      "totals": {
+        "$ref": "#/$defs/Totals"
+      },
+      "open_disputes": {
+        "items": {
+          "$ref": "#/$defs/Dispute"
+        },
+        "title": "Open Disputes",
+        "type": "array"
+      },
+      "pending_question": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Question"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "totals",
+      "open_disputes",
+      "pending_question"
+    ],
+    "title": "Summary",
+    "type": "object"
+  },
+  "PortalMessage": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "dispute_id": {
+        "title": "Dispute Id",
+        "type": "string"
+      },
+      "from_party": {
+        "enum": [
+          "northmart",
+          "clawback"
+        ],
+        "title": "From Party",
+        "type": "string"
+      },
+      "text": {
+        "title": "Text",
+        "type": "string"
+      },
+      "attachment_doc_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Attachment Doc Id"
+      },
+      "classification": {
+        "anyOf": [
+          {
+            "enum": [
+              "new_document",
+              "claim_without_document",
+              "agrees",
+              "other"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Classification"
+      },
+      "charge_ids": {
+        "default": [],
+        "items": {
+          "type": "string"
+        },
+        "title": "Charge Ids",
+        "type": "array"
+      },
+      "evidence_ids": {
+        "default": [],
+        "items": {
+          "type": "string"
+        },
+        "title": "Evidence Ids",
+        "type": "array"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "dispute_id",
+      "from_party",
+      "text",
+      "created_at"
+    ],
+    "title": "PortalMessage",
+    "type": "object"
+  },
+  "ScenarioResponse": {
+    "$defs": {
+      "Decision": {
+        "additionalProperties": false,
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "dispute",
+              "accept",
+              "split",
+              "ask",
+              "skip"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "disputed": {
+            "default": 0.0,
+            "title": "Disputed",
+            "type": "number"
+          },
+          "accepted": {
+            "default": 0.0,
+            "title": "Accepted",
+            "type": "number"
+          },
+          "waiting": {
+            "default": 0.0,
+            "title": "Waiting",
+            "type": "number"
+          },
+          "gate_row": {
+            "maximum": 9,
+            "minimum": 1,
+            "title": "Gate Row",
+            "type": "integer"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rule Id"
+          },
+          "decided_by": {
+            "enum": [
+              "system",
+              "reader",
+              "investigator",
+              "gate",
+              "negotiator",
+              "bookkeeper",
+              "coach",
+              "owner",
+              "controller",
+              "northmart",
+              "policy"
+            ],
+            "title": "Decided By",
+            "type": "string"
+          },
+          "decided_at": {
+            "format": "date-time",
+            "title": "Decided At",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "charge_id",
+          "decision",
+          "gate_row",
+          "decided_by",
+          "decided_at",
+          "reason"
+        ],
+        "title": "Decision",
+        "type": "object"
+      },
+      "Evidence": {
+        "additionalProperties": false,
+        "description": "The source behind a number: a deal sentence, a data row, an email, a rule or a person's answer.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "clause",
+              "email",
+              "claim",
+              "notice",
+              "sales",
+              "charge",
+              "prior_payment",
+              "rule",
+              "person",
+              "approval"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Quote"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "rows": {
+            "default": [],
+            "items": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "sender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sender"
+          },
+          "approved_sender": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Approved Sender"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sent At"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rule Id"
+          },
+          "approval_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Approval Id"
+          },
+          "person": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Person"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "summary"
+        ],
+        "title": "Evidence",
+        "type": "object"
+      },
+      "Finding": {
+        "additionalProperties": false,
+        "description": "Investigator output joined with the engine's numbers for that charge.",
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "finding": {
+            "title": "Finding",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "rate_over",
+              "duplicate",
+              "outside_dates",
+              "amended_by_email",
+              "over_cap",
+              "product_not_covered",
+              "discretionary_fee",
+              "matches_deal"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "confidence": {
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "open_questions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Open Questions",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "expected": {
+            "title": "Expected",
+            "type": "number"
+          },
+          "taken": {
+            "title": "Taken",
+            "type": "number"
+          },
+          "delta": {
+            "title": "Delta",
+            "type": "number"
+          },
+          "readers_agree": {
+            "default": true,
+            "title": "Readers Agree",
+            "type": "boolean"
+          },
+          "math": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/MathPart"
+            },
+            "title": "Math",
+            "type": "array"
+          }
+        },
+        "required": [
+          "charge_id",
+          "finding",
+          "type",
+          "evidence_ids",
+          "confidence",
+          "id",
+          "expected",
+          "taken",
+          "delta"
+        ],
+        "title": "Finding",
+        "type": "object"
+      },
+      "MathPart": {
+        "additionalProperties": false,
+        "description": "One piece of the math line on a card. Parts with an evidence_id are clickable.",
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "evidence_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Evidence Id"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "MathPart",
+        "type": "object"
+      },
+      "Quote": {
+        "additionalProperties": false,
+        "properties": {
+          "doc_id": {
+            "title": "Doc Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "char_start": {
+            "title": "Char Start",
+            "type": "integer"
+          },
+          "char_end": {
+            "title": "Char End",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "doc_id",
+          "text",
+          "char_start",
+          "char_end"
+        ],
+        "title": "Quote",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "stub": {
+        "default": false,
+        "title": "Stub",
+        "type": "boolean"
+      },
+      "decision": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Decision"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "finding": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Finding"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "evidence": {
+        "items": {
+          "$ref": "#/$defs/Evidence"
+        },
+        "title": "Evidence",
+        "type": "array"
+      },
+      "message": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Message"
+      }
+    },
+    "required": [
+      "decision",
+      "finding",
+      "evidence"
+    ],
+    "title": "ScenarioResponse",
+    "type": "object"
+  },
+  "AnswerResponse": {
+    "$defs": {
+      "Answer": {
+        "additionalProperties": false,
+        "properties": {
+          "question_id": {
+            "title": "Question Id",
+            "type": "string"
+          },
+          "from_role": {
+            "enum": [
+              "owner",
+              "controller"
+            ],
+            "title": "From Role",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "answered_at": {
+            "format": "date-time",
+            "title": "Answered At",
+            "type": "string"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rule Id"
+          }
+        },
+        "required": [
+          "question_id",
+          "from_role",
+          "text",
+          "answered_at"
+        ],
+        "title": "Answer",
+        "type": "object"
+      },
+      "Rule": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "pattern_text": {
+            "title": "Pattern Text",
+            "type": "string"
+          },
+          "term_type": {
+            "enum": [
+              "promo_rate",
+              "product_scope",
+              "unit_cap",
+              "date_range",
+              "fee_discretion",
+              "amendment"
+            ],
+            "title": "Term Type",
+            "type": "string"
+          },
+          "counterparty": {
+            "title": "Counterparty",
+            "type": "string"
+          },
+          "condition": {
+            "title": "Condition",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "accept",
+              "dispute",
+              "ask"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "else_decision": {
+            "enum": [
+              "accept",
+              "dispute",
+              "ask"
+            ],
+            "title": "Else Decision",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "approver": {
+            "title": "Approver",
+            "type": "string"
+          },
+          "approver_role": {
+            "enum": [
+              "owner",
+              "controller"
+            ],
+            "title": "Approver Role",
+            "type": "string"
+          },
+          "learned_at": {
+            "format": "date-time",
+            "title": "Learned At",
+            "type": "string"
+          },
+          "source_question_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Question Id"
+          },
+          "status": {
+            "default": "active",
+            "enum": [
+              "pending",
+              "active",
+              "undone"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "pattern_text",
+          "term_type",
+          "counterparty",
+          "condition",
+          "decision",
+          "else_decision",
+          "summary",
+          "approver",
+          "approver_role",
+          "learned_at",
+          "source_question_id"
+        ],
+        "title": "Rule",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "answer": {
+        "$ref": "#/$defs/Answer"
+      },
+      "rule": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Rule"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "answer",
+      "rule"
+    ],
+    "title": "AnswerResponse",
+    "type": "object"
+  },
+  "StartRunResponse": {
+    "additionalProperties": false,
+    "properties": {
+      "run_id": {
+        "title": "Run Id",
+        "type": "string"
+      },
+      "events_url": {
+        "title": "Events Url",
+        "type": "string"
+      }
+    },
+    "required": [
+      "run_id",
+      "events_url"
+    ],
+    "title": "StartRunResponse",
+    "type": "object"
+  }
+}

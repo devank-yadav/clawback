@@ -1,0 +1,839 @@
+{
+  "run_id": "run-april-demo",
+  "events": [
+    {
+      "id": 1,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:01-07:00",
+      "type": "run",
+      "data": {
+        "run_id": "run-april-demo",
+        "kind": "april",
+        "status": "started",
+        "remittance": null,
+        "demo_mode": true
+      }
+    },
+    {
+      "id": 2,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:02-07:00",
+      "type": "log",
+      "data": {
+        "text": "April: Northmart took 2 display fees, $2,000 in all.",
+        "level": "info",
+        "actor": "system",
+        "charge_id": null
+      }
+    },
+    {
+      "id": 3,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:02-07:00",
+      "type": "totals",
+      "data": {
+        "taken": 2000.0,
+        "disputed": 0.0,
+        "accepted": 0.0,
+        "waiting": 0.0,
+        "undecided": 2000.0,
+        "questions": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "id": 4,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:03-07:00",
+      "type": "log",
+      "data": {
+        "text": "§5.4 is a discretion clause. Checking saved rules before asking anyone.",
+        "level": "info",
+        "actor": "gate",
+        "charge_id": null
+      }
+    },
+    {
+      "id": 5,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:05-07:00",
+      "type": "charge",
+      "data": {
+        "id": "A1",
+        "remittance_id": null,
+        "ref": "NM-2301",
+        "code": "DF",
+        "description": "Display fee (notice Apr 12)",
+        "product": null,
+        "units": 1,
+        "rate": 1200.0,
+        "amount": 1200.0,
+        "period_start": "2026-04-01",
+        "period_end": "2026-04-30",
+        "notice_date": "2026-04-12"
+      }
+    },
+    {
+      "id": 6,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:08-07:00",
+      "type": "finding",
+      "data": {
+        "charge_id": "A1",
+        "finding": "Display fee of $1,200 is within §5.4's $1,500 limit. Notice came Apr 12, 18 days ahead.",
+        "type": "discretionary_fee",
+        "evidence_ids": [
+          "ev-deal-5.4",
+          "ev-notice-0412",
+          "ev-charge-A1",
+          "ev-rule-1"
+        ],
+        "confidence": 0.95,
+        "open_questions": [],
+        "id": "F-A1",
+        "expected": 1200.0,
+        "taken": 1200.0,
+        "delta": 0.0,
+        "readers_agree": true,
+        "math": [
+          {
+            "text": "$1,200 fee",
+            "evidence_id": "ev-charge-A1"
+          },
+          {
+            "text": " ≤ ",
+            "evidence_id": null
+          },
+          {
+            "text": "$1,500 limit",
+            "evidence_id": "ev-deal-5.4"
+          },
+          {
+            "text": " · ",
+            "evidence_id": null
+          },
+          {
+            "text": "notice Apr 12",
+            "evidence_id": "ev-notice-0412"
+          },
+          {
+            "text": " (18 days) · ",
+            "evidence_id": null
+          },
+          {
+            "text": "Rule #1",
+            "evidence_id": "ev-rule-1"
+          },
+          {
+            "text": ": 18 ≥ 14 → accept",
+            "evidence_id": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:09-07:00",
+      "type": "log",
+      "data": {
+        "text": "Matched Rule #1 (learned Oct 24, approved by Dana) for A1.",
+        "level": "good",
+        "actor": "gate",
+        "charge_id": "A1"
+      }
+    },
+    {
+      "id": 8,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:10-07:00",
+      "type": "decision",
+      "data": {
+        "charge_id": "A1",
+        "decision": "accept",
+        "disputed": 0.0,
+        "accepted": 1200.0,
+        "waiting": 0.0,
+        "gate_row": 3,
+        "rule_id": "rule-1",
+        "decided_by": "gate",
+        "decided_at": "2026-10-24T10:40:10-07:00",
+        "reason": "Rule #1: 18 days' notice is at least 14, so accept."
+      }
+    },
+    {
+      "id": 9,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:10-07:00",
+      "type": "totals",
+      "data": {
+        "taken": 2000.0,
+        "disputed": 0.0,
+        "accepted": 1200.0,
+        "waiting": 0.0,
+        "undecided": 800.0,
+        "questions": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "id": 10,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:12-07:00",
+      "type": "charge",
+      "data": {
+        "id": "A2",
+        "remittance_id": null,
+        "ref": "NM-2302",
+        "code": "DF",
+        "description": "End-cap display fee (notice Apr 25)",
+        "product": null,
+        "units": 1,
+        "rate": 800.0,
+        "amount": 800.0,
+        "period_start": "2026-04-01",
+        "period_end": "2026-04-30",
+        "notice_date": "2026-04-25"
+      }
+    },
+    {
+      "id": 11,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:15-07:00",
+      "type": "finding",
+      "data": {
+        "charge_id": "A2",
+        "finding": "Display fee of $800 is within §5.4's $1,500 limit. Notice came Apr 25, only 5 days ahead.",
+        "type": "discretionary_fee",
+        "evidence_ids": [
+          "ev-deal-5.4",
+          "ev-notice-0425",
+          "ev-charge-A2",
+          "ev-rule-1"
+        ],
+        "confidence": 0.95,
+        "open_questions": [],
+        "id": "F-A2",
+        "expected": 800.0,
+        "taken": 800.0,
+        "delta": 0.0,
+        "readers_agree": true,
+        "math": [
+          {
+            "text": "$800 fee",
+            "evidence_id": "ev-charge-A2"
+          },
+          {
+            "text": " · ",
+            "evidence_id": null
+          },
+          {
+            "text": "notice Apr 25",
+            "evidence_id": "ev-notice-0425"
+          },
+          {
+            "text": " (5 days) · ",
+            "evidence_id": null
+          },
+          {
+            "text": "Rule #1",
+            "evidence_id": "ev-rule-1"
+          },
+          {
+            "text": ": 5 < 14 → dispute",
+            "evidence_id": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:16-07:00",
+      "type": "log",
+      "data": {
+        "text": "Matched Rule #1 (learned Oct 24, approved by Dana) for A2.",
+        "level": "good",
+        "actor": "gate",
+        "charge_id": "A2"
+      }
+    },
+    {
+      "id": 13,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:17-07:00",
+      "type": "decision",
+      "data": {
+        "charge_id": "A2",
+        "decision": "dispute",
+        "disputed": 800.0,
+        "accepted": 0.0,
+        "waiting": 0.0,
+        "gate_row": 3,
+        "rule_id": "rule-1",
+        "decided_by": "gate",
+        "decided_at": "2026-10-24T10:40:17-07:00",
+        "reason": "Rule #1: 5 days' notice is under 14, so dispute."
+      }
+    },
+    {
+      "id": 14,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:17-07:00",
+      "type": "totals",
+      "data": {
+        "taken": 2000.0,
+        "disputed": 800.0,
+        "accepted": 1200.0,
+        "waiting": 0.0,
+        "undecided": 0.0,
+        "questions": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "id": 15,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:18-07:00",
+      "type": "log",
+      "data": {
+        "text": "0 questions asked. Both fees decided by Rule #1.",
+        "level": "good",
+        "actor": "gate",
+        "charge_id": null
+      }
+    },
+    {
+      "id": 16,
+      "run_id": "run-april-demo",
+      "at": "2026-10-24T10:40:19-07:00",
+      "type": "run",
+      "data": {
+        "run_id": "run-april-demo",
+        "kind": "april",
+        "status": "finished",
+        "remittance": null,
+        "demo_mode": false
+      }
+    }
+  ],
+  "charges": {
+    "A1": {
+      "charge": {
+        "id": "A1",
+        "remittance_id": null,
+        "ref": "NM-2301",
+        "code": "DF",
+        "description": "Display fee (notice Apr 12)",
+        "product": null,
+        "units": 1,
+        "rate": 1200.0,
+        "amount": 1200.0,
+        "period_start": "2026-04-01",
+        "period_end": "2026-04-30",
+        "notice_date": "2026-04-12"
+      },
+      "finding": {
+        "charge_id": "A1",
+        "finding": "Display fee of $1,200 is within §5.4's $1,500 limit. Notice came Apr 12, 18 days ahead.",
+        "type": "discretionary_fee",
+        "evidence_ids": [
+          "ev-deal-5.4",
+          "ev-notice-0412",
+          "ev-charge-A1",
+          "ev-rule-1"
+        ],
+        "confidence": 0.95,
+        "open_questions": [],
+        "id": "F-A1",
+        "expected": 1200.0,
+        "taken": 1200.0,
+        "delta": 0.0,
+        "readers_agree": true,
+        "math": [
+          {
+            "text": "$1,200 fee",
+            "evidence_id": "ev-charge-A1"
+          },
+          {
+            "text": " ≤ ",
+            "evidence_id": null
+          },
+          {
+            "text": "$1,500 limit",
+            "evidence_id": "ev-deal-5.4"
+          },
+          {
+            "text": " · ",
+            "evidence_id": null
+          },
+          {
+            "text": "notice Apr 12",
+            "evidence_id": "ev-notice-0412"
+          },
+          {
+            "text": " (18 days) · ",
+            "evidence_id": null
+          },
+          {
+            "text": "Rule #1",
+            "evidence_id": "ev-rule-1"
+          },
+          {
+            "text": ": 18 ≥ 14 → accept",
+            "evidence_id": null
+          }
+        ]
+      },
+      "decision": {
+        "charge_id": "A1",
+        "decision": "accept",
+        "disputed": 0.0,
+        "accepted": 1200.0,
+        "waiting": 0.0,
+        "gate_row": 3,
+        "rule_id": "rule-1",
+        "decided_by": "gate",
+        "decided_at": "2026-10-24T10:40:10-07:00",
+        "reason": "Rule #1: 18 days' notice is at least 14, so accept."
+      },
+      "rehearsal": null,
+      "evidence": [
+        {
+          "id": "ev-deal-5.4",
+          "kind": "clause",
+          "label": "§5.4 display fee",
+          "summary": "Northmart may charge up to $1,500 a month for display, at its discretion, with written notice.",
+          "quote": {
+            "doc_id": "spring-promo",
+            "text": "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.",
+            "char_start": 1968,
+            "char_end": 2080
+          },
+          "rows": [],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": null
+        },
+        {
+          "id": "ev-notice-0412",
+          "kind": "notice",
+          "label": "Notice Apr 12",
+          "summary": "Northmart gave written notice of a $1,200 display fee on Apr 12, 18 days before month end.",
+          "quote": {
+            "doc_id": "display-fee-2026-04-12",
+            "text": "Northmart will charge a display fee of $1,200.00 for the month ending April 30, 2026, for secondary display placement of Peak Bar products.",
+            "char_start": 336,
+            "char_end": 475
+          },
+          "rows": [
+            {
+              "notice_date": "2026-04-12",
+              "period_end": "2026-04-30",
+              "notice_days": 18
+            }
+          ],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": null
+        },
+        {
+          "id": "ev-charge-A1",
+          "kind": "charge",
+          "label": "Charge A1 (NM-2301)",
+          "summary": "Northmart's remittance line NM-2301: Display fee (notice Apr 12).",
+          "quote": null,
+          "rows": [
+            {
+              "id": "A1",
+              "remittance_id": null,
+              "ref": "NM-2301",
+              "code": "DF",
+              "description": "Display fee (notice Apr 12)",
+              "product": null,
+              "units": 1,
+              "rate": 1200.0,
+              "amount": 1200.0,
+              "period_start": "2026-04-01",
+              "period_end": "2026-04-30",
+              "notice_date": "2026-04-12"
+            }
+          ],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": null
+        },
+        {
+          "id": "ev-rule-1",
+          "kind": "rule",
+          "label": "Rule #1",
+          "summary": "Accept Northmart display fees with at least 14 days' notice; otherwise dispute. Learned from Dana's answer.",
+          "quote": null,
+          "rows": [],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": "rule-1",
+          "approval_id": null,
+          "person": "Dana Okafor (owner)"
+        },
+        {
+          "id": "ev-answer-Q-1",
+          "kind": "person",
+          "label": "Dana's answer",
+          "summary": "Dana Okafor (owner) answered by text: \"accept if notice is at least 14 days\".",
+          "quote": null,
+          "rows": [],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": "Dana Okafor (owner)"
+        }
+      ]
+    },
+    "A2": {
+      "charge": {
+        "id": "A2",
+        "remittance_id": null,
+        "ref": "NM-2302",
+        "code": "DF",
+        "description": "End-cap display fee (notice Apr 25)",
+        "product": null,
+        "units": 1,
+        "rate": 800.0,
+        "amount": 800.0,
+        "period_start": "2026-04-01",
+        "period_end": "2026-04-30",
+        "notice_date": "2026-04-25"
+      },
+      "finding": {
+        "charge_id": "A2",
+        "finding": "Display fee of $800 is within §5.4's $1,500 limit. Notice came Apr 25, only 5 days ahead.",
+        "type": "discretionary_fee",
+        "evidence_ids": [
+          "ev-deal-5.4",
+          "ev-notice-0425",
+          "ev-charge-A2",
+          "ev-rule-1"
+        ],
+        "confidence": 0.95,
+        "open_questions": [],
+        "id": "F-A2",
+        "expected": 800.0,
+        "taken": 800.0,
+        "delta": 0.0,
+        "readers_agree": true,
+        "math": [
+          {
+            "text": "$800 fee",
+            "evidence_id": "ev-charge-A2"
+          },
+          {
+            "text": " · ",
+            "evidence_id": null
+          },
+          {
+            "text": "notice Apr 25",
+            "evidence_id": "ev-notice-0425"
+          },
+          {
+            "text": " (5 days) · ",
+            "evidence_id": null
+          },
+          {
+            "text": "Rule #1",
+            "evidence_id": "ev-rule-1"
+          },
+          {
+            "text": ": 5 < 14 → dispute",
+            "evidence_id": null
+          }
+        ]
+      },
+      "decision": {
+        "charge_id": "A2",
+        "decision": "dispute",
+        "disputed": 800.0,
+        "accepted": 0.0,
+        "waiting": 0.0,
+        "gate_row": 3,
+        "rule_id": "rule-1",
+        "decided_by": "gate",
+        "decided_at": "2026-10-24T10:40:17-07:00",
+        "reason": "Rule #1: 5 days' notice is under 14, so dispute."
+      },
+      "rehearsal": null,
+      "evidence": [
+        {
+          "id": "ev-deal-5.4",
+          "kind": "clause",
+          "label": "§5.4 display fee",
+          "summary": "Northmart may charge up to $1,500 a month for display, at its discretion, with written notice.",
+          "quote": {
+            "doc_id": "spring-promo",
+            "text": "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.",
+            "char_start": 1968,
+            "char_end": 2080
+          },
+          "rows": [],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": null
+        },
+        {
+          "id": "ev-notice-0425",
+          "kind": "notice",
+          "label": "Notice Apr 25",
+          "summary": "Northmart gave written notice of an $800 end-cap display fee on Apr 25, 5 days before month end.",
+          "quote": {
+            "doc_id": "display-fee-2026-04-25",
+            "text": "Northmart will charge an additional display fee of $800.00 for the month ending April 30, 2026, for end-cap display placement of Peak Bar products.",
+            "char_start": 336,
+            "char_end": 483
+          },
+          "rows": [
+            {
+              "notice_date": "2026-04-25",
+              "period_end": "2026-04-30",
+              "notice_days": 5
+            }
+          ],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": null
+        },
+        {
+          "id": "ev-charge-A2",
+          "kind": "charge",
+          "label": "Charge A2 (NM-2302)",
+          "summary": "Northmart's remittance line NM-2302: End-cap display fee (notice Apr 25).",
+          "quote": null,
+          "rows": [
+            {
+              "id": "A2",
+              "remittance_id": null,
+              "ref": "NM-2302",
+              "code": "DF",
+              "description": "End-cap display fee (notice Apr 25)",
+              "product": null,
+              "units": 1,
+              "rate": 800.0,
+              "amount": 800.0,
+              "period_start": "2026-04-01",
+              "period_end": "2026-04-30",
+              "notice_date": "2026-04-25"
+            }
+          ],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": null
+        },
+        {
+          "id": "ev-rule-1",
+          "kind": "rule",
+          "label": "Rule #1",
+          "summary": "Accept Northmart display fees with at least 14 days' notice; otherwise dispute. Learned from Dana's answer.",
+          "quote": null,
+          "rows": [],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": "rule-1",
+          "approval_id": null,
+          "person": "Dana Okafor (owner)"
+        },
+        {
+          "id": "ev-answer-Q-1",
+          "kind": "person",
+          "label": "Dana's answer",
+          "summary": "Dana Okafor (owner) answered by text: \"accept if notice is at least 14 days\".",
+          "quote": null,
+          "rows": [],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": "Dana Okafor (owner)"
+        }
+      ]
+    }
+  },
+  "evidence": {
+    "ev-answer-Q-1": {
+      "id": "ev-answer-Q-1",
+      "kind": "person",
+      "label": "Dana's answer",
+      "summary": "Dana Okafor (owner) answered by text: \"accept if notice is at least 14 days\".",
+      "quote": null,
+      "rows": [],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": "Dana Okafor (owner)"
+    },
+    "ev-charge-A1": {
+      "id": "ev-charge-A1",
+      "kind": "charge",
+      "label": "Charge A1 (NM-2301)",
+      "summary": "Northmart's remittance line NM-2301: Display fee (notice Apr 12).",
+      "quote": null,
+      "rows": [
+        {
+          "id": "A1",
+          "remittance_id": null,
+          "ref": "NM-2301",
+          "code": "DF",
+          "description": "Display fee (notice Apr 12)",
+          "product": null,
+          "units": 1,
+          "rate": 1200.0,
+          "amount": 1200.0,
+          "period_start": "2026-04-01",
+          "period_end": "2026-04-30",
+          "notice_date": "2026-04-12"
+        }
+      ],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-charge-A2": {
+      "id": "ev-charge-A2",
+      "kind": "charge",
+      "label": "Charge A2 (NM-2302)",
+      "summary": "Northmart's remittance line NM-2302: End-cap display fee (notice Apr 25).",
+      "quote": null,
+      "rows": [
+        {
+          "id": "A2",
+          "remittance_id": null,
+          "ref": "NM-2302",
+          "code": "DF",
+          "description": "End-cap display fee (notice Apr 25)",
+          "product": null,
+          "units": 1,
+          "rate": 800.0,
+          "amount": 800.0,
+          "period_start": "2026-04-01",
+          "period_end": "2026-04-30",
+          "notice_date": "2026-04-25"
+        }
+      ],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-deal-5.4": {
+      "id": "ev-deal-5.4",
+      "kind": "clause",
+      "label": "§5.4 display fee",
+      "summary": "Northmart may charge up to $1,500 a month for display, at its discretion, with written notice.",
+      "quote": {
+        "doc_id": "spring-promo",
+        "text": "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.",
+        "char_start": 1968,
+        "char_end": 2080
+      },
+      "rows": [],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-notice-0412": {
+      "id": "ev-notice-0412",
+      "kind": "notice",
+      "label": "Notice Apr 12",
+      "summary": "Northmart gave written notice of a $1,200 display fee on Apr 12, 18 days before month end.",
+      "quote": {
+        "doc_id": "display-fee-2026-04-12",
+        "text": "Northmart will charge a display fee of $1,200.00 for the month ending April 30, 2026, for secondary display placement of Peak Bar products.",
+        "char_start": 336,
+        "char_end": 475
+      },
+      "rows": [
+        {
+          "notice_date": "2026-04-12",
+          "period_end": "2026-04-30",
+          "notice_days": 18
+        }
+      ],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-notice-0425": {
+      "id": "ev-notice-0425",
+      "kind": "notice",
+      "label": "Notice Apr 25",
+      "summary": "Northmart gave written notice of an $800 end-cap display fee on Apr 25, 5 days before month end.",
+      "quote": {
+        "doc_id": "display-fee-2026-04-25",
+        "text": "Northmart will charge an additional display fee of $800.00 for the month ending April 30, 2026, for end-cap display placement of Peak Bar products.",
+        "char_start": 336,
+        "char_end": 483
+      },
+      "rows": [
+        {
+          "notice_date": "2026-04-25",
+          "period_end": "2026-04-30",
+          "notice_days": 5
+        }
+      ],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-rule-1": {
+      "id": "ev-rule-1",
+      "kind": "rule",
+      "label": "Rule #1",
+      "summary": "Accept Northmart display fees with at least 14 days' notice; otherwise dispute. Learned from Dana's answer.",
+      "quote": null,
+      "rows": [],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": "rule-1",
+      "approval_id": null,
+      "person": "Dana Okafor (owner)"
+    }
+  }
+}

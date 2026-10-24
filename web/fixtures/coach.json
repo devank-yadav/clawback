@@ -1,0 +1,35 @@
+{
+  "draft_doc_id": "summer-draft",
+  "redlines": [
+    {
+      "clause_ref": "§5.4",
+      "original_quote": "Northmart may charge a display fee of up to $1,500 per month at its discretion.",
+      "suggested_text": "Northmart may charge a display fee of up to $1,500 per month, with written notice to Supplier at least 14 days before the end of that month.",
+      "reason": "In March this clause needed a question to Dana to settle a $1,200 fee. A set notice period makes the answer automatic.",
+      "dollars_at_stake": 1200.0,
+      "finding_ids": [
+        "F-C6"
+      ]
+    },
+    {
+      "clause_ref": "§3.2",
+      "original_quote": "The promotional allowance applies to a maximum of 6,000 units in total.",
+      "suggested_text": "The promotional allowance applies to a maximum of 6,000 units in total, including any units added by an extension. Units over the cap are not covered unless a signed amendment raises it.",
+      "reason": "In March, $1,540 was taken for bars sold after the cap.",
+      "dollars_at_stake": 1540.0,
+      "finding_ids": [
+        "F-C4"
+      ]
+    },
+    {
+      "clause_ref": "§3.1",
+      "original_quote": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between May 1 and May 31, 2026.",
+      "suggested_text": "Supplier will fund a promotional allowance of $1.00 per unit on the products listed by item number in Schedule A, sold between May 1 and May 31, 2026. No other products are covered.",
+      "reason": "In March, $1,000 was taken for Mint, which the deal never covered.",
+      "dollars_at_stake": 1000.0,
+      "finding_ids": [
+        "F-C5"
+      ]
+    }
+  ]
+}

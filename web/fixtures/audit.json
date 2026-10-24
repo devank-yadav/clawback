@@ -1,0 +1,504 @@
+[
+  {
+    "id": 1,
+    "at": "2026-10-24T10:30:16-07:00",
+    "actor": "gate",
+    "action": "decision",
+    "object_ref": "charge:C1",
+    "evidence": {
+      "event_id": 13,
+      "charge_id": "C1",
+      "decision": "split",
+      "disputed": "600.00",
+      "accepted": "1200.00",
+      "waiting": "0.00",
+      "gate_row": 7,
+      "rule_id": null,
+      "decided_by": "gate",
+      "decided_at": "2026-10-24T10:30:16-07:00",
+      "reason": "Deal rate is $1.00, not $1.50: accept $1,200, dispute $600."
+    },
+    "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "hash": "56f389dd5e5dd2a7f18e188db17387d462910e2e43a2ab68d76ac71c98a7bd3f"
+  },
+  {
+    "id": 2,
+    "at": "2026-10-24T10:30:26-07:00",
+    "actor": "gate",
+    "action": "decision",
+    "object_ref": "charge:C2",
+    "evidence": {
+      "event_id": 20,
+      "charge_id": "C2",
+      "decision": "dispute",
+      "disputed": "980.00",
+      "accepted": "0.00",
+      "waiting": "0.00",
+      "gate_row": 7,
+      "rule_id": null,
+      "decided_by": "gate",
+      "decided_at": "2026-10-24T10:30:26-07:00",
+      "reason": "Week 2 was already paid on Mar 14."
+    },
+    "prev_hash": "56f389dd5e5dd2a7f18e188db17387d462910e2e43a2ab68d76ac71c98a7bd3f",
+    "hash": "b1b261bb29a88367158df5589ee1d277f956391a319aa75be4c174ef96e3864d"
+  },
+  {
+    "id": 3,
+    "at": "2026-10-24T10:30:33-07:00",
+    "actor": "gate",
+    "action": "decision",
+    "object_ref": "charge:C3",
+    "evidence": {
+      "event_id": 25,
+      "charge_id": "C3",
+      "decision": "accept",
+      "disputed": "0.00",
+      "accepted": "330.00",
+      "waiting": "0.00",
+      "gate_row": 5,
+      "rule_id": null,
+      "decided_by": "gate",
+      "decided_at": "2026-10-24T10:30:33-07:00",
+      "reason": "Matches the deal as extended by the broker's Mar 28 email."
+    },
+    "prev_hash": "b1b261bb29a88367158df5589ee1d277f956391a319aa75be4c174ef96e3864d",
+    "hash": "25ba5d42cb50172461e6db1807a963d0244b567d61b3f8a77c0ab116380d38db"
+  },
+  {
+    "id": 4,
+    "at": "2026-10-24T10:30:43-07:00",
+    "actor": "gate",
+    "action": "decision",
+    "object_ref": "charge:C4",
+    "evidence": {
+      "event_id": 32,
+      "charge_id": "C4",
+      "decision": "dispute",
+      "disputed": "1540.00",
+      "accepted": "0.00",
+      "waiting": "0.00",
+      "gate_row": 7,
+      "rule_id": null,
+      "decided_by": "gate",
+      "decided_at": "2026-10-24T10:30:43-07:00",
+      "reason": "Over the 5,000-bar cap."
+    },
+    "prev_hash": "25ba5d42cb50172461e6db1807a963d0244b567d61b3f8a77c0ab116380d38db",
+    "hash": "904fb53d4986a64903cf3d609887dfee1e1336def2c9701267ab56461b88bb5e"
+  },
+  {
+    "id": 5,
+    "at": "2026-10-24T10:30:53-07:00",
+    "actor": "gate",
+    "action": "decision",
+    "object_ref": "charge:C5",
+    "evidence": {
+      "event_id": 39,
+      "charge_id": "C5",
+      "decision": "dispute",
+      "disputed": "1000.00",
+      "accepted": "0.00",
+      "waiting": "0.00",
+      "gate_row": 7,
+      "rule_id": null,
+      "decided_by": "gate",
+      "decided_at": "2026-10-24T10:30:53-07:00",
+      "reason": "Mint isn't covered by the deal."
+    },
+    "prev_hash": "904fb53d4986a64903cf3d609887dfee1e1336def2c9701267ab56461b88bb5e",
+    "hash": "08f0d8f4f7dd2d56534fcb78da546542308bfaea69ed9d21d725e295de80574d"
+  },
+  {
+    "id": 6,
+    "at": "2026-10-24T10:31:00-07:00",
+    "actor": "gate",
+    "action": "decision",
+    "object_ref": "charge:C6",
+    "evidence": {
+      "event_id": 44,
+      "charge_id": "C6",
+      "decision": "ask",
+      "disputed": "0.00",
+      "accepted": "0.00",
+      "waiting": "1200.00",
+      "gate_row": 4,
+      "rule_id": null,
+      "decided_by": "gate",
+      "decided_at": "2026-10-24T10:31:00-07:00",
+      "reason": "'At its discretion' and no saved rule: asking Dana."
+    },
+    "prev_hash": "08f0d8f4f7dd2d56534fcb78da546542308bfaea69ed9d21d725e295de80574d",
+    "hash": "c1aa058bbebc67c41205ba89c5cf51dab2f30ddd45fd820c74f004cd9419b38a"
+  },
+  {
+    "id": 7,
+    "at": "2026-10-24T10:31:01-07:00",
+    "actor": "gate",
+    "action": "question_sent",
+    "object_ref": "question:Q-1",
+    "evidence": {
+      "event_id": 46,
+      "id": "Q-1",
+      "to_role": "owner",
+      "charge_id": "C6",
+      "text": "Northmart took a $1,200 display fee for March. The deal allows up to $1,500 'at its discretion'. Notice came 20 days ahead. Accept or dispute? Tell me your rule and I'll remember it.",
+      "channel": "sms",
+      "sent_at": "2026-10-24T10:31:01-07:00",
+      "answer": null,
+      "answered_at": null,
+      "rule_id": null
+    },
+    "prev_hash": "c1aa058bbebc67c41205ba89c5cf51dab2f30ddd45fd820c74f004cd9419b38a",
+    "hash": "064dea9a9d7f284ffdf18941d05ea8b223548dd31f50021b101bb1210e768efa"
+  },
+  {
+    "id": 8,
+    "at": "2026-10-24T10:31:04-07:00",
+    "actor": "negotiator",
+    "action": "dispute_filed",
+    "object_ref": "dispute:D-0417",
+    "evidence": {
+      "event_id": 48,
+      "id": "D-0417",
+      "remittance_id": "REM-3102",
+      "counterparty": "Northmart",
+      "lines": [
+        {
+          "charge_id": "C1",
+          "ref": "NM-2229",
+          "amount": "600.00",
+          "reason": "Rate charged $1.50 a bar; the deal says $1.00.",
+          "clause_ref": "§3.1",
+          "quote": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
+          "math": "1,200 bars × ($1.50 − $1.00) = $600",
+          "evidence_ids": [
+            "ev-deal-3.1",
+            "ev-sales-w1",
+            "ev-charge-C1"
+          ]
+        },
+        {
+          "charge_id": "C2",
+          "ref": "NM-2231",
+          "amount": "980.00",
+          "reason": "Week 2 was already paid on Mar 14 (NM-2178).",
+          "clause_ref": "§4.2",
+          "quote": "A unit may be claimed only once.",
+          "math": "980 bars for Mar 8 to 14 already paid under NM-2178",
+          "evidence_ids": [
+            "ev-payment-NM-2178",
+            "ev-sales-w2",
+            "ev-charge-C2",
+            "ev-deal-4.2"
+          ]
+        },
+        {
+          "charge_id": "C4",
+          "ref": "NM-2236",
+          "amount": "1540.00",
+          "reason": "Over the 5,000-unit cap.",
+          "clause_ref": "§3.2",
+          "quote": "The promotional allowance applies to a maximum of 5,000 units in total.",
+          "math": "1,200 + 980 + 2,820 = 5,000 by Mar 21; 1,540 bars after the cap",
+          "evidence_ids": [
+            "ev-deal-3.2",
+            "ev-sales-w1",
+            "ev-sales-w2",
+            "ev-sales-w3",
+            "ev-sales-w4",
+            "ev-charge-C4"
+          ]
+        },
+        {
+          "charge_id": "C5",
+          "ref": "NM-2237",
+          "amount": "1000.00",
+          "reason": "Mint is not a promoted product.",
+          "clause_ref": "§3.1",
+          "quote": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
+          "math": "1,000 Mint bars; Mint isn't covered, so $0 allowed",
+          "evidence_ids": [
+            "ev-deal-3.1",
+            "ev-sales-mint",
+            "ev-charge-C5"
+          ]
+        }
+      ],
+      "total": "4120.00",
+      "status": "filed",
+      "approved_by": "policy",
+      "filed_at": "2026-10-24T10:31:03-07:00"
+    },
+    "prev_hash": "064dea9a9d7f284ffdf18941d05ea8b223548dd31f50021b101bb1210e768efa",
+    "hash": "cc6fffe1dc764c92f8588133cde2c7264643747509ff5f8f13f3eda40c0b0c66"
+  },
+  {
+    "id": 9,
+    "at": "2026-10-24T10:31:16-07:00",
+    "actor": "owner:Dana",
+    "action": "answer_received",
+    "object_ref": "question:Q-1",
+    "evidence": {
+      "event_id": 51,
+      "question_id": "Q-1",
+      "from_role": "owner",
+      "text": "accept if notice is at least 14 days",
+      "answered_at": "2026-10-24T10:31:16-07:00",
+      "rule_id": "rule-1"
+    },
+    "prev_hash": "cc6fffe1dc764c92f8588133cde2c7264643747509ff5f8f13f3eda40c0b0c66",
+    "hash": "ac32aea22fe8021eb69dc04c145226d69d839896193cdb891b78681fde72cf75"
+  },
+  {
+    "id": 10,
+    "at": "2026-10-24T10:31:17-07:00",
+    "actor": "owner:Dana",
+    "action": "rule_saved",
+    "object_ref": "rule:rule-1",
+    "evidence": {
+      "event_id": 52,
+      "id": "rule-1",
+      "label": "Rule #1",
+      "pattern_text": "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.",
+      "term_type": "fee_discretion",
+      "counterparty": "Northmart",
+      "condition": "notice_days >= 14",
+      "decision": "accept",
+      "else_decision": "dispute",
+      "summary": "Accept Northmart display fees with at least 14 days' notice; otherwise dispute.",
+      "approver": "Dana Okafor",
+      "approver_role": "owner",
+      "learned_at": "2026-10-24T10:31:17-07:00",
+      "source_question_id": "Q-1",
+      "status": "active"
+    },
+    "prev_hash": "ac32aea22fe8021eb69dc04c145226d69d839896193cdb891b78681fde72cf75",
+    "hash": "0cedde23e0caa0fc4b2151917a0bd4695bfb5b46195621e37f819f2e11c58d04"
+  },
+  {
+    "id": 11,
+    "at": "2026-10-24T10:31:19-07:00",
+    "actor": "gate",
+    "action": "decision",
+    "object_ref": "charge:C6",
+    "evidence": {
+      "event_id": 54,
+      "charge_id": "C6",
+      "decision": "accept",
+      "disputed": "0.00",
+      "accepted": "1200.00",
+      "waiting": "0.00",
+      "gate_row": 3,
+      "rule_id": "rule-1",
+      "decided_by": "gate",
+      "decided_at": "2026-10-24T10:31:19-07:00",
+      "reason": "Rule #1: 20 days' notice is at least 14, so accept."
+    },
+    "prev_hash": "0cedde23e0caa0fc4b2151917a0bd4695bfb5b46195621e37f819f2e11c58d04",
+    "hash": "67e0668b051ca37a93b9673d94a3051d032aea028f2256243dd529785b594e58"
+  },
+  {
+    "id": 12,
+    "at": "2026-10-24T10:31:21-07:00",
+    "actor": "bookkeeper",
+    "action": "approval_requested",
+    "object_ref": "approval:AP-1",
+    "evidence": {
+      "event_id": 56,
+      "id": "AP-1",
+      "kind": "credit_memo",
+      "amount": "2730.00",
+      "lines": [
+        {
+          "charge_id": "C1",
+          "amount": "1200.00"
+        },
+        {
+          "charge_id": "C3",
+          "amount": "330.00"
+        },
+        {
+          "charge_id": "C6",
+          "amount": "1200.00"
+        }
+      ],
+      "proposed_by": "bookkeeper",
+      "approver_role": "controller",
+      "status": "pending",
+      "text": "Approve credit memo of $2,730 (3 lines)?",
+      "note": null,
+      "requested_at": "2026-10-24T10:31:20-07:00",
+      "decided_at": null
+    },
+    "prev_hash": "67e0668b051ca37a93b9673d94a3051d032aea028f2256243dd529785b594e58",
+    "hash": "74104d8f868a07546dd10d57daef93cc8a6441352f70485c98f2283db4cb7ea3"
+  },
+  {
+    "id": 13,
+    "at": "2026-10-24T10:31:28-07:00",
+    "actor": "controller:Sam",
+    "action": "credit_memo_approved",
+    "object_ref": "approval:AP-1",
+    "evidence": {
+      "event_id": 58,
+      "id": "AP-1",
+      "kind": "credit_memo",
+      "amount": "2730.00",
+      "lines": [
+        {
+          "charge_id": "C1",
+          "amount": "1200.00"
+        },
+        {
+          "charge_id": "C3",
+          "amount": "330.00"
+        },
+        {
+          "charge_id": "C6",
+          "amount": "1200.00"
+        }
+      ],
+      "proposed_by": "bookkeeper",
+      "approver_role": "controller",
+      "status": "approved",
+      "text": "Approve credit memo of $2,730 (3 lines)?",
+      "note": null,
+      "requested_at": "2026-10-24T10:31:20-07:00",
+      "decided_at": "2026-10-24T10:31:28-07:00"
+    },
+    "prev_hash": "74104d8f868a07546dd10d57daef93cc8a6441352f70485c98f2283db4cb7ea3",
+    "hash": "4519a92d5c492a126e0415a1b480256c14585456c253fc45422ab6ce02dfee57"
+  },
+  {
+    "id": 14,
+    "at": "2026-10-24T10:31:31-07:00",
+    "actor": "bookkeeper",
+    "action": "qbo_credit_memo_posted",
+    "object_ref": "ledger:LP-1",
+    "evidence": {
+      "event_id": 60,
+      "id": "LP-1",
+      "qbo_entity": "credit_memo",
+      "qbo_id": null,
+      "amount": "2730.00",
+      "lines": [
+        {
+          "charge_id": "C1",
+          "description": "Spring promo week 1, fair part",
+          "amount": "1200.00"
+        },
+        {
+          "charge_id": "C3",
+          "description": "Spring promo Apr 1 to 7 (broker extension)",
+          "amount": "330.00"
+        },
+        {
+          "charge_id": "C6",
+          "description": "Display fee March (Rule #1)",
+          "amount": "1200.00"
+        }
+      ],
+      "status": "posted",
+      "approval_id": "AP-1",
+      "note": "Credit memo applied to INV-3102.",
+      "posted_at": "2026-10-24T10:31:30-07:00"
+    },
+    "prev_hash": "4519a92d5c492a126e0415a1b480256c14585456c253fc45422ab6ce02dfee57",
+    "hash": "def33a3b48fca04c823e238d5c588e077c6f57725f6c59975192ee2f62202fae"
+  },
+  {
+    "id": 15,
+    "at": "2026-10-24T10:31:32-07:00",
+    "actor": "bookkeeper",
+    "action": "qbo_invoice_note_posted",
+    "object_ref": "ledger:LP-2",
+    "evidence": {
+      "event_id": 61,
+      "id": "LP-2",
+      "qbo_entity": "invoice_note",
+      "qbo_id": null,
+      "amount": "4120.00",
+      "lines": [
+        {
+          "charge_id": "C1",
+          "description": "NM-2229: Rate charged $1.50 a bar; the deal says $1.00.",
+          "amount": "600.00"
+        },
+        {
+          "charge_id": "C2",
+          "description": "NM-2231: Week 2 was already paid on Mar 14 (NM-2178).",
+          "amount": "980.00"
+        },
+        {
+          "charge_id": "C4",
+          "description": "NM-2236: Over the 5,000-unit cap.",
+          "amount": "1540.00"
+        },
+        {
+          "charge_id": "C5",
+          "description": "NM-2237: Mint is not a promoted product.",
+          "amount": "1000.00"
+        }
+      ],
+      "status": "posted",
+      "approval_id": null,
+      "note": "$4,120 left open on INV-3102, disputed under D-0417.",
+      "posted_at": "2026-10-24T10:31:32-07:00"
+    },
+    "prev_hash": "def33a3b48fca04c823e238d5c588e077c6f57725f6c59975192ee2f62202fae",
+    "hash": "db34519933317b22342c5527624aaedb345693d827b2f854df6904e310b224a4"
+  },
+  {
+    "id": 16,
+    "at": "2026-10-24T10:31:41-07:00",
+    "actor": "northmart",
+    "action": "portal_message",
+    "object_ref": "portal:PM-1",
+    "evidence": {
+      "event_id": 63,
+      "id": "PM-1",
+      "dispute_id": "D-0417",
+      "from_party": "northmart",
+      "text": "There was no unit cap on the Spring promo. The week 4 deduction stands.",
+      "attachment_doc_id": null,
+      "classification": "claim_without_document",
+      "charge_ids": [
+        "C4"
+      ],
+      "evidence_ids": [],
+      "created_at": "2026-10-24T10:31:41-07:00"
+    },
+    "prev_hash": "db34519933317b22342c5527624aaedb345693d827b2f854df6904e310b224a4",
+    "hash": "7a2618ad47c6af6721254b3a6c884e7955e73c9d06d6fb13c6e34704feb31459"
+  },
+  {
+    "id": 17,
+    "at": "2026-10-24T10:31:45-07:00",
+    "actor": "negotiator",
+    "action": "portal_message",
+    "object_ref": "portal:PM-2",
+    "evidence": {
+      "event_id": 65,
+      "id": "PM-2",
+      "dispute_id": "D-0417",
+      "from_party": "clawback",
+      "text": "§3.2 of the signed deal says: \"The promotional allowance applies to a maximum of 5,000 units in total.\" Store sales for weeks 1 to 3 add up to 5,000 bars (1,200 + 980 + 2,820), so the cap was reached on Mar 21 and week 4's 1,540 bars aren't covered. If the cap was changed, please attach the signed amendment.",
+      "attachment_doc_id": null,
+      "classification": null,
+      "charge_ids": [
+        "C4"
+      ],
+      "evidence_ids": [
+        "ev-deal-3.2",
+        "ev-sales-w1",
+        "ev-sales-w2",
+        "ev-sales-w3",
+        "ev-sales-w4"
+      ],
+      "created_at": "2026-10-24T10:31:45-07:00"
+    },
+    "prev_hash": "7a2618ad47c6af6721254b3a6c884e7955e73c9d06d6fb13c6e34704feb31459",
+    "hash": "ab00b83175128281669727a5744ee3d754a530c7c4094984b104a2e1aa28f001"
+  }
+]
