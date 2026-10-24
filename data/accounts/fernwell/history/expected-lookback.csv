@@ -1,0 +1,17 @@
+ref,allowed,wrongly_taken,status,why
+TB-85102,2140.00,0.00,fair,"Matches the plan: 1,712 units sold Oct 5 to 18 x $1.25 (TM-FALL-25)."
+TB-85117,,,not_checked,"Unsaleables: not a promo, shortage or price claim, so the lookback doesn't check it."
+TB-85120,496.80,0.00,fair,"Proof of delivery DL-38611-2 notes 18 cases short (142 of 160 received), so the shortage is real."
+TB-85590,3020.00,0.00,fair,"Matches the plan: 2,416 units sold Nov 16 to 29 x $1.25 (TM-HOL-25)."
+TB-85604,,,not_checked,"Unsaleables: not a promo, shortage or price claim, so the lookback doesn't check it."
+TB-85611,0.00,432.00,settled,"Delivery DL-38790-1 was invoiced at $27.60, the 2025 list price, so no price difference was owed. Tidemark repaid all $432.00."
+TB-86120,2762.50,717.50,past_window,"Billed on 2,784 units (464 cases shipped), but scan data shows 2,210 units sold Nov 30 to Dec 27: 2,210 x $1.25 = $2,762.50. Taken Jan 30, 80 days ago, past the 60-day window."
+TB-86133,,,not_checked,"Unsaleables: not a promo, shortage or price claim, so the lookback doesn't check it."
+TB-86140,0.00,810.00,settled,Proof of delivery DL-39022-3 shows all 130 cases received and signed; Tidemark repaid all $810.00.
+TB-86701,,,not_checked,"Unsaleables: not a promo, shortage or price claim, so the lookback doesn't check it."
+TB-86715,640.80,0.00,fair,"Delivery DL-39340-2 was invoiced at $30.00 against the 2025 list price of $27.60, so 267 cases x $2.40 was owed."
+TB-86722,,,not_checked,"Setup fee: not a promo, shortage or price claim, so the lookback doesn't check it."
+TB-87655,2860.00,0.00,fair,"Matches the plan: 2,860 units sold Feb 1 to 14 x $1.00 (TM-WIN-26)."
+TB-87990,2440.00,0.00,fair,"Matches the plan: 2,440 units sold Feb 15 to 28 x $1.00 (TM-WIN-26)."
+TB-88002,,,not_checked,"Unsaleables: not a promo, shortage or price claim, so the lookback doesn't check it."
+TB-88010,0.00,576.00,claimable,"Delivery DL-39718-3 was invoiced at $28.80, the Schedule A price; the claim down to $27.00 uses the 2025 price Schedule A replaced. Taken Mar 30; 39 days left in the 60-day window."

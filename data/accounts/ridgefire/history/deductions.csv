@@ -1,19 +1,19 @@
-month,ref,code,description,amount,outcome,recovered
-2025-10,CG-51420,PA,Fall Ad Feature,1380.00,accepted,0.00
-2025-10,CG-51433,SP,"Unsaleables October, at actual",1215.60,written_off,0.00
-2025-10,CG-51441,DF,Ad fee October,850.00,written_off,0.00
-2025-11,CG-51902,PA,Holiday Ad Feature,1640.00,accepted,0.00
-2025-11,CG-51910,PA,Holiday Ad Feature (rebill),1640.00,recovered,1640.00
-2025-11,CG-51918,SH,Short 20 cs Salsa Verde,720.00,written_off,0.00
-2025-12,CG-52377,PA,Holiday Ad Feature,1910.00,accepted,0.00
-2025-12,CG-52385,SP,"Unsaleables December, at actual",1488.00,written_off,0.00
-2025-12,CG-52390,PR,Price diff Chipotle Salsa,460.80,written_off,0.00
-2026-01,CG-52840,SP,"Unsaleables January, at actual",1104.00,open,0.00
-2026-01,CG-52851,DF,New item setup fee,1200.00,written_off,0.00
-2026-02,CG-53305,PA,Winter Ad Feature Feb 1-21,1260.00,accepted,0.00
-2026-02,CG-53318,SP,"Unsaleables February, at actual",1320.00,open,0.00
-2026-02,CG-53560,PA,Spring Ad Feature Mar 1-14,1180.00,accepted,0.00
-2026-03,CG-54102,PA,Spring Ad Feature Mar 15-21 (rate per 3/18 email),1048.00,open,0.00
-2026-03,CG-54108,PA,Spring Ad Feature Mar 1-14,1180.00,open,0.00
-2026-03,CG-54115,PA,Spring Ad Feature Mar 22-28,345.00,open,0.00
-2026-03,CG-54121,SP,"Unsaleables March, at actual (61 cs)",1642.80,open,0.00
+month,ref,code,description,amount,outcome,recovered,deducted_on,product,units,rate,period_start,period_end,line_ref
+2025-10,CG-51420,PA,Fall Ad Feature,1380.00,accepted,0.00,2025-12-12,Ridgefire Roasted Tomato Salsa+Ridgefire Salsa Verde+Ridgefire Chipotle Salsa,2760,0.50,2025-10-05,2025-10-25,
+2025-10,CG-51433,SP,"Unsaleables October, at actual",1215.60,written_off,0.00,2025-12-12,all,1,1215.60,2025-10-01,2025-10-31,
+2025-10,CG-51441,DF,Ad fee October,850.00,written_off,0.00,2025-12-12,none,1,850.00,2025-10-01,2025-10-31,
+2025-11,CG-51902,PA,Holiday Ad Feature,1640.00,accepted,0.00,2026-01-09,Ridgefire Roasted Tomato Salsa+Ridgefire Salsa Verde+Ridgefire Chipotle Salsa,3280,0.50,2025-11-16,2025-11-29,
+2025-11,CG-51910,PA,Holiday Ad Feature (rebill),1640.00,recovered,1640.00,2026-01-09,Ridgefire Roasted Tomato Salsa+Ridgefire Salsa Verde+Ridgefire Chipotle Salsa,3280,0.50,2025-11-16,2025-11-29,
+2025-11,CG-51918,SH,Short 20 cs Salsa Verde,720.00,written_off,0.00,2026-01-09,Ridgefire Salsa Verde,20,36.00,2025-11-19,2025-11-19,DL-53140-2
+2025-12,CG-52377,PA,Holiday Ad Feature,1910.00,accepted,0.00,2026-02-06,Ridgefire Roasted Tomato Salsa+Ridgefire Salsa Verde+Ridgefire Chipotle Salsa,3820,0.50,2025-11-30,2025-12-27,
+2025-12,CG-52385,SP,"Unsaleables December, at actual",1488.00,written_off,0.00,2026-02-06,all,1,1488.00,2025-12-01,2025-12-31,
+2025-12,CG-52390,PR,Price diff Chipotle Salsa,460.80,written_off,0.00,2026-02-06,Ridgefire Chipotle Salsa,192,2.40,2025-12-10,2025-12-10,DL-53388-3
+2026-01,CG-52840,SP,"Unsaleables January, at actual",1104.00,open,0.00,2026-03-06,all,1,1104.00,2026-01-01,2026-01-31,
+2026-01,CG-52851,DF,New item setup fee,1200.00,written_off,0.00,2026-03-06,none,1,1200.00,2026-01-01,2026-01-31,
+2026-02,CG-53305,PA,Winter Ad Feature Feb 1-21,1260.00,accepted,0.00,2026-03-27,Ridgefire Roasted Tomato Salsa+Ridgefire Salsa Verde+Ridgefire Chipotle Salsa,2520,0.50,2026-02-01,2026-02-21,
+2026-02,CG-53318,SP,"Unsaleables February, at actual",1320.00,open,0.00,2026-03-27,all,1,1320.00,2026-02-01,2026-02-28,
+2026-02,CG-53560,PA,Spring Ad Feature Mar 1-14,1180.00,accepted,0.00,2026-03-27,Ridgefire Roasted Tomato Salsa+Ridgefire Salsa Verde+Ridgefire Chipotle Salsa,2360,0.50,2026-03-01,2026-03-14,
+2026-03,CG-54102,PA,Spring Ad Feature Mar 15-21 (rate per 3/18 email),1048.00,open,0.00,2026-05-01,Ridgefire Roasted Tomato Salsa+Ridgefire Salsa Verde+Ridgefire Chipotle Salsa,1310,0.80,2026-03-15,2026-03-21,
+2026-03,CG-54108,PA,Spring Ad Feature Mar 1-14,1180.00,open,0.00,2026-05-01,Ridgefire Roasted Tomato Salsa+Ridgefire Salsa Verde+Ridgefire Chipotle Salsa,2360,0.50,2026-03-01,2026-03-14,
+2026-03,CG-54115,PA,Spring Ad Feature Mar 22-28,345.00,open,0.00,2026-05-01,Ridgefire Roasted Tomato Salsa+Ridgefire Salsa Verde+Ridgefire Chipotle Salsa,690,0.50,2026-03-22,2026-03-28,
+2026-03,CG-54121,SP,"Unsaleables March, at actual (61 cs)",1642.80,open,0.00,2026-05-01,all,1,1642.80,2026-03-01,2026-03-31,

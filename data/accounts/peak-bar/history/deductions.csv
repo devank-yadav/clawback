@@ -1,27 +1,27 @@
-month,ref,code,description,amount,outcome,recovered
-2025-10,NM-1904,PA,Fall promo,1240.00,accepted,0.00
-2025-10,NM-1911,DF,Display fee October,1000.00,accepted,0.00
-2025-10,NM-1922,SP,Unsaleables September,640.00,written_off,0.00
-2025-11,NM-1987,PA,Holiday promo weeks 1-2,2150.00,accepted,0.00
-2025-11,NM-1993,PA,Holiday promo weeks 1-2 (rebill),2150.00,recovered,2150.00
-2025-11,NM-2004,DF,Display fee November,1200.00,accepted,0.00
-2025-11,NM-2009,SH,Shortage 12 cases Peak Bar Original,486.00,written_off,0.00
-2025-12,NM-2041,PA,Holiday promo weeks 3-4,3060.00,accepted,0.00
-2025-12,NM-2048,DF,Display fee December,1500.00,accepted,0.00
-2025-12,NM-2052,PR,Price diff Peak Bar Chocolate,912.00,written_off,0.00
-2025-12,NM-2055,SP,Unsaleables Q4,780.00,written_off,0.00
-2026-01,NM-2090,PA,New Year promo,1480.00,accepted,0.00
-2026-01,NM-2096,DF,Display fee January,1200.00,accepted,0.00
-2026-01,NM-2101,PA,New Year promo after end date,860.00,recovered,860.00
-2026-01,NM-2104,SH,Shortage 10 cases Peak Bar Mint,520.00,written_off,0.00
-2026-02,NM-2160,DF,Display fee February,1200.00,accepted,0.00
-2026-02,NM-2165,PA,Winter promo week 4,1140.00,accepted,0.00
-2026-02,NM-2172,SH,Shortage 16 cases Peak Bar Chocolate,648.00,written_off,0.00
-2026-02,NM-2178,PA,Spring promo week 2,980.00,accepted,0.00
-2026-03,NM-2201,PA,Spring promo week 3,2820.00,accepted,0.00
-2026-03,NM-2229,PA,Spring promo week 1,1800.00,open,0.00
-2026-03,NM-2231,PA,Spring promo week 2,980.00,open,0.00
-2026-03,NM-2240,PA,Spring promo Apr 1 to 7,330.00,open,0.00
-2026-03,NM-2236,PA,Spring promo week 4,1540.00,open,0.00
-2026-03,NM-2237,PA,Spring promo Mint,1000.00,open,0.00
-2026-03,NM-2238,DF,Display fee (notice Mar 11),1200.00,open,0.00
+month,ref,code,description,amount,outcome,recovered,deducted_on,product,units,rate,period_start,period_end,line_ref
+2025-10,NM-1904,PA,Fall promo,1240.00,accepted,0.00,2025-11-15,Peak Bar Original+Peak Bar Chocolate,1240,1.00,2025-10-05,2025-10-25,
+2025-10,NM-1911,DF,Display fee October,1000.00,accepted,0.00,2025-11-15,none,1,1000.00,2025-10-01,2025-10-31,
+2025-10,NM-1922,SP,Unsaleables September,640.00,written_off,0.00,2025-11-15,all,1,640.00,2025-09-01,2025-09-30,
+2025-11,NM-1987,PA,Holiday promo weeks 1-2,2150.00,accepted,0.00,2025-12-13,Peak Bar Original+Peak Bar Chocolate,2150,1.00,2025-11-16,2025-11-29,
+2025-11,NM-1993,PA,Holiday promo weeks 1-2 (rebill),2150.00,recovered,2150.00,2025-12-13,Peak Bar Original+Peak Bar Chocolate,2150,1.00,2025-11-16,2025-11-29,
+2025-11,NM-2004,DF,Display fee November,1200.00,accepted,0.00,2025-12-13,none,1,1200.00,2025-11-01,2025-11-30,
+2025-11,NM-2009,SH,Shortage 12 cases Peak Bar Original,486.00,written_off,0.00,2025-12-13,Peak Bar Original,12,40.50,2025-11-18,2025-11-18,PB-4410-1
+2025-12,NM-2041,PA,Holiday promo weeks 3-4,3060.00,accepted,0.00,2026-01-15,Peak Bar Original+Peak Bar Chocolate,3060,1.00,2025-11-30,2025-12-13,
+2025-12,NM-2048,DF,Display fee December,1500.00,accepted,0.00,2026-01-15,none,1,1500.00,2025-12-01,2025-12-31,
+2025-12,NM-2052,PR,Price diff Peak Bar Chocolate,912.00,written_off,0.00,2026-01-15,Peak Bar Chocolate,380,2.40,2025-12-09,2025-12-09,PB-4452-2
+2025-12,NM-2055,SP,Unsaleables Q4,780.00,written_off,0.00,2026-01-15,all,1,780.00,2025-12-01,2025-12-31,
+2026-01,NM-2090,PA,New Year promo,1480.00,accepted,0.00,2026-02-14,Peak Bar Original+Peak Bar Chocolate,1850,0.80,2026-01-04,2026-01-17,
+2026-01,NM-2096,DF,Display fee January,1200.00,accepted,0.00,2026-02-14,none,1,1200.00,2026-01-01,2026-01-31,
+2026-01,NM-2101,PA,New Year promo after end date,860.00,recovered,860.00,2026-02-14,Peak Bar Original+Peak Bar Chocolate,1075,0.80,2026-01-18,2026-01-31,
+2026-01,NM-2104,SH,Shortage 10 cases Peak Bar Mint,520.00,written_off,0.00,2026-02-14,Peak Bar Mint,10,52.00,2026-01-20,2026-01-20,PB-4498-3
+2026-02,NM-2160,DF,Display fee February,1200.00,accepted,0.00,2026-03-14,none,1,1200.00,2026-02-01,2026-02-28,
+2026-02,NM-2165,PA,Winter promo week 4,1140.00,accepted,0.00,2026-03-14,Peak Bar Original+Peak Bar Chocolate,1140,1.00,2026-02-22,2026-02-28,
+2026-02,NM-2172,SH,Shortage 16 cases Peak Bar Chocolate,648.00,written_off,0.00,2026-03-14,Peak Bar Chocolate,16,40.50,2026-02-10,2026-02-10,PB-4531-2
+2026-02,NM-2178,PA,Spring promo week 2,980.00,accepted,0.00,2026-03-14,Peak Bar Original+Peak Bar Chocolate,980,1.00,2026-03-08,2026-03-14,
+2026-03,NM-2201,PA,Spring promo week 3,2820.00,accepted,0.00,2026-03-28,Peak Bar Original+Peak Bar Chocolate,2820,1.00,2026-03-15,2026-03-21,
+2026-03,NM-2229,PA,Spring promo week 1,1800.00,open,0.00,2026-04-15,Original+Chocolate,1200,1.50,2026-03-01,2026-03-07,
+2026-03,NM-2231,PA,Spring promo week 2,980.00,open,0.00,2026-04-15,Original+Chocolate,980,1.00,2026-03-08,2026-03-14,
+2026-03,NM-2240,PA,Spring promo Apr 1 to 7,330.00,open,0.00,2026-04-15,Original+Chocolate,330,1.00,2026-04-01,2026-04-07,
+2026-03,NM-2236,PA,Spring promo week 4,1540.00,open,0.00,2026-04-15,Original+Chocolate,1540,1.00,2026-03-22,2026-03-31,
+2026-03,NM-2237,PA,Spring promo Mint,1000.00,open,0.00,2026-04-15,Mint,1000,1.00,2026-03-01,2026-03-31,
+2026-03,NM-2238,DF,Display fee (notice Mar 11),1200.00,open,0.00,2026-04-15,none,1,1200.00,2026-03-01,2026-03-31,

@@ -1,18 +1,18 @@
-month,ref,code,description,amount,outcome,recovered
-2025-10,GF-30411,PA,Fall Savings promo,1620.00,accepted,0.00
-2025-10,GF-30418,SP,Unsaleables October,690.00,accepted,0.00
-2025-11,GF-30790,PA,Holiday Savings promo,2040.00,accepted,0.00
-2025-11,GF-30802,SH,Short 8 cs Pork & Chive,307.20,accepted,0.00
-2025-11,GF-30806,SP,Unsaleables November,655.20,accepted,0.00
-2025-12,GF-31144,PA,Holiday Savings promo,2310.00,accepted,0.00
-2025-12,GF-31150,PR,Price diff Chicken Lemongrass,96.00,recovered,96.00
-2025-12,GF-31158,SP,Unsaleables December,702.00,accepted,0.00
-2026-01,GF-31502,PA,New Year Savings promo,1455.00,accepted,0.00
-2026-01,GF-31510,SP,Unsaleables January,731.40,accepted,0.00
-2026-02,GF-31877,PA,February Savings promo Feb 1-21,1860.00,accepted,0.00
-2026-02,GF-31884,SP,Unsaleables February,768.00,accepted,0.00
-2026-02,GF-31890,SH,Short 4 cs Vegetable Potstickers,139.20,accepted,0.00
-2026-03,GF-32215,PA,In-Store Savings Mar 8-28,1980.00,open,0.00
-2026-03,GF-32222,SH,"Short 6 cs Chicken Lemongrass, delivery 7731",244.80,open,0.00
-2026-03,GF-32230,PR,"Price diff Vegetable Potstickers, invoiced 35.40 vs cost 34.79",43.92,open,0.00
-2026-03,GF-32236,SP,"Unsaleables March (torn bags, freezer burn)",612.80,open,0.00
+month,ref,code,description,amount,outcome,recovered,deducted_on,product,units,rate,period_start,period_end,line_ref
+2025-10,GF-30411,PA,Fall Savings promo,1620.00,accepted,0.00,2025-11-21,Birchbank Pork & Chive Dumplings+Birchbank Vegetable Potstickers,2160,0.75,2025-10-05,2025-10-25,
+2025-10,GF-30418,SP,Unsaleables October,690.00,accepted,0.00,2025-11-21,all,1,690.00,2025-10-01,2025-10-31,
+2025-11,GF-30790,PA,Holiday Savings promo,2040.00,accepted,0.00,2025-12-19,Birchbank Pork & Chive Dumplings+Birchbank Vegetable Potstickers,2720,0.75,2025-11-16,2025-11-29,
+2025-11,GF-30802,SH,Short 8 cs Pork & Chive,307.20,accepted,0.00,2025-12-19,Birchbank Pork & Chive Dumplings,8,38.40,2025-11-12,2025-11-12,DL-7581-1
+2025-11,GF-30806,SP,Unsaleables November,655.20,accepted,0.00,2025-12-19,all,1,655.20,2025-11-01,2025-11-30,
+2025-12,GF-31144,PA,Holiday Savings promo,2310.00,accepted,0.00,2026-01-21,Birchbank Pork & Chive Dumplings+Birchbank Vegetable Potstickers,3080,0.75,2025-11-30,2025-12-27,
+2025-12,GF-31150,PR,Price diff Chicken Lemongrass,96.00,recovered,96.00,2026-01-21,Birchbank Chicken Lemongrass Dumplings,80,1.20,2025-12-10,2025-12-10,DL-7612-3
+2025-12,GF-31158,SP,Unsaleables December,702.00,accepted,0.00,2026-01-21,all,1,702.00,2025-12-01,2025-12-31,
+2026-01,GF-31502,PA,New Year Savings promo,1455.00,accepted,0.00,2026-02-20,Birchbank Pork & Chive Dumplings+Birchbank Vegetable Potstickers,1940,0.75,2026-01-04,2026-01-24,
+2026-01,GF-31510,SP,Unsaleables January,731.40,accepted,0.00,2026-02-20,all,1,731.40,2026-01-01,2026-01-31,
+2026-02,GF-31877,PA,February Savings promo Feb 1-21,1860.00,accepted,0.00,2026-03-20,Birchbank Pork & Chive Dumplings+Birchbank Vegetable Potstickers,2480,0.75,2026-02-01,2026-02-21,
+2026-02,GF-31884,SP,Unsaleables February,768.00,accepted,0.00,2026-03-20,all,1,768.00,2026-02-01,2026-02-28,
+2026-02,GF-31890,SH,Short 4 cs Vegetable Potstickers,139.20,accepted,0.00,2026-03-20,Birchbank Vegetable Potstickers,4,34.80,2026-02-11,2026-02-11,DL-7690-2
+2026-03,GF-32215,PA,In-Store Savings Mar 8-28,1980.00,open,0.00,2026-04-21,Birchbank Pork & Chive Dumplings+Birchbank Vegetable Potstickers,2640,0.75,2026-03-08,2026-03-28,
+2026-03,GF-32222,SH,"Short 6 cs Chicken Lemongrass, delivery 7731",244.80,open,0.00,2026-04-21,Birchbank Chicken Lemongrass Dumplings,6,40.80,2026-03-12,2026-03-12,DL-7731-3
+2026-03,GF-32230,PR,"Price diff Vegetable Potstickers, invoiced 35.40 vs cost 34.79",43.92,open,0.00,2026-04-21,Birchbank Vegetable Potstickers,72,0.61,2026-03-23,2026-03-23,DL-7768-2
+2026-03,GF-32236,SP,"Unsaleables March (torn bags, freezer burn)",612.80,open,0.00,2026-04-21,all,1,612.80,2026-03-01,2026-03-31,
