@@ -28,7 +28,7 @@ from api.engine import gate, totals
 from api.engine import types as eng
 from api.engine.allowed import compute_allowed
 from api.engine.policy import load_policy
-from api.integrations import qbo, replay, sms
+from api.integrations import moss, qbo, replay, sms
 
 log = logging.getLogger("clawback.pipeline")
 
@@ -273,10 +273,24 @@ def _process(run: Run, client) -> None:
     _after_decisions(run, policy)
 
 
+def rule_matches(a: eng.Allowance, policy: eng.Policy, rules: list[eng.Rule], live_first: bool = False) -> moss.Outcome:
+    """Moss's candidate rules for the discretion clause this charge depends on (F16), for the gate's rows 3 and 4.
+    Moss isn't asked when no active rule exists, there's no discretion clause, or a term failed its checks (rows 1
+    and 2 come first). No matches leaves the gate to the exact match on clause type and counterparty."""
+    term = next((t for t in a.terms if gate.uses_discretion(t, policy)), None)
+    if term is None or not rules or any(t.status != eng.TermStatus.VERIFIED for t in a.terms):
+        return moss.Outcome()
+    return moss.search(term.exact_quote, live_first)
+
+
 def _decide(run: Run, charge_id: str, policy: eng.Policy) -> eng.Decision:
-    c = run.charges[charge_id]
+    c, a = run.charges[charge_id], run.allowances[charge_id]
     rules = [adapters.to_engine_rule(r) for r in RULES if r.status == "active"]
-    d = gate.decide(adapters.to_engine_charge(c), run.allowances[charge_id], run.eng_findings[charge_id], policy, rules)
+    found = rule_matches(a, policy, rules)
+    if found.error:
+        run.log(f"Moss didn't answer ({found.error}); matching saved rules by clause type and counterparty instead.",
+                "warn", "gate", charge_id)
+    d = gate.decide(adapters.to_engine_charge(c), a, run.eng_findings[charge_id], policy, rules, found.matches)
     return _record(run, charge_id, d, decided_by="gate")
 
 
@@ -290,8 +304,10 @@ def _record(run: Run, charge_id: str, d: eng.Decision, decided_by: str) -> eng.D
     run.emit("decision", shown)
     if d.rule_id:
         rule = next(r for r in RULES if r.id == d.rule_id)
-        run.log(f"Applied {rule.label} (learned {evidence_mod.day(rule.learned_at)}, approved by {rule.approver.split()[0]}) to "
-                f"{charge_id}.", "good", "gate", charge_id)
+        how = ("same clause type and counterparty" if d.rule_similarity is None
+               else f"matched by Moss, similarity {d.rule_similarity:.2f}")
+        run.log(f"Applied {rule.label} (learned {evidence_mod.day(rule.learned_at)}, approved by {rule.approver.split()[0]}; "
+                f"{how}) to {charge_id}.", "good", "gate", charge_id)
     if d.kind == eng.DecisionKind.ASK and not any(q.charge_id == charge_id for q in run.questions.values()):
         _ask_owner(run, charge_id)  # one question per charge per run, never a second
     run.emit("totals", _meters(run))
@@ -346,6 +362,26 @@ def _ask_owner(run: Run, charge_id: str) -> None:
             f" in the inbox (text {status})."), actor="gate", charge_id=charge_id)
     if run.replaced_by:  # a newer run started while the text was going out
         _close_questions(run)
+
+
+def _remember(run: Run, rule: Rule) -> None:
+    """Index a new rule in Moss (F16), so a differently worded clause still finds it."""
+    saved = moss.index_rule(rule.id, rule.pattern_text, rule.term_type, rule.counterparty, rule.label)
+    if saved.error:
+        run.log(f"Moss couldn't index {rule.label} ({saved.error}); it still matches by clause type and counterparty.",
+                "warn", "gate")
+    elif saved.used:
+        run.log(f"Indexed {rule.label} in Moss, so a differently worded clause still finds it.", actor="gate")
+
+
+def _forget(run: Run, rule: Rule) -> None:
+    """Drop an undone rule from Moss. Only active rules can match, so a failure here changes no decision."""
+    dropped = moss.drop_rule(rule.id)
+    if dropped.error:
+        run.log(f"Moss couldn't drop {rule.label} ({dropped.error}); it's undone, so it can't match anyway.", "warn",
+                "gate")
+    elif dropped.used:
+        run.log(f"Dropped {rule.label} from Moss.", actor="gate")
 
 
 def _tell(run: Run, role: str, text: str, level: str = "info", charge_id: str | None = None) -> None:
@@ -451,6 +487,7 @@ def answer(question_id: str, text: str, from_role: str = "owner",
         if undone:
             RULES[:] = [undone if r.id == undone.id else r for r in RULES]
             run.emit("rule", undone)
+            _forget(run, undone)
         run.texts.append(("owner", replies.undo_text(undone)))
         run.log(f"Texted {owner}: \"{replies.undo_text(undone)}\"", actor="gate", charge_id=charge_id)
         return ans, undone
@@ -496,6 +533,7 @@ def answer(question_id: str, text: str, from_role: str = "owner",
     run.emit("rule", rule)
     run.texts.append(("owner", echo))
     run.log(f"Saved {rule.label} and texted {owner}: \"{echo}\"", "good", "gate")
+    _remember(run, rule)
     for cid, d in list(run.decisions.items()):
         if d.kind == eng.DecisionKind.ASK:
             _decide(run, cid, policy)

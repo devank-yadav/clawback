@@ -9,7 +9,7 @@ from api.engine.allowed import compute_allowed
 from api.engine.gate import concession, decide, needs_controller, summarize, uses_discretion
 from api.engine.policy import load_policy
 from api.engine.tests import scenario as s
-from api.engine.types import Allowance, DecisionKind, Finding, TermStatus
+from api.engine.types import Allowance, DecisionKind, Finding, RuleMatch, TermStatus
 
 POLICY = load_policy()
 K = DecisionKind
@@ -131,6 +131,32 @@ def test_row_3_rule_accepts_fee_only_up_to_the_deal_maximum():
 def test_row_3_unknown_notice_takes_else_branch():
     d = decide(C6, allowance("1200", "1200", (T["T-fee"],), {"notice_days": None}), None, POLICY, [s.rule_1()])
     assert (d.kind, d.disputed) == (K.DISPUTE, Decimal("1200.00"))
+
+
+# Rule #1's clause in other words: F16, matched by Moss (api/integrations/moss.py) instead of by its type alone.
+REWORDED_FEE = replace(T["T-fee"], id="T-fee-reworded", exact_quote="Northmart may, in its sole judgment, charge a display "
+                       "fee of up to $1,500 a month once it has told Supplier in writing.")
+
+
+def test_row_3_moss_match_applies_rule_1_to_a_reworded_clause():
+    a = allowance("1200", "1200", (REWORDED_FEE,), {"notice_days": 18})
+    d = decide(C6, a, None, POLICY, [s.rule_1()], [RuleMatch("rule-1", Decimal("0.90"))])
+    assert (d.kind, d.gate_row, d.rule_id, d.rule_similarity, d.accepted) == (K.ACCEPT, 3, "rule-1", Decimal("0.90"),
+                                                                              Decimal("1200.00"))
+    assert d.reason == "Applied Rule #1."
+
+
+def test_row_3_weak_moss_match_leaves_the_exact_match_to_decide():
+    a = allowance("800", "800", (REWORDED_FEE,), {"notice_days": 5})
+    d = decide(C6, a, None, POLICY, [s.rule_1()], [RuleMatch("rule-1", Decimal("0.70"))])
+    assert (d.kind, d.gate_row, d.rule_id, d.rule_similarity, d.disputed) == (K.DISPUTE, 3, "rule-1", None, Decimal("800.00"))
+
+
+def test_row_4_moss_never_matches_another_counterpartys_rule():
+    southmart = replace(s.rule_1(), id="rule-2", counterparty="Southmart")
+    d = decide(C6, allowance("1200", "1200", (REWORDED_FEE,), {"notice_days": 18}), None, POLICY, [southmart],
+               [RuleMatch("rule-2", Decimal("0.99"))])
+    assert (d.kind, d.gate_row, d.rule_id, d.rule_similarity) == (K.ASK, 4, None, None)
 
 
 def test_row_4_discretion_without_rule_asks():
