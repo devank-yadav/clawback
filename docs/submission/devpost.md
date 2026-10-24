@@ -1,15 +1,15 @@
 # Devpost: Clawback
 
 > **This is the one Devpost draft.** `docs/devpost.md` and `docs/submission/dev-post.md` point here.
-> Checked against `main` at commit 53571d2 (Sat Oct 24, late morning), `DECISIONS.md` and `eval/published/`. Written
-> for the product as it's being finished on Sat Oct 24: four accounts, new charge types (shortages, price mismatches,
-> spoilage), every run generated live, "How Clawback decided", the remittance upload, and real roles with per-visitor
-> limits. Those land from other sessions today, so Part 2 marks each one TODO until it's checked on clawback.biz.
+> Checked against `main` after the multi-account merge (Sat Oct 24 ~noon: #58–#64, the KeHE, Walmart and Five Below
+> contracts), `DECISIONS.md`, `eval/published/` and [sources.md](sources.md).
 > **Part 1** is the page text to paste into Devpost. **Part 2** is the proof checklist for each track. It's for
 > us, so don't paste it. Fill in every **TODO (needs Devank)** or delete its line before submitting.
 > Devpost locks Sun Oct 25 at 9:00 AM PDT; submit by 8:30 AM.
-> **The app shows no "fictional" labels** (the accounts are styled like real businesses), so this page is where we
-> say it. Keep the real-vs-simulated section and the word "fictional" next to every company and person.
+> **Wording (lead's decision):** real company names; no "alleged", "fictional" or "simulated" labels. Tell each real
+> fact the way its source tells it ("Omaha Industries sued UNFI in 2024, saying …"), frame it as "here's what
+> happened; had they used Clawback, here's what it would have checked and flagged", and never claim an amount
+> Clawback would have won. Say plainly, once, which brands and numbers are ours ("What's real and what's ours").
 
 ## Before you submit (the Devpost checklist from docs/design.md)
 
@@ -21,9 +21,10 @@
 | Live URL | Done: `https://clawback.biz`, live since Sat 7:45 AM (`DECISIONS.md`). Open it once before submitting |
 | Public repo | TODO (needs Devank): make it public after the secrets scan, Sun before 8 AM |
 | Problem, what it does, how we built it, challenges, what we learned, what's next | Done (Part 1); lessons from each teammate still TODO |
-| The four accounts, the new charge types, the trace, the upload, the sign-ins and limits | TODO (needs Devank): check each against clawback.biz once merged, and fill in the account names and totals (Part 1, "Four accounts") |
-| Hyphenate: seats it fills, real vs simulated, eval score, approvals and refusals | Done (Part 1) |
-| Microsoft: one paragraph per criterion | Done (Part 1); time saved vs checking by hand and the live run time are TODO |
+| The accounts, the new charge types, the trace, the upload, the sign-ins and limits | Merged (#58–#64). TODO (needs Devank): the real-contract accounts' names and results once merged (Part 1, "The accounts") |
+| Sources for every real fact | [sources.md](sources.md). TODO (needs Devank): open each link once |
+| Hyphenate: seats it fills, what's real and what's ours, eval score, approvals and refusals | Done (Part 1) |
+| Microsoft: one paragraph per criterion | Done (Part 1); time saved vs checking by hand is TODO |
 | Anthropic: the community, Claude's role in each agent, where it could go wrong | Done (Part 1); real quotes are TODO |
 | Figma, Moss, MLH (Gemini, Tiger Data, Vultr, GoDaddy), Capital One, Notability, Fetch.ai | See Part 2: tag a track only when its proof exists |
 | Tag every track we enter and confirm its criteria are met | TODO (needs Devank), from Part 2 |
@@ -41,13 +42,36 @@
 
 ## Inspiration
 
-When a small food brand sells through a big distributor, it often isn't paid in full. The distributor keeps part of
-each payment to cover promotions, display fees, shortages, spoilage and other charges. The brand then has to work out
-whether each charge was allowed. Checking one charge means finding the clause in the signed deal, the store sales or
-delivery records for that week, any email that changed the terms, and earlier payments that may already cover it.
-That takes hours a founder or a part-time bookkeeper doesn't have, so most charges never get checked. Suppliers have
-even sued over it: see the class action against UNFI reported by
-[Grocery Dive](https://www.grocerydive.com/news/unfi-class-action-lawsuit-payment-discounts-grocery-natural-foods/732132/).
+When a small food brand sells through a big distributor or retailer, it often isn't paid in full. The buyer keeps
+part of each payment for promotions, display fees, shortages, spoilage, late deliveries and other charges, and the
+brand has to work out whether each one was allowed. It happens to companies of every size:
+
+- **Omaha Industries** (Tender & True) sued UNFI in January 2024, saying UNFI charged back $268,816.94 against about
+  $326,780 of product sold to Giant Food, about 82%, as "unacceptable" product, and never returned it, disposed of it
+  or accounted for it ([Supply Chain Dive](https://www.supplychaindive.com/news/omaha-sues-grocery-distributor-unfi-chargebacks-giant-food/704810/)).
+  Had Omaha used Clawback, it would have checked each chargeback for proof and flagged the ones with none.
+- **Saks Fifth Avenue's** own SEC filings say its merchants collected about $34 million of markdown allowances that
+  vendors didn't owe, from fiscal 1996 to 2003, using wrong sales figures, and that Saks repaid about $48 million
+  with interest ([SEC Litigation Release 20266](https://www.sec.gov/litigation/litreleases/lr-20266)). Clawback
+  recomputes each allowance from the vendor's own sell-through.
+- **Walmart** charges suppliers 3% of the cost of goods on cases that arrive late or short, against a 98% on-time,
+  in-full target since Sept 15, 2020; Talk Business & Politics reports Walmart's own food and consumables OTIF was
+  40% in March 2019 ([Talk Business & Politics](https://talkbusiness.net/2020/09/walmart-demands-all-suppliers-comply-with-98-on-time-in-full-shipment-rule/)).
+  Clawback would dispute the misses the appointment log puts on the carrier or on Walmart.
+- In Australia, the Federal Court ordered **Coles** to pay a $10 million penalty in 2014 for unconscionable conduct
+  toward suppliers, including payments outside its trading terms, and an arbiter ordered more than $12 million
+  refunded ([Food & Drink Business](https://www.foodanddrinkbusiness.com.au/news/court-backs-coles-10m-supplier-conduct-penalty)).
+- **NYSM Organics** sued UNFI in November 2024 over discounts taken after the payment window and constant deductions
+  ([Grocery Dive](https://www.grocerydive.com/news/unfi-class-action-lawsuit-payment-discounts-grocery-natural-foods/732132/)).
+- **TeaSquares'** founder said on the Foodbevy podcast (#98) that the company invoiced KeHE $32,000 in 2019 and was
+  paid $21,000.
+- In the UK Groceries Code Adjudicator's 2026 survey of more than 2,600 suppliers, 20% said retailers were slow to
+  resolve invoice discrepancies, the most common issue
+  ([gov.uk](https://www.gov.uk/government/news/high-code-compliance-maintained-as-some-supplier-issues-increase)).
+
+Checking one charge means finding the clause in the signed deal, the store sales or delivery records for that week,
+any email that changed the terms, and earlier payments that may already cover it. That takes hours a founder or a
+part-time bookkeeper doesn't have, so most charges never get checked.
 
 TODO (needs Devank): one or two real quotes from small-brand founders or bookkeepers, with their role and their
 permission. Don't paste a quote we didn't collect.
@@ -60,19 +84,22 @@ records the result in QuickBooks once the controller approves.
 
 **Seats it fills: deductions analyst and collections specialist.**
 
-### Four accounts, all generated live
+### The accounts, all generated live
 
-The live site has four accounts, each a brand, its distributor and a month of charges. Every company is fictional,
-styled to look like a real business; none is a customer. Each run on https://clawback.biz is generated live: both
-AI readers, the plain-code math, the Investigator, the rehearsed comeback, the decision gate, the owner's question,
-the controller's approval and the QuickBooks sandbox writes.
+Each account is one of our brands selling to a distributor, with a month of charges. Every run on
+https://clawback.biz is generated live: both AI readers, the plain-code math, the Investigator, the rehearsed
+comeback, the decision gate, the owner's question, the controller's approval and the QuickBooks sandbox writes. Our
+brands, the distributors in our own accounts, and every charge and number are ours. The accounts on real
+contracts read the real text of KeHE's, Walmart's and Five Below's vendor agreements from public SEC filings; those
+companies didn't take part, and the charges in those accounts are ours.
 
-| Account (all fictional) | What it shows | Result |
+| Account | What it shows | Result (live run) |
 | --- | --- | --- |
-| Peak Bar Co. (snack bars) ← Northmart | The full story below: a rate above the deal, a charge already paid, an extension by email, a unit cap, a product the deal doesn't cover, and a fee left to the distributor's judgment | $4,120 disputed · $2,730 accepted · 1 question |
-| TODO (needs Devank): name (a drinks brand) ← distributor | A shortage the delivery records disprove, a price mismatch that's partly right, spoilage above the deal's allowance, and an overcharge above $5,000 that waits for the owner's OK | TODO (needs Devank): from the screen |
-| TODO (needs Devank): name ← distributor (a clean month) | Every charge is fair, so every charge is accepted. Clawback never fights a fair charge | TODO (needs Devank): from the screen |
-| TODO (needs Devank): name ← distributor (a tough distributor) | A rate change the distributor claims in its own email (shown, never applied), a repeat charge, a charge outside the deal's dates, and a vague clause, so it asks | TODO (needs Devank): from the screen |
+| Peak Bar Co. (snack bars) ← Northmart | The full story below: a rate above the deal, a charge already paid, an extension by email, a unit cap, a product the deal doesn't cover, and a fee left to the distributor's judgment | $4,120 disputed · $2,730 accepted · 1 question, identical in 5 live runs |
+| Fernwell Sparkling Tea Co. ← Tidemark Beverage | A shortage the signed proof of delivery disproves, a price claim that's partly right, spoilage above the deal's 2% allowance, and a promo billed on shipments instead of sales, $5,487.50 over, above the $5,000 limit, so the owner decides | $1,878.60 disputed · $6,480.20 accepted · 1 question |
+| Ridgefire Salsa ← Corbel Grocery Supply | A rate taken from Corbel's own email (a sender who can't change the deal), a charge already deducted, a charge after the feature ended, and an unsaleables clause that reads two ways, so it asks | $1,918.00 disputed · $655.00 accepted · 1 question |
+| Birchbank Kitchen ← Greenfold Natural | A clean month: every charge is fair, so every charge is accepted. Clawback never fights a fair charge | $2,881.52 accepted · nothing disputed |
+| TODO (needs Devank): the real-contract accounts (KeHE's 2015 vendor policies; Walmart's and Five Below's supplier agreements) | TODO (needs Devank): what each shows, once merged | TODO (needs Devank): from a live run |
 
 Charge types: promotional allowances, display and other fees, shortages, price mismatches and spoilage. Each is
 checked against a second source: the deal's clauses, the store sales, the delivery records, the agreed price, the
@@ -80,7 +107,7 @@ deal's spoilage allowance, and earlier payments.
 
 ### The Peak Bar story
 
-Peak Bar Co. (a fictional snack brand) bills Northmart (a fictional distributor) **$48,200** for March on invoice
+Peak Bar Co. (our snack brand) bills Northmart (our distributor) **$48,200** for March on invoice
 INV-3102 and receives **$41,350**. Northmart took **$6,850** back in six charges. Clawback decides all six:
 
 | Charge | Taken | Decision | Disputed | Accepted | Why |
@@ -93,12 +120,12 @@ INV-3102 and receives **$41,350**. Northmart took **$6,850** back in six charges
 | C6 Display fee | $1,200 | Ask, then Rule #1, then Accept | — | $1,200 | §5.4 leaves the fee to Northmart's discretion, so the owner decides once |
 | **Total** | **$6,850** | | **$4,120** | **$2,730** | **1 question** |
 
-- **The email that turns a charge fair.** C3 looks wrong (April dates on a March promo), but the broker, Jordan Lee
-  (fictional), is on the owner's list of people who can change the deal, and his Mar 28 email extended it through
+- **The email that turns a charge fair.** C3 looks wrong (April dates on a March promo), but the broker, Jordan Lee,
+  is on the owner's list of people who can change the deal, and his Mar 28 email extended it through
   April 7. So Clawback accepts it. Northmart's own Mar 30 email ("Per our call, the Spring Promo rate is $1.50 per
   unit.") is shown as a claim and never applied, because Northmart can't change the deal by itself.
-- **It asks once, then remembers.** The display fee is a judgment call, so Clawback asks the owner, Dana Okafor
-  (fictional), one question. She answers "accept if notice is at least 14 days." Code turns that into Rule #1 and
+- **It asks once, then remembers.** The display fee is a judgment call, so Clawback asks the owner, Dana Okafor,
+  one question. She answers "accept if notice is at least 14 days." Code turns that into Rule #1 and
   texts back "Saved: accept display fees with 14+ days' notice. Reply UNDO to cancel." In April, a $1,200 fee with
   18 days' notice is accepted and an $800 fee with 5 days' notice is disputed, both by Rule #1, with zero questions.
 - **It rehearses the comeback, argues, and concedes with proof.** Before filing dispute D-0417 ($4,120, four lines),
@@ -107,7 +134,7 @@ INV-3102 and receives **$41,350**. Northmart took **$6,850** back in six charges
   attaches the signed amendment raising the cap to 6,000 bars, Clawback withdraws $1,000 of C4 and keeps $540
   disputed. The totals become $3,120 disputed and $3,730 accepted.
 - **Only the controller moves money.** The $2,730 credit memo (the QuickBooks entry for the accepted charges) waits
-  for the controller, Sam Reyes (fictional). Only the controller's sign-in, or a text from the controller's phone,
+  for the controller, Sam Reyes. Only the controller's sign-in, or a text from the controller's phone,
   can approve it. If Sam says yes, it's written to QuickBooks and the disputed $4,120 stays unpaid on the invoice
   with a note listing the dispute lines. If Sam says no, nothing is written.
 - **It fixes next month's deal.** The Deal Coach suggests edits to the summer draft. Each edit shows what that clause
@@ -155,7 +182,7 @@ One run, from the payment arriving to the books:
 
 Every step streams live to the board, and "How Clawback decided" shows each AI call behind each charge.
 
-## What's real and what's simulated
+## What's real and what's ours
 
 **Real:**
 
@@ -170,21 +197,22 @@ Every step streams live to the board, and "How Clawback decided" shows each AI c
 - **The texts.** Owner and controller messages go to real phones through Twilio's WhatsApp Sandbox (US carriers
   require a business registration before an app can text, and it wouldn't clear by Sunday), or SMS. The in-app inbox
   is the fallback.
-- **The database.** On the live site the deal, charges, sales and earlier payments are read from Postgres on Tiger
-  Data, every run's events are saved there, and a run replays after a restart.
+- **The contracts and the cases.** KeHE's 2015 vendor policies and Walmart's and Five Below's supplier agreements,
+  unedited from public SEC filings, and the cases under Inspiration, each with its source
+  ([sources.md](https://github.com/devank-yadav/clawback/blob/main/docs/submission/sources.md)).
+- **The database.** On the live site each account's deal, charges, sales and earlier payments are read from Postgres
+  on Tiger Data; every run's events, the saved rules and the audit chain are saved there and outlive a restart.
 - **Rule memory.** Saved rules are indexed in Moss and matched by meaning.
 - **The eval score.** Computed by `eval/run.py` against an answer key written before the first run (below).
 
-**Simulated:**
+**Ours:**
 
-- Every brand and distributor in the four accounts is fictional, as are Dana Okafor, Sam Reyes and Jordan Lee. We
-  wrote the deals, the emails, the notices, the charges, the sales and delivery data, and the sample payment slip.
-- The Northmart portal is our own mock.
-- Saved rules and the audit chain are still held in the app's memory (Moss holds a copy of each rule for matching).
-  TODO (needs Devank): delete this line if they move into Postgres today.
-- For a demo without Wi-Fi, our backup laptop runs `DEMO_MODE`, which replays AI answers recorded from live runs. In
-  that mode, QuickBooks writes go to a stand-in and every one is labeled "Simulated" on screen. The live site doesn't
-  use it.
+- The brands (Peak Bar Co., Fernwell, Ridgefire, Birchbank), the distributors in their accounts (Northmart, Tidemark,
+  Corbel, Greenfold), and the people in them (Dana Okafor, Sam Reyes, Jordan Lee and the others). We wrote their
+  deals, emails, notices, charges, sales and delivery data, and the sample remittance.
+- Every charge and number in the accounts that read a real contract. KeHE, Walmart and Five Below aren't customers
+  and didn't take part.
+- The distributor portals are our own.
 
 ## How approvals and refusals work
 
@@ -246,14 +274,16 @@ To be clear about what this does and doesn't show:
 - We wrote the 30 cases ourselves, from templates. The deal written by someone outside the team
   (`data/eval/outside-deal.md`) is still a placeholder. TODO (needs Devank): run it cold and report terms found vs a
   key made by hand.
-- The 30 cases cover promotional allowances and fees. Shortages, price mismatches and spoilage are in the accounts
-  but not in the score. TODO (needs Devank): update this line if eval cases for them are added.
+- The 30 cases cover promotional allowances and fees. Shortages, price mismatches and spoilage aren't in the score;
+  they're checked by the new accounts' live runs (13 of 13 charges as expected).
 - So you don't have to trust our cases: the scenario box at https://clawback.biz/scenario takes a clause and a charge
   you write, and decides it live with both readers.
 
 Rehearsal: 5 runs in a row in the browser with no manual fix, each ending at $4,120 disputed, $2,730 accepted and
-1 question. Replaying recorded answers (`DEMO_MODE`), the board was decided 5.9 seconds after the deposit. TODO (needs
-Devank): the same stopwatch on a live run on clawback.biz (target: under 60 seconds), and its AI cost.
+1 question. Then 5 live Peak Bar runs: identical decisions every time ($4,120 disputed, 1 question), 65 to 73 seconds
+from the deposit to a decided board (our target was 60), 13 or 14 Claude calls and about $0.38 of Claude per run,
+from the trace summary. One live run per new account matched every expected decision: Birchbank 4 of 4, Fernwell 5
+of 5, Ridgefire 4 of 4.
 
 ## How we built it
 
@@ -267,8 +297,8 @@ Devank): the same stopwatch on a live run on clawback.biz (target: under 60 seco
   that exist, remittance lines and totals that add up, and an outbound filter on every message to the distributor.
 - **Money math:** `api/engine/`, plain Python with pytest tests for every number in the Peak Bar demo, the April fees
   and the $540 after the amendment.
-- **Every outside call** (Claude, Gemini, Moss, QuickBooks, Twilio, Nessie) has a timeout and one retry. In
-  `DEMO_MODE`, AI answers are replayed from `data/fixtures/` and QuickBooks writes go to a labeled stand-in.
+- **Every outside call** (Claude, Gemini, Moss, QuickBooks, Twilio, Nessie) has a timeout and one retry. Runs are
+  always live; recorded answers (`DEMO_MODE`) only replay in the tests.
 - **Rule memory:** Moss (`moss-mediumlm` index) matches a new discretion clause to saved rules by meaning; an exact
   match on clause type and distributor is the fallback.
 - **Frontend:** Next.js, React, Tailwind CSS and Framer Motion, following the same event stream.
@@ -333,7 +363,7 @@ Devank): the same stopwatch on a live run on clawback.biz (target: under 60 seco
 
 ## What's next for Clawback
 
-- Rules and the audit chain stored in the database too (runs already are), so everything survives a restart.
+- Walmart's on-time-in-full fines checked against the delivery appointment log, and more real distributor policies.
 - The agent eval re-run with Gemini on every case, and eval cases for shortages, price mismatches and spoilage.
 - Getting distributors' payment slips straight from email, beside today's upload.
 - Real distributor portals through browser automation, as recovery services already do.
@@ -362,7 +392,8 @@ to the books. The controller can refuse: if Sam says no, nothing posts and Sam's
 decision names its gate rule, its evidence and, when people were involved, the person, and "How Clawback decided"
 shows every AI call behind it. Four accounts run live, including a clean month where every charge is accepted. We
 report a real score (30 of 30 in both eval modes, 0 wrong automatic actions, with the caveats in Proof), let you test
-your own clause in the scenario box, and say plainly what's real and what's simulated.
+your own clause in the scenario box, and say plainly what's real and what's ours. Real cases frame it: Omaha Industries says UNFI charged
+back $268,816.94 with no proof; Clawback checks every chargeback for proof.
 
 ## Microsoft: Built for the Real World
 
@@ -373,16 +404,15 @@ the deal is genuinely unclear. They get the distributor's payment slip as a PDF,
 Clawback reads. TODO (needs Devank): a real quote, with the person's role.
 
 **Measurable usefulness.** On the Peak Bar payment, Clawback decides all six charges: $4,120 disputed with evidence,
-$2,730 accepted, and one question to the owner. In rehearsal it ran 5 times in a row with no manual fix, and
-replaying recorded answers the board was decided 5.9 seconds after the deposit. On 30 planted charges it scored 30 of
-30, amounts right to the cent, with 0 wrong automatic actions in both eval modes. TODO (needs Devank): a live run's
-time and AI cost, and the time saved vs checking the same six charges by hand, measured.
+$2,730 accepted, and one question to the owner. Five live runs decided it the same way every time, each in 65 to
+73 seconds for about $0.38 of Claude. On 30 planted charges it scored 30 of
+30, amounts right to the cent, with 0 wrong automatic actions in both eval modes. TODO (needs Devank): the time saved vs
+checking the same six charges by hand, measured.
 
 **Path to production.** Clawback starts from what a brand already has: the payment slip (upload the PDF), the signed
 deal and its emails, and QuickBooks through Intuit's API. None of it needs a distributor's portal login. The parts
 that would change are at the edges: disputes sent by email or through real portals with browser automation (recovery
-services already work this way), adapters for NetSuite and Xero beside QuickBooks, and rules and the audit chain
-moved into the database beside the runs. The core stays the same: two readers, tested math, a fixed gate, and
+services already work this way), adapters for NetSuite and Xero beside QuickBooks. The core stays the same: two readers, tested math, a fixed gate, and
 people approving money, with sign-ins per role, least-privilege access to the books and each brand's data kept
 separate.
 
@@ -396,8 +426,7 @@ controller's sign-in, every AI call is shown per charge, and every action goes i
 models read the deal, code computes every charge, Claude explains each one, the gate decides, dispute D-0417 is
 filed, the owner answers one question that becomes a rule, the controller approves the credit memo, and QuickBooks
 is updated. Then Northmart argues on the portal, Clawback answers or concedes, April's fees are decided by the saved
-rule, and the Deal Coach marks up next month's deal. It runs live at https://clawback.biz, and offline in
-`DEMO_MODE` as a backup.
+rule, and the Deal Coach marks up next month's deal. It runs live at https://clawback.biz.
 
 ## Anthropic: Claude for Public Benefit
 
@@ -432,7 +461,7 @@ Devank): real quotes, with each person's role and permission.
 | The wrong person approving | Someone with the link approves money | Only the controller's sign-in approves a memo and only the owner's answers the owner's question; texts count only from that role's phone |
 | Squeezing the other side | Disputing everything to recover more | It accepts fair charges and undercharges, and never claims more than the deal allows |
 | Hidden decisions | Nobody can tell why money moved | Every decision names its gate rule, its evidence and any person involved; every AI call is shown; the audit log is hash-chained, so editing a past row breaks the check |
-| Real data | A brand's or retailer's data leaks | The demo uses only fictional data; in production: least-privilege access to the books, no training on customer data, each brand's data kept separate |
+| Real data | A brand's or retailer's data leaks | Our accounts hold only our own brands and numbers, and the contracts are public filings; in production: least-privilege access to the books, no training on customer data, each brand's data kept separate |
 
 ## Other tracks
 
@@ -490,27 +519,28 @@ Devank): an ASI:One chat clip.
 # Part 2: proof checklist per track
 
 What Devpost must show comes from the Track plan and Added tracks in `docs/design.md`. "In the repo now" is
-checked against commit 53571d2 and `DECISIONS.md`. Tag a track on Devpost only when every row says it exists.
+checked against `main` after the multi-account merge and `DECISIONS.md`. Tag a track on Devpost only when every row says it exists.
 
 ### Built today (check each on clawback.biz before pasting Part 1)
 
 | Part 1 says | In the repo now? |
 | --- | --- |
-| Four accounts, each with its own run | TODO (needs Devank): merged, and the names and totals filled into Part 1's account table |
-| Shortages, price mismatches and spoilage checked against delivery records, the agreed price and the spoilage allowance | TODO (needs Devank): merged with engine tests, and Part 1's wording matches what the engine checks |
-| Every run generated live on clawback.biz | Yes for Peak Bar (the VM runs with `DEMO_MODE=false`, `DECISIONS.md` Sat 6:45 AM). TODO (needs Devank): the other three accounts |
-| "How Clawback decided": every AI call per charge, with the model that answered | TODO (needs Devank): merged, and the fields on screen match Part 1 |
-| Remittance upload: Claude reads the PDF, code checks every line and the totals | TODO (needs Devank): merged, and a sample PDF in the repo |
+| Fernwell, Ridgefire and Birchbank, each with its own run | Yes: `data/accounts/` (#60, #64); one live run each matched `expected.csv` (`DECISIONS.md` Sat 11:50) |
+| Accounts on real contracts (KeHE, Walmart, Five Below) | Contracts yes: `data/contracts/` with SEC links. TODO (needs Devank): the accounts, merged, and Part 1's row filled in |
+| Shortages, price mismatches and spoilage | Yes: engine math against proof of delivery, the price list and ops terms, and an operations Investigator (#58) |
+| Every run generated live on clawback.biz | Yes: runs are always live; 5 live Peak Bar runs measured (`DECISIONS.md` Sat 10:45) |
+| "How Clawback decided": every AI call per charge, with the model that answered | Yes: `GET /runs/{id}/trace` and `/trace/summary` (#59), the panel per charge (#63) |
+| Remittance upload: Claude reads it, code checks every line and the totals | Yes: `/upload`, PDF or text (#62), runs from the confirmed read (`DECISIONS.md` Sat 11:50) |
 | Only the controller's sign-in approves, only the owner's answers | Yes: `api/auth.py` (`OWNER_TOKEN`, `CONTROLLER_TOKEN`), `api/tests/test_auth.py`, `DECISIONS.md` Sat 10:50 AM. TODO (needs Devank): the sign-in screens |
 | 3 live runs per visitor per 10 minutes, 20 other AI requests, 30 runs an hour site-wide | Yes: `api/auth.py` defaults, on the deployed site (`DECISIONS.md` Sat 10:50 AM) |
-| Saved rules and the audit chain held in memory | Yes, true at 53571d2 (`api/pipeline.py`, `api/audit.py`). Delete that line in Part 1 if they move to Postgres |
+| Saved rules and the audit chain outlive a restart | Yes: `api/db/state.py`, migration 004 (#64) |
 
 ### Hyphenate (main prize)
 
 | Devpost must show | In the repo now? |
 | --- | --- |
 | "Seats it fills: deductions analyst and collections specialist" | Yes: Part 1, What it does |
-| Real vs simulated | Yes: Part 1 |
+| What's real and what's ours | Yes: Part 1, with [sources.md](sources.md) for every real fact |
 | The eval score | Yes: 30/30 in both modes, `eval/published/engine.json` and `eval/published/agent.json` (agent: readers Claude + Claude, `two_models: false`); regenerate with `make eval` and `DEMO_MODE=true python eval/run.py --mode agent` |
 | How approvals and refusals work | Yes: Part 1; refusal tested in `api/tests/test_books.py`, roles in `api/tests/test_auth.py` |
 | Live scenario box for a judge's own clause | Yes: the `/scenario` screen over `POST /scenario`, both readers live, with three recorded examples. TODO (needs Devank): the test on 5 unseen clauses written by a non-teammate |

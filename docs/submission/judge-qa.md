@@ -1,15 +1,22 @@
 # Judge Q&A: short, honest answers
 
-> Two or three lines each, then point at the screen in brackets. Facts come from `main` (commit 53571d2, Sat Oct 24),
-> `DECISIONS.md`, `eval/published/` and the Devpost draft ([devpost.md](devpost.md)), plus what's being finished
-> today: four accounts, new charge types, "How Clawback decided", the remittance upload, and the owner and
-> controller sign-ins. Check each new screen once on clawback.biz before judging.
+> Two or three lines each, then point at the screen in brackets. Facts come from `main` (Sat Oct 24, after the
+> multi-account merge), `DECISIONS.md`, `eval/published/`, the Devpost draft ([devpost.md](devpost.md)) and
+> [sources.md](sources.md) for every real case.
 >
+> - **Real facts are told the way their source tells them** ("Omaha Industries sued UNFI in 2024, saying …"). Never
+>   say what Clawback would have won for a real company; say what it would have checked and flagged.
 > - **`TBD (measured)`** is a number we haven't measured. Say "we haven't measured that yet," never a guess.
 > - **TODO (needs Devank)** is a fact to fill in, or a line to delete, before judging.
-> - All four brands and distributors are invented. The app doesn't say so, so we do.
 
 ## The hard ones
+
+**"Is this real data?"**
+The contracts are real: KeHE's 2015 vendor policies and Walmart's and Five Below's supplier agreements, unedited from
+public SEC filings. The cases are real: Omaha Industries v. UNFI, Saks's markdown allowances, Walmart's on-time fines,
+Coles in Australia. The brands, their charges and every number in our accounts are ours.
+[`data/contracts/README.md` with the SEC links · [sources.md](sources.md)]
+- None of those companies is a customer or took part. Peak Bar's deal with Northmart is one we wrote.
 
 **"You graded your own homework."**
 Fair. We wrote the 30 test charges and the answer key (the key before the first run). So grade it yourself: type a
@@ -18,14 +25,14 @@ clause and a charge here, both models read it live, and you see the decision wit
 - It decides against Peak Bar's March sales and earlier payments, so suggest a promo or fee clause. TODO (needs
   Devank): what else the box accepts today (a shortage, a price, spoilage?).
 - Still missing, say so if asked: a deal written by someone outside the team, run cold (`data/eval/outside-deal.md`
-  is a placeholder), and the 30 cases cover promo allowances and fees only. TODO (needs Devank): update this if eval
-  cases for shortages, prices or spoilage land.
+  is a placeholder), and the 30 cases cover promo allowances and fees only. Shortages, prices and spoilage are checked
+  on the three new accounts' live runs instead (13 of 13 matched).
 
 **"Real remittances aren't CSVs."**
-Agreed. Drop the distributor's payment slip as a PDF: Claude reads it into charges, and code checks every line and
-the totals before they're used.
-[The upload screen: drop the sample PDF, open the charges it found] TODO (needs Devank): what the screen shows when a
-line or the total doesn't add up, so we can say it in one line.
+Agreed. Drop the remittance as a PDF or paste it: Claude lists its deduction lines, and code checks that each line's
+quote is printed on the page word for word, its numbers are in that quote, and the lines add up to what was short.
+A line not on the page is rejected; a read that doesn't add up can't start a run; anything else unclear goes to the
+owner. [`/upload`: each line's quote highlighted, the totals check, then confirm to start the run]
 
 **"Two models? The eval shows Claude twice."**
 You're right about the score. The 30-of-30 agent-mode run was recorded at 3 AM Saturday, before Gemini answered on
@@ -47,13 +54,11 @@ saved rules by meaning, so a reworded display-fee clause still finds Rule #1, wi
   spoilage fee 0.67, promo rate 0.35; the gate needs 0.85.
 
 **"What does a run cost, and how long does it take?"**
-A live run of the Peak Bar payment takes `TBD (measured)` seconds from deposit to a decided board and costs about
-`TBD (measured)` in AI calls (`TBD (measured)` calls, every one listed in the trace). Replaying recorded answers
-offline, the board was decided 5.9 seconds after the deposit in rehearsal.
-[How Clawback decided: count the rows]
+Measured on 5 live Peak Bar runs: 65 to 73 seconds from the deposit to a decided board, 13 or 14 Claude calls, about
+$0.38 of Claude per run, and the same decisions every time. Gemini's calls show tokens but no cost, because we
+couldn't open Google's price page to copy the prices. [The trace summary: calls, tokens, time and cost per run]
 - Checking the same six charges by hand: `TBD (measured)`.
-- Each visitor gets 3 live runs per 10 minutes (and the whole site 30 an hour), so the public link can't run up the
-  bill.
+- Each visitor gets 3 live runs per 10 minutes (the whole site 30 an hour), so the public link can't run up the bill.
 
 **"Recovery services and deduction software already exist."**
 Yes, and brands pay for them, which shows the need. What we built for: every decision traced to a sentence in that
@@ -85,7 +90,7 @@ And when the distributor shows a valid document, it backs down.
 **"What if the distributor sends instructions in an email?"**
 Emails are data, never instructions. Only the owner, the approved broker or a document both sides signed can change
 a deal. Northmart's own email saying the rate is $1.50 is shown as a claim and never applied.
-[Peak Bar: the Mar 30 email on C1's card · the tough distributor's emailed rate claim] One eval case tests it.
+[Peak Bar: the Mar 30 email on C1's card · Ridgefire: R1, Corbel's emailed rate] One eval case tests it.
 
 **"Why not just a rules engine?"**
 The money part is a rules engine: plain Python with tests and a fixed nine-row decision table. The AI does what rules
@@ -99,19 +104,22 @@ morning, right after our secrets scan."
 
 ## The product
 
-**Are these real companies?**
-No. All four accounts are invented and styled to look like real businesses so the screens feel real. None of them is
-a customer. The AI, the math, the phones and the QuickBooks sandbox books are real.
+**Are the brands real?**
+No: Peak Bar, Fernwell, Ridgefire and Birchbank and their numbers are ours, and so is Northmart. The contracts in the
+real-contract accounts (KeHE, Walmart, Five Below) are real text from SEC filings, but those companies didn't take
+part, and the charges against our brands are ours.
 
-**What are the four accounts?**
-Peak Bar Co. and Northmart, the full story. A drinks brand: a shortage the delivery records disprove, a price that's
-partly wrong, spoilage over the allowance, and an overcharge over $5,000 that waits for the owner. A clean month:
-every charge fair, all accepted. A tough distributor: an emailed rate claim, a repeat charge, a charge outside the
-dates, and a vague clause it asks about. [Account switcher]
+**What are the accounts?**
+Peak Bar ← Northmart, the full story. Fernwell Sparkling Tea ← Tidemark: a shortage the proof of delivery disproves,
+a price claim and spoilage that are partly right, and a $5,487.50 excess over the $5,000 limit that waits for the
+owner. Ridgefire Salsa ← Corbel: a rate from Corbel's own email, a repeat charge, a charge after the feature ended,
+and a clause worded two ways, so it asks. Birchbank Kitchen ← Greenfold: every charge fair, $2,881.52 accepted.
+Plus the accounts on real contracts. TODO (needs Devank): their names once merged. [Account switcher]
 
 **How does it check a shortage, a price or spoilage?**
-Same pattern as a promo: the charge is compared with a second source (the delivery records, the agreed price, the
-deal's spoilage allowance), and code works out the difference. [Drinks brand: the shortage card]
+Same pattern as a promo: the charge is compared with a second source (the proof of delivery, the agreed price list,
+the deal's spoilage terms), and code works out the difference. No delivery row or agreed price means it asks.
+[Fernwell: F3, 180 of 180 cases signed for]
 
 **Can I try it on my phone?**
 Yes, at clawback.biz. Each visitor gets 3 live runs per 10 minutes and 20 other AI requests (the scenario box, the
@@ -119,12 +127,18 @@ portal, the Deal Coach), so a public link can't drain our credits. Approving mon
 sign-in.
 
 **Who is the customer?**
-Founders and bookkeepers at small food and drink brands that sell through big distributors.
-TODO (needs Devank): one real quote with the person's role and permission, or delete this line.
+Founders and bookkeepers at small food and drink brands that sell through big distributors and retailers. TODO
+(needs Devank): one real quote with the person's role and permission, or delete this line.
 
 **Is this a real problem?**
-Distributors pay short and keep money for promos, fees, shortages and spoilage. Suppliers have sued over it (the
-UNFI class action reported by Grocery Dive). Each charge takes hours to check, so most never are.
+Omaha Industries sued UNFI in 2024, saying UNFI charged back $268,816.94 on about $326,780 of product sold to Giant
+Food. TeaSquares' founder said the company invoiced KeHE $32,000 in 2019 and was paid $21,000. In the UK Groceries
+Code Adjudicator's 2026 survey of more than 2,600 suppliers, 20% said retailers were slow to resolve invoice
+discrepancies, the most common issue. [sources.md]
+
+**What would Clawback have done for Omaha?**
+Checked each chargeback for proof of the product's condition and what happened to it, and flagged the ones with
+none, and flagged chargebacks taking most of an invoice. We don't say what it would have won.
 
 ## How it decides (Peak Bar)
 
@@ -151,7 +165,7 @@ never asks for more than the deal allows. A whole account of fair charges is acc
 
 **What's the dollar limit?**
 Disputes up to $5,000 in total file on the owner's standing policy. Over $5,000 waits for the owner. The limit is
-checked per charge and again on the whole dispute. D-0417 is $4,120. [Drinks brand: the charge waiting on the owner]
+checked per charge and again on the whole dispute. D-0417 is $4,120. [Fernwell: F2, the $5,487.50 excess waiting on the owner]
 
 **What gets written to QuickBooks?**
 A $2,730 credit memo, one line per accepted charge, applied to INV-3102. The disputed $4,120 stays open with a note
@@ -167,13 +181,14 @@ in a hash-chained audit log, so editing a past row breaks the check. [How Clawba
 **How accurate is it?**
 30 of 30 on 30 planted charges, amounts right to the cent, 6 asked, 0 wrong automatic actions, both with the math
 and gate alone and with the AI in the loop. We wrote the cases ourselves, and the agent run used Claude for both
-readers (see "two models" above). [`/results`]
+readers (see "two models" above). Five live Peak Bar runs decided the same way every time, and one live run per new
+account matched every expected decision. [`/results`]
 
 **What's a "wrong automatic action"?**
 Acting where the key says ask, disputing a fair charge, or accepting a wrong one. Our target is zero.
 
 **What if the Wi-Fi dies?**
-The backup laptop runs `make demo`: recorded AI answers and a labeled QuickBooks stand-in, same logic, same numbers.
+Clawback always runs live now, so we play the backup video of a recorded run; the live site keeps running for Q&A.
 
 ## Safety
 
@@ -183,9 +198,9 @@ promise, discount or deadline the owner's policy didn't set, is blocked. Twice b
 owner.
 
 **What about real customer data?**
-The demo uses only invented data. In production: least-privilege access to the books, no training on customer data,
+Our accounts hold only our own brands and numbers, and the contracts are public SEC filings. In production: least-privilege access to the books, no training on customer data,
 and each brand's data kept separate.
 
 **What would you build next?**
-Rules and the audit chain stored in the database (runs already are), more distributors and charge types, and the
-Deal Coach's edits going into the next negotiation.
+Walmart's on-time-in-full fines checked against the delivery appointment log, more real distributor policies,
+and the Deal Coach's edits going into the next negotiation.

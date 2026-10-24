@@ -1,9 +1,15 @@
 # Judge flashcards
 
-20 likely questions with two-line answers, matching [docs/submission/judge-qa.md](submission/judge-qa.md) (the
-longer versions and caveats live there). Point at the screen in brackets. All four accounts are invented; the app
-doesn't say so, so we do. `TBD (measured)` means we haven't measured it: say so, never guess. Fill [QUOTE] before
-judging or skip the line.
+21 likely questions with two-line answers, matching [docs/submission/judge-qa.md](submission/judge-qa.md) (the
+longer versions and caveats live there). Point at the screen in brackets. Real facts are told the way their source
+tells them ([sources.md](submission/sources.md)); never say what Clawback would have won for a real company.
+`TBD (measured)` means we haven't measured it: say so, never guess. Fill [QUOTE] before judging or skip the line.
+
+---
+
+**0. Is this real data?**
+Real contracts (KeHE, Walmart, Five Below, unedited from SEC filings) and real cases (Omaha v. UNFI, Saks, Walmart's
+on-time fines, Coles). Our brands, their charges and every number are ours. [`data/contracts/README.md`]
 
 ---
 
@@ -24,8 +30,8 @@ Memory by meaning: a reworded display-fee clause still finds Rule #1, with the s
 can't yet tell similar fees apart, so type and distributor must match too. [April card: similarity 1.00]
 
 **5. What does a run cost, and how long?**
-Live: `TBD (measured)` seconds and `TBD (measured)` in AI calls, all listed in the trace. Replayed offline,
-the board was decided in 5.9 seconds. [How Clawback decided]
+Measured on 5 live Peak Bar runs: 65–73 seconds, 13–14 Claude calls, about $0.38 of Claude, same decisions
+every time. [Trace summary]
 
 **6. Recovery services and deduction software already exist.**
 Yes, and brands pay for them, which shows the need. Ours traces each decision to the brand's own deal, accepts
@@ -55,13 +61,13 @@ worded differently and changes by email. [How Clawback decided: AI rows vs code]
 Yes: github.com/devank-yadav/clawback; `make eval` reruns the score. (Until it's public: "It goes public this
 morning, right after our secrets scan.")
 
-**13. Are these real companies?**
-No: all four accounts are invented, styled like real businesses; none is a customer. The AI, the math, the
-phones and the QuickBooks sandbox books are real.
+**13. Are the brands real?**
+No: Peak Bar, Fernwell, Ridgefire, Birchbank and their distributors are ours. KeHE, Walmart and Five Below's
+contracts are real text, but those companies didn't take part and the charges are ours.
 
 **14. What do the other accounts show?**
-A drinks brand (shortage disproved by delivery records, a charge over $5,000 waiting on the owner), a tough
-distributor (emailed rate claim, repeat charge), and a clean month where everything is accepted. [Account switcher]
+Fernwell (shortage disproved by the proof of delivery, a $5,487.50 excess waiting on the owner), Ridgefire (an
+emailed rate, a repeat charge), Birchbank (all fair, $2,881.52 accepted). [Account switcher]
 
 **15. What stops it disputing everything?**
 It accepted $2,730 for Peak Bar, including a charge that looked wrong until it found the email, and a whole
@@ -84,5 +90,5 @@ Every decision cites a sentence, a row, a rule or a person, and every AI call is
 hash-chained, so editing a past row breaks the check. [`/audit` → Verify chain]
 
 **20. Who is the customer?**
-Founders and bookkeepers at small food and drink brands that sell through big distributors.
-[QUOTE]
+Founders and bookkeepers at small food and drink brands that sell through big distributors. Omaha Industries
+sued UNFI in 2024, saying UNFI charged back $268,816.94 on about $326,780 of product. [QUOTE]
