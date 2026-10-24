@@ -1,67 +1,94 @@
 # Judge flashcards
 
-15 likely questions with two-line answers. Facts only from docs/design.md (Judge Q&A, Responsible design and the
-scenario). Point at the screen named in brackets. Everyone named is fictional. Fill [QUOTE] before judging; the eval score
-is from eval/latest.json and eval/latest-agent.json (see docs/submission/devpost.md).
+21 likely questions with two-line answers, matching [docs/submission/judge-qa.md](submission/judge-qa.md) (the
+longer versions and caveats live there). Point at the screen in brackets. Real facts are told the way their source
+tells them ([sources.md](submission/sources.md)); never say what Clawback would have won for a real company.
+`TBD (measured)` means we haven't measured it: say so, never guess. Fill [QUOTE] before judging or skip the line.
 
 ---
 
-**1. Don't recovery services already do this?**
-Yes, and companies pay them, which shows the need. We read each deal's exact wording, accept fair charges,
-argue back live, and fix the next deal. [Board → Coach]
+**0. Is this real data?**
+Real contracts (KeHE, Walmart, Five Below, unedited from SEC filings) and real cases (Omaha v. UNFI, Saks, Walmart's
+on-time fines, Coles). Our brands, their charges and every number are ours. [`data/contracts/README.md`]
 
-**2. What if the AI invents a clause?**
-It can't use one: the quote must be found word for word and two different models must agree.
-Disagreements go to a person. [Show a rejected term]
+---
 
-**3. Why not just a rules engine?**
-The math *is* a rules engine with tests. The hard part is that every deal is worded differently and changes
-arrive by email; reading that is the AI's job. [Evidence card: highlighted sentence]
+**1. You graded your own homework.**
+Fair: we wrote the 30 cases (the answer key came first). So grade it yourself: type a clause and a charge,
+and both models read it live. [`/scenario`]
 
-**4. What stops it disputing everything?**
-It accepted $2,730 here, including a charge that looked wrong until it found the broker's email.
-The policy never lets it ask for more than the deal allows. [C3 card]
+**2. Real remittances aren't CSVs.**
+Agreed. Drop the payment slip as a PDF: Claude reads it into charges, and code checks every line and the
+totals. [Upload screen]
 
-**5. Who can move money?**
-No agent. Credit memos need the controller, and a refusal holds everything.
-[Controller approval + audit log]
+**3. Two models? The eval shows Claude twice.**
+True for the score: it was recorded before Gemini answered on our key, so Reader B was a second Claude call.
+Gemini reads live now, and on a vague clause it disagreed, so Clawback asked. [How Clawback decided: Gemini row]
 
-**6. What if a distributor emails new terms?**
-Only approved senders or a document signed by both parties can change a deal; anything else is shown as a
-claim. It's in our eval. [Northmart "$1.50" email shown as a claim]
+**4. What does Moss add?**
+Memory by meaning: a reworded display-fee clause still finds Rule #1, with the score on the card. Limit: it
+can't yet tell similar fees apart, so type and distributor must match too. [April card: similarity 1.00]
 
-**7. How accurate is it?**
-30 of 30 on 30 planted charges, amounts to the cent, 6 asked, 0 wrong automatic actions, in both eval modes.
-The answer key was written before the first run; we wrote the cases ourselves. [Results / scoreboard]
+**5. What does a run cost, and how long?**
+Measured on 5 live Peak Bar runs: 65–73 seconds, 13–14 Claude calls, about $0.38 of Claude, same decisions
+every time. [Trace summary]
 
-**8. How does this reach production?**
-Real portals through browser automation (recovery services already do this), adapters for NetSuite or Xero
-beside QuickBooks, and the same approval and audit model.
+**6. Recovery services and deduction software already exist.**
+Yes, and brands pay for them, which shows the need. Ours traces each decision to the brand's own deal, accepts
+fair charges, rehearses the comeback, and fixes next month's deal. [C3 card → `/coach`]
 
-**9. Who is the customer?**
-Founders and bookkeepers at small food and consumer brands that sell through big distributors.
-[QUOTE]
+**7. Path to production without portal logins?**
+It starts from what a brand already has: the payment slip, the deal and its emails, and QuickBooks's API. In
+production, disputes go out by email or get pasted into a portal; automating portals comes later. [Upload · D-0417]
 
-**10. What if the AI misreads the deal and disputes a fair charge?**
-Two models must agree, quotes are verified word for word, and low confidence goes to a person.
-It concedes when shown a valid document. [Attach amendment → $1,000 conceded, $540 kept]
+**8. Who can move money?**
+No agent. Only the controller's sign-in approves the memo, never the owner's or an agent; a no posts nothing.
+[Sam's phone, signed in as controller · audit log]
 
-**11. Can an agent make up a dollar amount?**
-No. All amounts come from tested code, and an outbound filter blocks any figure that isn't in a finding.
-[Evidence card: math line]
+**9. What if the AI is wrong?**
+The worst case is a question, not a payment: two models must agree, quotes are checked word for word, code does
+the math. Shown a valid document, it backs down. [Tablet: Attach signed amendment → $1,000 conceded, $540 kept]
 
-**12. What about instructions hidden in documents ("ignore the deal")?**
-Documents are data, never instructions; nothing in them can change an agent's tools or policy.
-Only approved senders or signed documents change a deal, and we test it in the eval.
+**10. What if the distributor sends instructions in an email?**
+Emails are data, never instructions. Only the owner, the approved broker or a document both sides signed can
+change a deal; Northmart's "$1.50" email is shown as a claim. [C1 card: the Mar 30 email]
 
-**13. Could it overreach: write things off or make promises?**
-It cannot post to the books, and credit memos over $1,000 need the controller.
-It never offers discounts or deadlines. [Portal reply]
+**11. Why not just a rules engine?**
+The money part *is* a rules engine with tests and a fixed nine-row gate. The AI reads what rules can't: deals
+worded differently and changes by email. [How Clawback decided: AI rows vs code]
 
-**14. How do I know why money moved?**
-Every decision cites a sentence, a data row, a rule or a person.
-The audit log is hash-chained, so editing a past row breaks the check. [Audit → Verify chain]
+**12. Is the code open?**
+Yes: github.com/devank-yadav/clawback; `make eval` reruns the score. (Until it's public: "It goes public this
+morning, right after our secrets scan.")
 
-**15. Is any real company data involved?**
-No: Peak Bar Co. and Northmart are fictional, and we wrote the deal, emails and sales.
-In production: least-privilege QuickBooks access, no training on customer data, per-brand isolation.
+**13. Are the brands real?**
+No: Peak Bar, Fernwell, Ridgefire, Birchbank and their distributors are ours. KeHE, Walmart and Five Below's
+contracts are real text, but those companies didn't take part and the charges are ours.
+
+**14. What do the other accounts show?**
+Fernwell (shortage disproved by the proof of delivery, a $5,487.50 excess waiting on the owner), Ridgefire (an
+emailed rate, a repeat charge), Birchbank (all fair, $2,881.52 accepted). [Account switcher]
+
+**15. What stops it disputing everything?**
+It accepted $2,730 for Peak Bar, including a charge that looked wrong until it found the email, and a whole
+clean month. It never asks for more than the deal allows. [Clean month]
+
+**16. Why ask about C6?**
+§5.4 says "at its discretion": a judgment call, so the owner decides, once. The answer becomes Rule #1, and
+April's fees are decided with zero questions. [`/april`]
+
+**17. How accurate is it?**
+30 of 30 on planted charges, amounts to the cent, 6 asked, 0 wrong automatic actions, in both eval modes. We
+wrote the cases, and they cover promos and fees only. [`/results`]
+
+**18. Can I try it on my phone?**
+Yes: clawback.biz. Each visitor gets 3 live runs per 10 minutes so a public link can't drain our credits;
+approving money still needs the controller's sign-in.
+
+**19. How do I know why money moved?**
+Every decision cites a sentence, a row, a rule or a person, and every AI call is in the trace. The audit log is
+hash-chained, so editing a past row breaks the check. [`/audit` → Verify chain]
+
+**20. Who is the customer?**
+Founders and bookkeepers at small food and drink brands that sell through big distributors. Omaha Industries
+sued UNFI in 2024, saying UNFI charged back $268,816.94 on about $326,780 of product. [QUOTE]
