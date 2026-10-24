@@ -1,0 +1,105 @@
+{
+  "totals": {
+    "taken": 6850.0,
+    "disputed": 4120.0,
+    "accepted": 1530.0,
+    "waiting": 1200.0,
+    "undecided": 0.0,
+    "questions": 1,
+    "skipped": 0
+  },
+  "open_disputes": [
+    {
+      "id": "D-0417",
+      "remittance_id": "REM-INV-3102",
+      "counterparty": "Northmart",
+      "lines": [
+        {
+          "charge_id": "C1",
+          "ref": "NM-2229",
+          "amount": 600.0,
+          "reason": "Northmart charged $1.50 per bar, but the deal pays $1.00. For 1,200 bars, $1,200.00 is allowed, not $1,800.00; $600.00 overcharged.",
+          "clause_ref": "§3.1",
+          "quote": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
+          "math": "Store sales show 1,200 promoted units for this period. Cap 5,000 units: 1,200 of the in-date units are still under it. 1,200 units x $1.00 = $1,200.00.",
+          "evidence_ids": [
+            "ev-charge-C1",
+            "ev-spring-promo-3.1",
+            "ev-spring-promo-3.2",
+            "ev-sales-2026-03-01",
+            "ev-northmart-2026-03-30"
+          ]
+        },
+        {
+          "charge_id": "C2",
+          "ref": "NM-2231",
+          "amount": 980.0,
+          "reason": "Northmart already took $980.00 for these same 980 bars sold Mar 8 to Mar 14 under NM-2178; this charge repeats it.",
+          "clause_ref": "§3.1",
+          "quote": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
+          "math": "Store sales show 980 promoted units for this period. Cap 5,000 units: 980 of the in-date units are still under it. A prior payment already covered 980 units for this period. 0 units x $1.00 = $0.00.",
+          "evidence_ids": [
+            "ev-charge-C2",
+            "ev-payment-NM-2178",
+            "ev-sales-2026-03-08",
+            "ev-spring-promo-3.1",
+            "ev-spring-promo-3.2"
+          ]
+        },
+        {
+          "charge_id": "C4",
+          "ref": "NM-2236",
+          "amount": 1540.0,
+          "reason": "Earlier March sales already used the deal's 5,000-unit limit, so none of these 1,540 units qualify. The full $1,540.00 is over.",
+          "clause_ref": "§3.1",
+          "quote": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
+          "math": "Store sales show 1,540 promoted units for this period. Cap 5,000 units: 0 of the in-date units are still under it. 0 units x $1.00 = $0.00.",
+          "evidence_ids": [
+            "ev-charge-C4",
+            "ev-spring-promo-3.1",
+            "ev-spring-promo-3.2",
+            "ev-sales-2026-03-01",
+            "ev-sales-2026-03-08",
+            "ev-sales-2026-03-15",
+            "ev-sales-2026-03-22",
+            "ev-payment-NM-2178",
+            "ev-payment-NM-2201",
+            "ev-broker-2026-03-28"
+          ]
+        },
+        {
+          "charge_id": "C5",
+          "ref": "NM-2237",
+          "amount": 1000.0,
+          "reason": "Northmart took $1,000.00 for Mint bars, but the Spring promo only covers Peak Bar Original and Peak Bar Chocolate, so nothing is owed.",
+          "clause_ref": "§3.1",
+          "quote": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
+          "math": "Mint is not a product the deal covers.",
+          "evidence_ids": [
+            "ev-spring-promo-3.1",
+            "ev-charge-C5",
+            "ev-sales-mint"
+          ]
+        }
+      ],
+      "total": 4120.0,
+      "status": "filed",
+      "approved_by": "policy",
+      "filed_at": "2026-10-24T11:54:05.704762Z"
+    }
+  ],
+  "pending_question": {
+    "id": "Q-1",
+    "to_role": "owner",
+    "charge_id": "C6",
+    "text": "Northmart took $1,200: Display fee (notice Mar 11). The deal says: \"Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.\" Notice came 20 days ahead. Accept or dispute? Tell me your rule and I'll remember it.",
+    "channel": "inbox",
+    "sent_at": "2026-10-24T11:54:05.704505Z",
+    "answer": null,
+    "answered_at": null,
+    "rule_id": null,
+    "closed_at": null
+  },
+  "pending_approvals": [],
+  "run_id": "run-march-cc352b46"
+}

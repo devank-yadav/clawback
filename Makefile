@@ -1,9 +1,12 @@
 # Targets are wired up as each part lands. Keep target names stable; the guides and the demo checklist use them.
-.PHONY: dev api web test acceptance seed eval eval-agent record demo reset check-data deploy-check
+.PHONY: dev api web test acceptance seed eval eval-agent record demo reset check-data deploy-check \
+	fetch-agent fetch-agent-connect fetch-agent-test
 
 # The repo's .venv when there is one (it has the packages), else python3 (Macs often have no "python").
 # Override with: make test PYTHON=python
 PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
+# The Clawback Assistant has its own venv (uagents pins its own packages): fetch_agent/README.md
+FETCH_PYTHON ?= $(if $(wildcard fetch_agent/.venv/bin/python),fetch_agent/.venv/bin/python,$(PYTHON))
 
 api:
 	$(PYTHON) -m uvicorn api.main:app --reload --reload-dir api --port 8000
@@ -49,6 +52,17 @@ reset:
 
 check-data:
 	$(PYTHON) scripts/check_data.py && $(PYTHON) scripts/check_eval.py
+
+# Clawback Assistant for ASI:One (Fetch.ai track): run it, connect its Agentverse mailbox with AGENTVERSE_API_KEY
+# while it runs (same machine), and its offline tests. Runbook: fetch_agent/README.md.
+fetch-agent:
+	$(FETCH_PYTHON) -m fetch_agent
+
+fetch-agent-connect:
+	$(FETCH_PYTHON) -m fetch_agent.connect
+
+fetch-agent-test:
+	$(FETCH_PYTHON) -m pytest -q fetch_agent
 
 # Offline deploy check (docs/deploy.md): compose file resolves, and the Caddyfile parses when caddy or a Docker daemon is around.
 # Uses .env.example and a placeholder domain, so it needs no keys and no network (except pulling caddy:2 the first time).
