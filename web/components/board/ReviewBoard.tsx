@@ -27,7 +27,7 @@ function useIsDesktop() {
 }
 
 export default function ReviewBoard({ runId }: { runId: string }) {
-  const { state, answerQuestion, controllerDecides } = useRunEvents(runId);
+  const { state, answerQuestion, controllerDecides } = useRunEvents(runId, "fixture"); // this board predates the workspace screens and still reads only the recorded run
   const isDesktop = useIsDesktop();
   const router = useRouter();
   const pathname = usePathname();
