@@ -13,20 +13,23 @@
 
 ## Setup on your laptop
 
-About 10 minutes, once Devank has pushed the repo and invited you.
+About 10 minutes. The repo is pushed and your invite is accepted; your issues are #1–10.
 
-1. Accept the GitHub invite, then clone and branch:
+1. Clone and switch to your branch (it already exists):
 
 ```bash
-git clone <repo URL from Devank> clawback && cd clawback
-git checkout -b web
+git clone https://github.com/devank-yadav/clawback.git && cd clawback
+git checkout web
+git pull origin main   # at the start of each session, to pick up Devank's contracts and fixture
 ```
 
 2. Install Claude Code if you don't have it (`npm install -g @anthropic-ai/claude-code`) and sign in with your own Claude account.
 3. Make sure your git name and email are yours (`git config user.name`); commits are authored by you, with no AI co-author lines. The repo's `.claude/settings.json` already turns those off.
 4. Start Claude Code in the repo (`claude`) and paste:
 
-> "I'm Rishi. Read docs/team/rishi.md and web/CLAUDE.md. Scaffold the Next.js app in web/ (Tailwind, Framer Motion) using the design tokens in web/CLAUDE.md, then build card R1 and R2 against web/fixtures/run-events.json."
+> "I'm Rishi. Read CLAUDE.md, docs/team/rishi.md and web/CLAUDE.md. Do card R1: scaffold the Next.js app in web/ (Tailwind, Framer Motion) with the design tokens in web/CLAUDE.md and the payment screen. Use the scenario numbers directly until web/fixtures/run-events.json exists."
+
+Do the sign-ups below first (they block everyone), then R1. Start R2 once Devank says the fixture file is pushed (about 12:30 AM).
 
 5. Keys never go in the repo, Slack or the group chat. They live in `.env` on laptops only (the repo has `.env.example` with the names).
 

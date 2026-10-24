@@ -4,6 +4,7 @@ Clawback wins back the money distributors wrongly take from small brands' paymen
 Built at Cal Hacks 13.0. All company names and numbers in the demo are fictional.
 
 - Full plan: [docs/design.md](docs/design.md)
+- Team brief: [docs/team/README.md](docs/team/README.md)
 - Team guides: [Devank](docs/team/devank.md) · [Rishi](docs/team/rishi.md) · [Manasv](docs/team/manasv.md)
 - Decisions log: [DECISIONS.md](DECISIONS.md)
 

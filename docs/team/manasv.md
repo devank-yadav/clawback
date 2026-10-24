@@ -13,13 +13,14 @@
 
 ## Setup on your laptop
 
-About 10 minutes, once Devank has pushed the repo and invited you.
+About 10 minutes. The repo is pushed and your invite is accepted; your issues are #11–21.
 
-1. Accept the GitHub invite, then clone and branch:
+1. Clone and switch to your branch (it already exists):
 
 ```bash
-git clone <repo URL from Devank> clawback && cd clawback
-git checkout -b story
+git clone https://github.com/devank-yadav/clawback.git && cd clawback
+git checkout story
+git pull origin main   # at the start of each session, to pick up Devank's latest
 ```
 
 2. Install Claude Code if you don't have it (`npm install -g @anthropic-ai/claude-code`) and sign in with your own Claude account.
