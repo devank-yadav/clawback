@@ -1,0 +1,28 @@
+# A small second account for the tests (fictional): api/tests/test_accounts.py runs it end to end with a fake Claude.
+# Hill Oat Co. <- Eastway, invoice INV-9001 for $10,000 paid $9,100: $900 taken in three charges.
+id: test-oat
+brand:
+  name: Hill Oat Co.
+  kind: granola brand
+  city: Fresno, CA
+  initials: HO
+  colors: {primary: "#5b7a2e", accent: "#e8d9a8"}
+  owner: {name: Ari Lane, email: ari@hilloat.example}
+  controller: {name: Bo Chen}
+distributor:
+  name: Eastway
+  desk_email: deductions@eastway.example
+  portal_name: Eastway Vendor Portal
+  colors: {primary: "#7a2e5b", accent: "#f3e6ee"}
+invoice:
+  id: INV-9001
+  expected: 10000.00
+  received: 9100.00
+  month: june
+  period_start: 2026-06-01
+  period_end: 2026-06-30
+deal_docs: [test-oat-deal]
+approved_senders: [ari@hilloat.example]
+dispute_start: 901
+qbo: {customer: Eastway, invoice_no: INV-9001}
+nessie_description: Eastway remittance INV-9001

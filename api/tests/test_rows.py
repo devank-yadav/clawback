@@ -7,7 +7,7 @@ from decimal import Decimal
 
 import pytest
 
-from api import adapters, rows
+from api import accounts, adapters, rows
 from api.engine.allowed import compute_allowed, notice_days
 from api.engine.gate import concession, decide, summarize
 from api.engine.policy import load_policy
@@ -17,6 +17,7 @@ from api.engine.types import DecisionKind
 
 POLICY = load_policy()
 K = DecisionKind
+PEAK = accounts.get("peak-bar").dir  # data/accounts/peak-bar
 
 
 def run(month, terms=None, rules=()):
@@ -41,7 +42,7 @@ def run(month, terms=None, rules=()):
     ("deals/amendment-1.md", "applies to a maximum of 6,000 units in total."),
 ])
 def test_quotes_found_word_for_word(rel, quote):
-    assert find_quote((rows.DATA / rel).read_text(), quote) is not None
+    assert find_quote((PEAK / rel).read_text(), quote) is not None
 
 
 def test_charges_match_scenario():
@@ -100,9 +101,9 @@ def test_amendment_1_from_files_concedes_1000():
 
 @pytest.fixture
 def data(tmp_path):
-    """A copy of data/ to break on purpose."""
+    """A copy of Peak Bar's charges and notices to break on purpose."""
     for sub in ("charges", "notices"):
-        shutil.copytree(rows.DATA / sub, tmp_path / sub)
+        shutil.copytree(PEAK / sub, tmp_path / sub)
     return tmp_path
 
 

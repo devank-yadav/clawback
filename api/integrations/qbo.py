@@ -2,15 +2,16 @@
 the controller (or the owner's policy, for memos of $1,000 or less) has said yes.
 
 Live (QBO_* keys set): the sandbox REST API. The base URL, minorversion and the query / create / get calls
-follow scripts/seed_quickbooks.py, which created customer Northmart, the "Promotional Allowance" item and
-INV-3102. Each write carries `requestid` (Intuit: a repeat with the same id gets the first response back, not a
-duplicate; at most 50 characters), built from the approval id. Every call goes through replay.call_outside, so
-DEMO_MODE replays recorded responses.
+follow scripts/seed_quickbooks.py, which created each account's customer (Peak Bar's: Northmart) and invoice
+(INV-3102) and the shared "Promotional Allowance" item in the one sandbox company. Each write carries `requestid`
+(Intuit: a repeat with the same id gets the first response back, not a duplicate; at most 50 characters), built from
+the approval id. Every call goes through replay.call_outside, so DEMO_MODE replays recorded responses.
 - The credit memo is applied with a $0 Payment whose lines link INV-3102 and the credit memo (Intuit's Payment
   reference). Verify in the sandbox UI that the invoice's balance drops by the memo amount.
 - The open-balance note is a sparse update (Id, SyncToken, "sparse": true) of the invoice's PrivateNote.
-- POST /demo/reset undoes all of it (undo_demo_writes): every credit memo and payment Clawback writes has a
-  PrivateNote starting "Clawback ", so the reset finds them, deletes them and clears the invoice note.
+- POST /demo/reset undoes all of it (undo_demo_writes), for every account's customer: every credit memo and
+  payment Clawback writes has a PrivateNote starting "Clawback ", so the reset finds them, deletes them and clears
+  the invoice note.
 
 Stand-in (no QBO keys yet, or DEMO_MODE): answers with the same shapes and ids starting "sim-". It's never
 recorded as a fixture, and every ledger post it backs says it was simulated and why. DEMO_MODE uses it even with the
@@ -40,11 +41,11 @@ MINOR = "75"
 REDIRECT_URI = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl"  # unused by a refresh
 ENV = Path(__file__).resolve().parents[2] / ".env"
 log = logging.getLogger("clawback.qbo")
-CUSTOMER = "Northmart"
+CUSTOMER = "Northmart"  # Peak Bar's; every account names its own (account.yaml qbo.customer)
 ALLOWANCE_ITEM = "Promotional Allowance"
 KEYS = ("QBO_CLIENT_ID", "QBO_CLIENT_SECRET", "QBO_REALM_ID", "QBO_REFRESH_TOKEN")
 MARK = "Clawback "  # how every credit memo and payment Clawback writes starts its PrivateNote
-OPEN_NOTE = re.compile(rf"Open \$[\d,]+\.\d\d disputed with {CUSTOMER}:")  # pipeline._post_books' invoice note
+OPEN_NOTE = re.compile(r"Open \$[\d,]+\.\d\d disputed with [^:]+:")  # pipeline._post_books' invoice note
 
 
 class BooksError(RuntimeError):
@@ -127,9 +128,9 @@ class LiveBooks:
             self._ids[key] = self._find(entity, where)["Id"]
         return self._ids[key]
 
-    def post_credit_memo(self, request_id: str, lines: Sequence[Line], memo: str) -> Posted:
+    def post_credit_memo(self, request_id: str, lines: Sequence[Line], memo: str, customer: str = CUSTOMER) -> Posted:
         item = self._id("Item", f"Name = '{ALLOWANCE_ITEM}'")
-        body = {"CustomerRef": {"value": self._id("Customer", f"DisplayName = '{CUSTOMER}'")},
+        body = {"CustomerRef": {"value": self._id("Customer", f"DisplayName = '{_quoted(customer)}'")},
                 "TxnDate": date.today().isoformat(), "PrivateNote": memo,
                 "Line": [{"Amount": _money(ln.amount), "DetailType": "SalesItemLineDetail", "Description": ln.description,
                           "SalesItemLineDetail": {"ItemRef": {"value": item}, "Qty": 1, "UnitPrice": _money(ln.amount)}}
@@ -156,9 +157,10 @@ class LiveBooks:
         made = self._call("POST", "/invoice", body=body, request_id=request_id)["Invoice"]
         return Posted("Invoice", made["Id"], Decimal(disputed), False)
 
-    def undo_demo_writes(self) -> list[Undone]:
-        """Delete every payment and credit memo Clawback wrote for Northmart and clear its note from their invoices,
-        so the sandbox is back to the seed: INV-3102 with $6,850 open. Payments go first, so no memo is still applied
+    def undo_demo_writes(self, customers: Sequence[str] | None = None) -> list[Undone]:
+        """Delete every payment and credit memo Clawback wrote for these customers (every account's, by default) and
+        clear its note from their invoices, so the sandbox is back to the seed: INV-3102 with $6,850 open, and each
+        other account's invoice with its own short payment open. Payments go first, so no memo is still applied
         when it's deleted. A $0 payment from before payments carried the note is found by the Clawback memo it links.
         Running it again finds nothing and changes nothing.
 
@@ -169,8 +171,19 @@ class LiveBooks:
         https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/creditmemo
         Intuit's SDKs send the same request: QuickBooks-V3-Java-SDK DataService.prepareDelete and
         QuickBooks-V3-PHP-SDK DataService::Delete."""
-        customer = self._id("Customer", f"DisplayName = '{CUSTOMER}'")
-        where = f"CustomerRef = '{customer}' MAXRESULTS 1000"
+        undone: list[Undone] = []
+        for name in dict.fromkeys(customers if customers is not None else account_customers()):
+            undone += self._undo_customer(name)
+        return undone
+
+    def _undo_customer(self, name: str) -> list[Undone]:
+        named = f"DisplayName = '{_quoted(name)}'"
+        if f"Customer:{named}" not in self._ids:  # _id(), except that a customer not seeded yet has nothing to undo
+            found = self._query("Customer", named)
+            if not found:
+                return []
+            self._ids[f"Customer:{named}"] = found[0]["Id"]
+        where = f"CustomerRef = '{self._ids[f'Customer:{named}']}' MAXRESULTS 1000"
         memos = [m for m in self._query("CreditMemo", where) if m.get("PrivateNote", "").startswith(MARK)]
         ours = {m["Id"] for m in memos}
         payments = [p for p in self._query("Payment", where) if p.get("PrivateNote", "").startswith(MARK) or any(
@@ -213,8 +226,9 @@ class StandInBooks:
         self.calls.append((entity, request_id, detail))
         return posted
 
-    def post_credit_memo(self, request_id: str, lines: Sequence[Line], memo: str) -> Posted:
-        return self._post(request_id, "CreditMemo", sum((ln.amount for ln in lines), Decimal(0)), {"memo": memo, "lines": lines})
+    def post_credit_memo(self, request_id: str, lines: Sequence[Line], memo: str, customer: str = CUSTOMER) -> Posted:
+        return self._post(request_id, "CreditMemo", sum((ln.amount for ln in lines), Decimal(0)),
+                          {"memo": memo, "lines": lines, "customer": customer})
 
     def apply_to_invoice(self, request_id: str, invoice_no: str, credit_memo_id: str, amount: Decimal) -> Posted:
         return self._post(request_id, "Payment", amount, {"invoice": invoice_no, "credit_memo": credit_memo_id})
@@ -225,8 +239,9 @@ class StandInBooks:
     def open_balance(self, invoice_no: str) -> Decimal | None:
         return None  # the stand-in keeps no invoice
 
-    def undo_demo_writes(self) -> list[Undone]:
-        """Clears what it 'posted', in LiveBooks' order: payments, credit memos, then each invoice's note once."""
+    def undo_demo_writes(self, customers: Sequence[str] | None = None) -> list[Undone]:
+        """Clears what it 'posted' (for every customer), in LiveBooks' order: payments, credit memos, then each
+        invoice's note once."""
         posted = [(entity, self._seen[rid].id, rid, detail) for entity, rid, detail in self.calls]
         undone = [Undone(entity, sim_id, "deleted", detail.get("memo", f"{MARK}{rid}"), True)
                   for kind in ("Payment", "CreditMemo") for entity, sim_id, rid, detail in posted if entity == kind]
@@ -237,6 +252,18 @@ class StandInBooks:
 
 
 _books: LiveBooks | StandInBooks | None = None
+
+
+def account_customers() -> list[str]:
+    """Every account's QuickBooks customer (data/accounts/<id>/account.yaml qbo.customer)."""
+    from api import accounts
+
+    return [a.config.qbo.customer for a in accounts.every()]
+
+
+def _quoted(name: str) -> str:
+    """A name inside a QuickBooks query string: a single quote is escaped with a backslash."""
+    return name.replace("'", "\\'")
 
 
 def _token_file() -> Path | None:

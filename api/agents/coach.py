@@ -10,20 +10,17 @@ import json
 import re
 from dataclasses import dataclass
 from decimal import Decimal
-from pathlib import Path
 
 import anthropic
 
-from api import documents, evidence as evidence_mod
-from api.agents import claude
+from api import accounts, documents, evidence as evidence_mod
+from api.agents import claude, prompts
 from api.agents.claude import Strict
 from api.agents.investigator import invented_numbers
 from api.contracts import CoachResponse, Redline
 from api.engine import quote_check, totals
 
 SERVICE = "claude-coach"
-PROMPT = (Path(__file__).parent / "prompts" / "coach.md").read_text()
-DRAFT = "summer-draft"
 _SECTION = re.compile(r"(\d+\.\d+)\s+$")
 
 
@@ -49,8 +46,17 @@ class Cost:
     why: str  # "disputed" or "needed a question to the owner"
 
 
-def coach(costs: list[Cost], client: anthropic.Anthropic | None = None) -> CoachResponse:
-    doc, draft = documents.load(DRAFT)
+def draft_of(account: accounts.Account | str | None = None) -> str | None:
+    """The account's next deal in draft: its first deals/*draft* document."""
+    return next((d for d in sorted(accounts.resolve(account).docs) if documents.load(d)[0].kind == "draft"), None)
+
+
+def coach(costs: list[Cost], client: anthropic.Anthropic | None = None,
+          account: accounts.Account | str | None = None) -> CoachResponse:
+    draft_id = draft_of(account)
+    if draft_id is None:  # no draft deal to redline
+        return CoachResponse(draft_doc_id="", redlines=[])
+    doc, draft = documents.load(draft_id)
     by_id = {c.finding_id: c for c in costs}
     user = json.dumps({"costs": [{"finding_id": c.finding_id, "charge": f"{c.charge_id} ({c.ref})", "type": c.type,
                                   "what_went_wrong": c.finding, "cost": f"${c.dollars:,.2f} {c.why}"} for c in costs],
@@ -82,5 +88,5 @@ def coach(costs: list[Cost], client: anthropic.Anthropic | None = None) -> Coach
             raise ValueError("; ".join(problems))
         return redlines
 
-    ans = claude.ask(SERVICE, PROMPT, user, LLMCoach, check, client, draft=DRAFT)
-    return CoachResponse(draft_doc_id=DRAFT, redlines=ans.value or [])
+    ans = claude.ask(SERVICE, prompts.render("coach", account), user, LLMCoach, check, client, draft=draft_id)
+    return CoachResponse(draft_doc_id=draft_id, redlines=ans.value or [])

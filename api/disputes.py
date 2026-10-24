@@ -1,4 +1,5 @@
-"""The Northmart portal for live runs: disputes, the judge's replies and Clawback's answers (F9, beat 3).
+"""The distributor's portal for live runs (Peak Bar's: Northmart): disputes, the judge's replies and Clawback's
+answers (F9, beat 3).
 
 A reply with a document attached goes back through the Deal Reader. If the document can change the deal
 (signed by both parties, or from an approved sender), the engine recomputes the lines and the Negotiator concedes
@@ -14,7 +15,7 @@ from decimal import Decimal
 
 import anthropic
 
-from api import documents, evidence as evidence_mod, pipeline, adapters, rows
+from api import accounts, documents, evidence as evidence_mod, pipeline, adapters, rows
 from api.agents import investigator, negotiator, readers
 from api.contracts import Dispute, DisputeLine, Finding, PortalMessage, PortalPreset
 from api.engine import gate, outbound_filter, totals
@@ -67,43 +68,49 @@ def _message(dispute_id: str, from_party: str, text: str, **kw) -> PortalMessage
 
 def post(dispute_id: str, text: str, attachment_doc_id: str | None = None,
          client: anthropic.Anthropic | None = None) -> list[PortalMessage]:
-    """Northmart's reply and Clawback's answer (if one goes out). Both also stream on the run."""
+    """The distributor's reply and Clawback's answer (if one goes out). Both also stream on the run."""
     run, dispute = find(dispute_id)
+    with accounts.using(run.account):  # what takes no account reads the run's files
+        return _post(run, dispute, text, attachment_doc_id, client)
+
+
+def _post(run: pipeline.Run, dispute: Dispute, text: str, attachment_doc_id: str | None, client) -> list[PortalMessage]:
+    dispute_id, them = dispute.id, run.distributor
     if attachment_doc_id:
         theirs = _message(dispute_id, "northmart", text, attachment_doc_id=attachment_doc_id,
                           classification="new_document")
         run.emit("portal_message", theirs)
         ours = _new_document(run, dispute, attachment_doc_id, client)
         return [theirs] + ([ours] if ours else [])
-    draft = negotiator.answer_reply(dispute, text, run.evidence, run.terms, client)
+    draft = negotiator.answer_reply(dispute, text, run.evidence, run.terms, client, account=run.account)
     theirs = _message(dispute_id, "northmart", text, classification=draft.classification if draft else "other",
                       charge_ids=draft.charge_ids if draft else [])
     run.emit("portal_message", theirs)
-    owner = pipeline.OWNER.split()[0]
+    owner = run.name("owner")
     if draft is None or draft.classification == "other" or not draft.answer:
-        run.log(f"Northmart's reply on {dispute_id} needs a person: held for {owner}.", "warn", "negotiator")
+        run.log(f"{them}'s reply on {dispute_id} needs a person: held for {owner}.", "warn", "negotiator")
         return [theirs]
     ours = _message(dispute_id, "clawback", draft.answer, charge_ids=draft.charge_ids,
                     evidence_ids=draft.evidence_ids)
     run.emit("portal_message", ours)
     if draft.classification == "agrees":
-        run.log(f"Northmart agreed on {', '.join(draft.charge_ids)}.", "good", "negotiator")
+        run.log(f"{them} agreed on {', '.join(draft.charge_ids)}.", "good", "negotiator")
     else:
-        run.log(f"Northmart replied \"{draft.claim or text}\" with no document. Answered with the evidence and "
+        run.log(f"{them} replied \"{draft.claim or text}\" with no document. Answered with the evidence and "
                 "asked for the signed change.", "good", "negotiator")
     return [theirs, ours]
 
 
 def _new_document(run: pipeline.Run, dispute: Dispute, doc_id: str, client) -> PortalMessage | None:
-    owner, policy = pipeline.OWNER.split()[0], load_policy()
-    if doc_id not in documents.PATHS:
-        run.log(f"Northmart attached a document Clawback doesn't have ({doc_id}): held for {owner}.", "warn", "negotiator")
+    owner, policy, them = run.name("owner"), load_policy(), run.distributor
+    if doc_id not in run.account.docs:
+        run.log(f"{them} attached a document Clawback doesn't have ({doc_id}): held for {owner}.", "warn", "negotiator")
         return None
-    deal = [t for t in run.terms if t.source_doc_id == pipeline.DEAL_DOCS[0]]
+    deal = [t for t in run.terms if t.source_doc_id == run.account.config.deal_docs[0]]
     r = readers.read_both(doc_id, base_terms=deal, client=client)
     if not documents.can_change_deal(r.doc):
-        msg = (f"Thanks. The attached document isn't signed by both parties or sent by Peak Bar Co.'s approved "
-               f"representatives, so under §6.1 it doesn't change the deal. {dispute.id} stands.")
+        msg = (f"Thanks. The attached document isn't signed by both parties or sent by {run.account.brand.name}'s "
+               f"approved representatives, so under §6.1 it doesn't change the deal. {dispute.id} stands.")
         return _send(run, dispute, msg, [], [])
     new_terms = [t for t in r.terms if t.status == "verified"]
     if not new_terms:
@@ -115,12 +122,12 @@ def _new_document(run: pipeline.Run, dispute: Dispute, doc_id: str, client) -> P
     run.terms += new_terms
     run.evidence.update(evidence_mod.from_terms(new_terms))
     eng_terms = [adapters.to_engine_term(t) for t in run.terms]
-    sales = [adapters.to_engine_sales(x) for x in rows.sales()]
-    payments = [adapters.to_engine_prior(p) for p in rows.prior_payments()]
+    sales = [adapters.to_engine_sales(x) for x in rows.sales(account=run.account)]
+    payments = [adapters.to_engine_prior(p) for p in rows.prior_payments(account=run.account)]
     conceded: list[tuple[str, Decimal]] = []
     for ln in dispute.lines:
         before = run.decisions[ln.charge_id]
-        a = compute_allowed(adapters.to_engine_charge(run.charges[ln.charge_id]), eng_terms, sales, payments)
+        a = compute_allowed(run.engine_charge(run.charges[ln.charge_id]), eng_terms, sales, payments)
         if a.allowed == run.allowances[ln.charge_id].allowed:
             continue
         run.allowances[ln.charge_id] = a
@@ -143,7 +150,7 @@ def _new_document(run: pipeline.Run, dispute: Dispute, doc_id: str, client) -> P
            f"Under it, {'; '.join(parts)}. {dispute.id} now totals ${total:,.0f}.")
     ours = _send(run, dispute, msg, [cid for cid, _ in conceded],
                  [evidence_mod.clause_id(t) for t in new_terms])
-    run.log(f"Conceded ${totals.total_of(a for _, a in conceded):,.0f} after Northmart's signed amendment.", "good",
+    run.log(f"Conceded ${totals.total_of(a for _, a in conceded):,.0f} after {them}'s signed amendment.", "good",
             "negotiator")
     pipeline._request_credit_memo(run, policy, conceded)
     return ours
@@ -151,7 +158,7 @@ def _new_document(run: pipeline.Run, dispute: Dispute, doc_id: str, client) -> P
 
 def _refresh_finding(run: pipeline.Run, charge_id: str, a, client) -> None:
     """New terms, new numbers: the Investigator explains the charge again so the card stays true."""
-    inv = investigator.investigate(run.charges[charge_id], a, run.evidence, client)
+    inv = investigator.investigate(run.charges[charge_id], a, run.evidence, client, account=run.account)
     old = run.eng_findings[charge_id]
     if inv.output:
         f = Finding(**inv.output.model_dump(), id=f"F-{charge_id}", expected=a.allowed, taken=a.taken, delta=a.delta,
@@ -174,7 +181,8 @@ def _send(run: pipeline.Run, dispute: Dispute, text: str, charge_ids: list[str],
                                                 terms=[t.model_dump(mode="json") for t in run.terms if t.status == "verified"])
     result = outbound_filter.check_message(text, ctx)
     if not result.ok:
-        run.log(f"Held a message to Northmart for {pipeline.OWNER.split()[0]}: {result.feedback()}", "warn", "negotiator")
+        run.log(f"Held a message to {run.distributor} for {run.name('owner')}: {result.feedback()}", "warn",
+                "negotiator")
         return None
     ours = _message(dispute.id, "clawback", text, charge_ids=charge_ids, evidence_ids=evidence_ids)
     run.emit("portal_message", ours)

@@ -1,5 +1,5 @@
 # Targets are wired up as each part lands. Keep target names stable; the guides and the demo checklist use them.
-.PHONY: dev api web test acceptance seed db-check eval eval-agent publish-score record demo reset check-data \
+.PHONY: dev api web test acceptance seed db-check eval eval-agent publish-score record reset check-data \
 	deploy-check fetch-agent fetch-agent-connect fetch-agent-test
 
 # The repo's .venv when there is one (it has the packages), else python3 (Macs often have no "python").
@@ -20,7 +20,8 @@ dev:
 test:
 	$(PYTHON) -m pytest -q api
 
-# The P0 acceptance tests (docs/design.md, Feature spec), offline and in DEMO_MODE, then the eval score.
+# The P0 acceptance tests (docs/design.md, Feature spec), offline: they replay the committed recordings (DEMO_MODE is
+# test infrastructure only; the product always runs live), then the eval score.
 # F1 seed and the app on Postgres: their database tests run only with TEST_DATABASE_URL set (api/tests/test_db_seed.py,
 # test_db_runtime.py); `make seed` twice and `make db-check` are the real checks. Not covered here yet: the screens in
 # web/ (F6, F7, F12 scoreboard).
@@ -31,7 +32,7 @@ acceptance:
 		api/tests/test_books.py api/tests/test_coach_scenario.py \
 		api/tests/test_readers.py api/tests/test_audit.py api/tests/test_sms_channel.py \
 		api/tests/test_eval_agent.py api/tests/test_nessie.py api/tests/test_db_seed.py api/tests/test_moss.py \
-		api/tests/test_db_runtime.py
+		api/tests/test_db_runtime.py api/tests/test_prompts.py api/tests/test_accounts.py
 	$(PYTHON) eval/run.py
 
 seed:
@@ -44,7 +45,7 @@ db-check:
 eval:
 	$(PYTHON) eval/run.py
 
-# Readers and agents in the loop: about 111 AI calls live (see --estimate); free in DEMO_MODE once recorded.
+# Readers and agents in the loop: about 111 AI calls live (see --estimate); free to replay once recorded.
 eval-agent:
 	RECORD_FIXTURES=1 $(PYTHON) eval/run.py --mode agent
 
@@ -54,11 +55,9 @@ publish-score:
 	cp eval/latest-agent.json eval/published/agent.json
 	cp eval/latest.json eval/published/engine.json
 
+# Runs Peak Bar's whole demo live and saves every AI answer to data/fixtures/ (the tests replay them).
 record:
 	RECORD_FIXTURES=1 $(PYTHON) -m api.run_demo --portal --coach
-
-demo:
-	DEMO_MODE=true $(MAKE) dev
 
 # Laptop: make reset. The deployed site: make reset API=https://clawback.biz/api CLAWBACK_ADMIN_TOKEN=<token>
 reset:

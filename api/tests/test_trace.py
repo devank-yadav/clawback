@@ -16,7 +16,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api import pipeline, trace
-from api.agents import claude, investigator, reader_b, readers
+from api.agents import claude, investigator, prompts, reader_b, readers
 from api.agents.investigator import LLMFinding
 from api.integrations import moss, replay
 from api.main import app
@@ -78,7 +78,7 @@ def test_march_trace_lists_every_ai_call_in_order(wired):
 
     # Both readers on each deal document, one document after the other (the two of a pair run side by side).
     reads, rest = t[:6], t[6:]
-    for n, doc in enumerate(pipeline.DEAL_DOCS):
+    for n, doc in enumerate(run.account.config.deal_docs):
         pair = reads[2 * n:2 * n + 2]
         assert {e.agent for e in pair} == READERS and {e.input["doc_id"] for e in pair} == {doc}
         assert all(e.charge_id is None and e.output["terms"] for e in pair)
@@ -95,7 +95,7 @@ def test_march_trace_lists_every_ai_call_in_order(wired):
         assert sent["charge"]["id"] == e.charge_id == e.input["charge_id"]
         assert (sent["engine"]["allowed"], sent["engine"]["taken"]) == (str(a.allowed), str(a.taken))
         assert e.output["finding"] == f.finding and e.output["evidence_ids"] == f.evidence_ids
-        assert e.input["system"] == investigator.PROMPT
+        assert e.input["system"] == prompts.render("investigator", run.account)
         assert e.prompt.startswith("api/agents/prompts/investigator.md: You are the Investigator for Clawback.")
 
 

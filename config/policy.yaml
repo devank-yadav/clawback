@@ -10,6 +10,8 @@ discretion_words:
   - "at its discretion"
   - "reasonable"
   - "sole judgment"
+# Each account's own list is approved_senders in data/accounts/<id>/account.yaml, and that is what documents use;
+# this one (Peak Bar's) is what the engine's Policy and the eval harness read.
 approved_amendment_senders:          # only these (or a document signed by both parties) can change a deal
   - "dana@peakbar.example"           # owner (fictional)
   - "jordan@peakbar-broker.example"  # broker (fictional)

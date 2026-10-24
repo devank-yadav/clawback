@@ -208,15 +208,19 @@ def _request_field(request: Any, name: str) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-_prompt_files: dict[str, str] | None = None
+_prompt_files: list[tuple[re.Pattern[str], str]] | None = None
 
 
 def _prompt_file(system: str) -> str | None:
-    """Which api/agents/prompts/ file this system prompt is (the agents send the files verbatim)."""
+    """Which api/agents/prompts/ file this system prompt is. The agents send each file with its {brand}-style
+    placeholders filled for the run's account, so a placeholder matches any text."""
     global _prompt_files
     if _prompt_files is None:
-        _prompt_files = {p.read_text().strip(): f"api/agents/prompts/{p.name}" for p in sorted(PROMPTS.glob("*.md"))}
-    return _prompt_files.get(system.strip())
+        _prompt_files = []
+        for p in sorted(PROMPTS.glob("*.md")):
+            parts = re.split(r"\{[a-z_]+\}", p.read_text().strip())
+            _prompt_files.append((re.compile(".+?".join(map(re.escape, parts)), re.S), f"api/agents/prompts/{p.name}"))
+    return next((name for pattern, name in _prompt_files if pattern.fullmatch(system.strip())), None)
 
 
 def _prompt(service: str, request: Any) -> str | None:

@@ -1,0 +1,38 @@
+# Peak Bar Co. <- Northmart: the demo scenario in data/CLAUDE.md (all fictional). Loaded and checked by api/accounts.py;
+# the shapes are AccountConfig and its parts in api/contracts.py ("# ---- accounts").
+id: peak-bar
+brand:
+  name: Peak Bar Co.
+  kind: snack brand
+  city: Oakland, CA
+  initials: PB
+  colors: {primary: "#b4462b", accent: "#f2b552"}
+  owner: {name: Dana Okafor, email: dana@peakbar.example}
+  controller: {name: Sam Reyes}
+distributor:
+  name: Northmart
+  desk_email: deductions@northmart.example
+  portal_name: Northmart Supplier Portal
+  colors: {primary: "#0b4f9e", accent: "#e6eef8"}
+invoice:
+  id: INV-3102
+  expected: 48200.00
+  received: 41350.00
+  month: march
+  period_start: 2026-03-01
+  period_end: 2026-03-31
+# The signed deal first, then the emails about it (the broker's extension, Northmart's claim).
+deal_docs: [spring-promo, broker-2026-03-28, northmart-2026-03-30]
+# Only these senders (or a document signed by both parties) can change the deal.
+approved_senders: [dana@peakbar.example, jordan@peakbar-broker.example]
+dispute_start: 417  # March files D-0417; April, the next month, D-0427
+qbo:
+  customer: Northmart
+  invoice_no: INV-3102
+  # Optional: the invoice's lines in the sandbox (scripts/seed_quickbooks.py); they sum to invoice.expected.
+  lines:
+    - {item: Peak Bar Original, qty: 9000, unit_price: 2.40}
+    - {item: Peak Bar Chocolate, qty: 8000, unit_price: 2.40}
+    - {item: Peak Bar Mint, qty: 3700, unit_price: 2.00}
+  payment_date: 2026-04-20
+nessie_description: Northmart remittance INV-3102

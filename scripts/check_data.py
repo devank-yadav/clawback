@@ -1,4 +1,4 @@
-"""Check every number and fixed wording in data/ against data/CLAUDE.md.
+"""Check every number and fixed wording in Peak Bar's data (data/accounts/peak-bar/) against data/CLAUDE.md.
 
 Run: python scripts/check_data.py
 Exits 1 and lists every failure if anything is off. Standard library only.
@@ -11,7 +11,7 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-DATA = Path(__file__).resolve().parent.parent / "data"
+DATA = Path(__file__).resolve().parent.parent / "data" / "accounts" / "peak-bar"
 
 INVOICED = Decimal("48200.00")
 PAID = Decimal("41350.00")
@@ -193,12 +193,12 @@ def check_prior():
 
 def check_march():
     print("March charges")
-    cols, data = rows("charges/northmart-march.csv")
-    check("northmart-march.csv columns", cols == ["charge_id", "ref", "code", "description", "product", "units",
+    cols, data = rows("charges/march.csv")
+    check("march.csv columns", cols == ["charge_id", "ref", "code", "description", "product", "units",
                                                   "rate", "amount", "period_start", "period_end"], cols)
     got = [(r["charge_id"], r["ref"], r["code"], r["product"], int(r["units"]), str(money(r["rate"])),
             str(money(r["amount"])), r["period_start"], r["period_end"]) for r in data]
-    check("northmart-march.csv rows match", got == MARCH_CHARGES, got)
+    check("march.csv rows match", got == MARCH_CHARGES, got)
     for r in data:
         check(f"{r['charge_id']} units x rate = amount",
               money(Decimal(r["units"]) * Decimal(r["rate"])) == money(r["amount"]))
@@ -244,8 +244,8 @@ def check_march():
 
 def check_april():
     print("April charges")
-    cols, data = rows("charges/northmart-april.csv")
-    check("northmart-april.csv columns", cols == ["charge_id", "ref", "code", "description", "product", "units",
+    cols, data = rows("charges/april.csv")
+    check("april.csv columns", cols == ["charge_id", "ref", "code", "description", "product", "units",
                                                   "rate", "amount", "period_start", "period_end"], cols)
     by_id = {r["charge_id"]: r for r in data}
     for cid, ref, code, amount, notice_rel, days, decision in APRIL_CHARGES:

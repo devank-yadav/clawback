@@ -64,12 +64,20 @@ class Account:
     data: Path = documents.DATA  # where the account's notices live
 
 
-# TODO(Devank): swap for the multi-account registry when it lands (another session is building it). Peak Bar's March
-# payment is the scenario in data/CLAUDE.md, the same numbers api/pipeline.py uses.
-ACCOUNTS = {
-    "peak-bar": Account("peak-bar", "Peak Bar Co.", "Northmart", "INV-3102", Decimal("48200.00"), Decimal("41350.00"),
-                        "march", ("Original", "Chocolate", "Mint")),
-}
+def _from_registry(slug: str) -> Account:
+    """One account of api/accounts.py's registry, as the remittance reader needs it. Products are the names on the
+    invoice month's charges, in the order they first appear ("Original+Chocolate" gives Original, Chocolate)."""
+    from api import accounts
+
+    a = accounts.resolve(slug)
+    products: list[str] = []
+    for c in rows.charges(a.invoice.month, account=a):
+        for p in (c.product or "").split("+"):
+            if p and p not in products:
+                products.append(p)
+    return Account(a.id, a.brand.name, a.distributor.name, a.invoice.id, a.invoice.expected, a.invoice.received,
+                   a.invoice.month, tuple(products), a.dir)
+
 
 CODE_NAMES = {"PA": "promo allowance", "DF": "display fee", "SH": "shortage", "PR": "price mismatch",
               "SP": "spoilage", "UNKNOWN": "unknown"}
@@ -221,10 +229,20 @@ def _pdf_text(data: bytes) -> str:
 
 # ---------------------------------------------------------------- read and check
 
+def known(slug: str) -> bool:
+    from api import accounts
+
+    try:
+        accounts.resolve(slug)
+    except accounts.UnknownAccount:
+        return False
+    return True
+
+
 def account(slug: str) -> Account:
-    if slug not in ACCOUNTS:
+    if not known(slug):
         raise KeyError(slug)
-    return ACCOUNTS[slug]
+    return _from_registry(slug)
 
 
 def read(slug: str, text: str, input_kind: Literal["text", "pdf"] = "text",

@@ -14,7 +14,7 @@ from fastapi import APIRouter, Header, HTTPException
 
 from api import pipeline
 from api import auth
-from api.db import events as saved_events
+from api.db import events as saved_events, state as saved_state
 from api.integrations import qbo
 from api.routes import approvals, portal
 
@@ -35,5 +35,6 @@ def reset(authorization: str | None = Header(default=None)) -> dict:
     pipeline.reset()  # live runs, open questions and saved rules
     auth.reset()  # and the per-IP limits on live runs
     saved_events.reset()  # and the saved runs, which GET /runs/latest would otherwise fall back to
+    saved_state.reset()  # and the saved rules and audit chain, which a restart would otherwise bring back
     return {"ok": error is None, "stub": False, "quickbooks": [asdict(u) for u in undone],
             **({"error": error} if error else {})}

@@ -19,9 +19,9 @@ from decimal import Decimal
 import pytest
 from fastapi.testclient import TestClient
 
-from api import pipeline, rows
+from api import accounts, audit, pipeline, rows
 from api.contracts import EventAdapter
-from api.db import conn, events, reads, seed
+from api.db import conn, events, reads, seed, state
 from api.integrations import replay
 from api.main import app
 from api.tests.test_pipeline import ScenarioClaude
@@ -139,8 +139,8 @@ def test_a_failing_or_empty_table_means_the_files_logged_once(monkeypatch, caplo
 def test_a_data_directory_of_its_own_always_reads_its_files(monkeypatch, tmp_path):
     monkeypatch.setenv("DATABASE_URL", UNREACHABLE)
     monkeypatch.setattr(reads, "load", lambda *_: pytest.fail("asked the database for a test's own data"))
-    data = tmp_path / "data"
-    shutil.copytree(rows.DATA, data, ignore=shutil.ignore_patterns("fixtures"))
+    data = tmp_path / "peak-bar"
+    shutil.copytree(accounts.get("peak-bar").dir, data)
     assert [c.id for c in rows.charges("march", data)] == ["C1", "C2", "C3", "C4", "C5", "C6"]
 
 
@@ -269,13 +269,14 @@ def database(monkeypatch):
 def test_rows_from_the_database_are_the_files_exactly(database, monkeypatch):
     files = _files()
     for table, args, expected in [
-        ("charges", (rows.CHARGE_FILES["march"],), rows.charges_from_files("march")),
-        ("charges", (rows.CHARGE_FILES["april"],), rows.charges_from_files("april")),
+        ("charges", (rows.charge_file("march"),), rows.charges_from_files("march")),
+        ("charges", (rows.charge_file("april"),), rows.charges_from_files("april")),
         ("store_sales", (), rows.sales_from_files()),
         ("prior_payments", (), rows.prior_payments_from_files()),
         ("promo_plan", (), rows.promo_plan_from_files()),
     ]:
-        assert repr(reads.load(table, *args)) == repr(expected), table
+        assert repr(reads.load(table, "peak-bar", *args)) == repr(expected), table
+        assert reads.load(table, "another-account", *args) is None, table  # no rows of its own: its files
     for name in FROM_FILES:  # the pipeline's loaders now read the database alone
         monkeypatch.setattr(rows, name, lambda *_: pytest.fail("read the files with the database on"))
     assert _loaded() == files
@@ -370,4 +371,100 @@ def test_a_database_seeded_before_002_reads_the_files_until_make_seed(database, 
     assert {t: again.updated[t] for t in ("charges", "prior_payments", "store_sales", "promo_plan")} == \
            {"charges": 8, "prior_payments": 2, "store_sales": 14, "promo_plan": 1}
     assert sum(again.inserted.values()) == 0 and set(seed.seed(db).updated.values()) == {0}
-    assert repr(reads.load("store_sales")) == repr(rows.sales_from_files())
+    assert repr(reads.load("store_sales", "peak-bar")) == repr(rows.sales_from_files())
+
+
+def test_each_account_finds_its_own_runs_after_a_restart(two_accounts, database):
+    from api.tests.test_accounts import OatClaude
+
+    db, _ = database
+    oat = pipeline.start(None, OatClaude(), background=False, account="test-oat")
+    assert events.flush(timeout=10)
+    saved = db.execute("SELECT DISTINCT account_id FROM events WHERE run_id = %s", (oat.id,)).fetchall()
+    assert saved == [("test-oat",)]
+    pipeline.RUNS.clear()  # the API restarted
+    assert client.get("/runs/latest", params={"account": "test-oat"}).json()["run_id"] == oat.id
+    assert client.get("/runs/latest").status_code == 404  # Peak Bar has no run of its own
+    assert repr(rows.charges("june", account="test-oat")) == \
+        repr(rows.charges_from_files("june", account="test-oat"))
+
+
+# --- Saved rules and the audit chain survive a restart (api/db/state.py) -----------------------------------
+
+OWNER_ANSWER = "accept if notice is at least 14 days"
+
+
+def _restart():
+    """The API restarted: nothing in memory, then startup (the app's lifespan) restores what was saved."""
+    assert events.flush(timeout=10)
+    pipeline.RUNS.clear(), pipeline.RULES.clear(), pipeline.RULE_ACCOUNTS.clear(), pipeline.QUESTIONS.clear()
+    audit.reset()
+    with TestClient(app):
+        pass
+
+
+def _decided(run):
+    return {cid: (d.decision, d.disputed, d.accepted, d.rule_id) for cid, d in run.shown.items()}
+
+
+@pytest.fixture
+def saved(database, monkeypatch):
+    monkeypatch.setattr(state, "_on", False)
+    assert state.restore() is not None  # startup read the (empty) saved state, so this process saves
+    return database[0]
+
+
+def test_without_a_database_rules_and_the_chain_stay_in_memory(monkeypatch):
+    monkeypatch.setattr(state, "_on", False)
+    assert state.restore() is None
+    fake = ScenarioClaude()
+    run = pipeline.start("march", fake, background=False)
+    pipeline.answer(next(iter(run.questions)), OWNER_ANSWER, client=fake)
+    assert [r.label for r in pipeline.RULES] == ["Rule #1"] and audit.entries()
+    assert events._writer.thread is None  # nothing was queued for a database
+
+
+def test_rule_1_and_the_audit_chain_survive_a_restart(saved):
+    fake = ScenarioClaude()
+    march = pipeline.start("march", fake, background=False)
+    pipeline.answer(next(iter(march.questions)), OWNER_ANSWER, client=fake)
+    chain = [e.as_row() for e in audit.entries()]
+    _restart()
+    assert [(r.id, r.label, r.status) for r in pipeline.rules_of("peak-bar")] == [("rule-1", "Rule #1", "active")]
+    assert [e.as_row() for e in audit.entries()] == chain
+    assert client.get("/audit/verify").json() == {"ok": True, "checked": len(chain), "broken_at": None, "reason": ""}
+    april = pipeline.start("april", ScenarioClaude(), background=False)  # decided by Rule #1, nobody asked
+    assert _decided(april) == {"A1": ("accept", D(0), D(1200), "rule-1"), "A2": ("dispute", D(800), D(0), "rule-1")}
+    assert not april.questions
+    _restart()  # the chain goes on across restarts
+    check = client.get("/audit/verify").json()
+    assert check["ok"] and check["checked"] > len(chain)
+    saved.execute("UPDATE audit_log SET actor = 'someone else' WHERE id = 2")  # edited while the API was down
+    _restart()
+    assert client.get("/audit/verify").json()["broken_at"] == 2
+
+
+def test_undo_survives_a_restart(saved):
+    fake = ScenarioClaude()
+    march = pipeline.start("march", fake, background=False)
+    question = next(iter(march.questions))
+    pipeline.answer(question, OWNER_ANSWER, client=fake)
+    pipeline.answer(question, "UNDO", client=fake)
+    _restart()
+    assert [(r.id, r.status) for r in pipeline.RULES] == [("rule-1", "undone")]
+    april = pipeline.start("april", ScenarioClaude(), background=False)
+    assert len(april.questions) == 2  # no rule: both fees ask again
+    pipeline.answer(next(iter(april.questions)), OWNER_ANSWER, client=ScenarioClaude())
+    assert [(r.id, r.label) for r in pipeline.RULES] == [("rule-1", "Rule #1"), ("rule-2", "Rule #2")]
+
+
+def test_a_demo_reset_clears_the_saved_rules_and_the_chain(saved):
+    fake = ScenarioClaude()
+    march = pipeline.start("march", fake, background=False)
+    pipeline.answer(next(iter(march.questions)), OWNER_ANSWER, client=fake)
+    assert client.post("/demo/reset").status_code == 200
+    _restart()
+    assert pipeline.RULES == [] and audit.entries() == ()
+    assert [saved.execute(f"SELECT count(*) FROM {t}").fetchone()[0] for t in ("rules", "audit_log", "audit_head")] \
+        == [0, 0, 0]
+    assert client.get("/audit/verify").json()["ok"]  # the recorded run's chain again, until a new run

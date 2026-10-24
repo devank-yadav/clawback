@@ -66,15 +66,15 @@ BROKER = "Northmart asked to extend Spring Promo through April 7, same terms, up
 CLAIM = "Per our call, the Spring Promo rate is $1.50 per unit."
 A32 = "The promotional allowance applies to a maximum of 6,000 units in total."  # amendment-1, replacing §3.2
 
-QUOTE_SOURCES = {  # doc_id -> path under data/
-    "spring-promo": "deals/spring-promo.md",
-    "amendment-1": "deals/amendment-1.md",
-    "summer-draft": "deals/summer-draft.md",
-    "broker-2026-03-28": "emails/broker-2026-03-28.eml",
-    "northmart-2026-03-30": "emails/northmart-2026-03-30.eml",
-    "display-fee-2026-03-11": "notices/display-fee-2026-03-11.md",
-    "display-fee-2026-04-12": "notices/display-fee-2026-04-12.md",
-    "display-fee-2026-04-25": "notices/display-fee-2026-04-25.md",
+QUOTE_SOURCES = {  # doc_id -> path under data/ (Peak Bar's account folder)
+    "spring-promo": "accounts/peak-bar/deals/spring-promo.md",
+    "amendment-1": "accounts/peak-bar/deals/amendment-1.md",
+    "summer-draft": "accounts/peak-bar/deals/summer-draft.md",
+    "broker-2026-03-28": "accounts/peak-bar/emails/broker-2026-03-28.eml",
+    "northmart-2026-03-30": "accounts/peak-bar/emails/northmart-2026-03-30.eml",
+    "display-fee-2026-03-11": "accounts/peak-bar/notices/display-fee-2026-03-11.md",
+    "display-fee-2026-04-12": "accounts/peak-bar/notices/display-fee-2026-04-12.md",
+    "display-fee-2026-04-25": "accounts/peak-bar/notices/display-fee-2026-04-25.md",
 }
 
 

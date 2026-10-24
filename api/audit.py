@@ -1,9 +1,10 @@
 """The audit log for live runs (F18): every decision, question, answer, rule, approval, ledger post, dispute and
 portal message, appended to the engine's hash chain (api/engine/audit_chain.py) the moment its event is emitted.
 
-One chain for every run, like the audit_log table it becomes with the database (D3). Rows are never edited or
-removed by the app; the head hash is kept apart from the rows, so verify() catches an edited row, a reordered
-or missing one, and the newest rows being cut off.
+One chain for every run. With the database on, every entry is also saved to the audit_log table and the head to
+audit_head (api/db/state.py), and the chain is restored from them at startup, so a restart keeps it. Rows are never
+edited or removed by the app; the head hash is kept apart from the rows, so verify() catches an edited row, a
+reordered or missing one, and the newest rows being cut off.
 """
 
 from __future__ import annotations
@@ -11,6 +12,8 @@ from __future__ import annotations
 import threading
 from typing import Any
 
+from api import accounts
+from api.db import state as saved_state
 from api.engine import audit_chain
 
 AUDITED = ("decision", "question", "answer", "rule", "approval", "ledger_post", "dispute", "portal_message")
@@ -20,15 +23,13 @@ _chain = audit_chain.AuditChain()
 _head = audit_chain.GENESIS  # saved apart from the rows (in production: somewhere the rows can't reach)
 
 
-def _person(role: str) -> str:
-    from api import pipeline  # names live with the scenario constants
+def describe(ev: Any, account: accounts.Account | str | None = None) -> tuple[str, str, str]:
+    """(actor, action, object_ref) for an audited event of a run of this account (people are "owner:Dana")."""
+    a, d = accounts.resolve(account), ev.data
 
-    return f"{role}:{pipeline.NAMES[role]}"
+    def _person(role: str) -> str:
+        return f"{role}:{a.first_name(role)}"
 
-
-def describe(ev: Any) -> tuple[str, str, str]:
-    """(actor, action, object_ref) for an audited event."""
-    d = ev.data
     match ev.type:
         case "decision":
             return (_person("owner") if d.decided_by == "owner" else "gate", f"decision_{d.decision}", f"charge:{d.charge_id}")
@@ -53,16 +54,17 @@ def describe(ev: Any) -> tuple[str, str, str]:
     raise ValueError(f"not an audited event: {ev.type}")
 
 
-def record(ev: Any) -> audit_chain.AuditEntry | None:
+def record(ev: Any, account: accounts.Account | str | None = None) -> audit_chain.AuditEntry | None:
     """Append an emitted event to the chain if it's one the audit log keeps. The evidence is the event itself."""
     global _head
     if ev.type not in AUDITED:
         return None
-    actor, action, ref = describe(ev)
+    actor, action, ref = describe(ev, account)
     evidence = {"run_id": ev.run_id, "event_id": ev.id, "data": ev.data.model_dump(mode="python")}
     with _lock:
         entry = _chain.append(actor, action, ref, evidence, at=ev.at)
         _head = entry.hash
+        saved_state.save_audit(entry)  # queued in chain order, inside the lock
     return entry
 
 
@@ -73,6 +75,13 @@ def entries() -> tuple[audit_chain.AuditEntry, ...]:
 def verify(rows=None) -> audit_chain.ChainCheck:
     """Recompute the chain over the stored rows (or given ones) and compare its end with the saved head."""
     return audit_chain.verify(_chain.entries if rows is None else rows, expected_head=_head)
+
+
+def restore(entries, head: str) -> None:
+    """At startup: the chain saved before a restart, and its head (api/db/state.py)."""
+    global _chain, _head
+    with _lock:
+        _chain, _head = audit_chain.AuditChain(_entries=list(entries)), head
 
 
 def reset() -> None:

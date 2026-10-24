@@ -1,0 +1,4 @@
+invoice,date,amount,status
+INV-8801,2026-04-30,8000.00,paid
+INV-8901,2026-05-31,9000.00,short paid
+INV-8001,2025-11-30,5000.00,paid

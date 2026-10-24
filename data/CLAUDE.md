@@ -1,5 +1,7 @@
 # data/ (owner: Manasv, files written by AI, checked by scripts/check_data.py)
 
+Peak Bar's files below live in data/accounts/peak-bar/ (account.yaml holds the invoice, people and senders; charges
+are charges/march.csv and charges/april.csv); other accounts sit next to it (api/accounts.py has the layout).
 Every number here must match this file to the cent. Never edit numbers by hand; change the prompt, regenerate,
 rerun `python scripts/check_data.py`. All names are fictional; label them fictional in any output.
 

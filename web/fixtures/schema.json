@@ -1970,12 +1970,6 @@
             "type": "string"
           },
           "kind": {
-            "enum": [
-              "march",
-              "april",
-              "scenario",
-              "eval"
-            ],
             "title": "Kind",
             "type": "string"
           },

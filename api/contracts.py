@@ -73,9 +73,9 @@ DocumentKind = Literal["deal", "email", "amendment", "notice", "draft"]
 class Document(Contract):
     id: str  # "spring-promo", "broker-2026-03-28"
     kind: DocumentKind
-    path: str  # relative to data/, e.g. "deals/spring-promo.md"
+    path: str  # relative to data/, e.g. "accounts/peak-bar/deals/spring-promo.md"
     sender: str | None = None
-    approved_sender: bool = False  # sender is in config/policy.yaml approved_amendment_senders
+    approved_sender: bool = False  # sender is in its account's approved_senders (data/accounts/<id>/account.yaml)
     signed_by_both: bool = False
     received_at: datetime | None = None
     sha256: str | None = None
@@ -501,7 +501,7 @@ class Totals(Contract):
 
 class RunInfo(Contract):
     run_id: str
-    kind: Literal["march", "april", "scenario", "eval"]
+    kind: str  # an account month ("march", "april": Account.months in api/accounts.py), "scenario" or "eval"
     status: Literal["started", "waiting", "finished", "failed"]
     remittance: Remittance | None = None
     demo_mode: bool = False
@@ -630,7 +630,8 @@ class RunFixture(Contract):
 
 class StartRunRequest(Contract):
     remittance_id: str | None = None
-    kind: Literal["march", "april"] = "march"
+    kind: str | None = None  # one of the account's months; None: its invoice month (Peak Bar: "march")
+    account: str = "peak-bar"
     fixture: bool = False  # replay the recorded fake run (web/fixtures) instead of running the pipeline
 
 
@@ -760,7 +761,8 @@ class Summary(Contract):
 
 
 class PaymentResponse(Contract):
-    """POST /payments/northmart: the payment screen's "Northmart pays" button."""
+    """POST /payments/{account} (POST /payments/northmart is Peak Bar's): the payment screen's "Northmart pays"
+    button."""
 
     via: Literal["nessie", "direct"]  # nessie: a real sandbox deposit was posted; direct: no Nessie, run started
     deposit_id: str | None
@@ -823,3 +825,163 @@ class OpsTerm(Contract):
     @classmethod
     def _text(cls, v: Any) -> Any:
         return str(v) if isinstance(v, (int, float, Decimal)) else v
+
+
+# ---- accounts
+
+MONTHS = ("january", "february", "march", "april", "may", "june", "july", "august", "september", "october",
+          "november", "december")
+
+
+class Colors(Contract):
+    primary: str  # "#b4462b"
+    accent: str
+
+
+class Person(Contract):
+    name: str  # "Dana Okafor"; texts and the log use the first name
+    email: str | None = None
+
+
+class Brand(Contract):
+    name: str  # "Peak Bar Co."
+    kind: str  # "snack brand": the Deal Coach's prompt calls it "a small snack brand"
+    city: str
+    initials: str
+    colors: Colors
+    owner: Person  # answers the questions, set the policy once
+    controller: Person  # the only one who approves credit memos
+
+
+class Distributor(Contract):
+    name: str  # "Northmart": the counterparty on charges, disputes and rules
+    desk_email: str
+    portal_name: str
+    colors: Colors
+
+
+class AccountInvoice(Contract):
+    """The invoice the account's payment arrives for, and that payment (the remittance)."""
+
+    id: str  # "INV-3102"
+    expected: Money
+    received: Money
+    month: str  # lowercase month name, "march": its charges are charges/march.csv and its run's kind
+    period_start: date
+    period_end: date
+
+    @field_validator("month")
+    @classmethod
+    def _month(cls, v: str) -> str:
+        if v not in MONTHS:
+            raise ValueError(f"month must be a lowercase month name ({', '.join(MONTHS)})")
+        return v
+
+
+class QboLine(Contract):
+    item: str
+    qty: int
+    unit_price: Rate
+
+
+class QboConfig(Contract):
+    customer: str  # the customer in the one QuickBooks sandbox company
+    invoice_no: str  # the invoice's DocNumber there
+    lines: list[QboLine] = []  # optional: the invoice's lines; without them the seed writes one line for the total
+    payment_date: date | None = None  # optional: the payment's date; the seed defaults to 20 days after period_end
+
+
+class AccountConfig(Contract):
+    """data/accounts/<id>/account.yaml. api/accounts.py loads and checks every one (ids, documents, invoices and
+    dispute numbers must not clash across accounts)."""
+
+    id: str  # the folder name, "peak-bar"
+    brand: Brand
+    distributor: Distributor
+    invoice: AccountInvoice
+    deal_docs: list[str] = Field(min_length=1)  # document ids, the signed deal first, then emails that may change it
+    approved_senders: list[str]  # only these (or a document signed by both parties) can change the deal
+    dispute_start: int = Field(ge=1)  # the invoice month files D-<start>; each later month starts 10 higher
+    qbo: QboConfig
+    nessie_description: str  # the Nessie deposit's description; the poller starts this account's run on it
+
+    @field_validator("id")
+    @classmethod
+    def _slug(cls, v: str) -> str:
+        if not v or not all(c.islower() or c.isdigit() or c == "-" for c in v) or v[0] == "-":
+            raise ValueError("id must be lowercase letters, digits and hyphens")
+        return v
+
+    @field_validator("approved_senders")
+    @classmethod
+    def _lower(cls, v: list[str]) -> list[str]:
+        return [s.strip().lower() for s in v]
+
+
+class AccountListItem(Contract):
+    """GET /accounts: one row per account."""
+
+    id: str
+    brand: Brand
+    distributor: Distributor
+    invoice: AccountInvoice
+    latest_run_id: str | None  # the newest run of the invoice month (live, or saved before a restart)
+
+
+class AccountKpis(Contract):
+    invoiced_6m: Money
+    collected_6m: Money
+    deducted_6m: Money
+    recovered_6m: Money
+    recovery_rate: float  # recovered_6m / deducted_6m, 0 to 1 (4 places); 0 when nothing was deducted
+    open_disputes: int  # deductions still in dispute: history rows with an open outcome, plus this run's lines
+    open_balance: Money  # still owed: open history deductions not yet recovered, plus the current invoice's balance
+
+
+class MonthTotals(Contract):
+    month: str  # "2026-03"
+    invoiced: Money
+    paid: Money
+    deducted: Money
+    recovered: Money
+
+
+class DeductionTypeTotal(Contract):
+    code: str  # PA, DF, SH, PR, SP
+    label: str  # "Promotional allowance"
+    count: int
+    amount: Money
+
+
+class RemittanceRow(Contract):
+    date: date
+    invoice: str
+    paid: Money
+    deducted: Money
+
+
+class CurrentPayment(Contract):
+    """The account's invoice and its payment (account.yaml), and the run deciding it, if one has started."""
+
+    invoice: str
+    expected: Money
+    received: Money
+    deducted: Money  # expected - received
+    run_id: str | None
+    status: Literal["waiting_for_payment", "started", "waiting", "finished", "failed"]
+
+
+class AccountOverview(Contract):
+    """GET /accounts/{id}/overview, computed by code (api/overview.py) from history/ and the current run, never by AI.
+
+    The window is the six months ending with the invoice month. `months` holds each month's invoices (by invoice date),
+    remittances (by the month of the invoice they pay) and deductions (by their month); the current month adds the
+    account's invoice, and once the payment arrived (a run started) its payment and the charges taken. Recovered money
+    comes only from history: a dispute this run files has recovered nothing yet."""
+
+    account: AccountListItem
+    kpis: AccountKpis
+    months: list[MonthTotals]  # oldest first, all six
+    deductions_by_type: list[DeductionTypeTotal]  # in the window, largest amount first
+    recent_remittances: list[RemittanceRow]  # newest first, at most six
+    current: CurrentPayment

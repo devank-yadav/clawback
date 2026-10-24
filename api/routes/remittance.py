@@ -17,7 +17,7 @@ SAMPLE_FILES = {"peak-bar": {"northmart-march-2026.pdf": "application/pdf", "nor
 
 
 def _account(account: str) -> None:
-    if account not in remittance.ACCOUNTS:
+    if not remittance.known(account):
         raise HTTPException(404, f"unknown account {account}")
 
 
