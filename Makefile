@@ -2,7 +2,7 @@
 .PHONY: dev api web test seed eval record demo reset check-data
 
 api:
-	cd api && uvicorn main:app --reload --port 8000
+	uvicorn api.main:app --reload --reload-dir api --port 8000
 
 web:
 	cd web && npm run dev
