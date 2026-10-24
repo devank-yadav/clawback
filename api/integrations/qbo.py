@@ -128,6 +128,11 @@ class LiveBooks:
         made = self._call("POST", "/creditmemo", body=body, request_id=request_id)["CreditMemo"]
         return Posted("CreditMemo", made["Id"], Decimal(str(made["TotalAmt"])), False)
 
+    def open_balance(self, invoice_no: str) -> Decimal | None:
+        """What's still open on the invoice (None if QuickBooks didn't say)."""
+        balance = self._find("Invoice", f"DocNumber = '{invoice_no}'").get("Balance")
+        return None if balance is None else Decimal(str(balance))
+
     def apply_to_invoice(self, request_id: str, invoice_no: str, credit_memo_id: str, amount: Decimal) -> Posted:
         invoice = self._find("Invoice", f"DocNumber = '{invoice_no}'")
         body = {"CustomerRef": invoice["CustomerRef"], "TotalAmt": 0, "PrivateNote": f"{MARK}{request_id}",
@@ -207,6 +212,9 @@ class StandInBooks:
 
     def note_open_balance(self, request_id: str, invoice_no: str, note: str, disputed: Decimal) -> Posted:
         return self._post(request_id, "Invoice", disputed, {"invoice": invoice_no, "note": note})
+
+    def open_balance(self, invoice_no: str) -> Decimal | None:
+        return None  # the stand-in keeps no invoice
 
     def undo_demo_writes(self) -> list[Undone]:
         """Clears what it 'posted', in LiveBooks' order: payments, credit memos, then each invoice's note once."""

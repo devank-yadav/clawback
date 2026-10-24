@@ -242,6 +242,17 @@ def test_live_client_failure_shows_as_failed_not_posted(monkeypatch):
     assert [(p.status, p.qbo_id) for p in made] == [("failed", None)]
 
 
+def test_no_memo_when_the_invoice_cant_take_it(monkeypatch):
+    """Earlier takes left INV-3102 with $390 open: a $2,730 memo would post but never apply. Nothing posts instead."""
+    run = finished_march(ScenarioClaude())
+    fake = FakeQBO()
+    fake.invoice["Balance"] = 390.0
+    monkeypatch.setattr(qbo, "_books", live_books(fake))
+    _, made = pipeline.decide_approval(pending(run).id, True)
+    assert [(p.status, p.qbo_id) for p in made] == [("failed", None)] and "only $390.00 open" in made[0].note
+    assert [r.method for r in fake.requests] == ["GET"]  # it looked, and wrote nothing
+
+
 def test_demo_mode_posts_to_the_stand_in_even_with_keys(monkeypatch):
     """A recorded QuickBooks write never matches a new run (its request id and date change), so DEMO_MODE uses the
     stand-in instead of failing at Sam's yes with Wi-Fi off."""
