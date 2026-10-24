@@ -50,3 +50,4 @@ One line per decision, written the moment it's made: `date time · decision · w
 - 2026-10-24 03:36 · Domain: clawback.biz (GoDaddy Registry, MLH code), for the MLH GoDaddy Registry prize and the live URL https://clawback.biz; DOMAIN=clawback.biz and PUBLIC_BASE_URL=https://clawback.biz on the VM · Devank
 - 2026-10-24 03:40 · Reader B's model is the GEMINI_MODEL setting, default gemini-2.5-flash (gemini-3.8-flash isn't in the team key's model list); Devank to confirm flash vs gemini-2.5-pro · Devank
 - 2026-10-24 03:36 · web/ now serves the v0 workspace (Overview, Payments, Approvals, Rules) at / over the same event reducer; the earlier board stays at /board/demo; NEXT_PUBLIC_DATA_SOURCE=fixture|live picks the data · Rishi
+- 2026-10-24 04:00 · web/Dockerfile builds with NEXT_PUBLIC_DATA_SOURCE=live, so clawback.biz follows the API's event stream (DEMO_MODE replays on the API side); a fixture-only build stays one --build-arg away · cloud session for Devank

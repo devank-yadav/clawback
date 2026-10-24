@@ -14,6 +14,11 @@ from api import documents, rows
 from api.contracts import Charge, Evidence, PriorPayment, Quote, SalesRow, Term
 from api.engine.allowed import product_key
 
+def day(d, year: bool = False) -> str:
+    """Mar 7, or Mar 7, 2026 with year. Built by hand: strftime has no portable day without a leading zero (Windows raises)."""
+    return f"{d:%b} {d.day}, {d.year}" if year else f"{d:%b} {d.day}"
+
+
 _SECTION = re.compile(r"(\d+\.\d+)\s+$")
 
 
@@ -64,10 +69,10 @@ def from_terms(terms: Iterable[Term]) -> dict[str, Evidence]:
         summary = "; ".join(_term_summary(t) for t in ts)
         section = ev_id.rsplit("-", 1)[-1] if doc.kind == "deal" else None
         if doc.kind == "email" and not documents.can_change_deal(doc):
-            kind, label = "claim", f"{doc.sender} email {doc.received_at:%b %-d} (claim)"
+            kind, label = "claim", f"{doc.sender} email {day(doc.received_at)} (claim)"
             summary = f"Says: {summary}. This sender can't change the deal, so it's a claim, not a change."
         elif doc.kind == "email":
-            kind, label = "email", f"Email from {doc.sender} {doc.received_at:%b %-d}"
+            kind, label = "email", f"Email from {doc.sender} {day(doc.received_at)}"
         else:
             kind, label = "clause", f"§{section}" if section else f"{doc.id}"
         out[ev_id] = Evidence(id=ev_id, kind=kind, label=label, summary=summary[0].upper() + summary[1:] + ("" if summary.endswith(".") else "."),
@@ -84,8 +89,8 @@ def from_notices() -> dict[str, Evidence]:
         m = re.search(r"Northmart will charge[^.]*\.", text, re.S)
         quote = quote_in(doc.id, text, m.start(), m.end(), " ".join(m.group().split())) if m else None
         out[f"ev-{n.doc_id}"] = Evidence(
-            id=f"ev-{n.doc_id}", kind="notice", label=f"Notice {n.notice_date:%b %-d}",
-            summary=f"Northmart gave written notice of a ${n.amount:,.2f} fee on {n.notice_date:%b %-d, %Y}.",
+            id=f"ev-{n.doc_id}", kind="notice", label=f"Notice {day(n.notice_date)}",
+            summary=f"Northmart gave written notice of a ${n.amount:,.2f} fee on {day(n.notice_date, year=True)}.",
             quote=quote, sender=doc.sender,
             rows=[{"notice_date": n.notice_date.isoformat(), "charge_ref": n.ref, "amount": float(n.amount)}])
     return out
@@ -102,15 +107,15 @@ def from_sales(rows: Sequence[SalesRow], deal_products: Iterable[str]) -> dict[s
     for start, rs in sorted(weeks.items()):
         units = sum(r.promo_units for r in rs)
         out[f"ev-sales-{start}"] = Evidence(
-            id=f"ev-sales-{start}", kind="sales", label=f"Sales {rs[0].week_start:%b %-d}–{rs[0].week_end:%b %-d}",
-            summary=f"{units:,} promoted bars of the deal's products sold {rs[0].week_start:%b %-d} to {rs[0].week_end:%b %-d}.",
+            id=f"ev-sales-{start}", kind="sales", label=f"Sales {day(rs[0].week_start)}–{day(rs[0].week_end)}",
+            summary=f"{units:,} promoted bars of the deal's products sold {day(rs[0].week_start)} to {day(rs[0].week_end)}.",
             rows=[r.model_dump(mode="json") for r in rs])
     for key, rs in sorted(other.items()):
         units = sum(r.promo_units for r in rs)
         out[f"ev-sales-{key}"] = Evidence(
             id=f"ev-sales-{key}", kind="sales", label=f"{rs[0].product} sales",
-            summary=f"{units:,} promoted {rs[0].product} bars sold {min(r.week_start for r in rs):%b %-d} to "
-                    f"{max(r.week_end for r in rs):%b %-d}. {rs[0].product} isn't a deal product.",
+            summary=f"{units:,} promoted {rs[0].product} bars sold {day(min(r.week_start for r in rs))} to "
+                    f"{day(max(r.week_end for r in rs))}. {rs[0].product} isn't a deal product.",
             rows=[r.model_dump(mode="json") for r in rs])
     return out
 
@@ -124,9 +129,9 @@ def from_charges(charges: Iterable[Charge]) -> dict[str, Evidence]:
 
 def from_payments(payments: Iterable[PriorPayment]) -> dict[str, Evidence]:
     return {f"ev-payment-{p.ref}": Evidence(
-        id=f"ev-payment-{p.ref}", kind="prior_payment", label=f"Paid {p.paid_on:%b %-d} ({p.ref})",
-        summary=f"Northmart already took ${p.amount:,.2f} for {p.units:,} units sold {p.period_start:%b %-d} to "
-                f"{p.period_end:%b %-d}, on {p.paid_on:%b %-d}.",
+        id=f"ev-payment-{p.ref}", kind="prior_payment", label=f"Paid {day(p.paid_on)} ({p.ref})",
+        summary=f"Northmart already took ${p.amount:,.2f} for {p.units:,} units sold {day(p.period_start)} to "
+                f"{day(p.period_end)}, on {day(p.paid_on)}.",
         rows=[p.model_dump(mode="json")]) for p in payments}
 
 
