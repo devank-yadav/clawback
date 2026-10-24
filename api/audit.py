@@ -11,6 +11,7 @@ from __future__ import annotations
 import threading
 from typing import Any
 
+from api import accounts
 from api.engine import audit_chain
 
 AUDITED = ("decision", "question", "answer", "rule", "approval", "ledger_post", "dispute", "portal_message")
@@ -20,15 +21,13 @@ _chain = audit_chain.AuditChain()
 _head = audit_chain.GENESIS  # saved apart from the rows (in production: somewhere the rows can't reach)
 
 
-def _person(role: str) -> str:
-    from api import pipeline  # names live with the scenario constants
+def describe(ev: Any, account: accounts.Account | str | None = None) -> tuple[str, str, str]:
+    """(actor, action, object_ref) for an audited event of a run of this account (people are "owner:Dana")."""
+    a, d = accounts.resolve(account), ev.data
 
-    return f"{role}:{pipeline.NAMES[role]}"
+    def _person(role: str) -> str:
+        return f"{role}:{a.first_name(role)}"
 
-
-def describe(ev: Any) -> tuple[str, str, str]:
-    """(actor, action, object_ref) for an audited event."""
-    d = ev.data
     match ev.type:
         case "decision":
             return (_person("owner") if d.decided_by == "owner" else "gate", f"decision_{d.decision}", f"charge:{d.charge_id}")
@@ -53,12 +52,12 @@ def describe(ev: Any) -> tuple[str, str, str]:
     raise ValueError(f"not an audited event: {ev.type}")
 
 
-def record(ev: Any) -> audit_chain.AuditEntry | None:
+def record(ev: Any, account: accounts.Account | str | None = None) -> audit_chain.AuditEntry | None:
     """Append an emitted event to the chain if it's one the audit log keeps. The evidence is the event itself."""
     global _head
     if ev.type not in AUDITED:
         return None
-    actor, action, ref = describe(ev)
+    actor, action, ref = describe(ev, account)
     evidence = {"run_id": ev.run_id, "event_id": ev.id, "data": ev.data.model_dump(mode="python")}
     with _lock:
         entry = _chain.append(actor, action, ref, evidence, at=ev.at)

@@ -10,12 +10,12 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Literal
 
 import anthropic
 
-from api.agents import claude
+from api import accounts
+from api.agents import claude, prompts
 from api.agents.claude import Strict
 from api.agents.investigator import engine_payload, evidence_for, evidence_payload, invented_numbers
 from api.contracts import Charge, Dispute, Evidence, Finding, Rehearsal, Term
@@ -23,7 +23,6 @@ from api.engine import outbound_filter, quote_check
 from api.engine.types import Allowance
 
 REHEARSAL_SERVICE = "claude-rehearsal"
-REHEARSAL_PROMPT = (Path(__file__).parent / "prompts" / "rehearsal.md").read_text()
 
 
 class LLMRehearsal(Strict):
@@ -33,7 +32,8 @@ class LLMRehearsal(Strict):
 
 
 def rehearse(charge: Charge, finding: Finding, allowance: Allowance, evidence: dict[str, Evidence],
-             terms: Sequence[Term], client: anthropic.Anthropic | None = None, live_first: bool = False) -> Rehearsal:
+             terms: Sequence[Term], client: anthropic.Anthropic | None = None, live_first: bool = False,
+             account: accounts.Account | str | None = None) -> Rehearsal:
     items = evidence_for(charge, evidence)
     user = json.dumps({"charge": charge.model_dump(mode="json", exclude={"remittance_id"}),
                        "finding": {"text": finding.finding, "type": finding.type, "evidence_ids": finding.evidence_ids},
@@ -61,8 +61,8 @@ def rehearse(charge: Charge, finding: Finding, allowance: Allowance, evidence: d
         return Rehearsal(charge_id=charge.id, predicted_rebuttal=r.predicted_rebuttal, answer=r.answer,
                          answer_evidence_ids=r.answer_evidence_ids, answered=True)
 
-    ans = claude.ask(REHEARSAL_SERVICE, REHEARSAL_PROMPT, user, LLMRehearsal, check, client, live_first=live_first,
-                     charge_id=charge.id)
+    ans = claude.ask(REHEARSAL_SERVICE, prompts.render("rehearsal", account), user, LLMRehearsal, check, client,
+                     live_first=live_first, charge_id=charge.id)
     return ans.value or Rehearsal(charge_id=charge.id, predicted_rebuttal="", answer="", answer_evidence_ids=[],
                                   answered=False)
 
@@ -70,7 +70,6 @@ def rehearse(charge: Charge, finding: Finding, allowance: Allowance, evidence: d
 # ---------------------------------------------------------------- part 2: answer Northmart's portal replies
 
 REPLY_SERVICE = "claude-portal-reply"
-REPLY_PROMPT = (Path(__file__).parent / "prompts" / "portal_reply.md").read_text()
 
 
 class LLMReply(Strict):
@@ -91,7 +90,8 @@ class ReplyDraft:
 
 
 def answer_reply(dispute: Dispute, text: str, evidence: dict[str, Evidence], terms: Sequence[Term],
-                 client: anthropic.Anthropic | None = None) -> ReplyDraft | None:
+                 client: anthropic.Anthropic | None = None,
+                 account: accounts.Account | str | None = None) -> ReplyDraft | None:
     """Classify a Northmart reply that has no attachment and draft the answer. None: the answer failed its
     checks twice (or the call failed), so the message is held for the owner. Tries live first even in DEMO_MODE."""
     items = [e for e in evidence.values() if e.kind != "charge" or e.id.removeprefix("ev-charge-") in
@@ -123,5 +123,5 @@ def answer_reply(dispute: Dispute, text: str, evidence: dict[str, Evidence], ter
             raise ValueError("; ".join(problems))
         return ReplyDraft(r.classification, r.charge_ids, r.claim, r.answer.strip(), r.answer_evidence_ids)
 
-    return claude.ask(REPLY_SERVICE, REPLY_PROMPT, user, LLMReply, check, client, live_first=True,
-                      dispute_id=dispute.id).value
+    return claude.ask(REPLY_SERVICE, prompts.render("portal_reply", account), user, LLMReply, check, client,
+                      live_first=True, dispute_id=dispute.id).value

@@ -1,8 +1,8 @@
 """Runs, the live event stream, the evidence drawer, owner answers and the read-only summary.
 
-Live runs come from api/pipeline.py (POST /runs). A run that is no longer in memory (the API restarted) replays,
-read-only, from the events table (api/db/events.py). The recorded fake runs (run-march-demo, run-april-demo,
-run-march-refused) still replay for screens built against web/fixtures.
+Live runs come from api/pipeline.py (POST /runs), each for one account (Peak Bar's by default). A run that is no
+longer in memory (the API restarted) replays, read-only, from the events table (api/db/events.py). The recorded fake
+runs (run-march-demo, run-april-demo, run-march-refused) still replay for screens built against web/fixtures.
 """
 
 import asyncio
@@ -15,7 +15,7 @@ from fastapi.responses import StreamingResponse
 from api.contracts import (
     AnswerRequest, AnswerResponse, ChargeDetail, Evidence, RunFixture, StartRunRequest, StartRunResponse, Summary,
 )
-from api import pipeline
+from api import accounts, pipeline
 from api.auth import limit, require_role
 from api.db import events as saved_events
 from api.routes import portal
@@ -35,18 +35,31 @@ def _events(run: RunFixture) -> list:
     return run.events
 
 
-def _start(kind: str, fixture: bool) -> StartRunResponse:
-    if fixture:
+def account_or_404(account_id: str) -> accounts.Account:
+    try:
+        return accounts.get(account_id)
+    except accounts.UnknownAccount:
+        raise HTTPException(404, f"unknown account {account_id}") from None
+
+
+def _start(kind: str | None, fixture: bool, account_id: str = accounts.DEFAULT) -> StartRunResponse:
+    account = account_or_404(account_id)
+    kind = kind or account.invoice.month
+    if fixture:  # the recorded fake runs are Peak Bar's
         run_id = fixtures.MARCH_RUN if kind == "march" else fixtures.APRIL_RUN
     else:
-        run_id = pipeline.start(kind).id
+        try:
+            run_id = pipeline.start(kind, account=account).id
+        except pipeline.UnknownMonth as e:
+            raise HTTPException(422, str(e)) from None
     return StartRunResponse(run_id=run_id, events_url=f"/runs/{run_id}/events")
 
 
 @router.post("/runs", response_model=StartRunResponse, dependencies=[Depends(limit("runs"))])
 def start_run(req: StartRunRequest | None = None) -> StartRunResponse:
+    """A live run of one of the account's months: {"account": "peak-bar", "kind": "march"} (both optional)."""
     req = req or StartRunRequest()
-    return _start(req.kind, req.fixture)
+    return _start(req.kind, req.fixture, req.account)
 
 
 @router.post("/replay/april", response_model=StartRunResponse, dependencies=[Depends(limit("runs"))])
@@ -148,22 +161,37 @@ def answer_question(question_id: str, req: AnswerRequest) -> AnswerResponse:
 
 
 @router.get("/summary", response_model=Summary)
-def summary(authorization: str | None = Header(default=None)) -> Summary:
+def summary(authorization: str | None = Header(default=None),
+            account: str = Query(default=accounts.DEFAULT)) -> Summary:
+    """The account's newest invoice-month run (Peak Bar's March by default); Peak Bar's recorded run before any."""
     token = os.getenv("CLAWBACK_READONLY_TOKEN")
     if not token:
         raise HTTPException(503, "CLAWBACK_READONLY_TOKEN is not set")
     if authorization != f"Bearer {token}":
         raise HTTPException(401, "bad token")
-    run = pipeline.latest("march")
-    return pipeline.summary_of(run) if run else fixtures.summary()
+    found = account_or_404(account)
+    run = pipeline.latest(found.invoice.month, found)
+    if run:
+        return pipeline.summary_of(run)
+    if found.id != accounts.DEFAULT:
+        raise HTTPException(404, f"no live {found.invoice.month} run for {found.id} yet")
+    return fixtures.summary()
+
+
+def latest_run_id(account: accounts.Account, kind: str | None = None) -> str | None:
+    """The account's newest run of this kind (its invoice month by default): live, else saved before a restart."""
+    kind = kind or account.invoice.month
+    run = pipeline.latest(kind, account)
+    return run.id if run else saved_events.latest_run(kind, account.id)
 
 
 @router.get("/runs/latest", response_model=StartRunResponse)
-def latest_run(kind: str = Query(default="march")) -> StartRunResponse:
-    """The newest live run (the payment screen finds the run Nessie's deposit started); with none in memory, the
-    newest saved one (the API restarted)."""
-    run = pipeline.latest(kind)
-    run_id = run.id if run else saved_events.latest_run(kind)
+def latest_run(kind: str | None = Query(default=None, description="the account's invoice month if left out"),
+               account: str = Query(default=accounts.DEFAULT)) -> StartRunResponse:
+    """The account's newest live run (the payment screen finds the run Nessie's deposit started); with none in memory,
+    the newest saved one (the API restarted)."""
+    found = account_or_404(account)
+    run_id = latest_run_id(found, kind)
     if run_id is None:
-        raise HTTPException(404, f"no live {kind} run yet")
+        raise HTTPException(404, f"no live {kind or found.invoice.month} run for {found.id} yet")
     return StartRunResponse(run_id=run_id, events_url=f"/runs/{run_id}/events")

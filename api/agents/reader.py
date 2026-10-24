@@ -15,20 +15,22 @@ import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date, timedelta
-from pathlib import Path
 from typing import Any, Literal
 
 import anthropic
 
-from api import documents
+from api import accounts, documents
 from api.contracts import TERM_PARAMS, Document, ReaderOutput, ReaderTerm, Term, TermType
 from api.engine import quote_check
-from api.agents import claude
+from api.agents import claude, prompts
 from api.agents.claude import Strict
 
 MODEL = claude.MODEL
 SERVICE = "claude-reader"  # fixtures in data/fixtures/claude-reader/
-PROMPT = (Path(__file__).parent / "prompts" / "reader.md").read_text()
+
+
+def prompt(account: accounts.Account | str | None = None) -> str:
+    return prompts.render("reader", account)
 
 
 # What the model fills in. Strict JSON schemas can't hold a free-form dict, so params is one flat object
@@ -94,8 +96,8 @@ def read_document(doc_id: str, base_terms: Sequence[Term] = (), client: anthropi
     """Read one document. `base_terms` are the deal's verified terms, used only to date an extension
     that states its end but not its start (it starts the day after the deal's date_range ends)."""
     doc, text = documents.load(doc_id)
-    ans = claude.ask(SERVICE, PROMPT, _user_message(doc, text), LLMOutput, lambda raw: _to_reader_output(raw, doc, text),
-                     client, live_first=live_first, doc_id=doc_id)
+    ans = claude.ask(SERVICE, prompt(documents.account_of(doc_id)), _user_message(doc, text), LLMOutput,
+                     lambda raw: _to_reader_output(raw, doc, text), client, live_first=live_first, doc_id=doc_id)
     if ans.value is None:
         return ReaderResult(doc, [], [f"{doc_id}: reader output failed validation twice; needs a person"],
                             ans.source, ans.attempts, ans.errors)

@@ -3,12 +3,14 @@
 1. Applies every file in migrations/ in order. 001_init.sql's TimescaleDB part (store_sales as a hypertable on
    week_start, and the promo_units_weekly continuous aggregate) runs only where CREATE EXTENSION timescaledb works;
    on plain Postgres (a local Docker one) the seed warns and skips it.
-2. Upserts the rows api/documents.py and api/rows.py load from the files, so nothing here parses a data file:
-   documents, the March remittance, the March and April charges, prior payments, store sales and the promo plan,
-   each data row with its file and row number (002_source_rows.sql). A row that is already there and equal is
-   left alone, so a second run inserts and updates nothing.
-3. Seeds the QuickBooks sandbox with scripts/seed_quickbooks.py when the four QBO_* keys are set (not in DEMO_MODE).
-4. Prints row counts and the cap query: the running total of promoted units against the promo's cap.
+2. Upserts, for every account (api/accounts.py), the rows api/documents.py and api/rows.py load from its files, so
+   nothing here parses a data file: documents, the invoice month's remittance, each month's charges, prior
+   payments, store sales and the promo plan, each row with its account and each data row with its file and row
+   number (002_source_rows.sql, 003_accounts.sql). A row that is already there and equal is left alone, so a second
+   run inserts and updates nothing.
+3. Seeds the QuickBooks sandbox with scripts/seed_quickbooks.py when the four QBO_* keys are set (not in DEMO_MODE):
+   every account's customer, items, invoice and payment.
+4. Prints row counts and the cap query per account: the running total of promoted units against each promo's cap.
 
 DATABASE_URL comes from .env and is never printed. Once seeded, the app reads these rows back from here
 (api/rows.py through api/db/reads.py) and saves every run's events.
@@ -28,11 +30,10 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from api import documents, rows
+from api import accounts, documents, rows
 from api.db import migration, migrations
 from api.db.reads import cap_query
 from api.integrations import replay
-from api.pipeline import COUNTERPARTY, EXPECTED, INVOICE_ID, RECEIVED
 
 try:
     import psycopg
@@ -41,7 +42,6 @@ except ImportError:  # the row mapping below works without it; main() says what 
     psycopg = None
 
 ROOT = Path(__file__).resolve().parents[2]
-REMITTANCE_ID = f"REM-{INVOICE_ID}"  # the id api/pipeline.py gives the March run's remittance
 QBO_KEYS = ("QBO_CLIENT_ID", "QBO_CLIENT_SECRET", "QBO_REALM_ID", "QBO_REFRESH_TOKEN")
 CONNECT_TIMEOUT = 30
 
@@ -49,10 +49,10 @@ CONNECT_TIMEOUT = 30
 KEYS = {
     "documents": ("id",),
     "remittances": ("id",),
-    "charges": ("id",),
-    "prior_payments": ("ref",),
-    "store_sales": ("week_start", "product"),
-    "promo_plan": ("promo_id",),
+    "charges": ("account_id", "id"),
+    "prior_payments": ("account_id", "ref"),
+    "store_sales": ("account_id", "week_start", "product"),
+    "promo_plan": ("account_id", "promo_id"),
 }
 
 # ---------------------------------------------------------------- rows (no database needed)
@@ -62,45 +62,59 @@ def _utc(value: datetime | None) -> datetime | None:
     return value.replace(tzinfo=timezone.utc) if value is not None and value.tzinfo is None else value
 
 
-def document_rows() -> list[dict[str, Any]]:
+def remittance_id(account: accounts.Account) -> str:
+    """The id api/pipeline.py gives the invoice month's remittance: REM-INV-3102."""
+    return f"REM-{account.invoice.id}"
+
+
+def document_rows(account: accounts.Account) -> list[dict[str, Any]]:
     out = []
-    for doc_id in documents.PATHS:
+    for doc_id in account.docs:
         doc, text = documents.load(doc_id)
         out.append({"id": doc.id, "kind": doc.kind, "path": doc.path, "sender": doc.sender,
                     "approved_sender": doc.approved_sender, "signed_by_both": doc.signed_by_both,
-                    "received_at": _utc(doc.received_at), "text": text, "sha256": doc.sha256})
+                    "received_at": _utc(doc.received_at), "text": text, "sha256": doc.sha256, "account_id": account.id})
     return out
 
 
-def remittance_rows() -> list[dict[str, Any]]:
+def remittance_rows(account: accounts.Account) -> list[dict[str, Any]]:
     # received_at and nessie_tx_id aren't seeded: the run sets them when the Nessie deposit arrives.
-    return [{"id": REMITTANCE_ID, "counterparty": COUNTERPARTY, "invoice_id": INVOICE_ID,
-             "expected": EXPECTED, "received": RECEIVED}]
+    inv = account.invoice
+    return [{"id": remittance_id(account), "counterparty": account.distributor.name, "invoice_id": inv.id,
+             "expected": inv.expected, "received": inv.received, "account_id": account.id}]
 
 
-def _with_source(items: list[Any], source_file: str) -> list[dict[str, Any]]:
-    """Each row with where it came from in data/: its file and its row number there (1 is the row after the header),
-    so the app reads the tables back in the files' order (api/db/reads.py)."""
-    return [{**item.model_dump(), "source_file": source_file, "source_row": n} for n, item in enumerate(items, 1)]
+def _with_source(items: list[Any], source_file: str, account: accounts.Account) -> list[dict[str, Any]]:
+    """Each row with its account and where it came from in the account's folder: its file and its row number there
+    (1 is the row after the header), so the app reads the tables back in the files' order (api/db/reads.py)."""
+    return [{**item.model_dump(), "account_id": account.id, "source_file": source_file, "source_row": n}
+            for n, item in enumerate(items, 1)]
 
 
-def charge_rows() -> list[dict[str, Any]]:
-    # April's charges have no remittance on file yet (no April invoice or payment in the data), so theirs is NULL.
-    march = [c.model_copy(update={"remittance_id": REMITTANCE_ID}) for c in rows.charges_from_files("march")]
-    return (_with_source(march, rows.CHARGE_FILES["march"])
-            + _with_source(rows.charges_from_files("april"), rows.CHARGE_FILES["april"]))
+def charge_rows(account: accounts.Account) -> list[dict[str, Any]]:
+    # Only the invoice month has a remittance on file; a later month's charges (Peak Bar's April) have NULL.
+    out = []
+    for month in account.months:
+        got = rows.charges_from_files(month, account=account)
+        if month == account.invoice.month:
+            got = [c.model_copy(update={"remittance_id": remittance_id(account)}) for c in got]
+        # line_ref is left out of a dump when unset; every row needs the same columns
+        seeded = _with_source(got, rows.charge_file(month), account)
+        out += [{**row, "line_ref": c.line_ref} for row, c in zip(seeded, got)]
+    return out
 
 
 def seed_rows() -> dict[str, list[dict[str, Any]]]:
-    """Every seeded table's rows, keyed like KEYS and in its order."""
-    return {
-        "documents": document_rows(),
-        "remittances": remittance_rows(),
-        "charges": charge_rows(),
-        "prior_payments": _with_source(rows.prior_payments_from_files(), rows.PRIOR_FILE),
-        "store_sales": _with_source(rows.sales_from_files(), rows.SALES_FILE),
-        "promo_plan": _with_source(rows.promo_plan_from_files(), rows.PLAN_FILE),
-    }
+    """Every seeded table's rows for every account, keyed like KEYS and in its order."""
+    out: dict[str, list[dict[str, Any]]] = {t: [] for t in KEYS}
+    for a in accounts.every():
+        out["documents"] += document_rows(a)
+        out["remittances"] += remittance_rows(a)
+        out["charges"] += charge_rows(a)
+        out["prior_payments"] += _with_source(rows.prior_payments_from_files(account=a), rows.PRIOR_FILE, a)
+        out["store_sales"] += _with_source(rows.sales_from_files(account=a), rows.SALES_FILE, a)
+        out["promo_plan"] += _with_source(rows.promo_plan_from_files(account=a), rows.PLAN_FILE, a)
+    return out
 
 
 def schema_tables() -> list[str]:
@@ -247,9 +261,9 @@ def _report(seeded: Seeded, table_counts: dict[str, int]) -> None:
             print(f"  {table:<16}{n:>6}   (written by runs)")
 
 
-def _print_cap(promo, weeks: list[tuple], weekly: str) -> None:
-    print(f"\nThe cap query ({promo.promo_id}: {' + '.join(promo.products)}, {promo.starts} to {promo.ends}, "
-          f"cap {promo.cap:,} units), over {weekly}:")
+def _print_cap(account: accounts.Account, promo, weeks: list[tuple], weekly: str) -> None:
+    print(f"\nThe cap query ({account.id}, {promo.promo_id}: {' + '.join(promo.products)}, {promo.starts} to "
+          f"{promo.ends}, cap {promo.cap:,} units), over {weekly}:")
     print(f"  {'week':<26}{'promoted':>9}{'running total':>15}")
     for start, end, units, running, _cap in weeks:
         print(f"  {f'{start} to {end}':<26}{units:>9,}{running:>15,}")
@@ -273,8 +287,11 @@ def main() -> None:
                   "table and the promo_units_weekly continuous aggregate is skipped; the cap query reads store_sales.")
         qbo_error = seed_quickbooks()
         _report(seeded, counts(conn))
-        for promo in rows.promo_plan_from_files():
-            _print_cap(promo, cap_query(conn, promo.promo_id, seeded.weekly), seeded.weekly)
+        for problem in accounts.problems():
+            print(f"Warning: account left out: {problem}")
+        for a in accounts.every():
+            for promo in rows.promo_plan_from_files(account=a):
+                _print_cap(a, promo, cap_query(conn, a.id, promo.promo_id, seeded.weekly), seeded.weekly)
     if qbo_error:
         sys.exit(f"QuickBooks seed failed: {qbo_error}")
 

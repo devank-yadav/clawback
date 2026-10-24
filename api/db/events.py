@@ -2,8 +2,9 @@
 table, so a refresh replays them"), and read back for a run that is no longer in memory: after a restart, GET
 /runs/{id}/events replays it and GET /runs/latest finds it.
 
-Run.emit calls record() for every event. record() only queues it: one background thread writes the queue in
-batches, so a run never waits on the database and never fails because of it. A write that fails is logged once (until
+Run.emit calls record() for every event, with the run's account (the events table's account_id). record() only
+queues it: one background thread writes the queue in batches, so a run never waits on the database and never fails
+because of it. A write that fails is logged once (until
 writes work again), kept, and tried again after PAUSE seconds; if the database stays away until MAX_QUEUED events
 wait, newer ones aren't saved (also logged once). Nothing is saved when the database is off (api/db/conn.py).
 
@@ -21,6 +22,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
+from api import accounts
 from api.contracts import Event, EventAdapter
 from api.db import conn
 
@@ -35,11 +37,11 @@ MAX_QUEUED = 10_000
 BATCH = 500
 PAUSE = 5.0  # seconds before a failed write is tried again
 
-INSERT = ("INSERT INTO events (run_id, id, type, at, data) VALUES (%s, %s, %s, %s, %s) "
+INSERT = ("INSERT INTO events (run_id, id, type, at, data, account_id) VALUES (%s, %s, %s, %s, %s, %s) "
           "ON CONFLICT (run_id, id) DO NOTHING")
 SELECT = "SELECT run_id, id, type, at, data FROM events WHERE run_id = %s ORDER BY id"
-# The newest run of a kind: its "run" events carry the kind, and the first one is when it started.
-LATEST = ("SELECT run_id FROM events WHERE type = 'run' AND data->>'kind' = %s "
+# An account's newest run of a kind: its "run" events carry the kind, and the first one is when it started.
+LATEST = ("SELECT run_id FROM events WHERE account_id = %s AND type = 'run' AND data->>'kind' = %s "
           "GROUP BY run_id HAVING min(at) > %s ORDER BY min(at) DESC LIMIT 1")
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
@@ -60,7 +62,8 @@ def _write(db, batch: list[Any]) -> None:
                     rows = []
                 cur.execute("DELETE FROM events WHERE at <= %s", (item.before,))
             else:
-                rows.append((item.run_id, item.id, item.type, item.at, Jsonb(item.data.model_dump(mode="json"))))
+                rows.append((item.run_id, item.id, item.type, item.at, Jsonb(item.data.model_dump(mode="json")),
+                             _accounts.get(item.run_id, accounts.DEFAULT)))
         if rows:
             cur.executemany(INSERT, rows)
 
@@ -161,17 +164,19 @@ _writer = Writer()
 _reading = conn.LogOnce("events: reading from Postgres")
 _runs_lock = threading.Lock()
 _seen: set[str] = set()  # runs this process has saved events for
+_accounts: dict[str, str] = {}  # run id -> its account
 _forgotten: set[str] = set()  # runs from before a demo reset
 _reset_at: datetime | None = None
 
 
-def record(ev: Any) -> None:
-    """Queue one emitted event for the events table. Never blocks and never raises."""
+def record(ev: Any, account_id: str = accounts.DEFAULT) -> None:
+    """Queue one emitted event of an account's run for the events table. Never blocks and never raises."""
     try:
         if not conn.enabled() or ev.run_id in _forgotten:
             return
         with _runs_lock:
             _seen.add(ev.run_id)
+            _accounts[ev.run_id] = account_id
         _writer.put(ev)
     except Exception as e:  # noqa: BLE001 - saving must never break a run
         _writer.failing.failed(f"couldn't queue an event ({type(e).__name__}: {e})")
@@ -226,7 +231,7 @@ def load(run_id: str) -> list[Event] | None:
         return None
 
 
-def latest_run(kind: str) -> str | None:
-    """The newest saved run of a kind that started after the last demo reset, if there is one."""
-    row = _read(lambda db: db.execute(LATEST, (kind, _reset_at or EPOCH)).fetchone())
+def latest_run(kind: str, account_id: str = accounts.DEFAULT) -> str | None:
+    """An account's newest saved run of a kind that started after the last demo reset, if there is one."""
+    row = _read(lambda db: db.execute(LATEST, (account_id, kind, _reset_at or EPOCH)).fetchone())
     return row[0] if row else None

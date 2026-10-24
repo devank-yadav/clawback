@@ -17,11 +17,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from api import documents, rows
+from api import accounts, documents
 from api.db import migration, migrations, seed
+from api.db.reads import cap_query
 
-DATA = rows.DATA
-DESIGN = DATA.parent / "docs" / "design.md"
+PEAK = accounts.get("peak-bar")
+DATA = PEAK.dir  # data/accounts/peak-bar
+DESIGN = DATA.parents[2] / "docs" / "design.md"
 SEEDED = {"documents": 8, "remittances": 1, "charges": 8, "prior_payments": 2, "store_sales": 14, "promo_plan": 1}
 RUNNING = [1200, 2180, 5000, 6540]  # weeks 1 to 4 of March, Original + Chocolate (data/CLAUDE.md)
 
@@ -48,7 +50,7 @@ def test_row_counts_match_the_data_files():
     assert got == SEEDED
     files = [p for d in ("deals", "emails", "notices") for p in (DATA / d).iterdir() if p.suffix in (".md", ".eml")]
     assert got["documents"] == len(files)
-    assert got["charges"] == len(_csv_rows("charges/northmart-march.csv")) + len(_csv_rows("charges/northmart-april.csv"))
+    assert got["charges"] == len(_csv_rows("charges/march.csv")) + len(_csv_rows("charges/april.csv"))
     assert got["prior_payments"] == len(_csv_rows("payments/prior.csv"))
     assert got["store_sales"] == len(_csv_rows("sales/store-sales.csv"))
     assert got["promo_plan"] == len(_csv_rows("plan/promo-plan.csv"))
@@ -63,10 +65,12 @@ def test_store_sales_rows_keep_week_end():
 
 
 def test_documents_carry_their_text_and_sha256():
-    docs = {d["id"]: d for d in seed.document_rows()}
+    docs = {d["id"]: d for d in seed.document_rows(PEAK)}
     assert set(docs) == set(documents.PATHS)
     for doc_id, rel in documents.PATHS.items():
-        text = (DATA / rel).read_text()
+        assert rel == f"accounts/peak-bar/{documents.file(doc_id).relative_to(DATA).as_posix()}"
+        text = documents.file(doc_id).read_text()
+        assert docs[doc_id]["account_id"] == "peak-bar"
         assert docs[doc_id]["text"] == text
         assert docs[doc_id]["sha256"] == hashlib.sha256(text.encode()).hexdigest()
         assert docs[doc_id]["received_at"] is None or docs[doc_id]["received_at"].tzinfo is not None
@@ -75,10 +79,11 @@ def test_documents_carry_their_text_and_sha256():
 
 
 def test_remittance_and_charges_are_the_scenario():
-    (rem,) = seed.remittance_rows()
+    (rem,) = seed.remittance_rows(PEAK)
     assert (rem["id"], rem["invoice_id"], rem["expected"], rem["received"]) == \
            ("REM-INV-3102", "INV-3102", Decimal("48200.00"), Decimal("41350.00"))
-    charges = {c["id"]: c for c in seed.charge_rows()}
+    charges = {c["id"]: c for c in seed.charge_rows(PEAK)}
+    assert {c["source_file"] for c in charges.values()} == {"charges/march.csv", "charges/april.csv"}
     march = [c for c in charges.values() if c["id"].startswith("C")]
     assert all(c["remittance_id"] == rem["id"] for c in march)
     assert sum(c["amount"] for c in march) == Decimal("6850.00")
@@ -181,13 +186,14 @@ def test_seed_twice_changes_nothing(db):
 
 def test_cap_query_reads_the_running_total(db):
     seeded = seed.seed(db)
-    weeks = seed.cap_query(db, "SPRING-26", seeded.weekly)
+    weeks = cap_query(db, "peak-bar", "SPRING-26", seeded.weekly)
     assert [w[3] for w in weeks] == RUNNING
     assert [w[2] for w in weeks] == [1200, 980, 2820, 1540]
     assert [(w[0], w[1]) for w in weeks][-1] == (date(2026, 3, 22), date(2026, 3, 31))
     assert {w[4] for w in weeks} == {5000}
     seed.seed(db)
-    assert seed.cap_query(db, "SPRING-26", seeded.weekly) == weeks
+    assert cap_query(db, "peak-bar", "SPRING-26", seeded.weekly) == weeks
+    assert cap_query(db, "another-account", "SPRING-26", seeded.weekly) == []  # each account's own promo
 
 
 def test_a_changed_row_is_put_back(db):

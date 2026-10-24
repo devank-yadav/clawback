@@ -24,8 +24,17 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - `python3.11 -m venv .venv && .venv/bin/pip install -r api/requirements.txt -r requirements-dev.txt`,
   then `source .venv/bin/activate`.
 - `make api` serves the stub API on :8000; `make test` runs every test in api/.
-- `make record` runs the whole demo live (March, Dana's answer, April) and saves every AI answer to data/fixtures/;
-  `make demo` / DEMO_MODE=true replays them with no network. `python -m api.agents.reader <doc ids>` reads documents.
+- Accounts (api/accounts.py): each brand <- distributor pair is a folder data/accounts/<id>/ (account.yaml, checked
+  against AccountConfig in contracts.py, plus its deals/, emails/, notices/, charges/<month>.csv and data rows; history,
+  deliveries, pricing and ops terms load through api/account_rows.py). Peak Bar (peak-bar) is the default everywhere.
+  A run belongs to one account: its files, people, distributor, invoice and dispute numbers (dispute_start, +10 per
+  later month). Prompts are templated with {brand}, {brand_kind} and {distributor} (api/agents/prompts.py render());
+  test_prompts.py proves Peak Bar's render byte for byte as recorded. GET /accounts, GET /accounts/{id}/overview
+  (api/overview.py), POST /runs {kind, account}, GET /runs/latest?account=, POST /payments/{account}, GET
+  /summary?account=.
+- The product always runs live. DEMO_MODE is test infrastructure: the tests replay the recordings in data/fixtures/.
+  `make record` runs Peak Bar's whole demo live (March, Dana's answer, April) and saves every AI answer there.
+  `python -m api.agents.reader <doc ids>` reads documents.
 - POST /runs starts a live pipeline run (api/pipeline.py); `{"fixture": true}` replays the recorded fake run instead.
 - QuickBooks (api/integrations/qbo.py): with the QBO_* keys set it writes to the sandbox; without them, or in
   DEMO_MODE, a stand-in answers with "sim-" ids and every ledger post says it's simulated and why. POST /demo/reset
@@ -39,8 +48,9 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - Every document is read twice (api/agents/readers.py): Reader A is Claude, Reader B is Gemini when GEMINI_API_KEY is
   set and a second Claude prompt until then (the log says which). Re-record Reader B with Gemini once the key works.
 - Nessie (api/integrations/nessie.py): with NESSIE_API_KEY and NESSIE_ACCOUNT_ID the app polls the account every 5 s
-  and a new Northmart deposit starts the March run; POST /payments/northmart is the "Northmart pays" button (posts the
-  deposit, or starts the run directly without keys or in DEMO_MODE); GET /runs/latest finds the run.
+  and a new deposit whose description names an account (its nessie_description) starts that account's run; POST
+  /payments/{account} is the "Northmart pays" button (posts the account's deposit, or starts the run directly without
+  keys; /payments/northmart is Peak Bar's); GET /runs/latest?account= finds the run.
 - Deployed site (docs/deploy.md): the VM is the single live instance (DEMO_MODE=false). POST /demo/reset needs
   `Authorization: Bearer $CLAWBACK_ADMIN_TOKEN` when that's set; QBO_TOKEN_FILE keeps the rotated QuickBooks refresh
   token in the mounted state/ folder; GET /eval/latest falls back to eval/published/ (`make publish-score`).

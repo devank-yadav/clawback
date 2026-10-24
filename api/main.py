@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api import pipeline
 from api.db import events as saved_events
 from api.integrations import nessie, replay
-from api.routes import approvals, audit, db, demo, eval, payments, portal, runs, scenario, webhooks
+from api.routes import accounts, approvals, audit, db, demo, eval, payments, portal, runs, scenario, webhooks
 
 load_dotenv()
 log = logging.getLogger("clawback")
@@ -39,7 +39,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (runs, payments, portal, approvals, webhooks, scenario, eval, audit, demo, db):
+for r in (runs, payments, portal, approvals, webhooks, scenario, eval, audit, demo, db, accounts):
     app.include_router(r.router)
 
 

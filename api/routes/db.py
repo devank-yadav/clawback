@@ -1,5 +1,6 @@
-"""GET /db/cap: the cap query, answered by the database. The Tiger Data proof (store_sales is a hypertable and
-promo_units_weekly its continuous aggregate), and the running total the evidence drawer can show next to §3.2.
+"""GET /db/cap?promo_id=&account=: one account's cap query (Peak Bar's SPRING-26 by default), answered by the
+database. The Tiger Data proof (store_sales is a hypertable and promo_units_weekly its continuous aggregate), and the
+running total the evidence drawer can show next to §3.2.
 
 Read-only. Without a database (no DATABASE_URL, or DEMO_MODE) or when it doesn't answer, it says so with a 503.
 """
@@ -9,6 +10,7 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 
+from api import accounts
 from api.contracts import Contract
 from api.db import conn, reads
 
@@ -24,6 +26,7 @@ class CapWeek(Contract):
 
 
 class CapReport(Contract):
+    account: str
     promo_id: str
     source: Literal["promo_units_weekly", "store_sales"]  # the continuous aggregate on TimescaleDB, else the table
     cap: int
@@ -31,19 +34,19 @@ class CapReport(Contract):
 
 
 @router.get("/db/cap", response_model=CapReport)
-def cap(promo_id: str = Query(default="SPRING-26")) -> CapReport:
+def cap(promo_id: str = Query(default="SPRING-26"), account: str = Query(default=accounts.DEFAULT)) -> CapReport:
     if not conn.enabled():
         raise HTTPException(503, "no database: DATABASE_URL isn't set, or DEMO_MODE is on")
 
     def query(db):
         source = reads.weekly(db)
-        return source, reads.cap_query(db, promo_id, source)
+        return source, reads.cap_query(db, account, promo_id, source)
 
     try:
         source, rows = conn.shared.run(query)
     except Exception as e:  # noqa: BLE001 - unreachable, not seeded, or the query failed
         raise HTTPException(503, f"the database didn't answer the cap query ({conn.scrub(e)})") from None
     if not rows:
-        raise HTTPException(404, f"no sales for promo {promo_id} in the database (make seed loads them)")
+        raise HTTPException(404, f"no sales for {account}'s promo {promo_id} in the database (make seed loads them)")
     weeks = [CapWeek(week_start=s, week_end=e, promo_units=u, running_units=r, cap=c) for s, e, u, r, c in rows]
-    return CapReport(promo_id=promo_id, source=source, cap=weeks[0].cap, weeks=weeks)
+    return CapReport(account=account, promo_id=promo_id, source=source, cap=weeks[0].cap, weeks=weeks)

@@ -1,9 +1,13 @@
-"""Capital One Nessie (F15): Northmart's short payment arrives as a deposit, and that starts the run.
+"""Capital One Nessie (F15): a distributor's short payment arrives as a deposit, and that starts its account's run.
 
 Calls follow scripts/nessie_deposit.py (base URL, ?key= on every call, POST /accounts/{id}/deposits per Nessie's
 official SDK). Listing an account's deposits uses GET on the same path; Nessie's reference couldn't be checked
 (its docs answer 403), so verify it once NESSIE_* keys are set. If it fails, the poller logs and keeps trying,
-and the "Northmart pays" button (POST /payments/northmart) still starts the run.
+and the "Northmart pays" button (POST /payments/{account}) still starts the run.
+
+Every account's deposit lands on the one NESSIE_ACCOUNT_ID; its description says whose it is (account.yaml
+nessie_description, Peak Bar's "Northmart remittance INV-3102"; api/accounts.for_deposit). A deposit that names no
+account is history, not a trigger.
 
 The poller checks every 5 seconds. Deposits already on the account when it starts are history, not triggers (so
 the test deposit Manasv posted while setting up never starts a run).
@@ -27,8 +31,8 @@ log = logging.getLogger("clawback.nessie")
 DEFAULT_BASE = "https://api.nessieisreal.com"  # the live API is HTTPS only
 TIMEOUT_S = 10
 POLL_S = 5.0
-AMOUNT = Decimal("41350.00")  # data/CLAUDE.md: the short remittance for INV-3102
-DESCRIPTION = "Northmart remittance INV-3102"
+AMOUNT = Decimal("41350.00")  # Peak Bar's (data/CLAUDE.md): the short remittance for INV-3102
+DESCRIPTION = "Northmart remittance INV-3102"  # Peak Bar's nessie_description
 
 
 class NessieError(RuntimeError):
@@ -47,9 +51,11 @@ def configured() -> bool:
     return bool(os.getenv("NESSIE_API_KEY") and os.getenv("NESSIE_ACCOUNT_ID"))
 
 
-def is_northmart(d: Deposit) -> bool:
-    """The trigger: Northmart's remittance for the March invoice."""
-    return "northmart" in d.description.lower()
+def account_of(d: Deposit):
+    """The account this deposit pays (an api.accounts.Account), or None: it isn't a trigger."""
+    from api import accounts
+
+    return accounts.for_deposit(d.description)
 
 
 class Nessie:
@@ -93,7 +99,8 @@ def client() -> Nessie | None:
 
 
 class Poller:
-    """Every POLL_S seconds, look for a new Northmart deposit and hand it to `on_deposit` (once per deposit)."""
+    """Every POLL_S seconds, look for a new deposit that pays an account and hand it to `on_deposit` (once per
+    deposit; pipeline.start_for_deposit finds the account again from the description)."""
 
     def __init__(self, nessie: Nessie, on_deposit: Callable[[Deposit], object], interval: float = POLL_S):
         self.nessie, self.on_deposit, self.interval = nessie, on_deposit, interval
@@ -118,8 +125,8 @@ class Poller:
             if d.id in self.seen:
                 continue
             self.seen.add(d.id)
-            if is_northmart(d):
-                log.info("nessie: Northmart deposit %s of $%s arrived", d.id, d.amount)
+            if (account := account_of(d)) is not None:
+                log.info("nessie: %s deposit %s of $%s arrived", account.id, d.id, d.amount)
                 self.on_deposit(d)
                 started.append(d)
         return started

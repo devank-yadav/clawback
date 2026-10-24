@@ -22,7 +22,7 @@ class TwoReaders(ScenarioClaude):
         self.b_spring = b_spring
 
     def _parse(self, output_format, messages, **kw):
-        if output_format is LLMOutput and kw.get("system") == reader_b.PROMPT:
+        if output_format is LLMOutput and kw.get("system") == reader_b.prompt():
             self.calls.append("ReaderB")
             if self.b_spring is not None and "Document ID: spring-promo" in messages[0]["content"]:
                 return SimpleNamespace(stop_reason="end_turn", stop_details=None,
@@ -107,7 +107,7 @@ def test_gemini_reads_when_configured():
     m = readers.read_both("spring-promo", client=TwoReaders(), gemini=gemini)
     assert m.models == ("claude", "gemini") and set(statuses(m).values()) == {"verified"}
     req = gemini.requests[0]
-    assert (req["model"], req["config"].system_instruction) == (reader_b.DEFAULT_GEMINI_MODEL, reader_b.PROMPT)
+    assert (req["model"], req["config"].system_instruction) == (reader_b.DEFAULT_GEMINI_MODEL, reader_b.prompt())
     assert req["config"].response_mime_type == "application/json" and "properties" in req["config"].response_json_schema
     assert "Document ID: spring-promo" in req["contents"] and m.model_ids[1] == reader_b.DEFAULT_GEMINI_MODEL
 

@@ -322,6 +322,18 @@
             ],
             "default": null,
             "title": "Notice Date"
+          },
+          "line_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Line Ref"
           }
         },
         "required": [
@@ -1949,12 +1961,6 @@
             "type": "string"
           },
           "kind": {
-            "enum": [
-              "march",
-              "april",
-              "scenario",
-              "eval"
-            ],
             "title": "Kind",
             "type": "string"
           },
@@ -2252,6 +2258,18 @@
             ],
             "default": null,
             "title": "Notice Date"
+          },
+          "line_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Line Ref"
           }
         },
         "required": [

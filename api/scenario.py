@@ -1,9 +1,10 @@
 """The judge's scenario box (F14): a pasted clause and a charge, decided the way a real run decides it.
 
-The clause is read by the Deal Reader and checked word for word; its terms replace the Spring deal's terms of the
-same type (the rest of the deal still applies). The charge then goes through the engine, the Investigator, the
-rehearsal (if it would be disputed) and the gate with the owner's saved rules, against the demo's store sales and
-prior payments. Every Claude call tries live first (20 s), then a recorded answer; the examples are recorded.
+The clause is read by the Deal Reader and checked word for word; its terms replace the account's deal terms of the
+same type (the rest of the deal, and the approved emails that change it, still apply). The charge then goes through
+the engine, the Investigator, the rehearsal (if it would be disputed) and the gate with the owner's saved rules,
+against the account's store sales and prior payments. Peak Bar's by default (the Spring deal). Every Claude call
+tries live first (20 s), then a recorded answer; the examples are recorded.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from decimal import Decimal
 
 import anthropic
 
-from api import adapters, evidence as evidence_mod, pipeline, rows
+from api import accounts, adapters, documents, evidence as evidence_mod, pipeline, rows
 from api.agents import investigator, negotiator, readers
 from api.contracts import (
     Charge, Finding, Rehearsal, ScenarioCharge, ScenarioExample, ScenarioRequest, ScenarioResponse,
@@ -22,8 +23,6 @@ from api.engine import gate
 from api.engine import types as eng
 from api.engine.allowed import compute_allowed
 from api.engine.policy import load_policy
-
-PROMO_START, PROMO_END = date(2026, 3, 1), date(2026, 3, 31)
 
 EXAMPLES = [
     ScenarioExample(id="higher-cap", label="A higher cap", request=ScenarioRequest(
@@ -43,49 +42,63 @@ EXAMPLES = [
 ]
 
 
-def _charge(c: ScenarioCharge) -> Charge:
+def _charge(c: ScenarioCharge, account: accounts.Account) -> Charge:
+    """Unset fields default to the account's invoice month (Peak Bar: Mar 1 to Mar 31, 2026) and, for a promo charge,
+    to the products its own promo charges name (Peak Bar: Original+Chocolate)."""
     code = c.code or ("PA" if c.units and c.rate else "DF")
+    products = next((x.product for x in rows.charges(account.invoice.month, account=account) if x.code == "PA"), None)
     return Charge(id="S1", ref="SCENARIO", code=code, description=c.description,
-                  product=c.product or ("Original+Chocolate" if code == "PA" else None), units=c.units or 1,
+                  product=c.product or (products if code == "PA" else None), units=c.units or 1,
                   rate=c.rate if c.rate is not None else c.amount, amount=c.amount,
-                  period_start=c.period_start or PROMO_START, period_end=c.period_end or PROMO_END,
-                  notice_date=c.notice_date)
+                  period_start=c.period_start or account.invoice.period_start,
+                  period_end=c.period_end or account.invoice.period_end, notice_date=c.notice_date)
 
 
-def run(req: ScenarioRequest, client: anthropic.Anthropic | None = None) -> ScenarioResponse:
+def run(req: ScenarioRequest, client: anthropic.Anthropic | None = None,
+        account: accounts.Account | str | None = None) -> ScenarioResponse:
+    account = accounts.resolve(account or accounts.DEFAULT)
+    with accounts.using(account):  # the pasted clause belongs to it, and so does what takes no account
+        return _run(req, client, account)
+
+
+def _run(req: ScenarioRequest, client, account: accounts.Account) -> ScenarioResponse:
     policy = load_policy()
     pasted = readers.read_text_both(req.clause, client)
     if not pasted.terms:
         return ScenarioResponse(decision=None, finding=None, evidence=[], unclear=pasted.unclear,
                                 message="The clause didn't state a term Clawback reads (rate, products, dates, cap, a "
                                         "fee or an extension), so nothing was decided.")
-    # The rest of the Spring deal (and the broker's approved extension) still applies.
-    deal = readers.read_both(pipeline.DEAL_DOCS[0], client=client)
-    broker = readers.read_both(pipeline.DEAL_DOCS[1], base_terms=deal.terms, client=client)
+    # The rest of the deal (Spring's, and the broker's approved extension) still applies; a claim never does.
+    first, *rest = account.config.deal_docs
+    deal = readers.read_both(first, client=client)
+    changes = [readers.read_both(d, base_terms=deal.terms, client=client) for d in rest
+               if documents.can_change_deal(documents.load(d)[0])]
     replaced = {t.type for t in pasted.terms}
-    terms = pasted.terms + [t for t in deal.terms + broker.terms if t.status == "verified" and t.type not in replaced]
-    charge = _charge(req.charge)
-    sales, payments = rows.sales(), rows.prior_payments()
+    terms = pasted.terms + [t for t in deal.terms + [x for c in changes for x in c.terms]
+                            if t.status == "verified" and t.type not in replaced]
+    charge = _charge(req.charge, account)
+    sales, payments = rows.sales(account=account), rows.prior_payments(account=account)
     evidence = evidence_mod.build(terms, [charge], sales, payments)
-    a = compute_allowed(adapters.to_engine_charge(charge), [adapters.to_engine_term(t) for t in terms],
+    eng_charge = adapters.to_engine_charge(charge, account.distributor.name)
+    a = compute_allowed(eng_charge, [adapters.to_engine_term(t) for t in terms],
                         [adapters.to_engine_sales(r) for r in sales], [adapters.to_engine_prior(p) for p in payments])
-    inv = investigator.investigate(charge, a, evidence, client, live_first=True)
+    inv = investigator.investigate(charge, a, evidence, client, live_first=True, account=account)
     finding = (Finding(**inv.output.model_dump(), id="F-S1", expected=a.allowed, taken=a.taken, delta=a.delta,
                        math=evidence_mod.math_parts(a.steps, a.terms, charge, terms, evidence))
                if inv.output else None)
     discretion = any(gate.uses_discretion(t, policy) for t in a.terms)
     rehearsal = None
     if finding and a.delta > policy.match_tolerance and not discretion and not a.missing:
-        rehearsal = negotiator.rehearse(charge, finding, a, evidence, terms, client, live_first=True)
+        rehearsal = negotiator.rehearse(charge, finding, a, evidence, terms, client, live_first=True, account=account)
     kinds = {evidence[i].kind for i in (finding.evidence_ids if finding else [])} - {"charge"}
     eng_finding = eng.Finding(charge_id="S1", confidence=Decimal(str(finding.confidence)) if finding else Decimal(0),
                               evidence_ids=tuple(finding.evidence_ids) if finding else (), independent_sources=len(kinds),
                               comeback_answered=bool(rehearsal and rehearsal.answered),
                               type=finding.type if finding else "", finding=finding.finding if finding else "")
-    rules = [r for r in pipeline.RULES if r.status == "active"]
+    rules = [r for r in pipeline.rules_of(account) if r.status == "active"]
     eng_rules = [adapters.to_engine_rule(r) for r in rules]
     found = pipeline.rule_matches(a, policy, eng_rules, live_first=True)  # a reworded clause still finds Rule #1
-    d = gate.decide(adapters.to_engine_charge(charge), a, eng_finding, policy, eng_rules, found.matches)
+    d = gate.decide(eng_charge, a, eng_finding, policy, eng_rules, found.matches)
     decision = adapters.to_contract_decision(d, waiting=charge.amount if d.kind == eng.DecisionKind.ASK else Decimal(0),
                                              decided_by="gate", decided_at=pipeline._now())
     rule = next((r for r in rules if r.id == d.rule_id), None)

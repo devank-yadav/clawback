@@ -1,0 +1,4 @@
+charge_id,ref,code,description,product,units,rate,amount,period_start,period_end,line_ref
+T1,EW-1,PA,Summer promo weeks 1 to 2,Hill Oat Classic,600,0.50,300.00,2026-06-01,2026-06-14,
+T2,EW-2,PA,Summer promo weeks 3 to 4,Hill Oat Classic,600,0.50,300.00,2026-06-15,2026-06-30,
+T3,EW-3,DF,Display fee (notice Jun 5),none,1,300.00,300.00,2026-06-01,2026-06-30,

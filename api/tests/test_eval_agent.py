@@ -55,7 +55,7 @@ class EvalClaude:
 
     def _parse(self, output_format, messages, system, **_):
         user = messages[0]["content"]
-        b = system == reader_b.PROMPT
+        b = system == reader_b.prompt()
         self.calls.append(output_format.__name__ + ("-B" if b else ""))
         out = {LLMOutput: lambda: self._read(user, b), LLMFinding: lambda: self._find(user),
                LLMRehearsal: lambda: self._rehearse(user)}[output_format]()
