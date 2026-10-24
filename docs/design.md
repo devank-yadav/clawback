@@ -136,7 +136,7 @@ P0 must work by the Saturday noon gate, P1 by the 4 PM checkpoint, P2 only if th
 | F10 | QuickBooks writes + controller approval: credit memo for accepted amounts, open balance tagged for disputed | P0 | Controller "yes" posts the memo; "no" posts nothing and shows the note | Full-stack |
 | F11 | `DEMO_MODE` replay of AI and QuickBooks responses | P0 | Full demo runs with Wi-Fi off | Full-stack |
 | F12 | Eval harness + scoreboard | P0 | `make eval` prints correct / asked / wrong; the scoreboard shows the same numbers | Agents + Story |
-| F13 | Deal Coach: redlines for next month's draft, each citing what the clause cost | P1 | 3 redlines on the April draft, with dollar amounts from findings | Agents |
+| F13 | Deal Coach: redlines for next month's draft, each citing what the clause cost | P1 | 3 redlines on next month's draft (`deals/summer-draft.md`), with dollar amounts from findings | Agents |
 | F14 | Scenario box: judge pastes a clause and a charge, gets a decision with evidence | P1 | Works on 5 unseen clauses written by a non-teammate | Agents + Full-stack |
 | F15 | Nessie deposit trigger | P1 | Posting the $41,350 deposit in Nessie starts the run within 10 seconds | Story |
 | F16 | Moss rule matching (fallback: exact match on clause type) | P1 | A differently worded discretion clause in April still matches Rule #1 | Agents |
@@ -288,15 +288,15 @@ One Postgres database on Tiger Data holds everything; store sales is a time-seri
 
 | File | Format and columns |
 | --- | --- |
-| `deals/spring-promo.md` | Deal text with §3.1, §3.2, §5.4 wording copied exactly from this doc |
+| `deals/spring-promo.md` | Deal text with §3.1, §3.2, §5.4 wording copied exactly from `data/CLAUDE.md` |
 | `deals/amendment-1.md` | Signed by both parties, raises the cap to 6,000; used only when the judge "attaches" it |
 | `deals/summer-draft.md` | Next month's draft that Deal Coach redlines |
 | `emails/broker-2026-03-28.eml` | From the approved broker; extends through Apr 7, +500 bars |
 | `emails/northmart-2026-03-30.eml` | From Northmart, claims "rate is $1.50"; must be shown as a claim, never applied |
-| `notices/display-fee-2026-03-11.md` | Northmart's notice for C6 (20 days ahead) |
+| `notices/display-fee-2026-03-11.md` | Northmart's notice for C6 (20 days ahead); plus one notice each for the two April fees (18 and 5 days ahead) |
 | `charges/northmart-march.csv`, `northmart-april.csv` | charge\_id, ref, code, description, product, units, rate, amount, period\_start, period\_end |
 | `payments/prior.csv` | ref, paid\_on, promo\_id, product, period\_start, period\_end, units, amount (includes NM-2178, Mar 14, $980) |
-| `sales/store-sales.csv` | week\_start, product, promo\_units, total\_units |
+| `sales/store-sales.csv` | week\_start, week\_end, product, promo\_units, total\_units (week 4 runs Mar 22–31, so each row needs its end date) |
 | `plan/promo-plan.csv` | promo\_id, product, rate, starts, ends, cap |
 | `eval/charges-30.csv`, `eval/answer-key.csv`, `eval/outside-deal.md` (all under data/) | Planted cases, expected decision and amounts, and a deal written by a non-teammate |
 | `fixtures/` | Saved AI outputs and QuickBooks responses for `DEMO_MODE` |
@@ -320,6 +320,8 @@ One FastAPI service owns all state and streams every step to the browser; each o
 | `POST /coach` | Redlines for the summer draft |
 | `POST /eval/run`, `GET /eval/latest` | Runs the 30 planted charges; returns the score |
 | `GET /audit`, `GET /audit/verify` | Audit log and the hash-chain check |
+| `GET /summary` | Read-only totals, open disputes and pending question for the Fetch.ai agent (needs `CLAWBACK_READONLY_TOKEN`; see Setup runbook) |
+| `POST /questions/{id}/answer` | Answer an open owner question (used by the Fetch.ai agent and the `/inbox` fallback) |
 | `POST /demo/reset` | Reseed the database, clear rules, void demo writes in QuickBooks |
 
 **Integrations:**
@@ -429,14 +431,17 @@ clawback/
     db/                models.py, migrations/, seed.py
   web/                 Next.js app (board, portal, coach, results, scenario, audit)
   data/                deals/, emails/, notices/, charges/, payments/, sales/, plan/, eval/, fixtures/
+  scripts/             check_data.py, check_eval.py, send_sms.py, nessie_deposit.py, seed_quickbooks.py
+  docs/                design.md, team/, figma/
   config/policy.yaml
   eval/run.py
-  Makefile             seed, dev, eval, record, demo, reset, deploy
+  Makefile             dev, test, seed, eval, record, demo, reset, check-data, deploy
+  DECISIONS.md
   docker-compose.yml   api, web, caddy
   .env.example
 ```
 
-**Environment (`.env`, never committed; `.env.example` lists names only):** `DATABASE_URL`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `QBO_CLIENT_ID`, `QBO_CLIENT_SECRET`, `QBO_REALM_ID`, `QBO_REFRESH_TOKEN` (also kept up to date in the database), `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`, `OWNER_PHONE`, `CONTROLLER_PHONE`, `NESSIE_API_KEY`, `NESSIE_ACCOUNT_ID`, `MOSS_API_KEY`, `PUBLIC_BASE_URL`, `DEMO_MODE`, `RECORD_FIXTURES`.
+**Environment (`.env`, never committed; `.env.example` lists names only):** `DATABASE_URL`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `QBO_CLIENT_ID`, `QBO_CLIENT_SECRET`, `QBO_REALM_ID`, `QBO_REFRESH_TOKEN` (also kept up to date in the database), `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`, `OWNER_PHONE`, `CONTROLLER_PHONE`, `NESSIE_API_KEY`, `NESSIE_ACCOUNT_ID`, `MOSS_API_KEY`, `PUBLIC_BASE_URL`, `DEMO_MODE`, `RECORD_FIXTURES`; for added tracks, `AGENTVERSE_API_KEY`, `CLAWBACK_READONLY_TOKEN`, `ELASTIC_URL`, `ELASTIC_API_KEY`.
 
 **`DEMO_MODE`:**
 
@@ -445,7 +450,7 @@ clawback/
 - The scenario box and the judge's portal replies always try live first, with a 20-second timeout and a saved fallback.
 - Record a clean full run by Saturday 9 PM; re-record only if the data changes.
 
-**Commands:** `make seed` (database + QuickBooks), `make dev`, `make eval`, `make record`, `make demo` (DEMO\_MODE on), `make reset` (calls `/demo/reset` between judge tables).
+**Commands:** `make seed` (database + QuickBooks), `make dev`, `make test`, `make eval`, `make check-data` (data and eval-set checks), `make record`, `make demo` (DEMO\_MODE on), `make reset` (calls `/demo/reset` between judge tables).
 
 **Deployment:**
 
@@ -489,6 +494,8 @@ Every service in the order to set it up: where to get it, what goes in `.env`, w
 We code in Claude Code; this section gives the exact files that make every teammate's Claude Code start from the same plan, with attribution off and secrets protected.
 
 **Step 1. Put this doc in the repo.** Export this doc as Markdown and save it as `docs/design.md`. `CLAUDE.md` imports it, so every session has the full context.
+
+The committed `CLAUDE.md` and `.claude/settings.json` have since grown (for example `$6,850 taken`, `make check-data` and the check-script permissions); where they differ from the snippets below, the committed files win.
 
 **Step 2. `CLAUDE.md` at the repo root:**
 
@@ -601,7 +608,7 @@ Three roles, five checkpoints, one rule: the ugly full loop must run by Saturday
 | **Manasv** | AI-driven jobs | Only jobs where Claude, Claude Code or Figma Make does the work and he reviews: data files, test set, small integration scripts, Figma screens, README, Devpost text, captions, judge flashcards, Fetch.ai agent (stretch), pull-request reviews |
 | **Cloud sessions** ($250 credit on Devank's account) | Extra workers | Code-only leaf tasks that come back as pull requests: engine unit tests, fixtures, screens, drafts, reviews |
 
-**Role letters used elsewhere in this doc:** A = Devank. B = Devank for backend and QuickBooks, Rishi for frontend and deployment. C = Manasv for anything an AI can write, Rishi for sign-ups, conversations and recording. Each person's own guide is in `docs/team/`.
+**Role letters used elsewhere in this doc:** A = Devank. B = Devank for backend and QuickBooks, Rishi for frontend and deployment. C = Manasv for anything an AI can write, Rishi for sign-ups, conversations and recording. The Feature spec and Track plan use area names for the same split: Agents = A, Full-stack = B, Story = C. Each person's own guide is in `docs/team/`.
 
 **Timeline (PDT):**
 
@@ -610,7 +617,7 @@ Three roles, five checkpoints, one rule: the ugly full loop must run by Saturday
 | Fri 11:30 PM–midnight | Unzip the starter, push the repo, attribution test commit | Sign up for every service and collect keys (his guide lists them) | Clone; Claude Code writes all `data/` files + `check_data.py` |
 | Midnight–1 AM | Contracts, stub routes, `run-events.json` fixture; push. Then the Claude Reader + quote check | Web scaffold; board against the fixture | Test set + answer key + count check |
 | **1 AM checkpoint** | **Fixture pushed · terms extracted with verified quotes · data check passes · keys collected** |  |  |
-| 1–3 AM | Tiger Data migrations, engine (a cloud session writes its unit tests), QuickBooks seed | Cards and meters | Integration scripts (SMS, Nessie, QuickBooks seed) run once with the keys |
+| 1–3 AM | Tiger Data migrations, engine (a cloud session writes its unit tests), QuickBooks seed | Cards and meters (until 2 AM) | Integration scripts (SMS, Nessie, QuickBooks seed) run once with the keys (until 2 AM) |
 | Sleep | 3–7 AM | 2–6 AM | 2–6 AM |
 | Sat 6 AM–noon | Gemini Reader, Investigator, gate, live event stream, owner question → rule | Evidence card, portal, results; Microsoft workshop 10 AM (notes on their criteria) | Figma screens with Make + Agent, screenshots |
 | **Noon gate** | **Deposit → board → question → rule runs end to end, ugly. If not, cut from the list now** |  |  |

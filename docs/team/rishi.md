@@ -56,7 +56,7 @@ Each card is one Claude Code session: paste the prompt, check the "done when," c
 | Card | Build | Prompt to paste | Done when | By |
 | --- | --- | --- | --- | --- |
 | R1 | Next.js scaffold | "Scaffold web/ with Next.js, Tailwind and Framer Motion using the tokens in web/CLAUDE.md. Payment screen at / showing expected $48,200, received $41,350 and a large red −$6,850 from the fixture." | `npm run dev` shows the payment screen | Sat 1 AM |
-| R2 | Board | "Build /board: a useRunEvents hook that replays web/fixtures/run-events.json with short delays; three meters; a live feed; Dispute, Accept and Ask columns with cards that drop in." | Replay ends at $4,120 disputed and $2,730 accepted | Sat 3 AM |
+| R2 | Board | "Build /board: a useRunEvents hook that replays web/fixtures/run-events.json with short delays; three meters; a live feed; Dispute, Accept and Ask columns with cards that drop in." | Replay ends at $4,120 disputed and $2,730 accepted | Sat 2 AM |
 | R3 | Evidence card | "Add the evidence drawer: highlighted deal sentence, the charge, the math line, the rehearsed comeback, source chips; every number links to its source." | Every card opens and every number is clickable | Sat 10 AM |
 | R4 | Northmart portal | "Build /portal in a different theme (the distributor's site): dispute D-0417 lines, reply box, 4 preset replies, and an 'attach signed amendment' preset. POST replies to the API." | Works on a phone and a tablet | Sat noon |
 | R5 | Results, April, Deal Coach | "Build /results (totals, QuickBooks posts, eval score), /april (two fees decided by Rule #1, 0 questions) and /coach (redlines with dollar amounts)." | All three match the prototype | Sat 4 PM |
