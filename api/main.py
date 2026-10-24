@@ -9,8 +9,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api import pipeline
+from api.db import events as saved_events
 from api.integrations import nessie, replay
-from api.routes import approvals, audit, demo, eval, payments, portal, runs, scenario, webhooks
+from api.routes import approvals, audit, db, demo, eval, payments, portal, runs, scenario, webhooks
 
 load_dotenv()
 log = logging.getLogger("clawback")
@@ -27,6 +28,7 @@ async def lifespan(_app: FastAPI):
     yield
     if nessie.poller:
         nessie.poller.stop()
+    saved_events.flush(timeout=5)  # the last events reach the table before a restart
 
 
 app = FastAPI(title="Clawback API", version="0.1.0", lifespan=lifespan)
@@ -37,7 +39,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (runs, payments, portal, approvals, webhooks, scenario, eval, audit, demo):
+for r in (runs, payments, portal, approvals, webhooks, scenario, eval, audit, demo, db):
     app.include_router(r.router)
 
 

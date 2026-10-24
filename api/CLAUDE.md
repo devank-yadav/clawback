@@ -52,9 +52,13 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - Tests never call live services: api/conftest.py blanks every live key for the session and blocks real Claude clients.
 - POST /coach redlines summer-draft from the newest finished March run (api/agents/coach.py); POST /scenario runs a
   pasted clause and charge (api/scenario.py); GET /scenario/examples has three recorded cases.
-- `make seed` (api/db/seed.py) applies api/db/migrations/001_init.sql and upserts data/ through api/rows.py and
+- `make seed` (api/db/seed.py) applies every file in api/db/migrations/ and upserts data/ through api/rows.py and
   api/documents.py; a second run changes nothing. On TimescaleDB, store_sales is a hypertable and promo_units_weekly
   its continuous aggregate; plain Postgres gets a warning and plain tables. QuickBooks is seeded too when the QBO_*
-  keys are set. The pipeline still reads data/ directly. DB tests: TEST_DATABASE_URL=<throwaway db> pytest.
+  keys are set. DB tests: TEST_DATABASE_URL=<throwaway db> pytest.
+- With DATABASE_URL set (and not DEMO_MODE) the app runs on Postgres: api/rows.py reads charges, sales, prior payments
+  and the promo plan from it (api/db/reads.py, exactly the files' rows; any database error means the files), every
+  event is saved to the events table off the run's thread (api/db/events.py), GET /runs/{id}/events and GET
+  /runs/latest replay a run after a restart, and GET /db/cap is the cap query. `make db-check` shows all of it.
 - Stub routes serve the fixture run in api/stubs/fixtures.py. After changing it, run `python -m api.stubs.fixtures`
   to rewrite web/fixtures/*.json (a test fails if they're stale).

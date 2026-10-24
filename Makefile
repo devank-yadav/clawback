@@ -1,6 +1,6 @@
 # Targets are wired up as each part lands. Keep target names stable; the guides and the demo checklist use them.
-.PHONY: dev api web test acceptance seed eval eval-agent publish-score record demo reset check-data deploy-check \
-	fetch-agent fetch-agent-connect fetch-agent-test
+.PHONY: dev api web test acceptance seed db-check eval eval-agent publish-score record demo reset check-data \
+	deploy-check fetch-agent fetch-agent-connect fetch-agent-test
 
 # The repo's .venv when there is one (it has the packages), else python3 (Macs often have no "python").
 # Override with: make test PYTHON=python
@@ -21,19 +21,25 @@ test:
 	$(PYTHON) -m pytest -q api
 
 # The P0 acceptance tests (docs/design.md, Feature spec), offline and in DEMO_MODE, then the eval score.
-# F1 seed: its database tests run only with TEST_DATABASE_URL set (api/tests/test_db_seed.py); `make seed` twice is
-# the real check. Not covered here yet: the screens in web/ (F6, F7, F12 scoreboard).
+# F1 seed and the app on Postgres: their database tests run only with TEST_DATABASE_URL set (api/tests/test_db_seed.py,
+# test_db_runtime.py); `make seed` twice and `make db-check` are the real checks. Not covered here yet: the screens in
+# web/ (F6, F7, F12 scoreboard).
 acceptance:
 	$(PYTHON) -m pytest -q api/tests/test_acceptance_p0.py api/tests/test_pipeline.py api/tests/test_reader.py \
 		api/engine/tests/test_quote_check.py api/engine/tests/test_allowed.py api/engine/tests/test_gate.py \
 		api/engine/tests/test_eval_harness.py api/tests/test_replay.py api/tests/test_routes.py api/tests/test_disputes.py \
 		api/tests/test_books.py api/tests/test_coach_scenario.py \
 		api/tests/test_readers.py api/tests/test_audit.py api/tests/test_sms_channel.py \
-		api/tests/test_eval_agent.py api/tests/test_nessie.py api/tests/test_db_seed.py api/tests/test_moss.py
+		api/tests/test_eval_agent.py api/tests/test_nessie.py api/tests/test_db_seed.py api/tests/test_moss.py \
+		api/tests/test_db_runtime.py
 	$(PYTHON) eval/run.py
 
 seed:
 	$(PYTHON) -m api.db.seed
+
+# Read-only: the app's rows come from Postgres and equal data/, the newest saved runs, and the cap query.
+db-check:
+	$(PYTHON) -m api.db.check
 
 eval:
 	$(PYTHON) eval/run.py

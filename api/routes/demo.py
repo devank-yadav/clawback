@@ -1,6 +1,7 @@
 """Demo controls. A reset undoes Clawback's QuickBooks writes (the sandbox goes back to INV-3102 with $6,850 open;
 in DEMO_MODE or without keys, the stand-in forgets its own), then clears the in-memory portal thread, approvals,
-runs, open questions and saved rules. No database yet.
+runs, open questions and saved rules, and forgets the saved runs (their rows leave the events table), so GET
+/runs/latest finds none until the next run. The seeded tables aren't touched.
 
 With CLAWBACK_ADMIN_TOKEN set (the deployed site), a reset needs `Authorization: Bearer <token>`, so nobody with
 the public URL can wipe the demo mid-pitch. Laptops leave it unset."""
@@ -12,6 +13,7 @@ from dataclasses import asdict
 from fastapi import APIRouter, Header, HTTPException
 
 from api import pipeline
+from api.db import events as saved_events
 from api.integrations import qbo
 from api.routes import approvals, portal
 
@@ -30,5 +32,6 @@ def reset(authorization: str | None = Header(default=None)) -> dict:
     portal.reset()
     approvals.reset()
     pipeline.reset()  # live runs, open questions and saved rules
+    saved_events.reset()  # and the saved runs, which GET /runs/latest would otherwise fall back to
     return {"ok": error is None, "stub": False, "quickbooks": [asdict(u) for u in undone],
             **({"error": error} if error else {})}

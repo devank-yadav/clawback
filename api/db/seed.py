@@ -1,16 +1,17 @@
 """Seed Postgres (Tiger Data) from data/: `make seed` or `python -m api.db.seed`. Safe to run again.
 
-1. Applies migrations/001_init.sql. Its TimescaleDB part (store_sales as a hypertable on week_start, and the
-   promo_units_weekly continuous aggregate) runs only where CREATE EXTENSION timescaledb works; on plain Postgres
-   (a local Docker one) the seed warns and skips it.
-2. Upserts the rows api/documents.py and api/rows.py load, so nothing here parses a data file: documents, the
-   March remittance, the March and April charges, prior payments, store sales and the promo plan. A row that is
-   already there and equal is left alone, so a second run inserts and updates nothing.
+1. Applies every file in migrations/ in order. 001_init.sql's TimescaleDB part (store_sales as a hypertable on
+   week_start, and the promo_units_weekly continuous aggregate) runs only where CREATE EXTENSION timescaledb works;
+   on plain Postgres (a local Docker one) the seed warns and skips it.
+2. Upserts the rows api/documents.py and api/rows.py load from the files, so nothing here parses a data file:
+   documents, the March remittance, the March and April charges, prior payments, store sales and the promo plan,
+   each data row with its file and row number (002_source_rows.sql). A row that is already there and equal is
+   left alone, so a second run inserts and updates nothing.
 3. Seeds the QuickBooks sandbox with scripts/seed_quickbooks.py when the four QBO_* keys are set (not in DEMO_MODE).
 4. Prints row counts and the cap query: the running total of promoted units against the promo's cap.
 
-DATABASE_URL comes from .env and is never printed. The pipeline still reads data/ directly; reading from the
-database is later work.
+DATABASE_URL comes from .env and is never printed. Once seeded, the app reads these rows back from here
+(api/rows.py through api/db/reads.py) and saves every run's events.
 """
 
 from __future__ import annotations
@@ -28,7 +29,8 @@ from typing import Any
 from dotenv import load_dotenv
 
 from api import documents, rows
-from api.db import migration
+from api.db import migration, migrations
+from api.db.reads import cap_query
 from api.integrations import replay
 from api.pipeline import COUNTERPARTY, EXPECTED, INVOICE_ID, RECEIVED
 
@@ -53,20 +55,6 @@ KEYS = {
     "promo_plan": ("promo_id",),
 }
 
-# Running total of promoted units per reporting week inside the promo's dates, next to its cap. {weekly} is the
-# continuous aggregate on TimescaleDB, store_sales on plain Postgres; both have these columns. The engine's cap
-# check (api/engine/allowed.py) is what decides charges; this is the same count, seen from the database.
-CAP_QUERY = """
-SELECT w.week_start, w.week_end, sum(w.promo_units)::int AS promo_units,
-       (sum(sum(w.promo_units)) OVER (ORDER BY w.week_start))::int AS running_units, p.cap
-FROM {weekly} AS w
-JOIN promo_plan AS p ON w.product = ANY (p.products)
-WHERE p.promo_id = %s AND w.week_start >= p.starts AND w.week_end <= p.ends
-GROUP BY w.week_start, w.week_end, p.cap
-ORDER BY w.week_start
-"""
-
-
 # ---------------------------------------------------------------- rows (no database needed)
 
 def _utc(value: datetime | None) -> datetime | None:
@@ -90,10 +78,17 @@ def remittance_rows() -> list[dict[str, Any]]:
              "expected": EXPECTED, "received": RECEIVED}]
 
 
+def _with_source(items: list[Any], source_file: str) -> list[dict[str, Any]]:
+    """Each row with where it came from in data/: its file and its row number there (1 is the row after the header),
+    so the app reads the tables back in the files' order (api/db/reads.py)."""
+    return [{**item.model_dump(), "source_file": source_file, "source_row": n} for n, item in enumerate(items, 1)]
+
+
 def charge_rows() -> list[dict[str, Any]]:
     # April's charges have no remittance on file yet (no April invoice or payment in the data), so theirs is NULL.
-    march = [c.model_copy(update={"remittance_id": REMITTANCE_ID}) for c in rows.charges("march")]
-    return [c.model_dump() for c in march + rows.charges("april")]
+    march = [c.model_copy(update={"remittance_id": REMITTANCE_ID}) for c in rows.charges_from_files("march")]
+    return (_with_source(march, rows.CHARGE_FILES["march"])
+            + _with_source(rows.charges_from_files("april"), rows.CHARGE_FILES["april"]))
 
 
 def seed_rows() -> dict[str, list[dict[str, Any]]]:
@@ -102,9 +97,9 @@ def seed_rows() -> dict[str, list[dict[str, Any]]]:
         "documents": document_rows(),
         "remittances": remittance_rows(),
         "charges": charge_rows(),
-        "prior_payments": [p.model_dump() for p in rows.prior_payments()],
-        "store_sales": [s.model_dump() for s in rows.sales()],
-        "promo_plan": [p.model_dump() for p in rows.promo_plan()],
+        "prior_payments": _with_source(rows.prior_payments_from_files(), rows.PRIOR_FILE),
+        "store_sales": _with_source(rows.sales_from_files(), rows.SALES_FILE),
+        "promo_plan": _with_source(rows.promo_plan_from_files(), rows.PLAN_FILE),
     }
 
 
@@ -139,14 +134,17 @@ def _timescale(conn) -> tuple[str | None, str | None]:
 
 
 def apply_schema(conn, result: Seeded) -> None:
-    """Runs 001_init.sql; its TimescaleDB part only when the extension is there (result.timescale)."""
-    plain, timescale = migration()
+    """Runs every migration in order; their TimescaleDB parts only when the extension is there (result.timescale)."""
+    parts = [migration(name) for name in migrations()]
     with conn.transaction():
-        conn.execute(plain)
+        for plain, _ in parts:
+            conn.execute(plain)
     result.timescale, result.timescale_skipped = _timescale(conn)
     if result.timescale:
         with conn.transaction():
-            conn.execute(timescale)
+            for _, timescale in parts:
+                if timescale.strip():
+                    conn.execute(timescale)
 
 
 def _upsert(conn, table: str, key: tuple[str, ...], items: list[dict[str, Any]]) -> tuple[int, int]:
@@ -197,12 +195,6 @@ def seed(conn) -> Seeded:
 def counts(conn) -> dict[str, int]:
     return {t: conn.execute(sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(t))).fetchone()[0]
             for t in schema_tables()}
-
-
-def cap_query(conn, promo_id: str, weekly: str) -> list[tuple]:
-    """(week_start, week_end, promo_units, running_units, cap) per week, in date order."""
-    query = sql.SQL(CAP_QUERY).format(weekly=sql.Identifier(weekly))
-    return conn.execute(query, (promo_id,)).fetchall()
 
 
 # ---------------------------------------------------------------- QuickBooks and the command
@@ -272,7 +264,7 @@ def main() -> None:
         sys.exit("DATABASE_URL is not set in .env (Tiger Data's service URL, docs/design.md Setup runbook row 4).")
     with _connect(url) as conn:
         seeded = seed(conn)
-        print("Schema: api/db/migrations/001_init.sql applied.")
+        print(f"Schema: api/db/migrations/ applied ({', '.join(migrations())}).")
         if seeded.timescale:
             print("TimescaleDB: store_sales is a hypertable on week_start; promo_units_weekly is its continuous "
                   "aggregate.")
@@ -281,7 +273,7 @@ def main() -> None:
                   "table and the promo_units_weekly continuous aggregate is skipped; the cap query reads store_sales.")
         qbo_error = seed_quickbooks()
         _report(seeded, counts(conn))
-        for promo in rows.promo_plan():
+        for promo in rows.promo_plan_from_files():
             _print_cap(promo, cap_query(conn, promo.promo_id, seeded.weekly), seeded.weekly)
     if qbo_error:
         sys.exit(f"QuickBooks seed failed: {qbo_error}")
