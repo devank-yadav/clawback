@@ -1,0 +1,5 @@
+charge_id,decision,disputed,accepted,why
+R1,split,393.00,655.00,"Billed at $0.80 from Corbel's own Mar 18 email, a claim from a sender who can't change the deal (Section 9.1); at the Section 5.1 rate, 1,310 units x $0.50 = $655.00 is owed."
+R2,dispute,1180.00,0.00,"Mar 1 to 14 (2,360 units, $1,180.00) was already deducted as CG-53560 on the Mar 27 payment; Section 8.2 allows each unit to be claimed once."
+R3,dispute,345.00,0.00,"Mar 22 to 28 is after the feature ended on March 21 (Section 5.1), and no amendment or approved email extends it (Section 5.3)."
+R4,ask,0.00,0.00,"Section 7.2 reads two ways: a 2% allowance ($1,069.44 of $53,472.00 March shipments) or actual documented unsaleables ($1,642.80 claimed). The two readers disagree, so the owner decides."

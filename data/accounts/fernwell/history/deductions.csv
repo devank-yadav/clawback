@@ -1,0 +1,22 @@
+month,ref,code,description,amount,outcome,recovered
+2025-10,TB-85102,PA,Fall Feature scan allowance,2140.00,accepted,0.00
+2025-10,TB-85117,SP,"Unsaleables October, at actual",1310.40,written_off,0.00
+2025-10,TB-85120,SH,Shortage 18 cs Yuzu Green Tea,496.80,written_off,0.00
+2025-11,TB-85590,PA,Holiday Feature scan allowance,3020.00,accepted,0.00
+2025-11,TB-85604,SP,Unsaleables November,1047.60,accepted,0.00
+2025-11,TB-85611,PR,Price diff Peach Black Tea,432.00,recovered,432.00
+2025-12,TB-86120,PA,Holiday Feature scan allowance,3480.00,accepted,0.00
+2025-12,TB-86133,SP,"Unsaleables December, at actual",1820.00,written_off,0.00
+2025-12,TB-86140,SH,Shortage 30 cs Hibiscus Ginger,810.00,recovered,810.00
+2026-01,TB-86701,SP,Unsaleables January,990.00,accepted,0.00
+2026-01,TB-86715,PR,Price diff Yuzu Green Tea,640.80,written_off,0.00
+2026-01,TB-86722,DF,New store setup fee,750.00,written_off,0.00
+2026-02,TB-87655,PA,Winter Feature scan allowance Feb 1-14,2860.00,accepted,0.00
+2026-02,TB-87990,PA,Winter Feature scan allowance Feb 15-28,2440.00,accepted,0.00
+2026-02,TB-88002,SP,Unsaleables February,1144.80,accepted,0.00
+2026-02,TB-88010,PR,Price diff Hibiscus Ginger to 27.00,576.00,open,0.00
+2026-03,TB-88412,PA,Spring Feature scan allowance wk 1-2,5150.00,open,0.00
+2026-03,TB-88413,PA,"Spring Feature allowance wk 3-4 (1,440 cs shipped to stores)",10800.00,open,0.00
+2026-03,TB-88420,SH,"Shortage 24 cs Peach Black Tea, delivery 40817",662.40,open,0.00
+2026-03,TB-88427,PR,"Price diff Hibiscus Ginger, invoiced 29.40 vs cost 27.00",360.00,open,0.00
+2026-03,TB-88431,SP,"Unsaleables March, at actual (dented and swollen cans)",2186.40,open,0.00

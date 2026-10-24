@@ -1,0 +1,13 @@
+key,value,source_doc,quote
+promo_rate,0.75,birchbank-supply-agreement-2026,"Supplier will fund a promotional allowance of $0.75 per unit on Birchbank Pork & Chive Dumplings and Birchbank Vegetable Potstickers sold between March 8 and March 28, 2026."
+promo_products,Birchbank Pork & Chive Dumplings; Birchbank Vegetable Potstickers,birchbank-supply-agreement-2026,"Supplier will fund a promotional allowance of $0.75 per unit on Birchbank Pork & Chive Dumplings and Birchbank Vegetable Potstickers sold between March 8 and March 28, 2026."
+promo_start,2026-03-08,birchbank-supply-agreement-2026,"Supplier will fund a promotional allowance of $0.75 per unit on Birchbank Pork & Chive Dumplings and Birchbank Vegetable Potstickers sold between March 8 and March 28, 2026."
+promo_end,2026-03-28,birchbank-supply-agreement-2026,"Supplier will fund a promotional allowance of $0.75 per unit on Birchbank Pork & Chive Dumplings and Birchbank Vegetable Potstickers sold between March 8 and March 28, 2026."
+promo_cap_units,4000,birchbank-supply-agreement-2026,"The promotional allowance applies to a maximum of 4,000 units in total."
+spoils_allowance_pct,1.5,birchbank-supply-agreement-2026,Supplier will credit Distributor an unsaleables allowance of up to 1.5% of the invoice value of Products shipped in each calendar month.
+spoils_basis,"at actual, up to the monthly allowance",birchbank-supply-agreement-2026,"Distributor will deduct unsaleables at actual, up to the monthly allowance, with a store-level unsaleables report."
+shortage_basis,signed delivery receipt,birchbank-supply-agreement-2026,Shortages are credited only when the receiver notes them on the signed delivery receipt.
+shortage_claim_days,10,birchbank-supply-agreement-2026,"Distributor will submit shortage claims within 10 days of delivery, at the invoiced case price."
+price_deduction_basis,Schedule A case price,birchbank-supply-agreement-2026,"A pricing deduction is limited to the difference between the invoiced case price and the Schedule A case price, for the cases on that delivery."
+payment_terms_days,21,birchbank-supply-agreement-2026,Payment terms are net 21 days from the invoice date.
+dispute_window_days,90,birchbank-supply-agreement-2026,Supplier will dispute a deduction by written notice to deductions@greenfoldnatural.example within 90 days of the remittance date.

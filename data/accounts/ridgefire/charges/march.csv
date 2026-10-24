@@ -1,0 +1,5 @@
+charge_id,ref,code,description,product,units,rate,amount,period_start,period_end,line_ref
+R1,CG-54102,PA,Spring Ad Feature Mar 15-21 (rate per 3/18 email),Ridgefire Roasted Tomato Salsa+Ridgefire Salsa Verde+Ridgefire Chipotle Salsa,1310,0.80,1048.00,2026-03-15,2026-03-21,
+R2,CG-54108,PA,Spring Ad Feature Mar 1-14,Ridgefire Roasted Tomato Salsa+Ridgefire Salsa Verde+Ridgefire Chipotle Salsa,2360,0.50,1180.00,2026-03-01,2026-03-14,
+R3,CG-54115,PA,Spring Ad Feature Mar 22-28,Ridgefire Roasted Tomato Salsa+Ridgefire Salsa Verde+Ridgefire Chipotle Salsa,690,0.50,345.00,2026-03-22,2026-03-28,
+R4,CG-54121,SP,"Unsaleables March, at actual (61 cs)",all,1,1642.80,1642.80,2026-03-01,2026-03-31,

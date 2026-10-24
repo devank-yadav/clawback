@@ -1,0 +1,39 @@
+id: fernwell
+brand:
+  name: Fernwell Sparkling Tea Co.
+  kind: Sparkling tea
+  city: Portland, OR
+  initials: FW
+  colors:
+    primary: "#1F6F5C"
+    accent: "#F2A541"
+  owner:
+    name: Priya Raman
+    email: priya@fernwelltea.example
+  controller:
+    name: Owen Castillo
+distributor:
+  name: Tidemark Beverage
+  desk_email: deductions@tidemarkbev.example
+  portal_name: Tidemark Supplier Hub
+  colors:
+    primary: "#0B3C5D"
+    accent: "#3FA7D6"
+invoice:
+  id: FW-1187
+  expected: 62010.00
+  received: 42851.20
+  month: march
+  period_start: "2026-03-01"
+  period_end: "2026-03-31"
+deal_docs:
+  - fernwell-trade-agreement-2026
+  - fernwell-tidemark-2026-02-09
+approved_senders:
+  - priya@fernwelltea.example
+  - lena@brookssales.example
+dispute_start: 500
+qbo:
+  customer: Tidemark Beverage
+  invoice_no: FW-1187
+nessie_description: Tidemark Beverage remittance FW-1187

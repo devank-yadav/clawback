@@ -1,0 +1,5 @@
+charge_id,decision,disputed,accepted,why
+B1,accept,0.00,1980.00,"Matches the deal: store sales show 2,640 units sold Mar 8 to 28, x $0.75 (Section 5.1) = $1,980.00, under the 4,000-unit cap."
+B2,accept,0.00,244.80,"Delivery receipt DL-7731-3 shows 90 of 96 cases received, noted by Greenfold's receiver: 6 cases x $40.80 = $244.80, as claimed."
+B3,accept,0.00,43.92,"Birchbank invoiced $35.40 against the Schedule A price of $34.80, so 72 x $0.60 = $43.20 is owed; the claim is $0.72 more, within the $1 match tolerance."
+B4,accept,0.00,612.80,"Below the Section 6.1 allowance: 1.5% of March shipments ($56,150.40) = $842.26."

@@ -1,0 +1,19 @@
+month,ref,code,description,amount,outcome,recovered
+2025-10,CG-51420,PA,Fall Ad Feature,1380.00,accepted,0.00
+2025-10,CG-51433,SP,"Unsaleables October, at actual",1215.60,written_off,0.00
+2025-10,CG-51441,DF,Ad fee October,850.00,written_off,0.00
+2025-11,CG-51902,PA,Holiday Ad Feature,1640.00,accepted,0.00
+2025-11,CG-51910,PA,Holiday Ad Feature (rebill),1640.00,recovered,1640.00
+2025-11,CG-51918,SH,Short 20 cs Salsa Verde,720.00,written_off,0.00
+2025-12,CG-52377,PA,Holiday Ad Feature,1910.00,accepted,0.00
+2025-12,CG-52385,SP,"Unsaleables December, at actual",1488.00,written_off,0.00
+2025-12,CG-52390,PR,Price diff Chipotle Salsa,460.80,written_off,0.00
+2026-01,CG-52840,SP,"Unsaleables January, at actual",1104.00,open,0.00
+2026-01,CG-52851,DF,New item setup fee,1200.00,written_off,0.00
+2026-02,CG-53305,PA,Winter Ad Feature Feb 1-21,1260.00,accepted,0.00
+2026-02,CG-53318,SP,"Unsaleables February, at actual",1320.00,open,0.00
+2026-02,CG-53560,PA,Spring Ad Feature Mar 1-14,1180.00,accepted,0.00
+2026-03,CG-54102,PA,Spring Ad Feature Mar 15-21 (rate per 3/18 email),1048.00,open,0.00
+2026-03,CG-54108,PA,Spring Ad Feature Mar 1-14,1180.00,open,0.00
+2026-03,CG-54115,PA,Spring Ad Feature Mar 22-28,345.00,open,0.00
+2026-03,CG-54121,SP,"Unsaleables March, at actual (61 cs)",1642.80,open,0.00

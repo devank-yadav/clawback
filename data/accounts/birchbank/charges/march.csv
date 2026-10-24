@@ -1,0 +1,5 @@
+charge_id,ref,code,description,product,units,rate,amount,period_start,period_end,line_ref
+B1,GF-32215,PA,In-Store Savings Mar 8-28,Birchbank Pork & Chive Dumplings+Birchbank Vegetable Potstickers,2640,0.75,1980.00,2026-03-08,2026-03-28,
+B2,GF-32222,SH,"Short 6 cs Chicken Lemongrass, delivery 7731",Birchbank Chicken Lemongrass Dumplings,6,40.80,244.80,2026-03-12,2026-03-12,DL-7731-3
+B3,GF-32230,PR,"Price diff Vegetable Potstickers, invoiced 35.40 vs cost 34.79",Birchbank Vegetable Potstickers,72,0.61,43.92,2026-03-23,2026-03-23,DL-7768-2
+B4,GF-32236,SP,"Unsaleables March (torn bags, freezer burn)",all,1,612.80,612.80,2026-03-01,2026-03-31,
