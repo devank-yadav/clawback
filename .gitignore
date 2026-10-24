@@ -1,0 +1,23 @@
+# secrets
+.env
+.env.local
+*.pem
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# node
+node_modules/
+web/.next/
+web/out/
+
+# os / editors
+.DS_Store
+.vscode/
+.idea/
+
+# claude code personal settings
+.claude/settings.local.json

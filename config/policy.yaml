@@ -1,0 +1,15 @@
+# Owner policy, set once (Devank owns this file). See docs/design.md, "Rules engine, decision gate and approvals".
+auto_dispute_limit_usd: 5000        # disputes above this need the owner before filing
+controller_approval_over_usd: 1000  # credit memos above this need the controller (never the owner or an agent)
+confidence_floor: 0.90              # Investigator confidence below this goes to Ask
+match_tolerance_usd: 1.00           # a delta within this counts as a match
+rule_match_similarity: 0.85         # Moss similarity needed to apply a saved rule (tune on the eval)
+reminder_after_minutes: 15          # busy approver reminder
+discretion_words:
+  - "may"
+  - "at its discretion"
+  - "reasonable"
+  - "sole judgment"
+approved_amendment_senders:          # only these (or a document signed by both parties) can change a deal
+  - "dana@peakbar.example"           # owner (fictional)
+  - "jordan@peakbar-broker.example"  # broker (fictional)
