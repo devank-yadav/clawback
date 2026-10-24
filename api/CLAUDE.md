@@ -1,6 +1,6 @@
 # api/ (owner: Devank; only Devank edits engine/, agents/, contracts.py)
 
-FastAPI + Pydantic + SQLAlchemy on Postgres (Tiger Data). See docs/design.md sections: Agents; Rules engine,
+FastAPI + Pydantic + psycopg 3 (no ORM) on Postgres (Tiger Data). See docs/design.md sections: Agents; Rules engine,
 decision gate and approvals; Data model; API, live updates and integrations.
 
 ## Build order
@@ -28,7 +28,8 @@ decision gate and approvals; Data model; API, live updates and integrations.
   `make demo` / DEMO_MODE=true replays them with no network. `python -m api.agents.reader <doc ids>` reads documents.
 - POST /runs starts a live pipeline run (api/pipeline.py); `{"fixture": true}` replays the recorded fake run instead.
 - QuickBooks (api/integrations/qbo.py): with the QBO_* keys set it writes to the sandbox; without them, or in
-  DEMO_MODE, a stand-in answers with "sim-" ids and every ledger post says it's simulated and why. Texts
+  DEMO_MODE, a stand-in answers with "sim-" ids and every ledger post says it's simulated and why. POST /demo/reset
+  (`make reset`) deletes the payments and credit memos it wrote and clears its invoice note first. Texts
   (api/integrations/sms.py) go out only with the Twilio keys and outside DEMO_MODE; otherwise they wait in GET
   /inbox. Inbound texts: POST /webhooks/twilio/sms (signature checked when TWILIO_AUTH_TOKEN is set).
 - A new run of the same payment replaces older ones: their open questions close (Question.closed_at) and an answer
@@ -45,5 +46,9 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - Tests never call live services: api/conftest.py blanks every live key for the session and blocks real Claude clients.
 - POST /coach redlines summer-draft from the newest finished March run (api/agents/coach.py); POST /scenario runs a
   pasted clause and charge (api/scenario.py); GET /scenario/examples has three recorded cases.
+- `make seed` (api/db/seed.py) applies api/db/migrations/001_init.sql and upserts data/ through api/rows.py and
+  api/documents.py; a second run changes nothing. On TimescaleDB, store_sales is a hypertable and promo_units_weekly
+  its continuous aggregate; plain Postgres gets a warning and plain tables. QuickBooks is seeded too when the QBO_*
+  keys are set. The pipeline still reads data/ directly. DB tests: TEST_DATABASE_URL=<throwaway db> pytest.
 - Stub routes serve the fixture run in api/stubs/fixtures.py. After changing it, run `python -m api.stubs.fixtures`
   to rewrite web/fixtures/*.json (a test fails if they're stale).

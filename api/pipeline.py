@@ -612,6 +612,10 @@ def _post_books(run: Run, approval: Approval) -> list[LedgerPost]:
              for ln in approval.lines]
     posts: list[LedgerPost] = []
     try:
+        open_now = books.open_balance(invoice_no) if invoice_no else None
+        if open_now is not None and open_now < approval.amount:  # the memo couldn't be applied and would sit there
+            raise qbo.BooksError(f"{invoice_no} has only ${open_now:,.2f} open, less than this ${approval.amount:,.2f} "
+                                 "memo, so nothing was posted. Run make reset between demo takes")
         memo = books.post_credit_memo(f"{approval.id}-memo", [qbo.Line(ln.charge_id, ln.description, ln.amount)
                                                              for ln in lines],
                                       memo=f"Clawback {approval.id}: accepted deductions "
