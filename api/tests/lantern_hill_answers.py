@@ -1,7 +1,8 @@
-"""Faked AI answers for the Lantern Hill Soda Co. <- KeHE Distributors account: what both Deal Readers, the
-Investigator, the rehearsal and the rule writer would return. Written by hand, not recorded: nothing here was ever
-sent to a model. The tests feed them through the real code (the readers' JSON validation, the quote check, the merge
-of the two reads, the engine and the gate), so every check after an agent still runs on them."""
+"""Faked AI answers for the two accounts on KeHE's Vendor Policies & Procedures: Lantern Hill Soda Co. <- KeHE
+Distributors and Peak Bar Co. <- KeHE Distributors (peak-bar-kehe, on its own copy of the policy). What both Deal
+Readers, the Investigator, the rehearsal and the rule writer would return. Written by hand, not recorded: nothing here
+was ever sent to a model. The tests feed them through the real code (the readers' JSON validation, the quote check,
+the merge of the two reads, the engine and the gate), so every check after an agent still runs on them."""
 
 from __future__ import annotations
 
@@ -10,6 +11,17 @@ NULLS = {"rate": None, "products": None, "start": None, "end": None, "max_units"
          "requires_proof": None, "applies_to": None, "requires_fault": None, "add_on": None, "days": None,
          "from": None, "pct": None}
 GL, BO = "Lantern Hill Ginger Lime Soda", "Lantern Hill Blood Orange Soda"
+# Per account: the brand, its promotion id and promoted items, its document id prefix, the policy copy it reads and
+# KeHE's portal notice changing the Extra Performance charge (§10.7).
+KEHE_ACCOUNTS = {
+    "lantern-hill": {"brand": "Lantern Hill Soda Co.", "promo": "LH-OI-2603", "items": (GL, BO),
+                     "docs": "lantern-hill", "policy": "kehe-vendor-policies-2015",
+                     "notice": "lantern-hill-kehe-ep-admin-2026-03-02"},
+    "peak-bar-kehe": {"brand": "Peak Bar Co.", "promo": "PB-OI-2603",
+                      "items": ("Peak Bar Original", "Peak Bar Chocolate"),
+                      "docs": "peak-bar-kehe", "policy": "kehe-vendor-policies-2015-peak-bar",
+                      "notice": "peak-bar-kehe-ep-admin-2026-03-02"},
+}
 
 
 def term(type_, quote, discretion=False, effective_from=None, effective_to=None, **params) -> dict:
@@ -51,32 +63,49 @@ POLICY_B = POLICY + [term("fee_schedule", Q_MARKETING, effective_from=POLICY_FRO
                           basis="percent", rate="1.5", per="po", requires_proof=False)]
 POLICY_UNCLEAR = ["§5.2 lumping and non-compliance fees: the rates are in KeHE's Inbound Routing Guide, not here."]
 
-Q_OI = ("Lantern Hill Soda Co. offers KeHE an off-invoice allowance of $1.50 per case on Lantern Hill Ginger Lime Soda "
-        "and Lantern Hill Blood Orange Soda on purchase orders written between March 1 and March 28, 2026.")
-Q_CAP = "The allowance applies to a maximum of 4,000 cases in total."
-PROMOTION = [
-    term("promo_rate", Q_OI, effective_from="2026-03-01", effective_to="2026-03-28", rate="1.50"),
-    term("product_scope", Q_OI, products=[GL, BO]),
-    term("date_range", Q_OI, start="2026-03-01", end="2026-03-28"),
-    term("unit_cap", Q_CAP, max_units=4000),
-]
 
-Q_BROKER = ("KeHE asked to extend promotion LH-OI-2603 from March 29 through April 4, same terms, up to 600 "
-            "additional cases. Approved.")
-BROKER = [term("amendment", Q_BROKER, effective_from="2026-03-29", effective_to="2026-04-04", extra_units=600)]
+def submission(account: str) -> tuple[list[dict], list[dict]]:
+    """Our promotion submission's terms and the broker's extension, for one of KEHE_ACCOUNTS."""
+    a = KEHE_ACCOUNTS[account]
+    first, second = a["items"]
+    q_oi = (f"{a['brand']} offers KeHE an off-invoice allowance of $1.50 per case on {first} and {second} on purchase "
+            "orders written between March 1 and March 28, 2026.")
+    q_cap = "The allowance applies to a maximum of 4,000 cases in total."
+    promotion = [
+        term("promo_rate", q_oi, effective_from="2026-03-01", effective_to="2026-03-28", rate="1.50"),
+        term("product_scope", q_oi, products=[first, second]),
+        term("date_range", q_oi, start="2026-03-01", end="2026-03-28"),
+        term("unit_cap", q_cap, max_units=4000),
+    ]
+    q_broker = (f"KeHE asked to extend promotion {a['promo']} from March 29 through April 4, same terms, up to 600 "
+                "additional cases. Approved.")
+    broker = [term("amendment", q_broker, effective_from="2026-03-29", effective_to="2026-04-04", extra_units=600)]
+    return promotion, broker
+
+
+PROMOTION, BROKER = submission("lantern-hill")
+Q_OI, Q_CAP, Q_BROKER = PROMOTION[0]["exact_quote"], PROMOTION[3]["exact_quote"], BROKER[0]["exact_quote"]
 
 Q_EP_NEW = ("Effective March 9, 2026, the Extra Performance administrative charge will be 7% on the total amount of "
             "each invoice with a maximum of $250 per invoice.")
 EP_NOTICE = [term("fee_schedule", Q_EP_NEW, effective_from="2026-03-09", fee_code="Extra Performance",
                   basis="percent", rate="7", max="250", per="invoice", requires_proof=False)]
 
-# doc id -> (Reader A, Reader B), each {"terms", "unclear"} as the model would return it.
-READERS = {
-    "kehe-vendor-policies-2015": ({"terms": POLICY, "unclear": POLICY_UNCLEAR}, {"terms": POLICY_B, "unclear": []}),
-    "lantern-hill-promotion-2026-03": ({"terms": PROMOTION, "unclear": []}, {"terms": PROMOTION, "unclear": []}),
-    "lantern-hill-broker-2026-03-24": ({"terms": BROKER, "unclear": []}, {"terms": BROKER, "unclear": []}),
-    "lantern-hill-kehe-ep-admin-2026-03-02": ({"terms": EP_NOTICE, "unclear": []}, {"terms": EP_NOTICE, "unclear": []}),
-}
+
+def readers(account: str) -> dict:
+    """doc id -> (Reader A, Reader B), each {"terms", "unclear"} as the model would return it."""
+    a = KEHE_ACCOUNTS[account]
+    promotion, broker = submission(account)
+    return {
+        a["policy"]: ({"terms": POLICY, "unclear": POLICY_UNCLEAR}, {"terms": POLICY_B, "unclear": []}),
+        f"{a['docs']}-promotion-2026-03": ({"terms": promotion, "unclear": []}, {"terms": promotion, "unclear": []}),
+        f"{a['docs']}-broker-2026-03-24": ({"terms": broker, "unclear": []}, {"terms": broker, "unclear": []}),
+        a["notice"]: ({"terms": EP_NOTICE, "unclear": []}, {"terms": EP_NOTICE, "unclear": []}),
+    }
+
+
+
+READERS = readers("lantern-hill")
 
 # The Investigator plus the rehearsal on every charge: confident, two independent sources, the comeback answered.
 FINDING = {"confidence": "0.95", "independent_sources": 2, "comeback_answered": True}
@@ -107,9 +136,15 @@ POLICY_B_VARIANT = [
 EP_NOTICE_VARIANT = [term("fee_schedule", Q_EP_NEW, effective_from="2026-03-09",
                           fee_code="Extra Performance admin charge", basis="percent", rate="7%", max="$250",
                           per="invoice")]
-READERS_B_VARIANT = {
-    **READERS,
-    "kehe-vendor-policies-2015": (READERS["kehe-vendor-policies-2015"][0], {"terms": POLICY_B_VARIANT, "unclear": []}),
-    "lantern-hill-kehe-ep-admin-2026-03-02": (READERS["lantern-hill-kehe-ep-admin-2026-03-02"][0],
-                                              {"terms": EP_NOTICE_VARIANT, "unclear": []}),
-}
+
+
+def readers_b_variant(account: str) -> dict:
+    a, base = KEHE_ACCOUNTS[account], readers(account)
+    return {
+        **base,
+        a["policy"]: (base[a["policy"]][0], {"terms": POLICY_B_VARIANT, "unclear": []}),
+        a["notice"]: (base[a["notice"]][0], {"terms": EP_NOTICE_VARIANT, "unclear": []}),
+    }
+
+
+READERS_B_VARIANT = readers_b_variant("lantern-hill")

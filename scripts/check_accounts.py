@@ -21,6 +21,10 @@ For every account:
   invoice.period_end + 20 days); and each history/expected-lookback.csv row recomputes (allowed, wrongly taken,
   claimable / past_window / settled / fair / not_checked). Fee-schedule accounts (fees/fees.yaml) skip these;
 - document stems are unique across accounts (and start with the account id, except Peak Bar's original ones).
+- every account.yaml names its supplier: its own id, or another account that is the supplier's own (supplier: its
+  id) with the same brand (Peak Bar's KeHE, Walmart and Five Below accounts: peak-bar). A contract a supplier's account
+  reads as its own copy (data/contracts/<filing>-<supplier>.txt, so document ids stay unique) is byte for byte the
+  filing's file;
 
 An account with fees/fees.yaml and terms/fee-terms.csv (a real contract priced by fee schedules: Copperline <- Walmart,
 Fizzwick <- Five Below) gets its own checks instead of the promo, delivery and history ones: every contract account.yaml
@@ -286,6 +290,11 @@ def check_docs(acct, docs):
     for stem, (sub, path) in docs.items():
         if stem in contracts:
             check(f"{acct.label}: contract {path.name} is in data/contracts/", path.is_file())
+            supplier = (acct.yaml or {}).get("supplier")
+            if supplier and supplier != acct.id and stem.endswith(f"-{supplier}"):  # the supplier's own copy
+                original = path.with_name(stem.removesuffix(f"-{supplier}") + path.suffix)
+                check(f"{acct.label}: contract {path.name} is byte for byte {original.name}",
+                      path.is_file() and original.is_file() and path.read_bytes() == original.read_bytes())
             continue
         text = path.read_text(encoding="utf-8")
         if acct.id != PEAK_BAR:
@@ -1215,9 +1224,13 @@ def main():
     folders = sorted(p for p in ACCOUNTS.iterdir() if p.is_dir()) if ACCOUNTS.exists() else []
     check("data/accounts/ has account folders", bool(folders))
     stems, starts, invoice_ids = defaultdict(list), defaultdict(list), defaultdict(list)
+    brands, suppliers = {}, {}
     for folder in folders:
         acct = Account(folder)
         docs, history_invoices = check_account(acct)
+        if acct.yaml:
+            brands[acct.id] = (acct.yaml.get("brand") or {}).get("name")
+            suppliers[acct.id] = acct.yaml.get("supplier")
         for stem in docs:
             stems[stem].append(acct.id)
         for inv in history_invoices:
@@ -1226,6 +1239,10 @@ def main():
             starts[acct.yaml["dispute_start"]].append(acct.id)
 
     print("\n== across accounts")
+    for aid, supplier in sorted(suppliers.items()):  # every account names its supplier: its own id, or the brand's
+        check(f"{aid}: supplier {supplier!r} is an account folder with the same brand",
+              supplier in brands and suppliers.get(supplier) == supplier and brands[supplier] == brands[aid],
+              f"brand {brands.get(aid)!r}")
     legacy = {p.stem for sub, ext in DOC_DIRS.items() for p in (DATA / sub).glob(f"*{ext}")}
     clash = {s: ids for s, ids in stems.items() if len(ids) > 1 or (s in legacy and ids != [PEAK_BAR])}
     check("document stems are unique across accounts", not clash, clash)

@@ -2,6 +2,7 @@
 # in data/contracts/walmart-supplier-agreement-2013.txt (named in `contracts`); everything else here is written by our
 # side, or is Walmart's own notice or backup. This file has exactly the AccountConfig shape.
 id: copperline
+supplier: copperline
 brand:
   name: Copperline Home Co.
   kind: housewares brand

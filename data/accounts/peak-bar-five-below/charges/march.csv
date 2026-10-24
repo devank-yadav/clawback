@@ -1,0 +1,9 @@
+charge_id,ref,code,description,product,units,rate,amount,period_start,period_end,line_ref,deducted_on
+F1,CB0521322,OV,"Overage: PO 4612912, 12,000 units over",Peak Bar Original 4-Pack,1,1360.00,1360.00,2026-03-01,2026-03-31,,2026-03-25
+F2,CB0521330,OV,"Overage: PO 4612815, 700 units over",Peak Bar Chocolate 3-Pack,1,164.75,164.75,2026-03-01,2026-03-31,,2026-03-11
+F3,CB0521347,CM,Incorrect carton marking: PO 4612877,Peak Bar Peanut Butter 2-Pack,1,1192.00,1192.00,2026-03-01,2026-03-31,,2026-03-21
+F4,CB0521351,MA,Missed appointment w/o communication: PO 4612893,Peak Bar Peanut Butter 2-Pack,1,590.00,590.00,2026-03-01,2026-03-31,,2026-03-24
+F5,CB0521366,LS,Late shipment (after cancel date): PO 4612861,Peak Bar Chocolate 3-Pack,1,840.00,840.00,2026-03-01,2026-03-31,,2026-03-20
+F6,CB0521370,DU,"Import documents late: PO 4612788, 3 documents",Peak Bar Chocolate 3-Pack,1,400.00,400.00,2026-03-01,2026-03-31,,2026-03-06
+F7,CB0521385,AP,Appointment not made 48 hours ahead: PO 4612902,Peak Bar Original 4-Pack,1,400.00,400.00,2026-03-01,2026-03-31,,2026-03-19
+F8,CB0521393,BO,"Backorder (short ship): PO 4612920, 1,000 units",Peak Bar Chocolate 3-Pack,1,192.50,192.50,2026-03-01,2026-03-31,,2026-03-26
