@@ -37,8 +37,11 @@ class Investigation:
 
 
 def evidence_for(charge: Charge, evidence: dict[str, Evidence]) -> list[Evidence]:
-    """Everything in the run except other charges' rows."""
-    return [e for e in evidence.values() if e.kind != "charge" or e.id == f"ev-charge-{charge.id}"]
+    """Everything in the run except charges of other kinds. The same promo's other lines stay: a cap runs across
+    weeks, and without them the Investigator can't see that week 1 is charged in this same payment (C1), so it
+    doubts the cap on C4 and its confidence drops below the floor."""
+    return [e for e in evidence.values() if e.kind != "charge" or e.id == f"ev-charge-{charge.id}"
+            or (e.rows and e.rows[0].get("code") == charge.code)]
 
 
 def evidence_payload(items: list[Evidence]) -> list[dict]:

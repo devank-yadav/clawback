@@ -159,6 +159,8 @@ def math_parts(steps: Sequence[str], used: Iterable, charge: Charge, terms: Iter
         target = (sales if step.startswith("Store sales show") else
                   clause("unit_cap") if step.startswith("Cap ") else
                   clause("amendment") if "covered by an approved amendment" in step else
+                  next((clause_id(t) for t in by_id.values() if t.type == "amendment" and clause_id(t) in ev), None)
+                  if step.startswith("The approved extension adds units only") else
                   found("prior_payment", lambda e: any(r.get("period_start") == start for r in e.rows))
                   if step.startswith("A prior payment") else
                   clause("promo_rate") if " units x $" in step else

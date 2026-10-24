@@ -135,6 +135,10 @@ def _promo(charge: Charge, terms: Sequence[Term], sales: list[SalesWeek], priors
         steps.append(f"Cap {cap:,} units: {in_dates:,} of the in-date units are still under it.")
     if by_amendment:
         steps.append(f"{by_amendment:,} units outside the deal dates are covered by an approved amendment.")
+    elif amendments and in_dates < sold:  # the cap left units out and no extension reaches this period
+        spans = " and ".join(f"{_as_date(a.effective_from):%b} {_as_date(a.effective_from).day}–"
+                             f"{_as_date(a.effective_to):%b} {_as_date(a.effective_to).day}" for a in amendments)
+        steps.append(f"The approved extension adds units only for {spans}, not these dates.")
     covered = min(charge.units, in_dates + by_amendment)
 
     # Step 5: duplicate check. Units a prior payment already paid for the same products and period are not owed again.
