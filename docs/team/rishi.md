@@ -72,6 +72,24 @@ Each card is one Claude Code session: paste the prompt, check the "done when," c
 - **Hyphenate mixer,** Sat 2–4 PM, Gate 6: show the board on your phone; ask "Would you hire this?" and "What would make you trust it?"
 - **Recording,** Sat 9 PM: capture the screen while Devank narrates; Manasv runs `make reset` between takes.
 
+## Next prompts (Sat morning, UI only)
+
+The API side of every screen below is built and tested, and Devank owns all of it. Paste one prompt at a time into
+Claude Code in `web/`. Every prompt includes these rules: live mode follows the API, fixture mode keeps working,
+nothing on screen computes money, works at phone width, run `npm run lint` and `npm run build` before each commit,
+and don't touch `api/`, `data/` or `config/`. In order of demo value:
+
+| # | Screen | Paste into Claude Code |
+| --- | --- | --- |
+| U1 | `/portal` (judge beat, P0) | "Build /portal: Northmart's own site look, not ours. Load the dispute with GET /portal/disputes/D-0417 (its lines: charge, amount, reason, clause quote, math) and the thread with GET /portal/disputes/D-0417/messages. A reply box posts POST /portal/disputes/D-0417/messages with {text, attachment_doc_id}. Show the preset buttons from GET /portal/presets (send the preset's text, plus attachment_doc_id 'amendment-1' for the signed-amendment preset). Each POST returns Northmart's message plus Clawback's answer when one goes out; a held reply returns only Northmart's. New messages also arrive on the run stream as portal_message events. After the amendment, the dispute's C4 line drops to $540 and the board shows the $1,000 concession. Big type; works on a tablet." |
+| U2 | Clickable evidence (F7, P0) | "In the evidence panel, make every number and source open its source. A MathPart (api/contracts.py) with an evidence_id is clickable and opens GET /evidence/{id}?run_id={run}: a deal sentence (quote with offsets, highlighted), a data row table, an email (sender, approved or not), a rule (who approved it, when) or an approval. Source chips open the same view. Acceptance: on C1 to C6, every number on the card opens what it came from." |
+| U3 | `/results` scoreboard (F12) | "Build /results: the run's final totals event (disputed, accepted, waiting, questions), the ledger_post events (credit memo and open-balance note; show the API's note, which says 'Simulated' in DEMO_MODE; 'failed' and 'held' states included), and the score from GET /eval/latest (cases, correct, amounts_correct, asked, wrong_automatic, unnecessary_questions; say 'agent mode' or 'engine mode' from its mode field). End on '$4,120 disputed, $2,730 accepted, one question.'" |
+| U4 | `/april` | "Build /april: a button calls POST /replay/april, then follow its events_url like the March board. Two display fees: A1 ($1,200, 18 days' notice) accepted and A2 ($800, 5 days) disputed, both 'Applied Rule #1', and the line '0 questions asked' from the log. If Rule #1 isn't saved yet (March not answered), the API asks Dana; show that question instead." |
+| U5 | `/coach` | "Build /coach: POST /coach returns redlines on the summer draft. Each has clause_ref, original_quote (strike it through; quote has the offsets), suggested_text, reason and dollars_at_stake. Show 'This clause cost $X in March.' Redlines are suggestions; there's no send button." |
+| U6 | `/scenario` | "Build /scenario: three example buttons from GET /scenario/examples fill the form; POST /scenario with {clause, charge} returns decision, finding, evidence, terms (each verified or rejected word for word) and rehearsal. Show the decision card like the board's, with its evidence. Allow up to 30 s, with a spinner." |
+| U7 | `/audit` | "Build /audit: GET /audit lists every action (time, actor, action, object, evidence, hash) and a 'Verify chain' button calls GET /audit/verify and shows OK or the first broken row." |
+| U8 | Copy fix | "Before 'Northmart pays' is pressed, the overview says 'Your March payment is being checked against the deal.' Say it's waiting for Northmart's payment instead, until the run starts." |
+
 ## Timeline, checkpoints and rules
 
 | When (PDT) | You |
