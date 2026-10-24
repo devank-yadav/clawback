@@ -1,0 +1,31 @@
+case_id,expected_decision,expected_disputed,expected_accepted,reason
+E01,split,200.00,800.00,"rate_over: charged 1.25/unit, deal 1.00; 800 units allowed at 1.00"
+E02,split,375.00,1125.00,"rate_over: charged 1.00/unit, deal 0.75"
+E03,split,1000.00,3000.00,"rate_over: charged 2.00/unit, deal 1.50"
+E04,dispute,640.00,0.00,"duplicate: same promo, product and period paid as NM-1104"
+E05,dispute,1150.00,0.00,"duplicate: same promo, product and period paid as NM-1121"
+E06,dispute,450.00,0.00,"duplicate: same promo, product and period paid as NM-1098"
+E07,dispute,700.00,0.00,"over_cap: cap 3,000 already reached before this period"
+E08,split,600.00,400.00,"over_cap: 3,600 used of 4,000 cap; only 400 units covered"
+E09,dispute,500.00,0.00,product_not_covered: Mint not in deal products
+E10,dispute,375.00,0.00,product_not_covered: Peanut Butter not in deal products
+E11,dispute,250.00,0.00,"outside_dates: Apr 8-14 after deal end Mar 31, no amendment"
+E12,dispute,400.00,0.00,"unsigned_claim: Northmart's own email claims an extension; not an approved sender, not signed"
+E13,accept,0.00,1200.00,"exact_match: rate, product, dates and cap all within deal"
+E14,accept,0.00,337.50,exact_match: 450 x 0.75
+E15,accept,0.00,1470.00,exact_match: 980 x 1.50
+E16,accept,0.00,2100.00,"exact_match: 2,900 used before, 5,000 cap not passed"
+E17,accept,0.00,300.00,exact_match: Mint covered in this deal
+E18,accept,0.00,330.00,"broker_extension: approved broker extended through Apr 7, up to 500 units"
+E19,accept,0.00,150.00,"broker_extension: approved broker extended through Apr 10, up to 300 units"
+E20,accept,0.00,500.00,"broker_extension: approved broker extended through Apr 14, up to 500 units"
+E21,accept,0.00,720.00,"under_charge: charged 0.80/unit, deal allows 1.00; accept, never ask for more"
+E22,accept,0.00,1200.00,"rule_covered_fee: discretion fee, Rule #1 (notice >= 14 days) matches with 21 days"
+E23,accept,0.00,900.00,"rule_covered_fee: discretion fee, Rule #1 matches with exactly 14 days"
+E24,accept,0.00,1000.60,"within_tolerance: taken 1,000.60 vs allowed 1,000.00, delta under $1"
+E25,ask,0.00,0.00,"discretion_no_rule: discretion display fee, no saved rule"
+E26,ask,0.00,0.00,"discretion_no_rule: discretion display fee, no saved rule"
+E27,ask,0.00,0.00,"discretion_no_rule: discretion display fee, no saved rule"
+E28,ask,0.00,0.00,"readers_disagree: vague rate wording, readers can't agree on a rate"
+E29,ask,0.00,0.00,readers_disagree: unclear whether 'core bars' includes Chocolate
+E30,ask,0.00,0.00,"over_5000: delta 6,000.00 over the 5,000 auto-dispute limit"
