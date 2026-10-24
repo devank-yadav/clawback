@@ -288,6 +288,20 @@ def test_a_new_run_closes_the_old_runs_question():
     assert april.replaced_by is None and new.replaced_by is None  # another payment replaces nothing
 
 
+def test_a_replaced_runs_approval_waits_on_nobody():
+    """Sam's YES and the inbox only see the newest run, even while it's still deciding."""
+    fake = ScenarioClaude()
+    old = pipeline.start("march", fake, background=False)
+    pipeline.answer(next(iter(old.questions)), "accept if notice is at least 14 days", client=fake)
+    (stale,) = pipeline.inbox()[1]
+    assert pipeline.pending_approval() == stale.id
+    old.replaced_by = "run-march-still-deciding"  # a newer run has started and hasn't asked Sam yet
+    assert pipeline.pending_approval() is None and pipeline.inbox()[1] == []
+    new = pipeline.start("march", fake, background=False)  # Rule #1 is saved: it goes straight to Sam
+    (fresh,) = pipeline.inbox()[1]
+    assert fresh.id == f"AP-{new.id}" and pipeline.pending_approval() == fresh.id
+
+
 class ReloadMidRun(ScenarioClaude):
     """The page reloads while the first run's agents are still working: a second run starts and finishes first."""
 

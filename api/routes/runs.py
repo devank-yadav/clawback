@@ -72,7 +72,8 @@ async def run_events(
     run = live or _runs().get(run_id)
     if run is None:
         raise HTTPException(404, f"unknown run {run_id}")
-    start_after = after if after is not None else (last_event_id or 0)
+    # A browser reconnect resends Last-Event-ID but keeps the ?after= it first opened with: the larger one wins.
+    start_after = max(after or 0, last_event_id or 0)
     pending = (lambda sent: live.events_after(sent)) if live else (lambda sent: [e for e in _events(run) if e.id > sent])
     pace = 0 if live else delay_ms  # a live run is paced by the work itself
 

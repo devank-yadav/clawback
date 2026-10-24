@@ -512,8 +512,9 @@ def find_approval(approval_id: str) -> tuple[Run, Approval] | None:
 
 
 def pending_approval(role: str = "controller") -> str | None:
-    """The newest approval still waiting on this role, for an SMS reply that doesn't name one."""
-    for run in reversed(list(RUNS.values())):
+    """The newest approval still waiting on this role, for an SMS reply that doesn't name one. A replaced run's
+    approvals don't count: Sam's YES must not post an old run's memo while the newer run is still deciding."""
+    for run in reversed([r for r in RUNS.values() if r.replaced_by is None]):
         ids = list(dict.fromkeys(e.data.id for e in run.events if e.type == "approval"))
         for approval_id in reversed(ids):
             _, a = find_approval(approval_id)
@@ -611,10 +612,10 @@ def _post_books(run: Run, approval: Approval) -> list[LedgerPost]:
 
 
 def inbox() -> tuple[list[Question], list[Approval]]:
-    """Open owner questions and approvals waiting on the controller, across live runs."""
+    """Open owner questions and approvals waiting on the controller, across live runs (a replaced run's don't wait)."""
     questions = [q for run in RUNS.values() for q in run.questions.values() if is_open(q)]
     pending = []
-    for run in RUNS.values():
+    for run in (r for r in RUNS.values() if r.replaced_by is None):
         latest: dict[str, Approval] = {}
         for e in run.events:
             if e.type == "approval":
@@ -653,6 +654,11 @@ def start_for_deposit(deposit: Any, client: anthropic.Anthropic | None = None, b
     run = start("march", client, background, deposit=deposit)
     _deposit_runs[deposit.id] = run.id
     return run
+
+
+def run_for_deposit(deposit_id: str) -> Run | None:
+    """The run this Nessie deposit started, once it has one."""
+    return RUNS.get(_deposit_runs.get(deposit_id) or "")
 
 
 def latest(kind: str | None = None) -> Run | None:

@@ -165,13 +165,32 @@ def test_pay_button_posts_the_deposit_to_nessie(api, monkeypatch):
 
 
 def test_pay_button_leaves_the_run_to_a_running_poller(api, monkeypatch):
+    from api.routes import payments
     fake = FakeNessie()
     monkeypatch.setattr(nessie, "client", lambda: client_for(fake))
+    monkeypatch.setattr(payments, "POLLER_WAIT_S", 0.3)
     nessie.poller = nessie.Poller(client_for(fake), starter(ScenarioClaude()), interval=60)
     nessie.poller.start()
     r = api.post("/payments/northmart").json()
     assert (r["via"], r["run_id"]) == ("nessie", None) and "poller" in r["message"]
     assert not pipeline.RUNS  # the button left it to the poller, which looks again in 60 s
+
+
+def test_pay_button_returns_the_run_the_poller_started(api, monkeypatch):
+    """With a run already on the board, the button must hand back the new run, not the previous one."""
+    fake = FakeNessie()
+    monkeypatch.setattr(nessie, "client", lambda: client_for(fake))
+    previous = pipeline.start("march", ScenarioClaude(), background=False)
+    nessie.poller = nessie.Poller(client_for(fake), starter(ScenarioClaude()), interval=0.05)
+    nessie.poller.start()
+    for _ in range(100):
+        if nessie.poller.seen is not None:
+            break
+        time.sleep(0.02)
+    r = api.post("/payments/northmart").json()
+    assert r["via"] == "nessie" and r["run_id"] not in (None, previous.id) and "saw it" in r["message"]
+    run = pipeline.RUNS[r["run_id"]]
+    assert run.deposit.id == r["deposit_id"] and previous.replaced_by == run.id and wait_for(run, "waiting")
 
 
 def test_summary_reads_the_live_run(api, monkeypatch):

@@ -42,6 +42,9 @@ def test_stream_resumes_after_last_event_id():
     r = client.get(f"/runs/{fixtures.MARCH_RUN}/events", params={"delay_ms": 0, "keepalive": False},
                    headers={"Last-Event-ID": "60"})
     assert [e.id for e in _sse(r.text)][0] == 61
+    r = client.get(f"/runs/{fixtures.MARCH_RUN}/events", params={"delay_ms": 0, "keepalive": False, "after": 0},
+                   headers={"Last-Event-ID": "60"})  # the browser's reconnect: the URL it opened, the id it holds
+    assert [e.id for e in _sse(r.text)][0] == 61
 
 
 def test_april_replay():

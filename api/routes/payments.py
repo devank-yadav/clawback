@@ -1,9 +1,12 @@
 """The payment screen's "Northmart pays" button (F15).
 
 With Nessie keys: post the $41,350 deposit to the Nessie sandbox. If the poller is running it starts the run
-when it sees the deposit (within 5 seconds); if not, this starts it for that deposit. Without keys, or in
+when it sees the deposit (within 5 seconds) and this waits up to 10 s to return that run; if not, this starts it
+for that deposit. Without keys, or in
 DEMO_MODE, the run starts directly: the button is the fallback the design names.
 """
+
+import time
 
 from fastapi import APIRouter, HTTPException
 
@@ -12,6 +15,16 @@ from api.contracts import PaymentResponse
 from api.integrations import nessie, replay
 
 router = APIRouter(tags=["payments"])
+
+POLLER_WAIT_S = 10.0  # the design's bar: a deposit starts the run within 10 seconds
+
+
+def _poller_run(deposit_id: str) -> pipeline.Run | None:
+    """Wait for the poller to see this deposit, so the button gets the run it started (not the previous one)."""
+    end = time.monotonic() + POLLER_WAIT_S
+    while (run := pipeline.run_for_deposit(deposit_id)) is None and time.monotonic() < end:
+        time.sleep(0.1)
+    return run
 
 
 @router.post("/payments/northmart", response_model=PaymentResponse)
@@ -27,8 +40,11 @@ def northmart_pays() -> PaymentResponse:
     except nessie.NessieError as e:
         raise HTTPException(502, f"Nessie didn't take the deposit: {e}") from None
     if nessie.poller and nessie.poller.running:
-        return PaymentResponse(via="nessie", deposit_id=deposit.id, run_id=None,
-                               message="Deposit posted to Nessie; the run starts when the poller sees it (within 5 s).")
+        run = _poller_run(deposit.id)
+        return PaymentResponse(via="nessie", deposit_id=deposit.id, run_id=run.id if run else None,
+                               message="Deposit posted to Nessie; the poller saw it and started the run." if run else
+                               f"Deposit posted to Nessie; the poller hasn't started the run after {POLLER_WAIT_S:.0f} s "
+                               "(GET /runs/latest finds it).")
     run = pipeline.start_for_deposit(deposit)
     return PaymentResponse(via="nessie", deposit_id=deposit.id, run_id=run.id,
                            message="Deposit posted to Nessie; the run started for it.")
