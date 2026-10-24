@@ -133,6 +133,7 @@ def _copy(tmp_path, name="peak-bar", **changes):
 def roots(tmp_path, monkeypatch):
     """Accounts from tmp_path only (start with none)."""
     monkeypatch.setattr(accounts, "ROOTS", [tmp_path])
+    monkeypatch.setattr(accounts, "ONLY", None)
     accounts.clear()
     yield tmp_path
     accounts.clear()
@@ -533,3 +534,9 @@ def test_texts_name_the_accounts_people(two_accounts):
     run, _ = oat_run(answer_owner=False)
     assert sms.outbox[-1][0] == "owner" and sms.outbox[-1][1].startswith("Eastway took $300")
     assert moss.Outcome().matches == ()
+
+
+def test_every_data_account_loads(every_account):
+    assert every_account[0].id == "peak-bar" and len({a.id for a in every_account}) == len(every_account)
+    for a in every_account:
+        assert a.config.deal_docs and all(d in a.docs for d in a.config.deal_docs), a.id

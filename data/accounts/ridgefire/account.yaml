@@ -1,0 +1,39 @@
+id: ridgefire
+brand:
+  name: Ridgefire Salsa Co.
+  kind: Salsa
+  city: Austin, TX
+  initials: RF
+  colors:
+    primary: "#C1440E"
+    accent: "#F4A261"
+  owner:
+    name: Luis Arroyo
+    email: luis@ridgefiresalsa.example
+  controller:
+    name: Hannah Weiss
+distributor:
+  name: Corbel Grocery Supply
+  desk_email: deductions@corbelgrocery.example
+  portal_name: Corbel Supplier Portal
+  colors:
+    primary: "#4A4E69"
+    accent: "#9A8C98"
+invoice:
+  id: RS-0918
+  expected: 53472.00
+  received: 49256.20
+  month: march
+  period_start: "2026-03-01"
+  period_end: "2026-03-31"
+deal_docs:
+  - ridgefire-vendor-agreement-2026
+  - ridgefire-corbel-2026-03-18
+approved_senders:
+  - luis@ridgefiresalsa.example
+  - tom@beckerfoodsales.example
+dispute_start: 700
+qbo:
+  customer: Corbel Grocery Supply
+  invoice_no: RS-0918
+nessie_description: Corbel Grocery Supply remittance RS-0918

@@ -1,0 +1,38 @@
+id: birchbank
+brand:
+  name: Birchbank Kitchen
+  kind: Frozen dumplings
+  city: Oakland, CA
+  initials: BK
+  colors:
+    primary: "#7A4E2D"
+    accent: "#E9C46A"
+  owner:
+    name: Lucy Tran
+    email: lucy@birchbankkitchen.example
+  controller:
+    name: Marcus Bell
+distributor:
+  name: Greenfold Natural
+  desk_email: deductions@greenfoldnatural.example
+  portal_name: Greenfold Vendor Portal
+  colors:
+    primary: "#2D6A4F"
+    accent: "#95D5B2"
+invoice:
+  id: BK-2240
+  expected: 56150.40
+  received: 53268.88
+  month: march
+  period_start: "2026-03-01"
+  period_end: "2026-03-31"
+deal_docs:
+  - birchbank-supply-agreement-2026
+  - birchbank-greenfold-2026-03-13
+approved_senders:
+  - lucy@birchbankkitchen.example
+dispute_start: 600
+qbo:
+  customer: Greenfold Natural
+  invoice_no: BK-2240
+nessie_description: Greenfold Natural remittance BK-2240

@@ -84,8 +84,12 @@ _registry: tuple[dict[str, Account], list[str]] | None = None
 _current: ContextVar[str | None] = ContextVar("clawback_account", default=None)
 
 
+ONLY: set[str] | None = None  # the tests load just the accounts they name (api/tests/conftest.py)
+
+
 def _folders() -> list[Path]:
-    found = [d for root in ROOTS if root.is_dir() for d in sorted(root.iterdir()) if (d / "account.yaml").is_file()]
+    found = [d for root in ROOTS if root.is_dir() for d in sorted(root.iterdir()) if (d / "account.yaml").is_file()
+             and (ONLY is None or d.name in ONLY)]
     return sorted(found, key=lambda d: d.name != DEFAULT)  # Peak Bar first: it wins any clash
 
 

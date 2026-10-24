@@ -1,0 +1,7 @@
+charge_id,decision,disputed,accepted,why
+C1,split,600.00,1200.00,"Charged $1.50 a bar; §3.1 pays $1.00. 1,200 bars x $1.00 = $1,200.00 allowed, $600.00 disputed."
+C2,dispute,980.00,0.00,Week 2 was already paid on Mar 14 (NM-2178): a duplicate.
+C3,accept,0.00,330.00,The approved broker email of Mar 28 extends the promo through Apr 7 for up to 500 more bars; 330 x $1.00.
+C4,dispute,1540.00,0.00,"§3.2 caps the promo at 5,000 bars; weeks 1 to 3 sold 5,000, so none of week 4's 1,540 are covered."
+C5,dispute,1000.00,0.00,§3.1 covers Original and Chocolate only; Mint isn't in the deal.
+C6,ask,0.00,0.00,"§5.4 leaves the display fee to Northmart's discretion; the owner's answer (Rule #1, 14+ days' notice) then accepts the $1,200.00."

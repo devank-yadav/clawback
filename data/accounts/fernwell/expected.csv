@@ -1,0 +1,6 @@
+charge_id,decision,disputed,accepted,why
+F1,accept,0.00,5150.00,"Matches the deal: store scan data shows 4,120 units sold Mar 1 to 14, x $1.25 (Section 5.1) = $5,150.00."
+F2,ask,0.00,0.00,"Billed on 8,640 units shipped, but Section 5.3 pays on units sold: scan data shows 4,250 units Mar 15 to 28, so the deal allows $5,312.50. The $5,487.50 excess is above the $5,000 auto-dispute limit, so the owner decides before filing."
+F3,dispute,662.40,0.00,Proof of delivery DL-40817-1 shows 180 of 180 cases received and signed by Tidemark's receiver; Section 4.2 credits only shortages noted on it.
+F4,split,270.00,90.00,"Invoiced $29.40 on DL-40862-3 against the Schedule A price of $28.80, so 150 cases x $0.60 = $90.00 is owed; the claim down to $27.00 uses the 2025 price that Schedule A replaced."
+F5,split,946.20,1240.20,"Section 6.1 allows 2% of March shipments ($62,010.00) = $1,240.20; Section 6.2 rules out claims at actual, so the other $946.20 is disputed."

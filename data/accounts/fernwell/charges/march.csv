@@ -1,0 +1,6 @@
+charge_id,ref,code,description,product,units,rate,amount,period_start,period_end,line_ref
+F1,TB-88412,PA,Spring Feature scan allowance wk 1-2,Fernwell Peach Black Tea+Fernwell Yuzu Green Tea+Fernwell Hibiscus Ginger,4120,1.25,5150.00,2026-03-01,2026-03-14,
+F2,TB-88413,PA,"Spring Feature allowance wk 3-4 (1,440 cs shipped to stores)",Fernwell Peach Black Tea+Fernwell Yuzu Green Tea+Fernwell Hibiscus Ginger,8640,1.25,10800.00,2026-03-15,2026-03-28,
+F3,TB-88420,SH,"Shortage 24 cs Peach Black Tea, delivery 40817",Fernwell Peach Black Tea,24,27.60,662.40,2026-03-10,2026-03-10,DL-40817-1
+F4,TB-88427,PR,"Price diff Hibiscus Ginger, invoiced 29.40 vs cost 27.00",Fernwell Hibiscus Ginger,150,2.40,360.00,2026-03-17,2026-03-17,DL-40862-3
+F5,TB-88431,SP,"Unsaleables March, at actual (dented and swollen cans)",all,1,2186.40,2186.40,2026-03-01,2026-03-31,

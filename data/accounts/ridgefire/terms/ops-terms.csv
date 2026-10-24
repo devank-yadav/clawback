@@ -1,0 +1,12 @@
+key,value,source_doc,quote
+promo_rate,0.50,ridgefire-vendor-agreement-2026,"Supplier will fund a promotional allowance of $0.50 per unit on Ridgefire Roasted Tomato Salsa, Ridgefire Salsa Verde and Ridgefire Chipotle Salsa sold between March 1 and March 21, 2026."
+promo_products,Ridgefire Roasted Tomato Salsa; Ridgefire Salsa Verde; Ridgefire Chipotle Salsa,ridgefire-vendor-agreement-2026,"Supplier will fund a promotional allowance of $0.50 per unit on Ridgefire Roasted Tomato Salsa, Ridgefire Salsa Verde and Ridgefire Chipotle Salsa sold between March 1 and March 21, 2026."
+promo_start,2026-03-01,ridgefire-vendor-agreement-2026,"Supplier will fund a promotional allowance of $0.50 per unit on Ridgefire Roasted Tomato Salsa, Ridgefire Salsa Verde and Ridgefire Chipotle Salsa sold between March 1 and March 21, 2026."
+promo_end,2026-03-21,ridgefire-vendor-agreement-2026,"Supplier will fund a promotional allowance of $0.50 per unit on Ridgefire Roasted Tomato Salsa, Ridgefire Salsa Verde and Ridgefire Chipotle Salsa sold between March 1 and March 21, 2026."
+promo_cap_units,6000,ridgefire-vendor-agreement-2026,"The promotional allowance applies to a maximum of 6,000 units in total."
+promo_outside_dates,not covered,ridgefire-vendor-agreement-2026,"Units sold before or after these dates are not covered unless an amendment signed by both parties, or a written approval from one of Supplier's approved representatives, extends the feature."
+claim_once,claimed only once,ridgefire-vendor-agreement-2026,"A unit, case or fee is claimed only once; an amount already deducted or credited is not deducted again."
+shortage_basis,signed proof of delivery,ridgefire-vendor-agreement-2026,Shortages are credited only when the receiver notes them on the signed proof of delivery.
+shortage_claim_days,15,ridgefire-vendor-agreement-2026,Distributor will submit shortage claims within 15 days of delivery.
+payment_terms_days,30,ridgefire-vendor-agreement-2026,Payment terms are net 30 days from the invoice date.
+dispute_window_days,60,ridgefire-vendor-agreement-2026,Supplier will dispute a deduction by written notice to deductions@corbelgrocery.example within 60 days of the remittance date.

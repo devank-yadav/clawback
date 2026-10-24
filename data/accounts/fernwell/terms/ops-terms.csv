@@ -1,0 +1,15 @@
+key,value,source_doc,quote
+promo_rate,1.25,fernwell-trade-agreement-2026,"Supplier will fund a scan allowance of $1.25 per unit on Fernwell Peach Black Tea, Fernwell Yuzu Green Tea and Fernwell Hibiscus Ginger sold between March 1 and March 28, 2026."
+promo_products,Fernwell Peach Black Tea; Fernwell Yuzu Green Tea; Fernwell Hibiscus Ginger,fernwell-trade-agreement-2026,"Supplier will fund a scan allowance of $1.25 per unit on Fernwell Peach Black Tea, Fernwell Yuzu Green Tea and Fernwell Hibiscus Ginger sold between March 1 and March 28, 2026."
+promo_start,2026-03-01,fernwell-trade-agreement-2026,"Supplier will fund a scan allowance of $1.25 per unit on Fernwell Peach Black Tea, Fernwell Yuzu Green Tea and Fernwell Hibiscus Ginger sold between March 1 and March 28, 2026."
+promo_end,2026-03-28,fernwell-trade-agreement-2026,"Supplier will fund a scan allowance of $1.25 per unit on Fernwell Peach Black Tea, Fernwell Yuzu Green Tea and Fernwell Hibiscus Ginger sold between March 1 and March 28, 2026."
+promo_cap_units,10000,fernwell-trade-agreement-2026,"The scan allowance applies to a maximum of 10,000 units in total."
+promo_basis,units sold to end customers,fernwell-trade-agreement-2026,"The scan allowance is paid on units sold to end customers as shown in Distributor's store scan data, not on cases shipped."
+spoils_allowance_pct,2,fernwell-trade-agreement-2026,Supplier will credit Distributor an unsaleables allowance of 2% of the invoice value of Products shipped in each calendar month.
+spoils_basis,does not accept separate claims for unsaleables at actual,fernwell-trade-agreement-2026,"The unsaleables allowance covers all spoiled, damaged, dented and out-of-date Products, and Supplier does not accept separate claims for unsaleables at actual."
+shortage_basis,proof of delivery,fernwell-trade-agreement-2026,Shortages are credited only when the shortage is noted on the proof of delivery signed by Distributor's receiver.
+shortage_claim_days,15,fernwell-trade-agreement-2026,Distributor will submit shortage claims within 15 days of delivery.
+price_deduction_basis,Schedule A case price,fernwell-trade-agreement-2026,"A pricing deduction is limited to the difference between the invoiced case price and the Schedule A case price, for the cases on that delivery."
+price_change_notice_days,30,fernwell-trade-agreement-2026,Supplier will give Distributor at least 30 days' written notice of any change to the case prices in Schedule A.
+payment_terms_days,30,fernwell-trade-agreement-2026,Payment terms are net 30 days from the invoice date.
+dispute_window_days,60,fernwell-trade-agreement-2026,Supplier will dispute a deduction by written notice to deductions@tidemarkbev.example within 60 days of the remittance date.
