@@ -33,6 +33,10 @@ class Merged:
     a: ReaderResult | None = None
     b: ReaderResult | None = None
 
+    @property
+    def model_ids(self) -> tuple[str | None, str | None]:
+        return (None, self.b.model_id if self.b else None)
+
 
 def _params(t: Term | None) -> str:
     return "nothing" if t is None else ", ".join(f"{k} {v}" for k, v in t.params.items()) or t.type

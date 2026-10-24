@@ -1,12 +1,14 @@
 """Deal Reader B: a second, independent read of the same document (docs/design.md, Agents > 1).
 
-Gemini when GEMINI_API_KEY is set (the Gemini track). Until then, or if Gemini fails or its answer fails
-validation twice, a second Claude call with its own prompt (prompts/reader_b.md), as the design allows; the
-result names the model, so a run only claims two models when Gemini really answered. Both readers produce the
-same JSON (reader.LLMOutput) and go through the same quote check; api/agents/readers.py merges them.
+Gemini when GEMINI_API_KEY is set (the Gemini track): GEMINI_MODEL first, then GEMINI_FALLBACK_MODEL if it's busy
+(503), out of quota (429) or not available (404). If neither gives a valid answer, a second Claude call with its
+own prompt (prompts/reader_b.md), as the design allows. The result names the model, so a run only claims two
+models when Gemini really answered. Both readers produce the same JSON (reader.LLMOutput) and go through the same
+quote check; api/agents/readers.py merges them.
 
-Gemini call: google-genai's Interactions API with JSON output against a schema
-(ai.google.dev/gemini-api/docs/structured-output), behind replay.call_outside like every outside call.
+Gemini call: google-genai's models.generate_content with JSON output against the schema (response_json_schema),
+behind replay.call_outside like every outside call. The SDK's own retries are off (one attempt): with them on,
+a 429 waited through minutes of backoff and looked like a hang. replay.call_outside does the one retry.
 """
 
 from __future__ import annotations
@@ -25,8 +27,11 @@ from api.agents.reader import LLMOutput, ReaderResult
 from api.contracts import Term
 from api.integrations import replay
 
-# GEMINI_MODEL in .env picks another model. gemini-2.5-flash is in the team key's model list (gemini-3.8-flash isn't).
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+# Tried on the team key: gemini-3.8-flash answers 429 (no quota), gemini-2.5-flash 404 (no longer available);
+# gemini-3.6-flash (Google's general-purpose model) works but is sometimes busy, gemini-3.5-flash-lite is fast.
+# GEMINI_MODEL / GEMINI_FALLBACK_MODEL in .env override them (e.g. gemini-3.8-flash once billing is on).
+DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
+DEFAULT_GEMINI_FALLBACK = "gemini-3.5-flash-lite"
 GEMINI_SERVICE = "gemini-reader"
 CLAUDE_B_SERVICE = "claude-reader-b"
 PROMPT = (Path(__file__).parent / "prompts" / "reader_b.md").read_text()
@@ -40,35 +45,48 @@ def gemini_model() -> str:
     return os.getenv("GEMINI_MODEL", "").strip() or DEFAULT_GEMINI_MODEL
 
 
-def _ask_gemini(gemini, user: str, timeout: float) -> dict:
+def gemini_models() -> list[str]:
+    """The models Reader B tries, in order."""
+    fallback = os.getenv("GEMINI_FALLBACK_MODEL", "").strip() or DEFAULT_GEMINI_FALLBACK
+    return list(dict.fromkeys((gemini_model(), fallback)))
+
+
+def _ask_gemini(gemini, model: str, user: str, timeout: float) -> dict:
+    from google.genai import types
+
     if gemini is None:
         from google import genai
 
-        gemini = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    interaction = gemini.interactions.create(
-        model=gemini_model(), input=user, system_instruction=PROMPT, store=False, timeout=timeout,
-        response_format={"type": "text", "mime_type": "application/json", "schema": LLMOutput.model_json_schema()},
-    )
-    return json.loads(interaction.output_text)
+        gemini = genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options=types.HttpOptions(
+            timeout=int(timeout * 1000), retry_options=types.HttpRetryOptions(attempts=1)))
+    response = gemini.models.generate_content(model=model, contents=user, config=types.GenerateContentConfig(
+        system_instruction=PROMPT, response_mime_type="application/json",
+        response_json_schema=LLMOutput.model_json_schema()))
+    return json.loads(response.text)
 
 
 def _gemini(doc_id: str, user: str, check, gemini, live_first: bool):
-    """One Gemini read with one retry on a validation error. None if Gemini can't give a valid answer."""
+    """Each Gemini model in turn, each with one retry on a validation error.
+    Returns (output or None, source, errors, the model that answered)."""
     errors: list[str] = []
-    for _ in (1, 2):
-        prompt = user if not errors else (f"{user}\n\nYour previous answer failed validation:\n{errors[-1]}\n"
-                                          "Return the complete answer again, fixed.")
-        request = {"model": gemini_model(), "system": PROMPT, "user": prompt, "doc_id": doc_id}
-        try:
-            res = replay.call_outside(GEMINI_SERVICE, request, live_first=live_first,
-                                      fn=lambda req, timeout: _ask_gemini(gemini, req["user"], timeout))
-        except replay.OutsideCallFailed as e:
-            return None, "live", errors + [str(e)]
-        try:
-            return check(res.response), res.source, errors
-        except (ValidationError, ValueError) as e:
-            errors.append(str(e))
-    return None, "live", errors
+    for model in gemini_models():
+        failed: list[str] = []
+        for _ in (1, 2):
+            prompt = user if not failed else (f"{user}\n\nYour previous answer failed validation:\n{failed[-1]}\n"
+                                              "Return the complete answer again, fixed.")
+            request = {"model": model, "system": PROMPT, "user": prompt, "doc_id": doc_id}
+            try:
+                res = replay.call_outside(GEMINI_SERVICE, request, live_first=live_first,
+                                          fn=lambda req, timeout: _ask_gemini(gemini, req["model"], req["user"], timeout))
+            except replay.OutsideCallFailed as e:
+                failed.append(str(e))
+                break  # busy, out of quota or not available: the next model
+            try:
+                return check(res.response), res.source, errors + failed, model
+            except (ValidationError, ValueError) as e:
+                failed.append(str(e))
+        errors += failed
+    return None, "live", errors, None
 
 
 def read_document(doc_id: str, base_terms: Sequence[Term] = (), client: anthropic.Anthropic | None = None,
@@ -78,10 +96,10 @@ def read_document(doc_id: str, base_terms: Sequence[Term] = (), client: anthropi
     check = lambda raw: reader._to_reader_output(raw, doc, text)  # noqa: E731
     errors: list[str] = []
     if gemini is not None or gemini_configured():
-        output, source, errors = _gemini(doc_id, user, check, gemini, live_first)
+        output, source, errors, model = _gemini(doc_id, user, check, gemini, live_first)
         if output is not None:
             return ReaderResult(doc, _relabel(reader._check(output, doc, text, base_terms), "gemini"), output.unclear,
-                                source, 1 + len(errors), errors, model="gemini")
+                                source, 1 + len(errors), errors, model="gemini", model_id=model)
     ans = claude.ask(CLAUDE_B_SERVICE, PROMPT, user, LLMOutput, check, client, live_first=live_first, doc_id=doc_id)
     errors += ans.errors
     if ans.value is None:

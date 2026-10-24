@@ -154,7 +154,8 @@ def _read_terms(run: Run, client) -> list[Term]:
             run.log(f"{r.doc.sender} says: {verified[0].exact_quote} That sender can't change the deal: shown as a claim, "
                     "not applied.", "warn", "reader")
         else:
-            run.log(f"Read {doc_id} with {READER_NAMES[r.models[0]]} and {READER_NAMES[r.models[1]]}: "
+            second = READER_NAMES[r.models[1]] + (f" ({r.model_ids[1]})" if r.model_ids[1] else "")
+            run.log(f"Read {doc_id} with {READER_NAMES[r.models[0]]} and {second}: "
                     f"{len(verified)} terms agreed, every quote found word for word."
                     + (f" {len(rejected)} rejected: quote not found." if rejected else ""),
                     "good" if verified and not rejected and not disputed else "warn", "reader")

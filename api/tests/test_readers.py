@@ -88,16 +88,18 @@ def test_disputed_term_sends_its_charges_to_a_person():
 # ---------------------------------------------------------------- Gemini as Reader B
 
 class FakeGemini:
+    """Stands in for google.genai.Client: models.generate_content returns queued answers (or raises them)."""
+
     def __init__(self, outputs):
         self.outputs, self.requests = list(outputs), []
-        self.interactions = SimpleNamespace(create=self._create)
+        self.models = SimpleNamespace(generate_content=self._generate)
 
-    def _create(self, **kw):
+    def _generate(self, **kw):
         self.requests.append(kw)
-        out = self.outputs.pop(0)
+        out = self.outputs.pop(0) if self.outputs else ConnectionError("no more answers")
         if isinstance(out, BaseException):
             raise out
-        return SimpleNamespace(output_text=out if isinstance(out, str) else json.dumps(out))
+        return SimpleNamespace(text=out if isinstance(out, str) else json.dumps(out))
 
 
 def test_gemini_reads_when_configured():
@@ -105,22 +107,38 @@ def test_gemini_reads_when_configured():
     m = readers.read_both("spring-promo", client=TwoReaders(), gemini=gemini)
     assert m.models == ("claude", "gemini") and set(statuses(m).values()) == {"verified"}
     req = gemini.requests[0]
-    assert (req["model"], req["store"], req["system_instruction"]) == ("gemini-2.5-flash", False, reader_b.PROMPT)
-    assert req["response_format"]["mime_type"] == "application/json" and "properties" in req["response_format"]["schema"]
-    assert "Document ID: spring-promo" in req["input"]
+    assert (req["model"], req["config"].system_instruction) == (reader_b.DEFAULT_GEMINI_MODEL, reader_b.PROMPT)
+    assert req["config"].response_mime_type == "application/json" and "properties" in req["config"].response_json_schema
+    assert "Document ID: spring-promo" in req["contents"] and m.model_ids[1] == reader_b.DEFAULT_GEMINI_MODEL
+
+
+def test_busy_gemini_model_hands_over_to_the_second_one(monkeypatch):
+    monkeypatch.setattr(replay.time, "sleep", lambda s: None)
+    gemini = FakeGemini([ConnectionError("503"), ConnectionError("503"), answer(SPRING)])
+    m = readers.read_both("spring-promo", client=TwoReaders(), gemini=gemini)
+    assert m.models == ("claude", "gemini") and m.model_ids[1] == reader_b.DEFAULT_GEMINI_FALLBACK
+    assert [r["model"] for r in gemini.requests] == [reader_b.DEFAULT_GEMINI_MODEL] * 2 + [reader_b.DEFAULT_GEMINI_FALLBACK]
 
 
 def test_gemini_failing_falls_back_to_a_second_claude_read(monkeypatch):
     monkeypatch.setattr(replay.time, "sleep", lambda s: None)
-    gemini = FakeGemini([ConnectionError("down"), ConnectionError("down")])
+    gemini = FakeGemini([ConnectionError("down")] * 4)  # both models, both tries
     m = readers.read_both("spring-promo", client=TwoReaders(), gemini=gemini)
-    assert m.models == ("claude", "claude-b") and set(statuses(m).values()) == {"verified"}
+    assert m.models == ("claude", "claude-b") and set(statuses(m).values()) == {"verified"} and len(gemini.requests) == 4
 
 
 def test_gemini_invalid_answer_twice_falls_back():
-    gemini = FakeGemini([{"terms": [{"type": "promo_rate"}], "unclear": []}, {"terms": "nope", "unclear": []}])
+    bad = [{"terms": [{"type": "promo_rate"}], "unclear": []}, {"terms": "nope", "unclear": []}]
+    gemini = FakeGemini(bad + bad)  # each model gets one retry with the error; then Claude
     m = readers.read_both("spring-promo", client=TwoReaders(), gemini=gemini)
-    assert m.models == ("claude", "claude-b") and len(gemini.requests) == 2  # one retry with the error, then Claude
+    assert m.models == ("claude", "claude-b") and len(gemini.requests) == 4
+
+
+def test_gemini_model_settings(monkeypatch):
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.8-flash")
+    assert reader_b.gemini_models() == ["gemini-3.8-flash", reader_b.DEFAULT_GEMINI_FALLBACK]
+    monkeypatch.setenv("GEMINI_FALLBACK_MODEL", "gemini-3.8-flash")
+    assert reader_b.gemini_models() == ["gemini-3.8-flash"]
 
 
 def test_broker_and_claim_documents_merge_too():
