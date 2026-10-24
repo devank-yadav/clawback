@@ -1,5 +1,6 @@
 """D9 / F10: the controller's yes posts the credit memo and the open-balance note; a no posts nothing."""
 
+import itertools
 import json
 from decimal import Decimal as D
 
@@ -165,9 +166,22 @@ def pending_id(run):
 # ---------------------------------------------------------------- the live QuickBooks client, offline
 
 class FakeQBO:
+    """The seeded sandbox, offline: Northmart (58), the allowance item (21), INV-3102 (130) and the seed's $41,350
+    payment (150), plus whatever is written to it. A delete needs the latest SyncToken, and a credit memo that a
+    payment still applies can't be deleted."""
+
     def __init__(self, fail=False):
         self.requests: list[httpx.Request] = []
         self.fail = fail
+        self.ids = itertools.count(201)
+        self.invoice = {"Id": "130", "SyncToken": "2", "CustomerRef": {"value": "58"}}
+        self.rows = {"CreditMemo": {}, "Payment": {"150": {
+            "Id": "150", "SyncToken": "0", "TotalAmt": 41350.0, "CustomerRef": {"value": "58"},
+            "Line": [{"Amount": 41350.0, "LinkedTxn": [{"TxnId": "130", "TxnType": "Invoice"}]}]}}}
+
+    def applied(self, memo_id):
+        return any(lt == {"TxnId": memo_id, "TxnType": "CreditMemo"}
+                   for p in self.rows["Payment"].values() for ln in p["Line"] for lt in ln["LinkedTxn"])
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
@@ -176,15 +190,26 @@ class FakeQBO:
         path, q = request.url.path, request.url.params
         if path.endswith("/query"):
             entity = q["query"].split()[3]
-            row = {"Customer": {"Id": "58"}, "Item": {"Id": "21"},
-                   "Invoice": {"Id": "130", "SyncToken": "2", "CustomerRef": {"value": "58"}}}[entity]
-            return httpx.Response(200, json={"QueryResponse": {entity: [row]}})
+            rows = {"Customer": [{"Id": "58"}], "Item": [{"Id": "21"}], "Invoice": [self.invoice],
+                    **{e: list(found.values()) for e, found in self.rows.items()}}[entity]
+            return httpx.Response(200, json={"QueryResponse": {entity: rows} if rows else {}})
         body = json.loads(request.content)
-        if path.endswith("/creditmemo"):
-            return httpx.Response(200, json={"CreditMemo": {"Id": "201", "TotalAmt": sum(l["Amount"] for l in body["Line"])}})
-        if path.endswith("/payment"):
-            return httpx.Response(200, json={"Payment": {"Id": "202", "TotalAmt": 0}})
-        return httpx.Response(200, json={"Invoice": {"Id": body["Id"], "SyncToken": "3"}})
+        entity = {"creditmemo": "CreditMemo", "payment": "Payment", "invoice": "Invoice"}[path.rsplit("/", 1)[-1]]
+        if q.get("operation") == "delete":
+            row = self.rows[entity].get(body["Id"])
+            stale = row is None or row["SyncToken"] != body["SyncToken"]
+            if stale or (entity == "CreditMemo" and self.applied(body["Id"])):
+                return httpx.Response(400, text=f"can't delete {entity} {body['Id']}")
+            del self.rows[entity][body["Id"]]
+            return httpx.Response(200, json={entity: {"status": "Deleted", "domain": "QBO", "Id": body["Id"]}})
+        if entity == "Invoice":  # the sparse note update
+            self.invoice = {**self.invoice, "PrivateNote": body["PrivateNote"],
+                            "SyncToken": str(int(self.invoice["SyncToken"]) + 1)}
+            return httpx.Response(200, json={"Invoice": self.invoice})
+        made = {**body, "Id": str(next(self.ids)), "SyncToken": "0",
+                "TotalAmt": body.get("TotalAmt", sum(ln["Amount"] for ln in body["Line"]))}
+        self.rows[entity][made["Id"]] = made
+        return httpx.Response(200, json={entity: made})
 
 
 def live_books(fake):
@@ -204,6 +229,7 @@ def test_live_client_sends_intuit_shaped_writes_with_request_ids():
     cm, pay, inv = (json.loads(r.content) for r in writes)
     assert cm["CustomerRef"] == {"value": "58"} and cm["Line"][0]["SalesItemLineDetail"]["ItemRef"] == {"value": "21"}
     assert pay["TotalAmt"] == 0 and [l["LinkedTxn"][0]["TxnType"] for l in pay["Line"]] == ["Invoice", "CreditMemo"]
+    assert (cm["PrivateNote"], pay["PrivateNote"]) == ("Clawback AP-1", "Clawback AP-1-apply")  # how a reset finds them
     assert inv == {"Id": "130", "SyncToken": "2", "sparse": True, "PrivateNote": "Open $4,120.00 disputed"}
     assert all(r.headers["Authorization"] == "Bearer test-access-token" for r in fake.requests)
 
@@ -232,3 +258,85 @@ def test_demo_mode_posts_to_the_stand_in_even_with_keys(monkeypatch):
     monkeypatch.delenv("DEMO_MODE")
     qbo.reset()
     assert isinstance(qbo.books(), qbo.LiveBooks)  # keys and no DEMO_MODE: the sandbox
+
+
+# ---------------------------------------------------------------- POST /demo/reset undoes the books
+
+def sandbox_yes(monkeypatch, fake):
+    """March decided, then Sam's yes written to the fake sandbox."""
+    run = finished_march(ScenarioClaude())
+    monkeypatch.setattr(qbo, "_books", live_books(fake))
+    pipeline.decide_approval(pending(run).id, True)
+    return run
+
+
+def test_reset_deletes_the_payment_then_the_memo_and_clears_the_note(monkeypatch):
+    fake = FakeQBO()
+    sandbox_yes(monkeypatch, fake)
+    assert (set(fake.rows["CreditMemo"]), set(fake.rows["Payment"])) == ({"201"}, {"150", "202"})
+    assert fake.invoice["PrivateNote"].startswith("Open $4,120.00 disputed with Northmart:")
+    sent = len(fake.requests)
+    undone = qbo.books().undo_demo_writes()
+    assert [(u.entity, u.id, u.action, u.simulated) for u in undone] == [
+        ("Payment", "202", "deleted", False), ("CreditMemo", "201", "deleted", False),
+        ("Invoice", "130", "note cleared", False)]
+    writes = [r for r in fake.requests[sent:] if r.method == "POST"]
+    assert [(r.url.path.rsplit("/", 1)[-1], r.url.params.get("operation"), json.loads(r.content)) for r in writes] == [
+        ("payment", "delete", {"Id": "202", "SyncToken": "0"}),
+        ("creditmemo", "delete", {"Id": "201", "SyncToken": "0"}),
+        ("invoice", None, {"Id": "130", "SyncToken": "3", "sparse": True, "PrivateNote": ""})]
+    assert [r.url.params["requestid"] for r in writes] == ["undo-payment-202", "undo-creditmemo-201", "undo-note-130-3"]
+    assert all(r.url.params["minorversion"] == "75" for r in writes)
+    assert (set(fake.rows["Payment"]), fake.rows["CreditMemo"], fake.invoice["PrivateNote"]) == ({"150"}, {}, "")
+    sent = len(fake.requests)
+    assert qbo.books().undo_demo_writes() == []  # a second reset finds nothing and writes nothing
+    assert all(r.method == "GET" for r in fake.requests[sent:])
+
+
+def test_reset_finds_a_payment_written_before_payments_had_a_note(monkeypatch):
+    fake = FakeQBO()
+    sandbox_yes(monkeypatch, fake)
+    del fake.rows["Payment"]["202"]["PrivateNote"]  # how apply_to_invoice wrote it until now
+    assert [(u.entity, u.id) for u in qbo.books().undo_demo_writes()] == [
+        ("Payment", "202"), ("CreditMemo", "201"), ("Invoice", "130")]
+    assert set(fake.rows["Payment"]) == {"150"}  # the seed's $41,350 payment stays
+
+
+def test_stand_in_reset_clears_its_own_records():
+    fake = PortalClaude()
+    run = finished_march(fake)
+    pipeline.decide_approval(pending(run).id, True)
+    disputes.post("D-0417", "Signed amendment attached.", attachment_doc_id="amendment-1", client=fake)
+    books = qbo.books()
+    assert isinstance(books, qbo.StandInBooks) and len(books.calls) == 6  # two memos, two payments, two notes
+    undone = books.undo_demo_writes()
+    assert [(u.entity, u.action, u.simulated) for u in undone] == [
+        ("Payment", "deleted", True), ("Payment", "deleted", True), ("CreditMemo", "deleted", True),
+        ("CreditMemo", "deleted", True), ("Invoice", "note cleared", True)]
+    assert all(u.id.startswith("sim-") for u in undone)
+    assert all(u.note.startswith("Clawback ") for u in undone[:4]) and undone[4].note.startswith("Open $3,120.00")
+    assert books.calls == [] and books.undo_demo_writes() == []
+
+
+def test_reset_route_says_what_it_removed_and_resets_even_if_quickbooks_fails(api, monkeypatch):
+    sandbox_yes(monkeypatch, FakeQBO())
+    r = api.post("/demo/reset").json()
+    assert (r["ok"], r["stub"], "error" in r) == (True, False, False)
+    assert [(u["entity"], u["id"], u["action"]) for u in r["quickbooks"]] == [
+        ("Payment", "202", "deleted"), ("CreditMemo", "201", "deleted"), ("Invoice", "130", "note cleared")]
+    assert r["quickbooks"][1]["note"].startswith("Clawback AP-") and pipeline.RUNS == {} and qbo._books is None
+
+    finished_march(ScenarioClaude())
+    monkeypatch.setattr(qbo, "_books", live_books(FakeQBO(fail=True)))
+    r = api.post("/demo/reset").json()
+    assert (r["ok"], r["stub"], r["quickbooks"]) == (False, False, []) and "returned 500" in r["error"]
+    assert pipeline.RUNS == {} and qbo._books is None  # the in-memory demo still resets
+
+
+def test_reset_route_with_the_stand_in(api):
+    run = finished_march(ScenarioClaude())
+    pipeline.decide_approval(pending(run).id, True)
+    r = api.post("/demo/reset").json()
+    assert r["ok"] and [(u["entity"], u["simulated"]) for u in r["quickbooks"]] == [
+        ("Payment", True), ("CreditMemo", True), ("Invoice", True)]
+    assert api.post("/demo/reset").json() == {"ok": True, "stub": False, "quickbooks": []}
