@@ -1,7 +1,8 @@
 # Judge flashcards
 
 15 likely questions with two-line answers. Facts only from docs/design.md (Judge Q&A, Responsible design and the
-scenario). Point at the screen named in brackets. Fill [EVAL SCORE] and [QUOTE] before judging.
+scenario). Point at the screen named in brackets. Everyone named is fictional. Fill [QUOTE] before judging; the eval score
+is from eval/latest.json and eval/latest-agent.json (see docs/submission/devpost.md).
 
 ---
 
@@ -30,8 +31,8 @@ Only approved senders or a document signed by both parties can change a deal; an
 claim. It's in our eval. [Northmart "$1.50" email shown as a claim]
 
 **7. How accurate is it?**
-[EVAL SCORE] on 30 planted charges, with [N] wrong automatic actions; the target is 0.
-The answer key was written before the first run. [Results / scoreboard]
+30 of 30 on 30 planted charges, amounts to the cent, 6 asked, 0 wrong automatic actions, in both eval modes.
+The answer key was written before the first run; we wrote the cases ourselves. [Results / scoreboard]
 
 **8. How does this reach production?**
 Real portals through browser automation (recovery services already do this), adapters for NetSuite or Xero
