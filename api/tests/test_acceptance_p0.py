@@ -265,17 +265,19 @@ def _finished_march(client) -> tuple[pipeline.Run, str]:
     return march, approval.id
 
 
-def test_f10_controller_yes_in_app_queues_the_memo(client):
+def test_f10_controller_yes_in_app_posts_the_memo(client):
     march, ap = _finished_march(client)
     r = client.post(f"/approvals/{ap}", json={"approve": True})
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["approval"]["status"] == "approved"
     post = body["ledger_post"]
-    assert (post["qbo_entity"], post["amount"], post["approval_id"]) == ("credit_memo", 2730.0, ap)
+    assert (post["qbo_entity"], post["amount"], post["approval_id"], post["status"]) == (
+        "credit_memo", 2730.0, ap, "posted")
     assert {ln["charge_id"]: ln["amount"] for ln in post["lines"]} == {"C1": 1200.0, "C3": 330.0, "C6": 1200.0}
     assert [e.data.status for e in march.events if e.type == "approval"] == ["pending", "approved"]
-    assert [e.data.id for e in march.events if e.type == "ledger_post"] == [post["id"]]
+    # the memo, then the invoice's open-balance note (api/pipeline._post_books)
+    assert [e.data.qbo_entity for e in march.events if e.type == "ledger_post"] == ["credit_memo", "invoice_note"]
     assert client.post(f"/approvals/{ap}", json={"approve": False}).status_code == 409
 
 

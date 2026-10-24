@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 
 from api import pipeline
-from api.contracts import Approval, ApprovalDecisionRequest, ApprovalDecisionResponse
+from api.contracts import Approval, ApprovalDecisionRequest, ApprovalDecisionResponse, InboxResponse
 from api.stubs import fixtures
 
 router = APIRouter(tags=["approvals"])
@@ -29,13 +29,14 @@ reset()
 
 @router.post("/approvals/{approval_id}", response_model=ApprovalDecisionResponse)
 def decide(approval_id: str, req: ApprovalDecisionRequest) -> ApprovalDecisionResponse:
-    """Approve queues the credit memo; refuse posts nothing and keeps the note for the card."""
+    """Approve posts the credit memo to QuickBooks; refuse posts nothing and keeps the note for the card."""
     if pipeline.find_approval(approval_id):
         try:
-            approval, post = pipeline.decide_approval(approval_id, req.approve, req.note)
+            approval, posts = pipeline.decide_approval(approval_id, req.approve, req.note)
         except ValueError as e:
             raise HTTPException(409, str(e)) from e
-        return ApprovalDecisionResponse(approval=approval, ledger_post=post)
+        memo = next((p for p in posts if p.qbo_entity == "credit_memo"), None)
+        return ApprovalDecisionResponse(approval=approval, ledger_post=memo, ledger_posts=posts)
     approval = _approvals.get(approval_id)
     if approval is None:
         raise HTTPException(404, f"unknown approval {approval_id}")
@@ -47,3 +48,10 @@ def decide(approval_id: str, req: ApprovalDecisionRequest) -> ApprovalDecisionRe
     _approvals[approval_id] = decided
     return ApprovalDecisionResponse(approval=decided,
                                     ledger_post=fixtures.credit_memo(posted_at=now) if req.approve else None)
+
+
+@router.get("/inbox", response_model=InboxResponse)
+def inbox() -> InboxResponse:
+    """What waits on Dana or Sam right now (the /inbox screen, and the fallback when texts don't arrive)."""
+    questions, approvals = pipeline.inbox()
+    return InboxResponse(questions=questions, approvals=approvals)

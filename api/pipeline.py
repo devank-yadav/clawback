@@ -27,13 +27,15 @@ from api.engine import gate, totals
 from api.engine import types as eng
 from api.engine.allowed import compute_allowed
 from api.engine.policy import load_policy
-from api.integrations import replay
+from api.integrations import qbo, replay, sms
 
 log = logging.getLogger("clawback.pipeline")
 
 # The demo scenario (data/CLAUDE.md): fixed by design, not computed here.
 COUNTERPARTY = "Northmart"
 OWNER = "Dana Okafor"
+CONTROLLER = "Sam Reyes"
+NAMES = {"owner": OWNER.split()[0], "controller": CONTROLLER.split()[0]}
 INVOICE_ID = "INV-3102"
 EXPECTED = Decimal("48200.00")
 RECEIVED = Decimal("41350.00")
@@ -98,6 +100,8 @@ def reset() -> None:
     with _state:
         RUNS.clear(), RULES.clear(), QUESTIONS.clear()
         _counter.update(question=0, dispute=0)
+    qbo.reset()
+    sms.outbox.clear()
 
 
 def start(kind: str = "march", client: anthropic.Anthropic | None = None, background: bool = True) -> Run:
@@ -257,11 +261,22 @@ def _ask_owner(run: Run, charge_id: str) -> None:
     with _state:
         _counter["question"] += 1
         qid = f"Q-{_counter['question']}"
-    q = Question(id=qid, to_role="owner", charge_id=charge_id, text=text, channel="sms", sent_at=_now())
+    status = sms.send("owner", text)
+    q = Question(id=qid, to_role="owner", charge_id=charge_id, text=text, channel="sms" if status == "sent" else "inbox",
+                 sent_at=_now())
     run.questions[qid] = q
     QUESTIONS[qid] = (run.id, charge_id)
     run.emit("question", q)
-    run.log(f"Asked {OWNER.split()[0]} one question about {charge_id}.", actor="gate", charge_id=charge_id)
+    run.log(f"Asked {NAMES['owner']} one question about {charge_id}" + (" by text." if status == "sent" else
+            f" in the inbox (text {status})."), actor="gate", charge_id=charge_id)
+
+
+def _tell(run: Run, role: str, text: str, level: str = "info", charge_id: str | None = None) -> None:
+    """Text someone first (not a reply: replies to their texts go back in the webhook's TwiML, via run.texts).
+    The log says whether it went out or waits in the inbox."""
+    status = sms.send(role, text)
+    where = "Texted" if status == "sent" else f"In the inbox (text {status}) for"
+    run.log(f"{where} {NAMES[role]}: \"{text}\"", level, "gate" if role == "owner" else "bookkeeper", charge_id)
 
 
 def _after_decisions(run: Run, policy: eng.Policy) -> None:
@@ -315,14 +330,22 @@ def _request_credit_memo(run: Run, policy: eng.Policy, accepted: list[tuple[str,
     needs_sam = gate.needs_controller(amount, policy)
     n = len({e.data.id for e in run.events if e.type == "approval"}) + 1
     approval_id = f"AP-{run.id}" if n == 1 else f"AP-{run.id}-{n}"
-    run.emit("approval", Approval(id=approval_id, kind="credit_memo", amount=amount,
-                                  lines=[ApprovalLine(charge_id=cid, amount=a) for cid, a in accepted],
-                                  proposed_by="bookkeeper", approver_role="controller",
-                                  status="pending" if needs_sam else "approved",
-                                  text=f"Approve credit memo of ${amount:,.0f} ({len(accepted)} lines)?",
-                                  requested_at=_now()))
-    run.log(f"Asked Sam (controller) to approve a ${amount:,.0f} credit memo. Nothing posts until Sam says yes."
-            if needs_sam else f"Credit memo of ${amount:,.0f} is within policy; no controller needed.", actor="bookkeeper")
+    approval = Approval(id=approval_id, kind="credit_memo", amount=amount,
+                        lines=[ApprovalLine(charge_id=cid, amount=a) for cid, a in accepted],
+                        proposed_by="bookkeeper", approver_role="controller", status="pending",
+                        text=f"Approve credit memo of ${amount:,.0f} ({len(accepted)} lines)?", requested_at=_now())
+    if needs_sam:
+        run.emit("approval", approval)
+        run.log(f"Credit memo of ${amount:,.0f} waits on {NAMES['controller']} (controller). Nothing posts until "
+                f"{NAMES['controller']} says yes.", actor="bookkeeper")
+        _tell(run, "controller", f"{approval.text} Reply YES to approve, or NO with a note to hold it.")
+        return
+    approved = approval.model_copy(update={
+        "status": "approved", "decided_at": _now(),
+        "note": f"Within policy: credit memos up to ${policy.controller_approval_over:,.0f} post without the controller."})
+    run.emit("approval", approved)
+    run.log(f"Credit memo of ${amount:,.0f} is within policy; no controller needed.", actor="bookkeeper")
+    _post_books(run, approved)
 
 
 def answer(question_id: str, text: str, from_role: str = "owner",
@@ -424,30 +447,102 @@ def pending_approval(role: str = "controller") -> str | None:
     return None
 
 
-def decide_approval(approval_id: str, approve: bool, note: str | None = None) -> tuple[Approval, LedgerPost | None]:
-    """The controller's yes or no on a run's credit memo (in-app or SMS). Yes queues the memo for QuickBooks, one
-    line per accepted charge, with the amounts the approval already holds; no posts nothing and keeps the note.
-    Raises KeyError if no live run asked for it, ValueError if it was already decided."""
+class AlreadyDecided(ValueError):
+    def __init__(self, approval: Approval):
+        super().__init__(f"{approval.id} is already {approval.status}")
+        self.approval = approval
+
+
+def decide_approval(approval_id: str, approve: bool, note: str | None = None) -> tuple[Approval, list[LedgerPost]]:
+    """The controller's yes or no on a run's credit memo (in-app or SMS). Yes posts it to QuickBooks (_post_books:
+    the memo, applied to the invoice, plus the disputed-balance note); no posts nothing, keeps the note and tells
+    the owner. Raises KeyError if no live run asked for it, AlreadyDecided (a ValueError) if it was decided."""
     with _state:  # an SMS yes and an in-app yes arriving together decide it once
         found = find_approval(approval_id)
         if found is None:
             raise KeyError(approval_id)
         run, approval = found
         if approval.status != "pending":
-            raise ValueError(f"{approval_id} is already {approval.status}")
-        decided = approval.model_copy(update={"status": "approved" if approve else "refused", "note": note,
+            raise AlreadyDecided(approval)
+        decided = approval.model_copy(update={"status": "approved" if approve else "refused", "note": note or None,
                                               "decided_at": _now()})
         run.emit("approval", decided)
+    sam = NAMES["controller"]
     if not approve:
-        run.log(f"Sam refused the ${approval.amount:,.0f} credit memo. Nothing posts to QuickBooks; Sam's note is on "
-                f"the card and the memo goes back to {OWNER.split()[0]}.", "warn", "controller")
-        return decided, None
-    run.log(f"Sam approved the ${approval.amount:,.0f} credit memo.", "good", "controller")
-    n = sum(1 for e in run.events if e.type == "ledger_post") + 1
-    post = LedgerPost(id=f"LP-{run.id}-{n}", qbo_entity="credit_memo", qbo_id=None, amount=approval.amount,
-                      lines=[LedgerLine(charge_id=ln.charge_id, description=run.charges[ln.charge_id].description,
-                                        amount=ln.amount) for ln in approval.lines],
-                      status="pending", approval_id=approval_id,
-                      note=f"Approved by Sam; waiting for the QuickBooks write to {INVOICE_ID}.")
-    run.emit("ledger_post", post)
-    return decided, post
+        run.log(f"{sam} refused the ${approval.amount:,.0f} credit memo" + (f": \"{note}\"" if note else "")
+                + f". Nothing posts to QuickBooks; the note is on the card and the memo goes back to {NAMES['owner']}.",
+                "warn", "controller")
+        _tell(run, "owner", f"{sam} held the ${approval.amount:,.0f} credit memo" + (f": {note}" if note else "")
+              + ". Nothing was posted to QuickBooks.", "warn")
+        return decided, []
+    run.log(f"{sam} approved the ${approval.amount:,.0f} credit memo. Posting to QuickBooks.", "good", "controller")
+    return decided, _post_books(run, decided)
+
+
+def _open_dispute_lines(run: Run) -> list[DisputeLine]:
+    latest: dict[str, Dispute] = {}
+    for e in run.events:
+        if e.type == "dispute":
+            latest[e.data.id] = e.data
+    return [ln for d in latest.values() if d.status != "withdrawn" for ln in d.lines]
+
+
+def _post_books(run: Run, approval: Approval) -> list[LedgerPost]:
+    """Write an approved credit memo to QuickBooks, apply it to the invoice and note the disputed balance.
+    Request ids come from the approval id, so a retry never posts twice."""
+    books = qbo.books()
+    sim = " Simulated: QuickBooks keys aren't set yet." if books.simulated else ""
+    invoice_no = INVOICE_ID if run.kind == "march" else None
+    lines = [LedgerLine(charge_id=ln.charge_id, amount=ln.amount,
+                        description=f"{run.charges[ln.charge_id].ref}: {run.charges[ln.charge_id].description}")
+             for ln in approval.lines]
+    posts: list[LedgerPost] = []
+    try:
+        memo = books.post_credit_memo(f"{approval.id}-memo", [qbo.Line(ln.charge_id, ln.description, ln.amount)
+                                                             for ln in lines],
+                                      memo=f"Clawback {approval.id}: accepted deductions "
+                                           f"{', '.join(ln.charge_id for ln in lines)}")
+        if invoice_no:
+            books.apply_to_invoice(f"{approval.id}-apply", invoice_no, memo.id, approval.amount)
+        posts.append(LedgerPost(id=f"LP-{approval.id}", qbo_entity="credit_memo", qbo_id=memo.id,
+                                amount=approval.amount, lines=lines, status="posted", approval_id=approval.id,
+                                note=(f"Applied to {invoice_no}." if invoice_no else
+                                      "Left unapplied: this run has no invoice in QuickBooks.") + sim,
+                                posted_at=_now()))
+        open_lines = _open_dispute_lines(run) if invoice_no else []
+        if open_lines:
+            total = totals.total_of(ln.amount for ln in open_lines)
+            note = (f"Open ${total:,.2f} disputed with {COUNTERPARTY}: "
+                    + "; ".join(f"{ln.charge_id} {ln.ref} ${ln.amount:,.2f}" for ln in open_lines))
+            noted = books.note_open_balance(f"{approval.id}-note", invoice_no, note, total)
+            posts.append(LedgerPost(id=f"LP-{approval.id}-note", qbo_entity="invoice_note", qbo_id=noted.id,
+                                    amount=total, status="posted", approval_id=approval.id, note=note + sim,
+                                    lines=[LedgerLine(charge_id=ln.charge_id, description=f"{ln.ref}: {ln.reason}",
+                                                      amount=ln.amount) for ln in open_lines], posted_at=_now()))
+    except qbo.BooksError as e:
+        posts.append(LedgerPost(id=f"LP-{approval.id}", qbo_entity="credit_memo", qbo_id=None, amount=approval.amount,
+                                lines=lines, status="failed", approval_id=approval.id,
+                                note=f"QuickBooks write failed ({e}). A retry uses the same request ids, so it posts once."))
+    for p in posts:
+        run.emit("ledger_post", p)
+    if posts and posts[0].status == "posted":
+        run.log(f"QuickBooks: ${approval.amount:,.0f} credit memo posted"
+                + (f" and applied to {invoice_no}" if invoice_no else "")
+                + (f"; ${posts[1].amount:,.0f} stays open, noted with the dispute lines" if len(posts) > 1 else "")
+                + (" (simulated until the QuickBooks keys are set)." if books.simulated else "."), "good", "bookkeeper")
+    else:
+        run.log(f"QuickBooks write failed for {approval.id}; nothing half-posted is shown as done.", "error", "bookkeeper")
+    return posts
+
+
+def inbox() -> tuple[list[Question], list[Approval]]:
+    """Open owner questions and approvals waiting on the controller, across live runs."""
+    questions = [q for run in RUNS.values() for q in run.questions.values() if q.answer is None]
+    pending = []
+    for run in RUNS.values():
+        latest: dict[str, Approval] = {}
+        for e in run.events:
+            if e.type == "approval":
+                latest[e.data.id] = e.data
+        pending += [a for a in latest.values() if a.status == "pending"]
+    return questions, pending

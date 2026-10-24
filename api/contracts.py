@@ -382,6 +382,14 @@ class ApprovalDecisionRequest(Contract):
 class ApprovalDecisionResponse(Contract):
     approval: Approval
     ledger_post: LedgerPost | None  # the credit memo that posted; None when refused (nothing posts)
+    ledger_posts: list[LedgerPost] = []  # everything that posted: the memo and the invoice's open-balance note
+
+
+class InboxResponse(Contract):
+    """GET /inbox: what waits on a person, for the in-app fallback to the texts."""
+
+    questions: list[Question]  # open owner questions
+    approvals: list[Approval]  # credit memos waiting on the controller
 
 
 # ---------------------------------------------------------------- the other side: disputes and the portal
