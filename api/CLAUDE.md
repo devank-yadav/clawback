@@ -33,6 +33,10 @@ decision gate and approvals; Data model; API, live updates and integrations.
   /webhooks/twilio/sms (signature checked when TWILIO_AUTH_TOKEN is set).
 - Every document is read twice (api/agents/readers.py): Reader A is Claude, Reader B is Gemini when GEMINI_API_KEY is
   set and a second Claude prompt until then (the log says which). Re-record Reader B with Gemini once the key works.
+- Nessie (api/integrations/nessie.py): with NESSIE_API_KEY and NESSIE_ACCOUNT_ID the app polls the account every 5 s
+  and a new Northmart deposit starts the March run; POST /payments/northmart is the "Northmart pays" button (posts the
+  deposit, or starts the run directly without keys or in DEMO_MODE); GET /runs/latest finds the run.
+- Tests never call live services: api/conftest.py blanks every live key for the session and blocks real Claude clients.
 - POST /coach redlines summer-draft from the newest finished March run (api/agents/coach.py); POST /scenario runs a
   pasted clause and charge (api/scenario.py); GET /scenario/examples has three recorded cases.
 - Stub routes serve the fixture run in api/stubs/fixtures.py. After changing it, run `python -m api.stubs.fixtures`
