@@ -23,6 +23,7 @@ from api.contracts import Document
 DATA = accounts.DATA
 
 _PASTED: dict[str, tuple[Document, str]] = {}  # the judge's clauses from the scenario box
+_PASTED_BY: dict[str, str] = {}  # pasted doc id -> the account it was pasted for (the readers run on other threads)
 
 _EMAIL = re.compile(r"[\w.+-]+@[\w.-]+\.\w+")
 _MD_DATE = re.compile(r"\*\*(?:[A-Za-z ]*?date):\*\*\s*([A-Z][a-z]+ \d{1,2}, \d{4})", re.I)
@@ -67,9 +68,11 @@ def file(doc_id: str) -> Path:
 
 
 def account_of(doc_id: str) -> accounts.Account:
-    """The account a document belongs to; a pasted one (scenario box, eval) belongs to the current account."""
+    """The account a document belongs to; a pasted one (scenario box, eval) to the account it was pasted for."""
     found = accounts.document(doc_id)
-    return found[0] if found else accounts.current()
+    if found:
+        return found[0]
+    return accounts.get(_PASTED_BY[doc_id]) if doc_id in _PASTED_BY else accounts.current()
 
 
 def _kind(doc_id: str, folder: str) -> str:
@@ -95,6 +98,7 @@ def paste(text: str, kind: str = "deal", sender: str | None = None, received_at:
                    approved_sender=_approved(sender, accounts.current()), signed_by_both=kind == "deal",
                    received_at=received_at, sha256=sha)
     _PASTED[doc.id] = (doc, text)
+    _PASTED_BY[doc.id] = accounts.current().id
     return doc
 
 

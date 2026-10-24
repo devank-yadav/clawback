@@ -393,8 +393,7 @@ def _ask_owner(run: Run, charge_id: str) -> None:
         QUESTIONS[qid] = (run.id, charge_id)
         run.emit("question", q)
         run.log(f"Didn't ask {run.name('owner')} about {charge_id}: a newer run ({replaced_by}) replaced this one.",
-                "warn",
-                "gate", charge_id)
+                "warn", "gate", charge_id)
         return
     status = sms.send("owner", text)
     q = Question(id=qid, to_role="owner", charge_id=charge_id, text=text, channel="sms" if status == "sent" else "inbox",

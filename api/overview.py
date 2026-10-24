@@ -10,7 +10,8 @@ engine's total_of (api/engine/totals.py); this module only picks rows and groups
   dispute: history rows whose outcome is open, and the current run's open dispute lines. open_balance is what's still
   owed: the open history rows' unrecovered amounts, plus the current invoice's balance (all of it until the payment
   arrives; then expected - received - the credit memos posted).
-- deductions_by_type: history deductions in the window plus the current run's charges, by code.
+- deductions_by_type: history deductions in the window plus the current run's charges (a history row with the same
+  ref as one of them counts once), by code.
 - recent_remittances: the newest six payments, the current one included once it arrived.
 """
 
@@ -135,12 +136,12 @@ def overview(account: accounts.Account, item: AccountListItem, now: Current | No
     if now.paid and not current_in_history:
         paid[last].append(now.received)
         deducted[last].append(now.taken if now.taken is not None else total_of([inv.expected, -now.received]))
-    in_window = []
+    in_window, taken_now = [], {c.ref for c in now.charges.values()}
     for r in deductions:
         key = parse_month(r.month, last)
         if key is not None:
             recovered[key].append(r.recovered)
-            if key in keys:
+            if key in keys and r.ref not in taken_now:  # a charge of the current run counts once, from the run
                 in_window.append(r)
 
     months = [MonthTotals(month=k, invoiced=_sum(invoiced[k]), paid=_sum(paid[k]), deducted=_sum(deducted[k]),
@@ -155,7 +156,10 @@ def overview(account: accounts.Account, item: AccountListItem, now: Current | No
                    key=lambda t: (-t.amount, t.code))
 
     still_open = [r for r in deductions if (r.outcome or "").strip().lower() in OPEN_OUTCOMES]
-    balance = (total_of([inv.expected, -now.received, -now.credited]) if now.paid else inv.expected)
+    if now.paid:
+        balance = total_of([inv.expected, -now.received, -now.credited])
+    else:  # nothing paid yet, unless history already has the current invoice's payment
+        balance = total_of([inv.expected, *(-r.paid for r in remittances if r.invoice == inv.id)])
     sums = {f: _sum(getattr(m, f) for m in months) for f in ("invoiced", "paid", "deducted", "recovered")}
     rate = float((sums["recovered"] / sums["deducted"]).quantize(Decimal("0.0001"))) if sums["deducted"] else 0.0
     kpis = AccountKpis(invoiced_6m=sums["invoiced"], collected_6m=sums["paid"], deducted_6m=sums["deducted"],

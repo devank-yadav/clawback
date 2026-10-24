@@ -199,6 +199,16 @@ def test_approved_senders_are_the_accounts_own(two_accounts):
     assert documents.paste("x", kind="email", sender="jordan@peakbar-broker.example").approved_sender
 
 
+def test_a_pasted_clause_belongs_to_the_account_it_was_pasted_for(two_accounts):
+    """The readers run on worker threads, where the current account isn't set: the pasted document remembers it."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    with accounts.using("test-oat"):
+        doc = documents.paste("Eastway may charge a display fee of up to $250 per month at its discretion.")
+    with ThreadPoolExecutor(1) as pool:
+        assert pool.submit(documents.account_of, doc.id).result() is two_accounts
+
+
 def test_each_account_reads_its_own_rows(two_accounts):
     june = rows.charges("june", account="test-oat")
     assert [(c.id, c.code, c.amount, c.notice_date) for c in june] == [
@@ -357,6 +367,15 @@ def test_overview_after_the_run(api):
     assert o["recent_remittances"][0]["invoice"] == "INV-9001" and o["recent_remittances"][0]["paid"] == 9100.0
     assert (o["current"]["run_id"], o["current"]["status"]) == (run.id, "finished")
     assert o["account"]["latest_run_id"] == run.id
+
+
+def test_overview_counts_a_charge_in_history_and_in_the_run_once(api, monkeypatch, two_accounts):
+    run, _ = oat_run()
+    rows_ = account_rows.deductions("test-oat")
+    again = rows_ + [account_rows.DeductionHistory(month="2026-06", ref="EW-1", code="PA", amount=D("300.00"))]
+    monkeypatch.setattr(account_rows, "deductions", lambda account=None: again)
+    o = api.get("/accounts/test-oat/overview").json()
+    assert {t["code"]: t["count"] for t in o["deductions_by_type"]}["PA"] == 3
 
 
 def test_overview_of_peak_bar_without_history(api):
