@@ -4,8 +4,8 @@ import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { EvidencePanel } from "@/components/evidence/EvidencePanel";
-import { CHARGES } from "@/lib/prototype/charges";
-import { REMITTANCE } from "@/lib/prototype/run";
+import { CAST } from "@/lib/cast";
+import { chargeDetail } from "@/lib/fixture";
 import { useRunEvents } from "@/lib/useRunEvents";
 import { ActivityFeed } from "./ActivityFeed";
 import { ChargeList } from "./ChargeList";
@@ -37,7 +37,7 @@ export default function ReviewBoard({ runId }: { runId: string }) {
   const sheetHeading = useRef<HTMLHeadingElement>(null);
 
   const fromUrl = params.get("charge");
-  const valid = fromUrl && CHARGES[fromUrl] ? fromUrl : null;
+  const valid = fromUrl && chargeDetail(fromUrl) ? fromUrl : null;
   // Desktop always shows a charge; C1 first because it arrives first and carries the split.
   const selected = valid ?? (isDesktop ? "C1" : null);
 
@@ -84,7 +84,7 @@ export default function ReviewBoard({ runId }: { runId: string }) {
       <div className="min-h-dvh" aria-hidden={sheetOpen || undefined} inert={sheetOpen || undefined}>
         <TopBar />
         <main className="mx-auto w-full max-w-[1320px] px-4 pt-5 pb-16 sm:px-6 lg:pt-8">
-          <PaymentSummary totals={state.totals} approval={state.approval} ledger={state.ledger} latest={latest} running={!state.complete} />
+          <PaymentSummary remittance={state.run?.remittance ?? null} totals={state.totals} approval={state.approval} ledger={state.ledger} latest={latest} playing={state.playing} />
 
           <div className="mt-6 grid grid-cols-1 gap-6 lg:mt-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-8 xl:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
             <div className="flex min-w-0 flex-col gap-6">
@@ -141,7 +141,7 @@ function TopBar() {
         <div className="flex min-w-0 items-center gap-3">
           <span className="font-display text-[18px] font-extrabold tracking-[-0.02em]">Clawback</span>
           <span className="h-4 w-px bg-line" aria-hidden />
-          <span className="truncate text-[15px] text-muted">{REMITTANCE.brand}</span>
+          <span className="truncate text-[15px] text-muted">{CAST.brand}</span>
         </div>
         <PrototypeBadge />
       </div>

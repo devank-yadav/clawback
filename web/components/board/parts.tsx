@@ -116,12 +116,12 @@ export function PrototypeBadge() {
   return (
     <span
       className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-dashed whitespace-nowrap border-line px-2.5 py-0.5 text-[13px] text-muted"
-      title="Sample run stored in the app. Live data arrives when the API stream is ready."
+      title="Replaying the recorded demo run from web/fixtures. Live data arrives with the API stream."
     >
       <svg viewBox="0 0 16 16" width={12} height={12} aria-hidden>
         <path d="M3 3h10v10H3z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2.2 1.8" />
       </svg>
-      Prototype<span className="hidden sm:inline"> data</span>
+      Recorded<span className="hidden sm:inline"> run</span>
     </span>
   );
 }

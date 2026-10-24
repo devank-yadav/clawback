@@ -1,114 +1,161 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef } from "react";
-import type { ApprovalData, DecisionData, DisputeData, FindingData, LedgerPostData, QuestionData, RunEvent, TotalsData } from "./types";
-import {
-  ANSWER_SCRIPT,
-  CONTROLLER_APPROVE_SCRIPT,
-  CONTROLLER_REFUSE_SCRIPT,
-  RUN_SCRIPT,
-  type Scripted,
-} from "./prototype/run";
+import { eventsAfter, replayDelay, waitsForPerson } from "./fixture";
+import type {
+  Answer,
+  Approval,
+  Charge,
+  Decision,
+  Dispute,
+  Finding,
+  LedgerPost,
+  LogLine,
+  PortalMessage,
+  Question,
+  Rehearsal,
+  Rule,
+  RunEvent,
+  RunInfo,
+  Totals,
+} from "./types";
 
-export type FeedLine = { id: number; text: string; level: "info" | "ok" | "warn" };
+export type FeedLine = LogLine & { id: number };
 
 export type RunState = {
+  run: RunInfo | null;
   order: string[];
-  findings: Record<string, FindingData>;
-  decisions: Record<string, DecisionData>;
-  questions: Record<string, QuestionData & { answer?: string; rule_id?: string | null }>;
-  approval: ApprovalData | null;
-  dispute: DisputeData | null;
-  ledger: LedgerPostData[];
-  totals: TotalsData | null;
+  charges: Record<string, Charge>;
+  findings: Record<string, Finding>;
+  rehearsals: Record<string, Rehearsal>;
+  decisions: Record<string, Decision>;
+  questions: Record<string, Question>;
+  answers: Record<string, Answer>;
+  rules: Record<string, Rule>;
+  approval: Approval | null;
+  dispute: Dispute | null;
+  portal: PortalMessage[];
+  ledger: LedgerPost[];
+  totals: Totals | null;
   feed: FeedLine[];
   lastEventId: number;
-  /** The first pass over all charges has finished streaming. */
-  complete: boolean;
+  /** Events are still arriving (false while the run waits on a person, and once it finishes). */
+  playing: boolean;
 };
 
 const initial: RunState = {
+  run: null,
   order: [],
+  charges: {},
   findings: {},
+  rehearsals: {},
   decisions: {},
   questions: {},
+  answers: {},
+  rules: {},
   approval: null,
   dispute: null,
+  portal: [],
   ledger: [],
   totals: null,
   feed: [],
   lastEventId: 0,
-  complete: false,
+  playing: false,
 };
 
-type Action = { kind: "event"; event: RunEvent } | { kind: "reset" } | { kind: "complete" };
+type Action = { kind: "event"; event: RunEvent } | { kind: "reset" } | { kind: "playing"; on: boolean };
 
 function reduce(state: RunState, action: Action): RunState {
   if (action.kind === "reset") return initial;
-  if (action.kind === "complete") return { ...state, complete: true };
+  if (action.kind === "playing") return { ...state, playing: action.on };
   const e = action.event;
+  if (e.id <= state.lastEventId) return state; // replayed after a reconnect
   const s = { ...state, lastEventId: e.id };
   switch (e.type) {
+    case "run":
+      // Later run events (waiting, finished) carry no remittance; keep the one from the start.
+      return { ...s, run: { ...e.data, remittance: e.data.remittance ?? s.run?.remittance ?? null } };
     case "log":
       return { ...s, feed: [...s.feed, { id: e.id, ...e.data }] };
-    case "finding":
+    case "charge":
       return {
         ...s,
-        findings: { ...s.findings, [e.data.charge_id]: e.data },
-        order: s.order.includes(e.data.charge_id) ? s.order : [...s.order, e.data.charge_id],
+        charges: { ...s.charges, [e.data.id]: e.data },
+        order: s.order.includes(e.data.id) ? s.order : [...s.order, e.data.id],
       };
+    case "finding":
+      return { ...s, findings: { ...s.findings, [e.data.charge_id]: e.data } };
+    case "rehearsal":
+      return { ...s, rehearsals: { ...s.rehearsals, [e.data.charge_id]: e.data } };
     case "decision":
       return { ...s, decisions: { ...s.decisions, [e.data.charge_id]: e.data } };
     case "question":
       return { ...s, questions: { ...s.questions, [e.data.id]: e.data } };
     case "answer": {
       const q = s.questions[e.data.question_id];
-      if (!q) return s;
-      return { ...s, questions: { ...s.questions, [q.id]: { ...q, answer: e.data.text, rule_id: e.data.rule_id } } };
+      return {
+        ...s,
+        answers: { ...s.answers, [e.data.question_id]: e.data },
+        questions: q
+          ? { ...s.questions, [q.id]: { ...q, answer: e.data.text, answered_at: e.data.answered_at, rule_id: e.data.rule_id } }
+          : s.questions,
+      };
     }
+    case "rule":
+      return { ...s, rules: { ...s.rules, [e.data.id]: e.data } };
     case "approval":
       return { ...s, approval: e.data };
     case "dispute":
       return { ...s, dispute: e.data };
+    case "portal_message":
+      return { ...s, portal: [...s.portal, e.data] };
     case "ledger_post":
-      return { ...s, ledger: [...s.ledger, e.data] };
+      return { ...s, ledger: [...s.ledger.filter((p) => p.id !== e.data.id), e.data] };
     case "totals":
       return { ...s, totals: e.data };
+    default:
+      // A type this screen doesn't know yet must never wipe the board.
+      return s;
   }
 }
 
 /**
  * Folds the run's event stream into screen state.
- * Today it replays local prototype data. Later (card R7) it opens GET /runs/{id}/events with
- * Last-Event-ID, and the actions below POST to the API instead of appending scripted events.
+ * Today it replays web/fixtures/ and pauses wherever a person has to act. Card R7 swaps the source for
+ * GET /runs/{id}/events (Last-Event-ID = state.lastEventId), and the two actions POST to the API instead.
  */
 export function useRunEvents(runId: string) {
   const [state, dispatch] = useReducer(reduce, initial);
   const timers = useRef<number[]>([]);
-  const nextId = useRef(1);
   const busy = useRef(false);
+  const last = useRef<RunEvent | undefined>(undefined);
 
-  const play = useCallback((script: Scripted[], onDone?: () => void) => {
+  /** Plays events until the next point where a person must act (or the end). */
+  const play = useCallback((events: RunEvent[], resume = false) => {
     let wait = 0;
+    let i = 0;
     busy.current = true;
-    script.forEach((step, i) => {
-      wait += step.delay;
-      const t = window.setTimeout(() => {
-        const event = { ...step.event, id: nextId.current++, at: new Date().toISOString() } as RunEvent;
-        dispatch({ kind: "event", event });
-        if (i === script.length - 1) {
-          busy.current = false;
-          onDone?.();
-        }
-      }, wait);
-      timers.current.push(t);
-    });
+    dispatch({ kind: "playing", on: true });
+    for (; i < events.length; i++) {
+      const e = events[i];
+      if (i > 0 && waitsForPerson(e)) break;
+      if (i === 0 && waitsForPerson(e) && !resume) break;
+      wait += replayDelay(last.current, e);
+      last.current = e;
+      timers.current.push(window.setTimeout(() => dispatch({ kind: "event", event: e }), wait));
+    }
+    timers.current.push(
+      window.setTimeout(() => {
+        busy.current = false;
+        dispatch({ kind: "playing", on: false });
+      }, wait),
+    );
   }, []);
 
   useEffect(() => {
     dispatch({ kind: "reset" });
-    nextId.current = 1;
-    play(RUN_SCRIPT, () => dispatch({ kind: "complete" }));
+    last.current = undefined;
+    play(eventsAfter(0));
     const pending = timers.current;
     return () => {
       pending.forEach((t) => window.clearTimeout(t));
@@ -119,18 +166,18 @@ export function useRunEvents(runId: string) {
   const answerQuestion = useCallback(
     (questionId: string) => {
       if (busy.current || state.questions[questionId]?.answer) return;
-      play(ANSWER_SCRIPT);
+      play(eventsAfter(state.lastEventId), true);
     },
-    [play, state.questions],
+    [play, state.questions, state.lastEventId],
   );
 
   const controllerDecides = useCallback(
     (approve: boolean) => {
       if (busy.current || state.approval?.status !== "pending") return;
-      play(approve ? CONTROLLER_APPROVE_SCRIPT : CONTROLLER_REFUSE_SCRIPT);
+      play(eventsAfter(state.lastEventId, approve ? "approved" : "refused"), true);
     },
-    [play, state.approval],
+    [play, state.approval, state.lastEventId],
   );
 
-  return { state, answerQuestion, controllerDecides, source: "prototype" as const };
+  return { state, answerQuestion, controllerDecides, source: "fixture" as const };
 }
