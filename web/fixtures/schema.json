@@ -4823,6 +4823,14 @@
             "type": "null"
           }
         ]
+      },
+      "ledger_posts": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/LedgerPost"
+        },
+        "title": "Ledger Posts",
+        "type": "array"
       }
     },
     "required": [
@@ -4830,6 +4838,311 @@
       "ledger_post"
     ],
     "title": "ApprovalDecisionResponse",
+    "type": "object"
+  },
+  "InboxResponse": {
+    "$defs": {
+      "Approval": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "credit_memo",
+              "dispute_over_limit",
+              "closed_period"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "lines": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/ApprovalLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "proposed_by": {
+            "enum": [
+              "system",
+              "reader",
+              "investigator",
+              "gate",
+              "negotiator",
+              "bookkeeper",
+              "coach",
+              "owner",
+              "controller",
+              "northmart",
+              "policy"
+            ],
+            "title": "Proposed By",
+            "type": "string"
+          },
+          "approver_role": {
+            "enum": [
+              "owner",
+              "controller"
+            ],
+            "title": "Approver Role",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "approved",
+              "refused"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Note"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Decided At"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "amount",
+          "proposed_by",
+          "approver_role",
+          "status",
+          "text",
+          "requested_at"
+        ],
+        "title": "Approval",
+        "type": "object"
+      },
+      "ApprovalLine": {
+        "additionalProperties": false,
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          }
+        },
+        "required": [
+          "charge_id",
+          "amount"
+        ],
+        "title": "ApprovalLine",
+        "type": "object"
+      },
+      "Question": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "to_role": {
+            "enum": [
+              "owner",
+              "controller"
+            ],
+            "title": "To Role",
+            "type": "string"
+          },
+          "charge_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Charge Id"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "channel": {
+            "default": "sms",
+            "enum": [
+              "sms",
+              "inbox"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          },
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Answer"
+          },
+          "answered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Answered At"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rule Id"
+          }
+        },
+        "required": [
+          "id",
+          "to_role",
+          "charge_id",
+          "text",
+          "sent_at"
+        ],
+        "title": "Question",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "description": "GET /inbox: what waits on a person, for the in-app fallback to the texts.",
+    "properties": {
+      "questions": {
+        "items": {
+          "$ref": "#/$defs/Question"
+        },
+        "title": "Questions",
+        "type": "array"
+      },
+      "approvals": {
+        "items": {
+          "$ref": "#/$defs/Approval"
+        },
+        "title": "Approvals",
+        "type": "array"
+      }
+    },
+    "required": [
+      "questions",
+      "approvals"
+    ],
+    "title": "InboxResponse",
+    "type": "object"
+  },
+  "PortalPreset": {
+    "additionalProperties": false,
+    "description": "GET /portal/presets: the replies the judge can pick on the Northmart portal.",
+    "properties": {
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "label": {
+        "title": "Label",
+        "type": "string"
+      },
+      "text": {
+        "title": "Text",
+        "type": "string"
+      },
+      "attachment_doc_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Attachment Doc Id"
+      },
+      "expect": {
+        "enum": [
+          "new_document",
+          "claim_without_document",
+          "agrees",
+          "other"
+        ],
+        "title": "Expect",
+        "type": "string"
+      },
+      "charge_ids": {
+        "default": [],
+        "items": {
+          "type": "string"
+        },
+        "title": "Charge Ids",
+        "type": "array"
+      }
+    },
+    "required": [
+      "id",
+      "label",
+      "text",
+      "expect"
+    ],
+    "title": "PortalPreset",
     "type": "object"
   }
 }

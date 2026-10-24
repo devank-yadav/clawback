@@ -27,6 +27,7 @@ def _print(run: pipeline.Run, since: int = 0) -> int:
             "rule": lambda: f"  RULE         {d.label}: {d.condition} -> {d.decision}, else {d.else_decision}",
             "dispute": lambda: f"  DISPUTE      {d.id} ${d.total:,.0f} ({d.status}, {len(d.lines)} lines)",
             "approval": lambda: f"  APPROVAL     {d.text} [{d.status}]",
+            "ledger_post": lambda: f"  QUICKBOOKS   {d.qbo_entity} ${d.amount:,.0f} {d.status} ({d.qbo_id}) {d.note or ''}",
             "totals": lambda: None,
             "run": lambda: f"== {d.run_id}: {d.status}",
         }.get(e.type, lambda: None)()
@@ -58,6 +59,12 @@ def main() -> int:
         print(f"\n  OWNER        replies to {qid}: \"{OWNER_ANSWER}\"")
         seen = len(march.events)
         pipeline.answer(qid, OWNER_ANSWER)
+        _print(march, seen)
+    pending = [a for a in pipeline.inbox()[1] if a.id.startswith(f"AP-{march.id}")]
+    if pending:
+        print(f"\n  CONTROLLER   replies YES to \"{pending[0].text}\"")
+        seen = len(march.events)
+        pipeline.decide_approval(pending[0].id, True)
         _print(march, seen)
     t = [e.data for e in march.events if e.type == "totals"][-1]
     print(f"\nMarch: disputed ${t.disputed:,.0f} · accepted ${t.accepted:,.0f} · questions {t.questions}\n")

@@ -191,3 +191,140 @@ def test_f8_f11_full_demo_over_the_api_with_wifi_off(client):
         card = client.get(f"/charges/{cid}", params={"run_id": april.id}).json()
         assert card["rule"]["label"] == "Rule #1"
         assert "ev-rule-1" in {e["id"] for e in card["evidence"]}
+
+
+# ---------------------------------------------------------------- F8 Ask once, by SMS (Twilio webhook, offline)
+
+OWNER_PHONE, CONTROLLER_PHONE = "+15550100001", "+15550100002"  # fake numbers; nothing is sent
+
+
+def _sms(client, sender: str, body: str, **headers) -> str:
+    r = client.post("/webhooks/twilio/sms", data={"From": sender, "Body": body, "To": "+15550100000"}, headers=headers)
+    assert r.status_code == 200, r.text
+    return r.text
+
+
+@pytest.fixture
+def phones(monkeypatch):
+    monkeypatch.setenv("OWNER_PHONE", OWNER_PHONE)
+    monkeypatch.setenv("CONTROLLER_PHONE", CONTROLLER_PHONE)
+    monkeypatch.delenv("TWILIO_AUTH_TOKEN", raising=False)
+
+
+def test_f8_owner_sms_reply_saves_rule_1_and_april_asks_nothing(client, phones):
+    march = _march(client)
+    reply = _sms(client, "(555) 010-0001", "accept if notice is at least 14 days")  # same number, other format
+    assert "Saved: accept display fees with 14+ days' notice. Reply UNDO to cancel." in reply
+    rule = next(e.data for e in march.events if e.type == "rule")
+    assert (rule.label, rule.condition, rule.status) == ("Rule #1", "notice_days >= 14", "active")
+    assert next(e.data for e in march.events if e.type == "answer").text == "accept if notice is at least 14 days"
+    _wait(march.id, "finished")
+    totals = [e.data for e in march.events if e.type == "totals"][-1]
+    assert (totals.disputed, totals.accepted, totals.questions) == (D(4120), D(2730), 1)
+
+    april = _wait(client.post("/replay/april").json()["run_id"], "finished")
+    assert not april.questions
+    assert {d.rule_id for d in april.shown.values()} == {"rule-1"}
+
+
+def test_f8_owner_sms_undo_and_unclear(client, phones):
+    march = _march(client)
+    assert "Sorry, I couldn't turn that into a rule." in _sms(client, OWNER_PHONE, "hmm let me think")
+    assert not any(e.type == "rule" for e in march.events)
+    _sms(client, OWNER_PHONE, "accept if notice is at least 14 days")
+    assert "Undone: Rule #1 is cancelled." in _sms(client, OWNER_PHONE, "UNDO")
+    assert [e.data.status for e in march.events if e.type == "rule"] == ["active", "undone"]
+
+
+def test_f8_sms_from_a_stranger_changes_nothing(client, phones):
+    march = _march(client)
+    n = len(march.events)
+    assert "<Message>" not in _sms(client, "+15559999999", "accept")
+    assert len(march.events) == n and march.questions["Q-1"].answer is None
+
+
+def test_f8_twilio_signature_is_checked_when_the_token_is_set(client, phones, monkeypatch):
+    from api.routes import webhooks
+    _march(client)
+    monkeypatch.setenv("TWILIO_AUTH_TOKEN", "test-token-not-real")
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://clawback.example")
+    form = {"From": OWNER_PHONE, "Body": "accept if notice is at least 14 days", "To": "+15550100000"}
+    bad = client.post("/webhooks/twilio/sms", data=form, headers={"X-Twilio-Signature": "nope"})
+    assert bad.status_code == 403
+    sig = webhooks.signature("https://clawback.example/webhooks/twilio/sms", form, "test-token-not-real")
+    assert "Saved:" in _sms(client, OWNER_PHONE, form["Body"], **{"X-Twilio-Signature": sig})
+
+
+# ---------------------------------------------------------------- F10 controller approval on a live run
+
+def _finished_march(client) -> tuple[pipeline.Run, str]:
+    march = _march(client)
+    client.post("/questions/Q-1/answer", json={"text": "accept if notice is at least 14 days"})
+    _wait(march.id, "finished")
+    approval = next(e.data for e in march.events if e.type == "approval")
+    return march, approval.id
+
+
+def test_f10_controller_yes_in_app_posts_the_memo(client):
+    march, ap = _finished_march(client)
+    r = client.post(f"/approvals/{ap}", json={"approve": True})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["approval"]["status"] == "approved"
+    post = body["ledger_post"]
+    assert (post["qbo_entity"], post["amount"], post["approval_id"], post["status"]) == (
+        "credit_memo", 2730.0, ap, "posted")
+    assert {ln["charge_id"]: ln["amount"] for ln in post["lines"]} == {"C1": 1200.0, "C3": 330.0, "C6": 1200.0}
+    assert [e.data.status for e in march.events if e.type == "approval"] == ["pending", "approved"]
+    # the memo, then the invoice's open-balance note (api/pipeline._post_books)
+    assert [e.data.qbo_entity for e in march.events if e.type == "ledger_post"] == ["credit_memo", "invoice_note"]
+    assert client.post(f"/approvals/{ap}", json={"approve": False}).status_code == 409
+
+
+def test_f10_controller_no_posts_nothing_and_keeps_the_note(client):
+    march, ap = _finished_march(client)
+    body = client.post(f"/approvals/{ap}", json={"approve": False, "note": "Wait for Northmart's reply."}).json()
+    assert body["ledger_post"] is None
+    assert (body["approval"]["status"], body["approval"]["note"]) == ("refused", "Wait for Northmart's reply.")
+    assert not any(e.type == "ledger_post" for e in march.events)
+    assert client.post("/approvals/AP-nope", json={"approve": True}).status_code == 404
+
+
+def test_f10_controller_sms_yes_and_no(client, phones):
+    march, ap = _finished_march(client)
+    assert "Reply YES to approve" in _sms(client, CONTROLLER_PHONE, "yes but only two lines")
+    assert "Held: the $2,730 credit memo won't post." in _sms(client, CONTROLLER_PHONE, "No, wait for D-0417")
+    refused = [e.data for e in march.events if e.type == "approval"][-1]
+    assert (refused.id, refused.status, refused.note) == (ap, "refused", "wait for D-0417")
+    assert not any(e.type == "ledger_post" for e in march.events)
+    assert "nothing waiting" in _sms(client, CONTROLLER_PHONE, "yes")
+
+    pipeline.reset()
+    march, ap = _finished_march(client)
+    assert "Approved: $2,730 credit memo (3 lines)." in _sms(client, CONTROLLER_PHONE, "YES")
+    assert [e.data.status for e in march.events if e.type == "approval"] == ["pending", "approved"]
+    assert next(e.data for e in march.events if e.type == "ledger_post").amount == D(2730)
+
+
+# ---------------------------------------------------------------- F12 scoreboard numbers = make eval
+
+def test_f12_eval_latest_serves_what_make_eval_printed(client, tmp_path, monkeypatch):
+    from api.routes import eval as eval_route
+    latest = tmp_path / "latest.json"
+    monkeypatch.setattr(eval_route, "latest_path", lambda: latest)
+    ev = eval_route._harness()
+    assert client.get("/eval/latest").json()["status"] == "not_run"
+
+    assert ev.main(["--out", str(latest)]) == 0  # what `make eval` runs
+    printed = ev.summary(ev.run(ev.DEFAULT_DATA))
+    shown = client.get("/eval/latest").json()
+    assert shown["status"] == "done" and shown["run_at"]
+    assert (shown["cases"], shown["correct"], shown["asked"], shown["wrong_automatic"],
+            shown["amounts_correct"], shown["unnecessary_questions"]) == (
+        printed["cases"], printed["correct"], printed["asked"], printed["wrong_actions"],
+        printed["correct_amounts"], printed["unnecessary_questions"])
+
+    latest.unlink()
+    ran = client.post("/eval/run").json()
+    assert ran["status"] == "done" and ran["correct"] == printed["correct"]
+    assert client.get("/eval/latest").json()["correct"] == printed["correct"]

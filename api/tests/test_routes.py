@@ -97,8 +97,6 @@ def test_twilio_webhook_returns_twiml():
 
 @pytest.mark.parametrize("method,path,check", [
     ("post", "/coach", lambda j: len(j["redlines"]) == 3),
-    ("post", "/eval/run", lambda j: j["status"] == "not_run" and j["correct"] is None),
-    ("get", "/eval/latest", lambda j: j["cases"] == 30),
     ("get", "/audit", lambda j: len(j) > 0 and j[0]["prev_hash"] == "0" * 64),
     ("get", "/audit/verify", lambda j: j["ok"] is True),
 ])

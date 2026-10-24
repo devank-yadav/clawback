@@ -27,5 +27,9 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - `make record` runs the whole demo live (March, Dana's answer, April) and saves every AI answer to data/fixtures/;
   `make demo` / DEMO_MODE=true replays them with no network. `python -m api.agents.reader <doc ids>` reads documents.
 - POST /runs starts a live pipeline run (api/pipeline.py); `{"fixture": true}` replays the recorded fake run instead.
+- QuickBooks (api/integrations/qbo.py): with the QBO_* keys set it writes to the sandbox; without them a stand-in
+  answers with "sim-" ids and every ledger post says it's simulated. Texts (api/integrations/sms.py) go out only
+  with the Twilio keys and outside DEMO_MODE; otherwise they wait in GET /inbox. Inbound texts: POST
+  /webhooks/twilio/sms (signature checked when TWILIO_AUTH_TOKEN is set).
 - Stub routes serve the fixture run in api/stubs/fixtures.py. After changing it, run `python -m api.stubs.fixtures`
   to rewrite web/fixtures/*.json (a test fails if they're stale).
