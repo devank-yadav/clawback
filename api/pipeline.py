@@ -409,11 +409,27 @@ def _after_decisions(run: Run, policy: eng.Policy) -> None:
     run.done = True
 
 
+# The clause a dispute line quotes, by what the finding is about: the cap for an over-cap charge, not the rate.
+LINE_CLAUSE = {"over_cap": "unit_cap", "rate_over": "promo_rate", "product_not_covered": "product_scope",
+               "outside_dates": "date_range", "discretionary_fee": "fee_discretion"}
+
+
+def _line_clause(run: Run, charge_id: str, f: Finding | None) -> Evidence | None:
+    """The deal sentence a dispute line quotes: the one its finding turns on (LINE_CLAUSE), else the first clause the
+    Investigator cited."""
+    want, by_id = LINE_CLAUSE.get(f.type if f else ""), {t.id: t for t in run.terms}
+    term = next((by_id[t.id] for t in run.allowances[charge_id].terms if t.type.value == want and t.id in by_id), None)
+    ev = run.evidence.get(evidence_mod.clause_id(term)) if term else None
+    if ev and ev.kind == "clause":
+        return ev
+    return next((run.evidence[i] for i in (f.evidence_ids if f else []) if run.evidence[i].kind == "clause"), None)
+
+
 def _file_dispute(run: Run, charge_ids: list[str], policy: eng.Policy) -> None:
     lines = []
     for cid in charge_ids:
         c, d, f = run.charges[cid], run.decisions[cid], run.findings.get(cid)
-        clause = next((run.evidence[i] for i in (f.evidence_ids if f else []) if run.evidence[i].kind == "clause"), None)
+        clause = _line_clause(run, cid, f)
         lines.append(DisputeLine(charge_id=cid, ref=c.ref, amount=d.disputed, reason=f.finding if f else d.reason,
                                  clause_ref=clause.label if clause else None,
                                  quote=clause.quote.text if clause and clause.quote else None,

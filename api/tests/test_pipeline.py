@@ -345,6 +345,17 @@ def test_answering_a_closed_question_is_refused_but_undo_still_works(monkeypatch
     assert client.post(f"/questions/{q}/answer", json={"text": "UNDO"}).status_code == 200
 
 
+def test_each_dispute_line_quotes_the_clause_its_charge_turns_on():
+    """D-0417's C4 line quotes the §3.2 cap (the portal's opening moment), not the §3.1 rate."""
+    run = pipeline.start("march", ScenarioClaude(), background=False)
+    for cid in run.findings:  # ScenarioClaude labels every finding matches_deal; give each its real type
+        run.findings[cid] = run.findings[cid].model_copy(update={"type": {
+            "C1": "rate_over", "C2": "duplicate", "C4": "over_cap", "C5": "product_not_covered"}.get(cid, "matches_deal")})
+    clauses = {cid: pipeline._line_clause(run, cid, run.findings[cid]) for cid in ("C1", "C2", "C4", "C5")}
+    assert {cid: c.label for cid, c in clauses.items()} == {"C1": "§3.1", "C2": "§3.1", "C4": "§3.2", "C5": "§3.1"}
+    assert "maximum of 5,000 units" in clauses["C4"].quote.text
+
+
 def test_every_number_on_a_live_card_opens_its_source():
     """F7 on live runs: each math step links to the evidence it rests on (the board makes it clickable)."""
     fake = ScenarioClaude()

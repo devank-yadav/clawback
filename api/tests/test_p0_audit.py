@@ -148,8 +148,9 @@ def test_f9_each_preset_gets_the_right_answer_and_only_the_amendment_moves_money
         assert (theirs["classification"], theirs["charge_ids"]) == (kind, p.charge_ids), p.id
         assert ours["from_party"] == "clawback" and must_cite <= set(ours["evidence_ids"]), p.id
         assert final(run) == before, p.id  # a reply without a document changes no number
-    rate = [m for m in disputes.thread("D-0417") if m.from_party == "clawback"][1].text
-    assert "$1.00 per unit" in rate and "not a signed change" in rate
+    no_cap, rate = [m.text for m in disputes.thread("D-0417") if m.from_party == "clawback"][:2]
+    assert "§3.2" in no_cap and "maximum of 5,000 units" in no_cap  # the cap itself, not the rate clause
+    assert "$1.00 per unit" in rate and "signed written amendment" in rate  # a call or an email isn't a change
 
     amendment = next(p for p in disputes.PRESETS if p.attachment_doc_id == "amendment-1")
     _, ours = api.post("/portal/disputes/D-0417/messages",
