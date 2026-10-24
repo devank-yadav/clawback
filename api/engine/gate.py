@@ -193,6 +193,6 @@ def concession(before: Decision, after: Decision) -> Decimal:
     return max(ZERO, money(before.disputed - after.disputed))
 
 
-def needs_controller(amount: Decimal, policy: Policy) -> bool:
-    """Credit memos above the policy limit need the controller (never the owner or an agent)."""
-    return money(amount) > policy.controller_approval_over
+def needs_approval(amount: Decimal, policy: Policy) -> bool:
+    """Credit memos above the policy limit need the admin's yes (never an agent's)."""
+    return money(amount) > policy.approval_over

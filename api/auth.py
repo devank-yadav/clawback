@@ -1,9 +1,9 @@
 """Who may do what on the deployed site, and how often anyone may spend AI credits.
 
-Roles (docs/design.md, "Approvals"): only the controller approves a credit memo, only the owner answers the owner's
-question. With OWNER_TOKEN and CONTROLLER_TOKEN set (the VM), the in-app action needs that role's token in the
-`X-Clawback-Role-Token` header; one role's token never works for the other. Unset (laptops, tests): open, as before.
-Texts need no token: the Twilio webhook already checks the sender's phone number and Twilio's signature.
+Roles (docs/design.md, "Approvals"): one person, the admin (the brand's owner), answers the questions and approves the
+credit memos. With OWNER_TOKEN set (the VM), those in-app actions need it in the `X-Clawback-Role-Token` header.
+Unset (laptops, tests): open, as before. Texts need no token: the Twilio webhook already checks the sender's phone
+number and Twilio's signature.
 
 Limits: a live run spends ~20 AI calls, and the site is public. With CLAWBACK_ADMIN_TOKEN set (the VM), each client
 IP may start RUNS_PER_IP runs (default 3) and make AI_PER_IP other AI requests (default 20: scenario box, Deal Coach,
@@ -22,19 +22,19 @@ from collections import deque
 
 from fastapi import Header, HTTPException, Request
 
-ROLE_ENV = {"owner": "OWNER_TOKEN", "controller": "CONTROLLER_TOKEN"}
+ROLE_ENV = {"owner": "OWNER_TOKEN"}
 WINDOW_S = 600
 HOUR_S = 3600
 
 
-def require_role(role: str):
+def require_role(role: str = "owner"):
     """FastAPI dependency: the caller must hold this role's token, when the site has one."""
     env = ROLE_ENV[role]
 
     def check(x_clawback_role_token: str | None = Header(default=None)) -> None:
         token = os.getenv(env)
         if token and not hmac.compare_digest(x_clawback_role_token or "", token):
-            raise HTTPException(401, f"Only the {role} can do this. Sign in as the {role} (X-Clawback-Role-Token).")
+            raise HTTPException(401, "Only the admin can do this. Sign in as the admin (X-Clawback-Role-Token).")
 
     return check
 

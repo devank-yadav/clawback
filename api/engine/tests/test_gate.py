@@ -6,7 +6,7 @@ from decimal import Decimal
 import pytest
 
 from api.engine.allowed import compute_allowed
-from api.engine.gate import concession, decide, needs_controller, summarize, uses_discretion
+from api.engine.gate import concession, decide, needs_approval, summarize, uses_discretion
 from api.engine.policy import load_policy
 from api.engine.tests import scenario as s
 from api.engine.types import Allowance, DecisionKind, Finding, RuleMatch, TermStatus
@@ -59,9 +59,9 @@ def test_owner_answer_turns_c6_into_accept_and_hits_demo_totals():
     assert t.disputed + t.accepted == Decimal("6850.00")
 
 
-def test_credit_memo_needs_controller():
-    assert needs_controller(Decimal("2730.00"), POLICY)
-    assert not needs_controller(Decimal("1000.00"), POLICY)
+def test_credit_memo_needs_approval():
+    assert needs_approval(Decimal("2730.00"), POLICY)
+    assert not needs_approval(Decimal("1000.00"), POLICY)
 
 
 def test_april_decided_by_rule_1_with_no_questions():

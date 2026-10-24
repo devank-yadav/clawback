@@ -17,7 +17,8 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - Agents return strict JSON; code checks after every agent (quote found word for word, numbers equal engine
   numbers, evidence IDs exist). Failures route to Ask.
 - Only approved senders or documents signed by both parties change a deal (config/policy.yaml).
-- No agent posts to QuickBooks. Credit memos over $1,000 need the controller.
+- No agent posts to QuickBooks. Credit memos over $1,000 need the admin's yes (the owner, the one person who decides),
+  unless they're within the auto-post limit the admin set.
 - Every outside call: timeout 30 s, one retry, DEMO_MODE fixture fallback. Every action written to audit_log.
 
 ## Run it
@@ -39,7 +40,7 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - QuickBooks (api/integrations/qbo.py): with the QBO_* keys set it writes to the sandbox; without them, or in
   DEMO_MODE, a stand-in answers with "sim-" ids and every ledger post says it's simulated and why. POST /demo/reset
   (`make reset`) deletes the payments and credit memos it wrote and clears its invoice note first. Each write is its
-  own ledger post (memo LP-{approval}, note LP-{approval}-note); if one fails, Sam approving again (in the app, or YES
+  own ledger post (memo LP-{approval}, note LP-{approval}-note); if one fails, Dana approving again (in the app, or YES
   by text) retries what didn't post with the same request ids, and a 401 fetches a new access token once. Texts
   (api/integrations/sms.py) go out only with the Twilio keys and outside DEMO_MODE; otherwise they wait in GET
   /inbox. Inbound texts: POST /webhooks/twilio/sms (signature checked when TWILIO_AUTH_TOKEN is set).
@@ -59,9 +60,15 @@ decision gate and approvals; Data model; API, live updates and integrations.
   and a discretion clause is searched against them; a match at or above `rule_match_similarity` (config/policy.yaml)
   with the same clause type and counterparty applies the rule, otherwise the exact match on type + counterparty does.
   `python -m api.integrations.moss` indexes Rule #1 and prints the similarity of a reworded clause (the Devpost proof).
-- Roles and limits (api/auth.py): with OWNER_TOKEN / CONTROLLER_TOKEN set, the in-app owner answer and controller
-  approval need that role's X-Clawback-Role-Token; with CLAWBACK_ADMIN_TOKEN set, live runs and other AI requests are
-  limited per visitor (the admin token skips it). Texts are checked by phone number and Twilio's signature instead.
+- One admin (api/auth.py): the brand's owner answers every question and approves every credit memo, in the app or by
+  text to OWNER_PHONE (there is no controller; account.yaml's brand.controller is still accepted and unused). With
+  OWNER_TOKEN set, the in-app answer and approval need it as X-Clawback-Role-Token; POST /questions/{id}/answer takes
+  `save_rule` (default true; false settles this charge only and saves nothing), POST /approvals/{id} takes `auto_post`
+  (default false; true saves the account's auto-post limit at this memo's amount, kept in auto_post_limits by
+  api/db/state.py, migration 005, and later fair-charge memos up to it post without asking, audited as
+  auto_post:<name>; policy.yaml `auto_post_limit` is the default, null). With CLAWBACK_ADMIN_TOKEN set, live runs
+  and other AI requests are limited per visitor (the admin token skips it). Texts are checked by phone number and
+  Twilio's signature instead.
 - Tests never call live services: api/conftest.py blanks every live key for the session and blocks real Claude clients.
 - POST /coach redlines summer-draft from the newest finished March run (api/agents/coach.py); POST /scenario runs a
   pasted clause and charge (api/scenario.py); GET /scenario/examples has three recorded cases.

@@ -9,13 +9,13 @@ from fastapi.testclient import TestClient
 from api.integrations import sms
 from api.main import app
 
-OWNER, CONTROLLER, FROM = "+15550100001", "+15550100002", "+14155550100"  # fake numbers
+OWNER, FROM = "+15550100001", "+14155550100"  # fake numbers
 
 
 @pytest.fixture
 def keys(monkeypatch):
     for k, v in {"TWILIO_ACCOUNT_SID": "ACtest", "TWILIO_AUTH_TOKEN": "test-token-not-real", "TWILIO_FROM": FROM,
-                 "OWNER_PHONE": OWNER, "CONTROLLER_PHONE": CONTROLLER, "DEMO_MODE": "false"}.items():
+                 "OWNER_PHONE": OWNER, "DEMO_MODE": "false"}.items():
         monkeypatch.setenv(k, v)
 
 
@@ -66,8 +66,8 @@ def test_sms_send_uses_plain_numbers(keys, twilio, monkeypatch):
 
 def test_whatsapp_send_prefixes_both_numbers(keys, twilio, monkeypatch):
     monkeypatch.setenv("SMS_CHANNEL", "whatsapp")
-    assert sms.send("controller", "Approve credit memo of $2,730 (3 lines)?") == "sent"
-    assert twilio == [{"to": f"whatsapp:{CONTROLLER}", "from_": f"whatsapp:{FROM}",
+    assert sms.send("owner", "Approve credit memo of $2,730 (3 lines)?") == "sent"
+    assert twilio == [{"to": f"whatsapp:{OWNER}", "from_": f"whatsapp:{FROM}",
                        "body": "Approve credit memo of $2,730 (3 lines)?"}]
 
 
@@ -82,7 +82,6 @@ def test_whatsapp_reply_reaches_the_owner(monkeypatch):
     """A WhatsApp From ("whatsapp:+1…") is recognized as the owner; a stranger on WhatsApp still gets nothing."""
     monkeypatch.setenv("SMS_CHANNEL", "whatsapp")
     monkeypatch.setenv("OWNER_PHONE", OWNER)
-    monkeypatch.setenv("CONTROLLER_PHONE", CONTROLLER)
     monkeypatch.delenv("TWILIO_AUTH_TOKEN", raising=False)
     client = TestClient(app)
     form = {"From": f"whatsapp:{OWNER}", "To": f"whatsapp:{FROM}", "Body": "accept"}

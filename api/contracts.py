@@ -22,7 +22,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Any, Literal, Union
 
 from pydantic import (
-    AfterValidator, BaseModel, ConfigDict, Field, PlainSerializer, TypeAdapter, field_validator, model_serializer,
+    AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer, TypeAdapter, field_validator, model_serializer,
     model_validator,
 )
 
@@ -47,11 +47,16 @@ class Contract(BaseModel):
 
 # ---------------------------------------------------------------- shared vocab
 
-Role = Literal["owner", "controller"]
-Actor = Literal[
+def _one_admin(v: Any) -> Any:
+    """One person, the admin (the brand's owner), decides everything; events saved before that said "controller"."""
+    return "owner" if v == "controller" else v
+
+
+Role = Annotated[Literal["owner"], BeforeValidator(_one_admin)]  # the admin: answers questions, approves memos
+Actor = Annotated[Literal[
     "system", "reader", "investigator", "gate", "negotiator", "bookkeeper", "coach",
-    "owner", "controller", "northmart", "policy",
-]
+    "owner", "northmart", "policy",
+], BeforeValidator(_one_admin)]
 TermType = Literal["promo_rate", "product_scope", "unit_cap", "date_range", "fee_discretion", "amendment",
                    "fee_schedule", "dispute_window", "notice_period", "quantity_variance"]
 TermStatus = Literal["pending", "verified", "rejected", "disputed"]
@@ -449,6 +454,16 @@ class ApprovalLine(Contract):
     amount: Money
 
 
+class AutoPost(Contract):
+    """The admin's standing yes: fair-charge credit memos up to `limit` post without asking (set by ticking "Post fair
+    charges like these automatically from now on" when approving `approval_id`)."""
+
+    limit: Money
+    set_by: str  # "Dana Okafor"
+    approval_id: str  # the memo the admin approved when setting it
+    set_at: datetime
+
+
 class Approval(Contract):
     id: str
     kind: Literal["credit_memo", "dispute_over_limit", "closed_period"]
@@ -461,13 +476,16 @@ class Approval(Contract):
     note: str | None = None  # the approver's note, shown on the card when they refuse
     requested_at: datetime
     decided_at: datetime | None = None
+    sets_auto_post: AutoPost | None = None  # the admin approved this one and said to post ones like it from now on
+    posted_by_auto_post: AutoPost | None = None  # posted without asking, by this standing yes (no one was asked)
 
 
 class ApprovalDecisionRequest(Contract):
-    """POST /approvals/{id}: the controller's in-app Yes / No (the fallback for the SMS reply)."""
+    """POST /approvals/{id}: the admin's in-app Yes / No (the fallback for the SMS reply)."""
 
     approve: bool
     note: str | None = None  # shown on the card when they refuse
+    auto_post: bool = False  # with approve: fair-charge memos up to this one's amount post without asking from now on
 
 
 class ApprovalDecisionResponse(Contract):
@@ -480,7 +498,7 @@ class InboxResponse(Contract):
     """GET /inbox: what waits on a person, for the in-app fallback to the texts."""
 
     questions: list[Question]  # open owner questions
-    approvals: list[Approval]  # credit memos waiting on the controller
+    approvals: list[Approval]  # credit memos waiting on the admin
     messages: list[OwnerMessage] = []  # run summaries for the owner, newest first (the text's in-app copy)
 
 
@@ -762,6 +780,7 @@ class StartRunResponse(Contract):
 class AnswerRequest(Contract):
     text: str
     from_role: Role = "owner"
+    save_rule: bool = True  # False: settle this charge only; no rule is saved, so the next one like it asks again
 
 
 class AnswerResponse(Contract):
@@ -854,7 +873,7 @@ class AuditEntry(Contract):
 
     id: int
     at: str
-    actor: str  # "gate", "owner:Dana", "controller:Sam"
+    actor: str  # "gate", "owner:Dana", "auto_post:Dana"
     action: str
     object_ref: str
     evidence: dict[str, Any] = {}
@@ -968,8 +987,8 @@ class Brand(Contract):
     city: str
     initials: str
     colors: Colors
-    owner: Person  # answers the questions, set the policy once
-    controller: Person  # the only one who approves credit memos
+    owner: Person  # the admin: answers the questions, approves credit memos, set the policy once
+    controller: Person | None = None  # older account files name one; unused (the owner decides everything)
 
 
 class Distributor(Contract):

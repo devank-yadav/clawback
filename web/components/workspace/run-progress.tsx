@@ -17,7 +17,7 @@ import { buildStages } from '@/components/flow/stages'
 
 const ACTOR: Record<string, string> = {
   system: 'Clawback', reader: 'Deal readers', investigator: 'Investigator', gate: 'Decision rules', negotiator: 'Negotiator',
-  bookkeeper: 'Bookkeeper', coach: 'Deal coach', owner: 'Owner', controller: 'Controller', policy: 'Policy',
+  bookkeeper: 'Bookkeeper', coach: 'Deal coach', owner: 'Admin', policy: 'Policy',
 }
 
 export function RunProgress({ account, state, ws }: { account: Account; state: RunState; ws: WorkspaceView }) {
@@ -29,7 +29,7 @@ export function RunProgress({ account, state, ws }: { account: Account; state: R
 
 
   const feed = all ? state.feed : state.feed.slice(-6)
-  const cast = { distributor: account.distributor.name, owner: firstName(account.brand.owner.name), controller: firstName(account.brand.controller.name) }
+  const cast = { distributor: account.distributor.name, owner: firstName(account.brand.owner.name) }
   return (
     <section className={`surface run-progress ${working ? 'working' : ''}`} aria-label="Analysis progress">
       <div className="progress-head">
@@ -41,7 +41,7 @@ export function RunProgress({ account, state, ws }: { account: Account; state: R
         <div className="fl-meters">
           <Meter label="Disputing, with proof" value={ws.totals?.disputed ?? 0} tone="dispute" />
           <Meter label="Fair, accepted" value={ws.totals?.accepted ?? 0} tone="fair" />
-          <Meter label={`Waiting on ${ws.stage === 'controller' ? cast.controller : cast.owner}`} value={(ws.totals?.waiting ?? 0) + (ws.stage === 'controller' ? ws.approval?.amount ?? 0 : 0)} tone="wait" />
+          <Meter label={`Waiting on ${cast.owner}`} value={(ws.totals?.waiting ?? 0) + (ws.stage === 'approval' ? ws.approval?.amount ?? 0 : 0)} tone="wait" />
         </div>
         <StageRail stages={buildStages(state, ws, cast, false)} compact />
       </div>

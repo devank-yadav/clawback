@@ -1,13 +1,14 @@
 """The run (D6): a short payment -> every charge decided, streamed as events (docs/design.md, Architecture).
 
 Readers -> quote check -> engine -> Investigator -> rehearsal -> gate -> one question per Ask -> the owner's
-answer becomes a rule -> waiting charges are decided again -> dispute lines and the credit memo approval.
+answer becomes a rule (unless they say this charge only) -> waiting charges are decided again -> dispute lines and the
+credit memo approval. One person, the admin (the brand's owner), answers the questions and approves the memos.
 Runs, questions and rules live in memory until the database lands (D3). Only api/engine/ computes amounts.
 
-Every run belongs to one account (api/accounts.py): its files, its people (texts name its owner and controller),
+Every run belongs to one account (api/accounts.py): its files, its admin (texts name the owner),
 its distributor, its invoice and its dispute numbers. A run's kind is one of the account's months: the invoice
 month's run has the remittance (Peak Bar's March); a later month replays with the saved rules (Peak Bar's April).
-Saved rules belong to the account whose owner answered.
+Saved rules and the admin's auto-post limit belong to the account whose owner set them.
 """
 
 from __future__ import annotations
@@ -27,12 +28,12 @@ import anthropic
 from api import accounts, account_rows, adapters, audit, evidence as evidence_mod, fee_accounts, lookback, replies, rows, trace
 from api.agents import investigator, investigator_ops, negotiator, reader, readers, rule_writer
 from api.contracts import (
-    Answer, Approval, ApprovalLine, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, DeliveryRow, Dispute, DisputeLine, Event,
+    Answer, Approval, ApprovalLine, AutoPost, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, DeliveryRow, Dispute, DisputeLine, Event,
     EventAdapter, Evidence, Finding, LogLine, OpsTerm, OwnerMessage, PriceRow, Question, Rehearsal, Remittance, Rule, RunInfo,
     RunValue, StageInfo, Term, Totals,
 )
 from api.db import events as saved_events, state as saved_state
-from api.engine import gate, totals, value as value_mod
+from api.engine import gate, rules as rules_engine, totals, value as value_mod
 from api.engine import types as eng
 from api.engine.allowed import compute_allowed
 from api.engine.policy import load_policy
@@ -89,7 +90,7 @@ class Run:
         return self.account.distributor.name
 
     def name(self, role: str) -> str:
-        """The owner's or the controller's first name: Dana, Sam."""
+        """The admin's (the owner's) first name: Dana."""
         return self.account.first_name(role)
 
     def engine_charge(self, charge: Charge) -> eng.Charge:
@@ -127,6 +128,7 @@ RUNS: dict[str, Run] = {}
 RULES: list[Rule] = []  # saved owner rules, every account's; ids are unique, labels count within an account
 RULE_ACCOUNTS: dict[str, str] = {}  # rule id -> the account whose owner it belongs to (Peak Bar if not listed)
 QUESTIONS: dict[str, tuple[str, str]] = {}  # question id -> (run id, charge id)
+AUTO_POST: dict[str, AutoPost] = {}  # account id -> the admin's standing yes for fair-charge memos up to a limit
 _counter = {"question": 0}
 _state = threading.Lock()
 
@@ -145,9 +147,26 @@ def restore_rules(saved: list[tuple[Rule, str]]) -> None:
         RULE_ACCOUNTS.update({rule.id: account_id for rule, account_id in saved})
 
 
+def restore_auto_post(saved: dict[str, AutoPost]) -> None:
+    """At startup: the auto-post limits the admin set before a restart (api/db/state.py)."""
+    with _state:
+        AUTO_POST.clear()
+        AUTO_POST.update(saved)
+
+
+def auto_post_of(account: accounts.Account | str | None, policy: eng.Policy) -> AutoPost | None:
+    """The account's auto-post limit: the one its admin set, else policy.yaml's auto_post_limit (null: none)."""
+    account = accounts.resolve(account or accounts.DEFAULT)
+    if account.id in AUTO_POST:
+        return AUTO_POST[account.id]
+    if policy.auto_post_limit is None:
+        return None
+    return AutoPost(limit=policy.auto_post_limit, set_by="policy.yaml", approval_id="policy", set_at=_now())
+
+
 def reset() -> None:
     with _state:
-        RUNS.clear(), RULES.clear(), RULE_ACCOUNTS.clear(), QUESTIONS.clear()
+        RUNS.clear(), RULES.clear(), RULE_ACCOUNTS.clear(), QUESTIONS.clear(), AUTO_POST.clear()
         _counter.update(question=0)
     qbo.reset()
     sms.outbox.clear()
@@ -563,12 +582,13 @@ def _forget(run: Run, rule: Rule) -> None:
         run.log(f"Dropped {rule.label} from Moss.", actor="gate")
 
 
-def _tell(run: Run, role: str, text: str, level: str = "info", charge_id: str | None = None) -> None:
+def _tell(run: Run, role: str, text: str, level: str = "info", charge_id: str | None = None,
+          actor: str = "gate") -> None:
     """Text someone first (not a reply: replies to their texts go back in the webhook's TwiML, via run.texts).
     The log says whether it went out or waits in the inbox."""
     status = sms.send(role, text)
     where = "Texted" if status == "sent" else f"In the inbox (text {status}) for"
-    run.log(f"{where} {run.name(role)}: \"{text}\"", level, "gate" if role == "owner" else "bookkeeper", charge_id)
+    run.log(f"{where} {run.name(role)}: \"{text}\"", level, actor, charge_id)
 
 
 def _after_decisions(run: Run, policy: eng.Policy) -> None:
@@ -636,39 +656,52 @@ def _request_credit_memo(run: Run, policy: eng.Policy, accepted: list[tuple[str,
     if not accepted:
         return
     amount = totals.total_of(a for _, a in accepted)
-    needs_sam = gate.needs_controller(amount, policy)
+    owner = run.name("owner")
     n = len({e.data.id for e in run.events if e.type == "approval"}) + 1
     approval_id = f"AP-{run.id}" if n == 1 else f"AP-{run.id}-{n}"
     approval = Approval(id=approval_id, kind="credit_memo", amount=amount,
                         lines=[ApprovalLine(charge_id=cid, amount=a) for cid, a in accepted],
-                        proposed_by="bookkeeper", approver_role="controller", status="pending",
+                        proposed_by="bookkeeper", approver_role="owner", status="pending",
                         text=f"Approve credit memo of ${amount:,.0f} ({len(accepted)} lines)?", requested_at=_now())
-    if needs_sam:
-        run.emit("approval", approval)
-        run.log(f"Credit memo of ${amount:,.0f} waits on {run.name('controller')} (controller). Nothing posts until "
-                f"{run.name('controller')} says yes.", actor="bookkeeper")
-        _tell(run, "controller", f"{approval.text} Reply YES to approve, or NO with a note to hold it.")
+    if not gate.needs_approval(amount, policy):
+        approved = approval.model_copy(update={
+            "status": "approved", "decided_at": _now(),
+            "note": f"Within policy: credit memos up to ${policy.approval_over:,.0f} post without asking."})
+        run.emit("approval", approved)
+        run.log(f"Credit memo of ${amount:,.0f} is within policy; no approval needed.", actor="bookkeeper")
+        _post_books(run, approved)
         return
-    approved = approval.model_copy(update={
-        "status": "approved", "decided_at": _now(),
-        "note": f"Within policy: credit memos up to ${policy.controller_approval_over:,.0f} post without the controller."})
-    run.emit("approval", approved)
-    run.log(f"Credit memo of ${amount:,.0f} is within policy; no controller needed.", actor="bookkeeper")
-    _post_books(run, approved)
+    standing = auto_post_of(run.account, policy)
+    if standing and amount <= standing.limit:
+        approved = approval.model_copy(update={
+            "status": "approved", "decided_at": _now(), "posted_by_auto_post": standing,
+            "note": f"Posted by {owner}'s auto-post rule: fair-charge memos up to ${standing.limit:,.0f} post without "
+                    f"asking (set when approving {standing.approval_id})."})
+        run.emit("approval", approved)
+        run.log(f"Credit memo of ${amount:,.0f} is within {owner}'s auto-post rule (up to ${standing.limit:,.0f}, set "
+                f"when approving {standing.approval_id}): posting without asking.", "good", "bookkeeper")
+        _post_books(run, approved)
+        return
+    run.emit("approval", approval)
+    run.log(f"Credit memo of ${amount:,.0f} waits on {owner}. Nothing posts until {owner} says yes"
+            + (f" (above the ${standing.limit:,.0f} auto-post limit)." if standing else "."), actor="bookkeeper")
+    _tell(run, "owner", f"{approval.text} Reply YES to approve, or NO with a note to hold it.", actor="bookkeeper")
 
 
 def answer(question_id: str, text: str, from_role: str = "owner",
-           client: anthropic.Anthropic | None = None) -> tuple[Answer, Rule | None]:
+           client: anthropic.Anthropic | None = None, save_rule: bool = True) -> tuple[Answer, Rule | None]:
     """See _answer. The rule writer's call, if any, is traced to the question's run."""
     run_id = QUESTIONS[question_id][0]
     with trace.run_context(run_id):
-        return _answer(question_id, text, from_role, client)
+        return _answer(question_id, text, from_role, client, save_rule)
 
 
 def _answer(question_id: str, text: str, from_role: str = "owner",
-            client: anthropic.Anthropic | None = None) -> tuple[Answer, Rule | None]:
+            client: anthropic.Anthropic | None = None, save_rule: bool = True) -> tuple[Answer, Rule | None]:
     """The owner's reply (SMS or in-app). Code reads it first (api/replies.py):
-    - a rule ("accept if notice is at least 14 days") is saved and the waiting charges are decided again;
+    - a rule ("accept if notice is at least 14 days") is saved and the waiting charges are decided again; with
+      save_rule=False (the app's "Save as a rule for next time" unticked) it settles this charge only, as the rule
+      would, and nothing is saved, so the next charge like it asks again;
     - ACCEPT or DISPUTE alone settles this charge only, and no rule is saved;
     - UNDO cancels the newest rule for next time (charges it already decided keep their decision);
     - anything else goes to Claude's rule writer; if that can't read it either, the owner is asked again.
@@ -705,16 +738,20 @@ def _answer(question_id: str, text: str, from_role: str = "owner",
         run.log(f"{charge_id} is already settled; only UNDO changes it now.", actor="gate", charge_id=charge_id)
         return ans, None
 
-    if reply.kind == "once":
+    def settle_once(choice: str) -> tuple[Answer, None]:
         ans = record()
         run.questions[question_id] = q.model_copy(update={"answer": text, "answered_at": now})
-        d = gate.decide_by_owner(run.engine_charge(run.charges[charge_id]), a, eng.DecisionKind(reply.decision),
+        d = gate.decide_by_owner(run.engine_charge(run.charges[charge_id]), a, eng.DecisionKind(choice),
                                  policy, run.decisions[charge_id].gate_row, cap_at_deal=term is not None)
         _record(run, charge_id, d, decided_by="owner")
-        run.texts.append(("owner", replies.once_text(reply, charge_id)))
-        run.log(f"Texted {owner}: \"{replies.once_text(reply, charge_id)}\"", actor="gate", charge_id=charge_id)
+        said = replies.once_text(replies.OwnerReply(kind="once", decision=choice), charge_id)
+        run.texts.append(("owner", said))
+        run.log(f"Texted {owner}: \"{said}\"", actor="gate", charge_id=charge_id)
         _after_decisions(run, policy)
         return ans, None
+
+    if reply.kind == "once":
+        return settle_once(reply.decision)
 
     # Rule ids are unique across accounts; the label counts the account's own rules (Peak Bar's first is Rule #1).
     rule, echo, approver = None, "", run.account.brand.owner.name
@@ -736,6 +773,11 @@ def _answer(question_id: str, text: str, from_role: str = "owner",
         run.log(f"Couldn't use \"{text}\" ({why}). Texted {owner}: \"{replies.REASK_TEXT}\"", "warn", "gate", charge_id)
         return ans, None
 
+    if not save_rule:  # this charge only: decide it the way the rule would, and keep nothing for next time
+        choice = rules_engine.evaluate(adapters.to_engine_rule(rule), dict(a.facts))
+        run.log(f"{owner} answered \"{text}\" for {charge_id} only: no rule saved.", actor="gate", charge_id=charge_id)
+        return settle_once(choice.value)
+
     ans = record(rule.id)
     RULES.append(rule)
     RULE_ACCOUNTS[rule.id] = run.account.id
@@ -753,7 +795,7 @@ def _answer(question_id: str, text: str, from_role: str = "owner",
     return ans, rule
 
 
-# ---------------------------------------------------------------- controller approvals (F10)
+# ---------------------------------------------------------------- the admin's approvals (F10)
 
 def find_approval(approval_id: str) -> tuple[Run, Approval] | None:
     """The live run that asked for this approval, and the approval as it stands now (its newest event)."""
@@ -764,9 +806,9 @@ def find_approval(approval_id: str) -> tuple[Run, Approval] | None:
     return None
 
 
-def pending_approval(role: str = "controller") -> str | None:
-    """The newest approval still waiting on this role, for an SMS reply that doesn't name one. A replaced run's
-    approvals don't count: Sam's YES must not post an old run's memo while the newer run is still deciding."""
+def pending_approval(role: str = "owner") -> str | None:
+    """The newest approval still waiting on the admin, for an SMS reply that doesn't name one. A replaced run's
+    approvals don't count: a YES must not post an old run's memo while the newer run is still deciding."""
     for run in reversed([r for r in RUNS.values() if r.replaced_by is None]):
         ids = list(dict.fromkeys(e.data.id for e in run.events if e.type == "approval"))
         for approval_id in reversed(ids):
@@ -782,11 +824,14 @@ class AlreadyDecided(ValueError):
         self.approval = approval
 
 
-def decide_approval(approval_id: str, approve: bool, note: str | None = None) -> tuple[Approval, list[LedgerPost]]:
-    """The controller's yes or no on a run's credit memo (in-app or SMS). Yes posts it to QuickBooks (_post_books:
-    the memo, applied to the invoice, plus the disputed-balance note); no posts nothing, keeps the note and tells
-    the owner. A yes on an approved memo whose QuickBooks write failed retries the write (same request ids, so
-    nothing posts twice). Raises KeyError if no live run asked for it, AlreadyDecided (a ValueError) if it was decided."""
+def decide_approval(approval_id: str, approve: bool, note: str | None = None,
+                    auto_post: bool = False) -> tuple[Approval, list[LedgerPost]]:
+    """The admin's yes or no on a run's credit memo (in-app or SMS). Yes posts it to QuickBooks (_post_books:
+    the memo, applied to the invoice, plus the disputed-balance note); no posts nothing and keeps the note on the card.
+    A yes with auto_post also saves the account's auto-post limit at this memo's amount: later fair-charge memos up to
+    it post without asking. A yes on an approved memo whose QuickBooks write failed retries the write (same request
+    ids, so nothing posts twice). Raises KeyError if no live run asked for it, AlreadyDecided (a ValueError) if it was
+    decided."""
     with _state:  # an SMS yes and an in-app yes arriving together decide it once
         found = find_approval(approval_id)
         if found is None:
@@ -795,24 +840,31 @@ def decide_approval(approval_id: str, approve: bool, note: str | None = None) ->
         retry = approve and approval.status == "approved" and _write_failed(run, approval_id)
         if approval.status != "pending" and not retry:
             raise AlreadyDecided(approval)
+        now = _now()
+        standing = (AutoPost(limit=approval.amount, set_by=run.account.brand.owner.name, approval_id=approval.id,
+                             set_at=now) if approve and auto_post and not retry else None)
         decided = approval if retry else approval.model_copy(update={
-            "status": "approved" if approve else "refused", "note": note or None, "decided_at": _now()})
+            "status": "approved" if approve else "refused", "note": note or None, "decided_at": now,
+            "sets_auto_post": standing})
+        if standing:
+            AUTO_POST[run.account.id] = standing
         if not retry:
             run.emit("approval", decided)
-    sam = run.name("controller")
+    if standing:
+        saved_state.save_auto_post(standing, run.account.id)  # a restart keeps it (api/db/state.py)
+    owner = run.name("owner")
     if retry:
-        run.log(f"{sam} approved again: retrying the QuickBooks write for the ${approval.amount:,.0f} credit memo.",
-                actor="controller")
+        run.log(f"{owner} approved again: retrying the QuickBooks write for the ${approval.amount:,.0f} credit memo.",
+                actor="owner")
         return decided, _post_books(run, decided)
     if not approve:
-        run.log(f"{sam} refused the ${approval.amount:,.0f} credit memo" + (f": \"{note}\"" if note else "")
-                + ". Nothing posts to QuickBooks; the note is on the card and the memo goes back to "
-                + f"{run.name('owner')}.",
-                "warn", "controller")
-        _tell(run, "owner", f"{sam} held the ${approval.amount:,.0f} credit memo" + (f": {note}" if note else "")
-              + ". Nothing was posted to QuickBooks.", "warn")
+        run.log(f"{owner} held the ${approval.amount:,.0f} credit memo" + (f": \"{note}\"" if note else "")
+                + ". Nothing posts to QuickBooks; the note is on the card.", "warn", "owner")
         return decided, []
-    run.log(f"{sam} approved the ${approval.amount:,.0f} credit memo. Posting to QuickBooks.", "good", "controller")
+    run.log(f"{owner} approved the ${approval.amount:,.0f} credit memo. Posting to QuickBooks.", "good", "owner")
+    if standing:
+        run.log(f"Saved {owner}'s auto-post rule: fair-charge memos up to ${standing.limit:,.0f} post without asking "
+                "from now on.", "good", "owner")
     return decided, _post_books(run, decided)
 
 
@@ -830,7 +882,7 @@ def _write_failed(run: Run, approval_id: str) -> bool:
 
 
 def failed_approval() -> str | None:
-    """The newest approved memo whose QuickBooks write failed, for Sam's YES by text (it retries the write)."""
+    """The newest approved memo whose QuickBooks write failed, for the admin's YES by text (it retries the write)."""
     for run in reversed([r for r in RUNS.values() if r.replaced_by is None]):
         ids = list(dict.fromkeys(e.data.id for e in run.events if e.type == "approval"))
         for approval_id in reversed(ids):
@@ -912,11 +964,11 @@ def _post_books(run: Run, approval: Approval) -> list[LedgerPost]:
     posted_memo = (f"${approval.amount:,.0f} credit memo posted" + (f" and applied to {invoice_no}" if invoice_no else ""))
     if memo_post and memo_post.status == "failed":
         run.log(f"QuickBooks write failed for {approval.id}; nothing half-posted is shown as done. "
-                f"{_sam_can_retry(run)}",
+                f"{_can_retry(run)}",
                 "error", "bookkeeper")
     elif note_post and note_post.status == "failed":
         run.log("QuickBooks: " + (f"{posted_memo}, but " if memo_post else "") + "the open-balance note failed. "
-                + _sam_can_retry(run), "warn", "bookkeeper")
+                + _can_retry(run), "warn", "bookkeeper")
     elif posts:
         parts = ([posted_memo] if memo_post else []) + (
             [f"${note_post.amount:,.0f} stays open, noted with the dispute lines"] if note_post else [])
@@ -925,12 +977,12 @@ def _post_books(run: Run, approval: Approval) -> list[LedgerPost]:
     return posts
 
 
-def _sam_can_retry(run: Run) -> str:
-    return f"{run.name('controller')} can approve again to retry."
+def _can_retry(run: Run) -> str:
+    return f"{run.name('owner')} can approve again to retry."
 
 
 def inbox() -> tuple[list[Question], list[Approval]]:
-    """Open owner questions and approvals waiting on the controller, across live runs (a replaced run's don't wait)."""
+    """Open questions and approvals waiting on the admin, across live runs (a replaced run's don't wait)."""
     questions = [q for run in RUNS.values() for q in run.questions.values() if is_open(q)]
     pending = []
     for run in (r for r in RUNS.values() if r.replaced_by is None):

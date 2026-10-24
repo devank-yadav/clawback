@@ -11,8 +11,9 @@ import type { Account } from "@/lib/types";
 import { useRunEvents } from "@/lib/useRunEvents";
 import { selectWorkspace, type WorkspaceView } from "@/lib/workspace";
 
-/** The people and companies of the current account, as the screens name them. */
-export type Cast = { brand: string; distributor: string; owner: string; ownerFull: string; controller: string; controllerFull: string };
+/** The people and companies of the current account, as the screens name them. The owner is the admin: the one person
+ * who answers the questions and approves the credit memos. */
+export type Cast = { brand: string; distributor: string; owner: string; ownerFull: string };
 
 type Run = ReturnType<typeof useRunEvents> & {
   view: WorkspaceView;
@@ -37,8 +38,6 @@ export function RunProvider({ children }: { children: ReactNode }) {
     distributor: account?.distributor.name ?? "the distributor",
     owner: account ? firstName(account.brand.owner.name) : "the owner",
     ownerFull: account?.brand.owner.name ?? "the owner",
-    controller: account ? firstName(account.brand.controller.name) : "the controller",
-    controllerFull: account?.brand.controller.name ?? "the controller",
   }), [account]);
   const link = useCallback((path: string, extra?: Record<string, string>) => withAccount(path, account?.id, extra), [account?.id]);
   const value = useMemo(

@@ -93,7 +93,7 @@ function FlowFor() {
     setCleared((n) => n + 1);
   };
 
-  const stages = buildStages(state, view, { distributor: cast.distributor, owner: cast.owner, controller: cast.controller }, starting || (mine && !state.run));
+  const stages = buildStages(state, view, { distributor: cast.distributor, owner: cast.owner }, starting || (mine && !state.run));
   const focus = focusStage(stages);
   const r = view.remittance;
   const t = view.totals;
@@ -135,7 +135,7 @@ function FlowFor() {
           <div className="fl-meters">
             <Meter label="Disputing, with proof" value={t?.disputed ?? 0} tone="dispute" />
             <Meter label="Fair, accepted" value={t?.accepted ?? 0} tone="fair" />
-            <Meter label={`Waiting on ${view.stage === "controller" ? cast.controller : cast.owner}`} value={(t?.waiting ?? 0) + (view.stage === "controller" ? view.approval?.amount ?? 0 : 0)} tone="wait" />
+            <Meter label={`Waiting on ${cast.owner}`} value={(t?.waiting ?? 0) + (view.stage === "approval" ? view.approval?.amount ?? 0 : 0)} tone="wait" />
           </div>
           <StageRail stages={stages} />
           <Spotlight focus={focus} />

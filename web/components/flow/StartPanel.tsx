@@ -117,8 +117,7 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
 
         <div className="fl-crew" aria-label="The agents">
           {CREW.map((c) => <span key={c.name} className={`fl-chip ${c.tag === "CODE" ? "is-code" : ""}`}><i>{c.tag === "CODE" ? "CODE" : "AI"}</i>{c.name}</span>)}
-          <span className="fl-chip is-person"><i>OWNER</i>{cast.owner}</span>
-          <span className="fl-chip is-person"><i>CONTROLLER</i>{cast.controller}</span>
+          <span className="fl-chip is-person"><i>ADMIN</i>{cast.owner}</span>
         </div>
         <p className="cx-tiny">AI reads and writes. Tested code does every calculation. People approve money.</p>
 

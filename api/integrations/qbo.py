@@ -1,5 +1,5 @@
 """QuickBooks Online writes for approved credit memos (F10). Only this code writes to the books, and only after
-the controller (or the owner's policy, for memos of $1,000 or less) has said yes.
+the admin (or the owner's policy: memos of $1,000 or less, or under the admin's auto-post limit) has said yes.
 
 Live (QBO_* keys set): the sandbox REST API. The base URL, minorversion and the query / create / get calls
 follow scripts/seed_quickbooks.py, which created each account's customer (Peak Bar's: Northmart) and invoice

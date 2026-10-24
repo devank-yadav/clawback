@@ -141,7 +141,7 @@ def test_refusal_run_streams():
     assert [e.data.status for e in events if e.type == "approval"] == ["pending", "refused"]
 
 
-def test_controller_approves_in_app():
+def test_admin_approves_in_app():
     client.post("/demo/reset")
     r = client.post("/approvals/AP-1", json={"approve": True}).json()
     assert r["approval"]["status"] == "approved" and r["ledger_post"]["amount"] == 2730.0
@@ -150,7 +150,7 @@ def test_controller_approves_in_app():
     client.post("/demo/reset")
 
 
-def test_controller_refuses_in_app():
+def test_admin_refuses_in_app():
     client.post("/demo/reset")
     r = client.post("/approvals/AP-1", json={"approve": False, "note": "Not yet."}).json()
     assert r["approval"]["status"] == "refused" and r["approval"]["note"] == "Not yet."

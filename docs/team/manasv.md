@@ -9,7 +9,7 @@
 - **Don't touch:** `api/engine/`, `api/agents/`, `config/policy.yaml`, `web/`.
 - **The one rule that matters:** every number in `data/` must match `data/CLAUDE.md` to the cent. Your check script proves it.
 - **Ask Devank:** anything about how a charge should be decided.
-- **Your only human steps:** sign in to Figma, run each script once with the keys, tap "yes" on the controller SMS in the demo, and run `make reset` at the judging table.
+- **Your only human steps:** sign in to Figma, run each script once with the keys, and run `make reset` at the judging table.
 
 ## Setup on your laptop
 
@@ -63,7 +63,7 @@ One Claude Code session per job (start fresh with `/clear` between jobs). Paste 
 | 9 PM | Run `make reset` between recording takes |
 | **10 PM freeze** | Final Devpost draft from job 6 |
 | Sun 6–8:30 AM | Paste the final eval score and quotes; **submit Devpost by 8:30** |
-| Sun 10:30 AM | At the table: tap "yes" on the controller SMS, run `make reset` between judges, hold the backup video |
+| Sun 10:30 AM | At the table: run `make reset` between judges, hold the backup video |
 
 **Rules:**
 

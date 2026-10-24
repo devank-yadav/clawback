@@ -1,4 +1,4 @@
-"""D9 / F10: the controller's yes posts the credit memo and the open-balance note; a no posts nothing."""
+"""D9 / F10: the admin's yes posts the credit memo and the open-balance note; a no posts nothing."""
 
 import itertools
 import json
@@ -13,7 +13,7 @@ from api.integrations import qbo, replay, sms
 from api.tests.test_disputes import PortalClaude, finished_march
 from api.tests.test_pipeline import ScenarioClaude, last_totals
 
-OWNER, SAM = "+15550000001", "+15550000002"
+OWNER = "+15550000001"  # the admin: questions and approvals both text this phone
 
 
 @pytest.fixture(autouse=True)
@@ -21,7 +21,6 @@ def _clean(tmp_path, monkeypatch):
     for k in (*qbo.KEYS, *sms.KEYS, "DEMO_MODE", "RECORD_FIXTURES", "PUBLIC_BASE_URL"):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("OWNER_PHONE", OWNER)
-    monkeypatch.setenv("CONTROLLER_PHONE", SAM)
     monkeypatch.setattr(replay, "FIXTURES", tmp_path)
     pipeline.reset(), disputes.reset()
     yield
@@ -39,7 +38,7 @@ def posts(run):
 
 def test_yes_posts_memo_applies_it_and_notes_the_open_balance():
     run = finished_march(ScenarioClaude())
-    assert not posts(run)  # nothing posts before Sam says yes
+    assert not posts(run)  # nothing posts before Dana says yes
     approval, made = pipeline.decide_approval(pending(run).id, True)
     assert approval.status == "approved" and approval.decided_at
     memo, note = made
@@ -54,12 +53,12 @@ def test_yes_posts_memo_applies_it_and_notes_the_open_balance():
     assert last_totals(run).accepted == D(2730)  # posting doesn't change the meters
 
 
-def test_no_posts_nothing_keeps_the_note_and_tells_dana():
+def test_no_posts_nothing_and_keeps_the_note():
     run = finished_march(ScenarioClaude())
     approval, made = pipeline.decide_approval(pending(run).id, False, "Hold until Dana checks the display fee")
     assert (approval.status, approval.note, made, posts(run)) == ("refused", "Hold until Dana checks the display fee", [], [])
     assert not qbo.books().calls
-    assert any(role == "owner" and "held the $2,730 credit memo" in text for role, text in sms.outbox)
+    assert any("Dana held the $2,730 credit memo" in e.data.text for e in run.events if e.type == "log")
 
 
 def test_one_answer_per_approval():
@@ -114,26 +113,26 @@ def api(monkeypatch):
     return TestClient(app)
 
 
-def test_dana_and_sam_reply_by_text(api):
+def test_dana_answers_and_approves_by_text(api):
     run = pipeline.start("march", ScenarioClaude(), background=False)
     r = text(api, OWNER, "accept if notice is at least 14 days")
     assert r.status_code == 200 and "<Message>Saved: accept display fees" in r.text  # the reply goes back as TwiML
     assert run.shown["C6"].rule_id == "rule-1"
-    assert "Approved: $2,730 credit memo" in text(api, SAM, "YES").text
+    assert "Approved: $2,730 credit memo" in text(api, OWNER, "YES").text
     assert [p.qbo_entity for p in posts(run)] == ["credit_memo", "invoice_note"]
 
 
-def test_sam_refuses_by_text_with_a_note(api):
+def test_dana_refuses_by_text_with_a_note(api):
     run = finished_march(ScenarioClaude())
-    text(api, SAM, "No - wait for Dana")
-    assert (run.events and [e.data for e in run.events if e.type == "approval"][-1].note) == "wait for Dana"
+    text(api, OWNER, "No - wait for the broker")
+    assert (run.events and [e.data for e in run.events if e.type == "approval"][-1].note) == "wait for the broker"
     assert posts(run) == []
 
 
-def test_unclear_reply_from_sam_is_asked_again(api):
+def test_unclear_approval_reply_is_asked_again(api):
     run = finished_march(ScenarioClaude())
-    r = text(api, SAM, "yes but only 2 lines")
-    assert pending(run) and pipeline.replies.CONTROLLER_REASK_TEXT in r.text
+    r = text(api, OWNER, "yes but only 2 lines")
+    assert pending(run) and pipeline.replies.APPROVAL_REASK_TEXT in r.text
 
 
 def test_unknown_number_and_bad_signature(api, monkeypatch):
@@ -142,11 +141,11 @@ def test_unknown_number_and_bad_signature(api, monkeypatch):
     assert pending(run)  # a stranger can't approve
     monkeypatch.setenv("TWILIO_AUTH_TOKEN", "test-auth-token")
     monkeypatch.setenv("PUBLIC_BASE_URL", "https://clawback.example")
-    assert text(api, SAM, "YES").status_code == 403
+    assert text(api, OWNER, "YES").status_code == 403
     from twilio.request_validator import RequestValidator
     sig = RequestValidator("test-auth-token").compute_signature(
-        "https://clawback.example/webhooks/twilio/sms", {"From": SAM, "Body": "YES"})
-    assert text(api, SAM, "YES", **{"X-Twilio-Signature": sig}).status_code == 200
+        "https://clawback.example/webhooks/twilio/sms", {"From": OWNER, "Body": "YES"})
+    assert text(api, OWNER, "YES", **{"X-Twilio-Signature": sig}).status_code == 200
     assert [e.data for e in run.events if e.type == "approval"][-1].status == "approved"
 
 
@@ -255,7 +254,7 @@ def test_no_memo_when_the_invoice_cant_take_it(monkeypatch):
 
 def test_demo_mode_posts_to_the_stand_in_even_with_keys(monkeypatch):
     """A recorded QuickBooks write never matches a new run (its request id and date change), so DEMO_MODE uses the
-    stand-in instead of failing at Sam's yes with Wi-Fi off."""
+    stand-in instead of failing at Dana's yes with Wi-Fi off."""
     run = finished_march(ScenarioClaude())
     for k in qbo.KEYS:
         monkeypatch.setenv(k, "set")
@@ -274,7 +273,7 @@ def test_demo_mode_posts_to_the_stand_in_even_with_keys(monkeypatch):
 # ---------------------------------------------------------------- POST /demo/reset undoes the books
 
 def sandbox_yes(monkeypatch, fake):
-    """March decided, then Sam's yes written to the fake sandbox."""
+    """March decided, then Dana's yes written to the fake sandbox."""
     run = finished_march(ScenarioClaude())
     monkeypatch.setattr(qbo, "_books", live_books(fake))
     pipeline.decide_approval(pending(run).id, True)

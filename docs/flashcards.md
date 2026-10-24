@@ -42,8 +42,8 @@ It starts from what a brand already has: the payment slip, the deal and its emai
 production, disputes go out by email or get pasted into a portal; automating portals comes later. [Upload · D-0417]
 
 **8. Who can move money?**
-No agent. Only the controller's sign-in approves the memo, never the owner's or an agent; a no posts nothing.
-[Sam's phone, signed in as controller · audit log]
+No agent. Only the owner's sign-in (the admin) approves the memo; a no posts nothing.
+[Dana's phone, signed in as the admin · audit log]
 
 **9. What if the AI is wrong?**
 The worst case is a question, not a payment: two models must agree, quotes are checked word for word, code does
@@ -83,7 +83,7 @@ wrote the cases, and they cover promos and fees only. [`/results`]
 
 **18. Can I try it on my phone?**
 Yes: clawback.biz. Each visitor gets 3 live runs per 10 minutes so a public link can't drain our credits;
-approving money still needs the controller's sign-in.
+approving money still needs the admin's sign-in.
 
 **19. How do I know why money moved?**
 Every decision cites a sentence, a row, a rule or a person, and every AI call is in the trace. The audit log is

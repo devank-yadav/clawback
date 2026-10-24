@@ -9,10 +9,7 @@
             "type": "string"
           },
           "from_role": {
-            "enum": [
-              "owner",
-              "controller"
-            ],
+            "const": "owner",
             "title": "From Role",
             "type": "string"
           },
@@ -120,7 +117,6 @@
               "bookkeeper",
               "coach",
               "owner",
-              "controller",
               "northmart",
               "policy"
             ],
@@ -128,10 +124,7 @@
             "type": "string"
           },
           "approver_role": {
-            "enum": [
-              "owner",
-              "controller"
-            ],
+            "const": "owner",
             "title": "Approver Role",
             "type": "string"
           },
@@ -177,6 +170,28 @@
             ],
             "default": null,
             "title": "Decided At"
+          },
+          "sets_auto_post": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/AutoPost"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "posted_by_auto_post": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/AutoPost"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -244,6 +259,37 @@
           "amount"
         ],
         "title": "ApprovalLine",
+        "type": "object"
+      },
+      "AutoPost": {
+        "additionalProperties": false,
+        "description": "The admin's standing yes: fair-charge credit memos up to `limit` post without asking (set by ticking \"Post fair\ncharges like these automatically from now on\" when approving `approval_id`).",
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "number"
+          },
+          "set_by": {
+            "title": "Set By",
+            "type": "string"
+          },
+          "approval_id": {
+            "title": "Approval Id",
+            "type": "string"
+          },
+          "set_at": {
+            "format": "date-time",
+            "title": "Set At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "limit",
+          "set_by",
+          "approval_id",
+          "set_at"
+        ],
+        "title": "AutoPost",
         "type": "object"
       },
       "Charge": {
@@ -526,7 +572,6 @@
               "bookkeeper",
               "coach",
               "owner",
-              "controller",
               "northmart",
               "policy"
             ],
@@ -1315,7 +1360,6 @@
               "bookkeeper",
               "coach",
               "owner",
-              "controller",
               "northmart",
               "policy"
             ],
@@ -1496,10 +1540,7 @@
             "type": "string"
           },
           "to_role": {
-            "enum": [
-              "owner",
-              "controller"
-            ],
+            "const": "owner",
             "title": "To Role",
             "type": "string"
           },
@@ -1883,10 +1924,7 @@
             "type": "string"
           },
           "approver_role": {
-            "enum": [
-              "owner",
-              "controller"
-            ],
+            "const": "owner",
             "title": "Approver Role",
             "type": "string"
           },
@@ -2609,7 +2647,6 @@
               "bookkeeper",
               "coach",
               "owner",
-              "controller",
               "northmart",
               "policy"
             ],
@@ -3059,10 +3096,7 @@
             "type": "string"
           },
           "approver_role": {
-            "enum": [
-              "owner",
-              "controller"
-            ],
+            "const": "owner",
             "title": "Approver Role",
             "type": "string"
           },
@@ -3730,7 +3764,6 @@
               "bookkeeper",
               "coach",
               "owner",
-              "controller",
               "northmart",
               "policy"
             ],
@@ -3738,10 +3771,7 @@
             "type": "string"
           },
           "approver_role": {
-            "enum": [
-              "owner",
-              "controller"
-            ],
+            "const": "owner",
             "title": "Approver Role",
             "type": "string"
           },
@@ -3787,6 +3817,28 @@
             ],
             "default": null,
             "title": "Decided At"
+          },
+          "sets_auto_post": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/AutoPost"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "posted_by_auto_post": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/AutoPost"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -3819,6 +3871,37 @@
           "amount"
         ],
         "title": "ApprovalLine",
+        "type": "object"
+      },
+      "AutoPost": {
+        "additionalProperties": false,
+        "description": "The admin's standing yes: fair-charge credit memos up to `limit` post without asking (set by ticking \"Post fair\ncharges like these automatically from now on\" when approving `approval_id`).",
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "number"
+          },
+          "set_by": {
+            "title": "Set By",
+            "type": "string"
+          },
+          "approval_id": {
+            "title": "Approval Id",
+            "type": "string"
+          },
+          "set_at": {
+            "format": "date-time",
+            "title": "Set At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "limit",
+          "set_by",
+          "approval_id",
+          "set_at"
+        ],
+        "title": "AutoPost",
         "type": "object"
       },
       "Dispute": {
@@ -3991,10 +4074,7 @@
             "type": "string"
           },
           "to_role": {
-            "enum": [
-              "owner",
-              "controller"
-            ],
+            "const": "owner",
             "title": "To Role",
             "type": "string"
           },
@@ -4428,7 +4508,6 @@
               "bookkeeper",
               "coach",
               "owner",
-              "controller",
               "northmart",
               "policy"
             ],
@@ -4878,10 +4957,7 @@
             "type": "string"
           },
           "approver_role": {
-            "enum": [
-              "owner",
-              "controller"
-            ],
+            "const": "owner",
             "title": "Approver Role",
             "type": "string"
           },
@@ -5160,10 +5236,7 @@
             "type": "string"
           },
           "from_role": {
-            "enum": [
-              "owner",
-              "controller"
-            ],
+            "const": "owner",
             "title": "From Role",
             "type": "string"
           },
@@ -5264,10 +5337,7 @@
             "type": "string"
           },
           "approver_role": {
-            "enum": [
-              "owner",
-              "controller"
-            ],
+            "const": "owner",
             "title": "Approver Role",
             "type": "string"
           },
@@ -5525,7 +5595,7 @@
   },
   "ApprovalDecisionRequest": {
     "additionalProperties": false,
-    "description": "POST /approvals/{id}: the controller's in-app Yes / No (the fallback for the SMS reply).",
+    "description": "POST /approvals/{id}: the admin's in-app Yes / No (the fallback for the SMS reply).",
     "properties": {
       "approve": {
         "title": "Approve",
@@ -5542,6 +5612,11 @@
         ],
         "default": null,
         "title": "Note"
+      },
+      "auto_post": {
+        "default": false,
+        "title": "Auto Post",
+        "type": "boolean"
       }
     },
     "required": [
@@ -5590,7 +5665,6 @@
               "bookkeeper",
               "coach",
               "owner",
-              "controller",
               "northmart",
               "policy"
             ],
@@ -5598,10 +5672,7 @@
             "type": "string"
           },
           "approver_role": {
-            "enum": [
-              "owner",
-              "controller"
-            ],
+            "const": "owner",
             "title": "Approver Role",
             "type": "string"
           },
@@ -5647,6 +5718,28 @@
             ],
             "default": null,
             "title": "Decided At"
+          },
+          "sets_auto_post": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/AutoPost"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "posted_by_auto_post": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/AutoPost"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -5679,6 +5772,37 @@
           "amount"
         ],
         "title": "ApprovalLine",
+        "type": "object"
+      },
+      "AutoPost": {
+        "additionalProperties": false,
+        "description": "The admin's standing yes: fair-charge credit memos up to `limit` post without asking (set by ticking \"Post fair\ncharges like these automatically from now on\" when approving `approval_id`).",
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "number"
+          },
+          "set_by": {
+            "title": "Set By",
+            "type": "string"
+          },
+          "approval_id": {
+            "title": "Approval Id",
+            "type": "string"
+          },
+          "set_at": {
+            "format": "date-time",
+            "title": "Set At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "limit",
+          "set_by",
+          "approval_id",
+          "set_at"
+        ],
+        "title": "AutoPost",
         "type": "object"
       },
       "LedgerLine": {
@@ -5897,7 +6021,6 @@
               "bookkeeper",
               "coach",
               "owner",
-              "controller",
               "northmart",
               "policy"
             ],
@@ -5905,10 +6028,7 @@
             "type": "string"
           },
           "approver_role": {
-            "enum": [
-              "owner",
-              "controller"
-            ],
+            "const": "owner",
             "title": "Approver Role",
             "type": "string"
           },
@@ -5954,6 +6074,28 @@
             ],
             "default": null,
             "title": "Decided At"
+          },
+          "sets_auto_post": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/AutoPost"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "posted_by_auto_post": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/AutoPost"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -5986,6 +6128,37 @@
           "amount"
         ],
         "title": "ApprovalLine",
+        "type": "object"
+      },
+      "AutoPost": {
+        "additionalProperties": false,
+        "description": "The admin's standing yes: fair-charge credit memos up to `limit` post without asking (set by ticking \"Post fair\ncharges like these automatically from now on\" when approving `approval_id`).",
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "number"
+          },
+          "set_by": {
+            "title": "Set By",
+            "type": "string"
+          },
+          "approval_id": {
+            "title": "Approval Id",
+            "type": "string"
+          },
+          "set_at": {
+            "format": "date-time",
+            "title": "Set At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "limit",
+          "set_by",
+          "approval_id",
+          "set_at"
+        ],
+        "title": "AutoPost",
         "type": "object"
       },
       "OwnerMessage": {
@@ -6047,10 +6220,7 @@
             "type": "string"
           },
           "to_role": {
-            "enum": [
-              "owner",
-              "controller"
-            ],
+            "const": "owner",
             "title": "To Role",
             "type": "string"
           },
@@ -6686,7 +6856,15 @@
             "$ref": "#/$defs/Person"
           },
           "controller": {
-            "$ref": "#/$defs/Person"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Person"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -6695,8 +6873,7 @@
           "city",
           "initials",
           "colors",
-          "owner",
-          "controller"
+          "owner"
         ],
         "title": "Brand",
         "type": "object"

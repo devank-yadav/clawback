@@ -1,14 +1,15 @@
 "use client";
 
-// Who is signed in to the workspace: the brand's owner (answers policy questions) or its controller (approves
-// accounting entries). On the deployed site each role has an access code (OWNER_TOKEN / CONTROLLER_TOKEN on the API);
-// a local API has none, so the code may be left empty. Also the prompts that ask for a code or the admin token.
+// Who is signed in to the workspace: the admin, the brand's owner, the one person who decides (answers the policy
+// questions and approves the accounting entries). On the deployed site the admin has an access code (OWNER_TOKEN on
+// the API); a local API has none, so the code may be left empty. Also the prompts that ask for a code or the
+// presenter's admin token (CLAWBACK_ADMIN_TOKEN: resets and per-visitor limits).
 
 import { useSyncExternalStore } from "react";
 import { ApiError } from "./api";
 import { setAdminToken } from "./tokens";
 
-export type Role = "owner" | "controller";
+export type Role = "owner";
 
 export type Prompt =
   | { kind: "role"; role: Role; reason: string | null; then: (() => void) | null }
@@ -27,7 +28,7 @@ function snapshot(): Session {
     loaded = true;
     try {
       const saved = JSON.parse(window.sessionStorage.getItem(KEY) ?? "null");
-      if (saved?.role === "owner" || saved?.role === "controller") state = { ...state, role: saved.role, code: typeof saved.code === "string" ? saved.code : null };
+      if (saved?.role === "owner") state = { ...state, role: saved.role, code: typeof saved.code === "string" ? saved.code : null };
     } catch {
       /* nothing saved, or storage blocked */
     }
@@ -84,8 +85,7 @@ export function submitAdminToken(token: string) {
 }
 
 const REFUSED: Record<Role, string> = {
-  owner: "Only the owner can answer this. Enter the owner’s access code.",
-  controller: "Only the controller can approve this. Enter the controller’s access code.",
+  owner: "Only the admin can do this. Enter the admin’s access code.",
 };
 
 /**

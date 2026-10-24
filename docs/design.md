@@ -240,6 +240,8 @@ Amounts come from plain Python with unit tests; the gate applies the owner's wri
 | 9 | Anything else | Ask the owner | No |
 | 10 | The deal's dispute window has closed and the charge is off the deal (checked right after rows 1 and 2) | Accept, with a note of what the deal allows | Via approvals |
 
+**Update, Oct 24 (Devank): one admin.** One person, the admin (the brand's owner), makes every decision: she answers the questions and approves the credit memos, in the app or by text. There is no controller role and no second approver anywhere; where this doc says "controller" below, read the owner. Each answer has "Save as a rule for next time" (on by default; off settles that charge only), and the approval has "Post fair charges like these automatically from now on", which saves an auto-post limit at that memo's amount (`config/policy.yaml` `auto_post_limit: null` by default): later fair-charge memos up to it post without asking, logged and audited as the owner's auto-post rule. The demo numbers don't change: one question and one approval by the same person, zero questions in April.
+
 **Approvals (separation of duties):**
 
 | Action | Proposed by | Approved by | If no answer |

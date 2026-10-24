@@ -28,7 +28,7 @@ type CallInit = {
   timeoutMs?: number;
   /** Send the presenter's admin token if this tab holds one (resets, and the calls limited per visitor). */
   admin?: boolean;
-  /** The signed-in role's access code, for the owner's answer and the controller's approval. */
+  /** The admin's access code, for the answers and the approvals. */
   roleCode?: string | null;
 };
 
@@ -113,13 +113,15 @@ export async function runEventsOnce(runId: string): Promise<RunEvent[]> {
   return events;
 }
 
-/** POST /questions/{id}/answer: the owner's reply (owner's access code); the rule and new decisions arrive as events. */
-export const answerQuestion = (questionId: string, text: string, roleCode: string | null) =>
-  call<unknown>(`/questions/${q(questionId)}/answer`, { method: "POST", body: { text, from_role: "owner" }, roleCode });
+/** POST /questions/{id}/answer: the admin's reply (admin's access code); the rule and new decisions arrive as events.
+ * saveRule false settles this charge only: no rule is saved, so the next charge like it asks again. */
+export const answerQuestion = (questionId: string, text: string, roleCode: string | null, saveRule = true) =>
+  call<unknown>(`/questions/${q(questionId)}/answer`, { method: "POST", body: { text, from_role: "owner", save_rule: saveRule }, roleCode });
 
-/** POST /approvals/{id}: the controller's yes or no (controller's access code). Refusing posts nothing and keeps the note. */
-export const decideApproval = (approvalId: string, approve: boolean, note: string | null, roleCode: string | null) =>
-  call<{ approval: Approval; ledger_post: LedgerPost | null }>(`/approvals/${q(approvalId)}`, { method: "POST", body: { approve, note }, roleCode });
+/** POST /approvals/{id}: the admin's yes or no (admin's access code). Refusing posts nothing and keeps the note.
+ * autoPost with a yes: fair-charge memos up to this one's amount post without asking from now on. */
+export const decideApproval = (approvalId: string, approve: boolean, note: string | null, roleCode: string | null, autoPost = false) =>
+  call<{ approval: Approval; ledger_post: LedgerPost | null }>(`/approvals/${q(approvalId)}`, { method: "POST", body: { approve, note, auto_post: autoPost }, roleCode });
 
 /** POST /demo/reset. On the deployed site it needs the admin token; a 401 surfaces as ApiError(401) so the screen can ask for it. */
 export const resetWorkspace = () => call<unknown>("/demo/reset", { method: "POST", admin: true, timeoutMs: 30_000 });

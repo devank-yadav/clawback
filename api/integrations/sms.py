@@ -1,4 +1,5 @@
-"""Texts to the owner and the controller through Twilio (the same calls as scripts/send_sms.py).
+"""Texts to the admin (the brand's owner) through Twilio (the same calls as scripts/send_sms.py): the questions and the
+credit memo approvals both go to OWNER_PHONE.
 
 Not sent in DEMO_MODE or without the Twilio keys: the question or approval still waits in /inbox and the board,
 so nothing depends on the text arriving. A failed send is logged by the caller, never raised.
@@ -15,7 +16,7 @@ import os
 
 from api.integrations import replay
 
-PHONES = {"owner": "OWNER_PHONE", "controller": "CONTROLLER_PHONE"}
+PHONES = {"owner": "OWNER_PHONE"}
 KEYS = ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM")
 TIMEOUT_S = 30
 CHANNELS = ("sms", "whatsapp")

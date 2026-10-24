@@ -148,7 +148,7 @@ def evidence(evidence_id: str, run_id: str | None = Query(default=None)) -> Evid
 def answer_question(question_id: str, req: AnswerRequest) -> AnswerResponse:
     if question_id in pipeline.QUESTIONS:
         try:
-            ans, rule = pipeline.answer(question_id, req.text, req.from_role)
+            ans, rule = pipeline.answer(question_id, req.text, req.from_role, save_rule=req.save_rule)
         except pipeline.QuestionClosed as e:
             raise HTTPException(409, f"{e}; answer the newer run's question") from e
         return AnswerResponse(answer=ans, rule=rule)

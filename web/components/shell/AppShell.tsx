@@ -48,7 +48,7 @@ type Props = {
   /** The workspace view or the route this page is. */
   active: View | string
   crumb: string
-  /** Badge on Approvals when a controller decision is waiting. */
+  /** Badge on Approvals when a credit memo waits on the admin. */
   approvalsWaiting?: boolean
   /** Called after a reset succeeds; without it the page reloads. */
   onReset?: () => void
@@ -99,7 +99,6 @@ export default function AppShell({ account, accounts, active, crumb, approvalsWa
   }
 
   const person = role ? roleName(role, account) : null
-  const roleWord = role === 'owner' ? 'Owner' : 'Controller'
 
   return (
     <div className="app-shell">
@@ -127,9 +126,8 @@ export default function AppShell({ account, accounts, active, crumb, approvalsWa
               <div className="menu-separator" />
               <button role="menuitem" onClick={() => { setDetailsOpen(true); setMenuOpen(false) }}><Info /> Account details</button>
               <div className="menu-separator" />
-              <span className="menu-label">{person ? `Signed in as ${person} · ${roleWord}` : 'Not signed in'}</span>
-              {role !== 'owner' && <button role="menuitem" onClick={() => { setMenuOpen(false); askSignIn('owner') }}><LogIn /> Sign in as owner<small className="menu-hint">{account.brand.owner.name}</small></button>}
-              {role !== 'controller' && <button role="menuitem" onClick={() => { setMenuOpen(false); askSignIn('controller') }}><LogIn /> Sign in as controller<small className="menu-hint">{account.brand.controller.name}</small></button>}
+              <span className="menu-label">{person ? `Signed in as ${person} · Admin` : 'Not signed in'}</span>
+              {role !== 'owner' && <button role="menuitem" onClick={() => { setMenuOpen(false); askSignIn('owner') }}><LogIn /> Sign in as admin<small className="menu-hint">{account.brand.owner.name}</small></button>}
               {role && <button role="menuitem" onClick={() => { setMenuOpen(false); signOut() }}><LogOut /> Sign out</button>}
               <div className="menu-separator" />
               <button role="menuitem" disabled={resetState.busy} onClick={() => { setMenuOpen(false); void reset() }}><RotateCcw /> {resetState.busy ? 'Resetting…' : 'Reset workspace'}</button>
@@ -162,7 +160,7 @@ export default function AppShell({ account, accounts, active, crumb, approvalsWa
           {account && person && (
             <div className="viewer">
               <span className="viewer-avatar" aria-hidden>{person.split(' ').map((p) => p[0]).join('').slice(0, 2)}</span>
-              <span><strong>{person}</strong><small>{roleWord} · {account.brand.name}</small></span>
+              <span><strong>{person}</strong><small>Admin · {account.brand.name}</small></span>
               <button className="icon-button" onClick={signOut} aria-label="Sign out" title="Sign out"><LogOut /></button>
             </div>
           )}
@@ -173,7 +171,7 @@ export default function AppShell({ account, accounts, active, crumb, approvalsWa
       <div className="main-shell">
         <header className="topbar">
           <span>{account?.brand.name ?? 'Clawback'} <span className="slash">/</span> <strong>{crumb}</strong></span>
-          {account && <span className="topbar-note"><span className="tiny-dot" /> {person ? `Signed in as ${person} · ${roleWord}` : 'Not signed in'}</span>}
+          {account && <span className="topbar-note"><span className="tiny-dot" /> {person ? `Signed in as ${person} · Admin` : 'Not signed in'}</span>}
         </header>
         {resetState.message && <div className={`feedback shell-feedback ${resetState.error ? 'error' : ''}`} role="status">{resetState.error ? <Info /> : <Check />}{resetState.message}<button className="icon-button" aria-label="Dismiss" onClick={() => setResetState((s) => ({ ...s, message: null }))}><X /></button></div>}
         {children}
@@ -186,8 +184,7 @@ export default function AppShell({ account, accounts, active, crumb, approvalsWa
             <BrandAvatar account={account} large />
             <div><div className="eyebrow">{account.brand.kind} · {account.brand.city}</div><h2 id="brand-title">{account.brand.name}</h2><p>Deductions from {account.distributor.name} are checked against the signed deal before anything is accepted or disputed.</p></div>
             <dl>
-              <div><dt>Owner</dt><dd>{account.brand.owner.name}<small>{account.brand.owner.email}</small></dd></div>
-              <div><dt>Controller</dt><dd>{account.brand.controller.name}</dd></div>
+              <div><dt>Admin</dt><dd>{account.brand.owner.name}<small>{account.brand.owner.email}</small></dd></div>
               <div><dt>Distributor</dt><dd>{account.distributor.name}<small>{account.distributor.desk_email}</small></dd></div>
             </dl>
             <button className="secondary" onClick={() => setDetailsOpen(false)}>Done</button>

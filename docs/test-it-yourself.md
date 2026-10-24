@@ -252,5 +252,5 @@ make reset; RUN=$(pay); settle $RUN; board $RUN
 ```
 
 D-0417 ($4,120) is now over the limit, so it isn't filed: it's a draft held for the owner ("Dispute D-0417 is
-$4,120, over the $4,000 limit: held for Dana."). Set `controller_approval_over_usd: 3000` instead and, after the
-owner's answer, the $2,730 credit memo posts on policy without the controller.
+$4,120, over the $4,000 limit: held for Dana."). Set `approval_over_usd: 3000` instead and, after the
+owner's answer, the $2,730 credit memo posts on policy without asking.

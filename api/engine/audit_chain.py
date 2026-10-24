@@ -45,7 +45,7 @@ def compute_hash(row: Mapping[str, Any]) -> str:
 class AuditEntry:
     id: int
     at: str
-    actor: str        # e.g. "gate", "negotiator", "owner:Dana", "controller:Sam"
+    actor: str        # e.g. "gate", "negotiator", "owner:Dana", "auto_post:Dana"
     action: str       # e.g. "decision", "dispute_filed", "credit_memo_approved"
     object_ref: str   # e.g. "charge:C4", "dispute:D-0417"
     evidence: dict[str, Any]

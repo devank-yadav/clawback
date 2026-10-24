@@ -1226,12 +1226,14 @@
           }
         ],
         "proposed_by": "bookkeeper",
-        "approver_role": "controller",
+        "approver_role": "owner",
         "status": "pending",
         "text": "Approve credit memo of $2,730 (3 lines)?",
         "note": null,
         "requested_at": "2026-10-24T10:31:20-07:00",
-        "decided_at": null
+        "decided_at": null,
+        "sets_auto_post": null,
+        "posted_by_auto_post": null
       }
     },
     {
@@ -1240,7 +1242,7 @@
       "at": "2026-10-24T10:31:22-07:00",
       "type": "log",
       "data": {
-        "text": "Texted Sam (controller): approve a $2,730 credit memo? Nothing posts until Sam says yes.",
+        "text": "Texted Dana: approve a $2,730 credit memo? Nothing posts until Dana says yes.",
         "level": "info",
         "actor": "bookkeeper",
         "charge_id": null
@@ -1270,12 +1272,14 @@
           }
         ],
         "proposed_by": "bookkeeper",
-        "approver_role": "controller",
+        "approver_role": "owner",
         "status": "approved",
         "text": "Approve credit memo of $2,730 (3 lines)?",
         "note": null,
         "requested_at": "2026-10-24T10:31:20-07:00",
-        "decided_at": "2026-10-24T10:31:28-07:00"
+        "decided_at": "2026-10-24T10:31:28-07:00",
+        "sets_auto_post": null,
+        "posted_by_auto_post": null
       }
     },
     {
@@ -1284,9 +1288,9 @@
       "at": "2026-10-24T10:31:29-07:00",
       "type": "log",
       "data": {
-        "text": "Sam approved. Posting to QuickBooks.",
+        "text": "Dana approved. Posting to QuickBooks.",
         "level": "good",
-        "actor": "controller",
+        "actor": "owner",
         "charge_id": null
       }
     },
@@ -2698,8 +2702,8 @@
     "ev-approval-AP-1": {
       "id": "ev-approval-AP-1",
       "kind": "approval",
-      "label": "Sam approved",
-      "summary": "Sam Reyes (controller) approved the $2,730 credit memo.",
+      "label": "Dana approved",
+      "summary": "Dana Okafor (owner) approved the $2,730 credit memo.",
       "quote": null,
       "rows": [],
       "sender": null,
@@ -2707,7 +2711,7 @@
       "sent_at": null,
       "rule_id": null,
       "approval_id": "AP-1",
-      "person": "Sam Reyes (controller)"
+      "person": "Dana Okafor (owner)"
     },
     "ev-charge-C1": {
       "id": "ev-charge-C1",

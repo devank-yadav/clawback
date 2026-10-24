@@ -1,7 +1,7 @@
 """Everything the assistant says, in plain words. Pure functions of the API's answers.
 
 Amounts are the API's numbers, formatted as they come ($4,120, $12.50); nothing here adds, subtracts or splits
-them. Every name is fictional: Peak Bar Co., Northmart, Dana (owner), Sam (bookkeeper).
+them. Every name is fictional: Peak Bar Co., Northmart, Dana (owner, the one person who approves).
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from decimal import Decimal
 from fetch_agent.client import ClawbackError
 from fetch_agent.models import AnswerResponse, Approval, Dispute, Question, Summary
 
-BRAND, DISTRIBUTOR, CONTROLLER = "Peak Bar Co.", "Northmart", "Sam"
+BRAND, DISTRIBUTOR = "Peak Bar Co.", "Northmart"
 
 HOW_TO_ANSWER = ("Reply here with a rule like \"accept if notice is at least 14 days\", "
                  "or ACCEPT or DISPUTE for this charge only.")
@@ -79,15 +79,14 @@ def _question_or_nothing(q: Question | None) -> str:
 
 def _approval(a: Approval) -> str:
     """Approvals are shown, never given: people approve in the Clawback inbox or by text."""
-    if a.kind == "credit_memo" and a.approver_role == "controller":
-        return (f"**Waiting on {CONTROLLER}, your bookkeeper:** approve putting the {money(a.amount)} Clawback "
-                f"accepted ({_charges(len(a.lines))}) into QuickBooks. {CONTROLLER} answers by text or in the "
-                "Clawback inbox; this chat can't move money.")
+    if a.kind == "credit_memo":
+        return (f"**Waiting on you:** approve putting the {money(a.amount)} Clawback accepted "
+                f"({_charges(len(a.lines))}) into QuickBooks. Answer by text or in the Clawback inbox; this chat "
+                "can't move money.")
     if a.kind == "dispute_over_limit":
         return (f"**Waiting on you:** a {money(a.amount)} dispute needs your OK before Clawback files it. "
                 "Approve it in the Clawback inbox; this chat can't approve money.")
-    who = "you" if a.approver_role == "owner" else f"{CONTROLLER}, your bookkeeper"
-    return f"**Waiting on {who}:** {a.text} This chat can't approve money."
+    return f"**Waiting on you:** {a.text} This chat can't approve money."
 
 
 def _now(s: Summary | None) -> str:

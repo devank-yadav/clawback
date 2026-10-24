@@ -5,7 +5,7 @@
 - F4: the Investigator's code check (evidence IDs exist, no invented numbers, confidence floor) routes to Ask.
 - F9: each of the four preset replies gets the right answer, from the recordings, citing the right evidence, and
   none of them moves money; only the signed amendment concedes the $1,000.
-- F10: the owner's text can't approve the controller's credit memo.
+- F10: the admin's YES by text approves the credit memo, never her answered question.
 """
 
 import json
@@ -160,18 +160,18 @@ def test_f9_each_preset_gets_the_right_answer_and_only_the_amendment_moves_money
     assert {cid: v for cid, v in final(run).items() if cid != "C4"} == {cid: v for cid, v in before.items() if cid != "C4"}
 
 
-# ---------------------------------------------------------------- F10: controller only
+# ---------------------------------------------------------------- F10: the admin approves, by text too
 
-def test_f10_the_owners_text_never_approves_the_credit_memo(monkeypatch):
+def test_f10_the_admins_yes_by_text_approves_the_memo_and_not_her_answered_question(monkeypatch):
     from api.main import app
 
     monkeypatch.setenv("OWNER_PHONE", "+15550100001")
-    monkeypatch.setenv("CONTROLLER_PHONE", "+15550100002")
     run = finished_march(ScenarioClaude())
     api = TestClient(app)
-    for body in ("YES", "approve", "yes approve the memo"):
-        r = api.post("/webhooks/twilio/sms", data={"From": "+15550100001", "Body": body})
-        assert r.status_code == 200
+    r = api.post("/webhooks/twilio/sms", data={"From": "+15550100001", "Body": "yes approve the memo"})
+    assert r.status_code == 200 and "Reply YES to approve" in r.text  # a yes with conditions is asked again
     assert [e.data.status for e in run.events if e.type == "approval"] == ["pending"]
-    assert not any(e.type == "ledger_post" for e in run.events)
-    assert final(run)["C6"] == ("accept", D(0), D(1200))  # Dana's texts didn't reopen her answered question either
+    r = api.post("/webhooks/twilio/sms", data={"From": "+15550100001", "Body": "YES"})
+    assert "Approved: $2,730 credit memo" in r.text
+    assert [e.data.status for e in run.events if e.type == "approval"] == ["pending", "approved"]
+    assert final(run)["C6"] == ("accept", D(0), D(1200))  # Dana's texts didn't reopen her answered question

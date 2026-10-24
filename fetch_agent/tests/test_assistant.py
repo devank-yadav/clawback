@@ -129,10 +129,10 @@ def test_every_amount_shown_is_one_the_api_sent(fixture):
     assert dollars(reply) and dollars(reply) <= api_dollars(fixture)
 
 
-def test_approvals_waiting_on_sam_are_shown_never_given():
+def test_approvals_waiting_on_dana_are_shown_never_given():
     reply = assistant(FakeApi(summary=["summary-approval.json"])).respond(DANA, "what's pending?")
     assert "Nothing is waiting on your answer." in reply
-    assert ("**Waiting on Sam, your bookkeeper:** approve putting the $2,730 Clawback accepted (3 charges) into "
+    assert ("**Waiting on you:** approve putting the $2,730 Clawback accepted (3 charges) into "
             "QuickBooks.") in reply and "this chat can't move money" in reply
 
 
@@ -166,7 +166,7 @@ def test_answer_after_seeing_the_question_saves_rule_1():
     assert reply.startswith("Saved **Rule #1**: Accept Northmart display fees with at least 14 days' notice; "
                             "otherwise dispute. Clawback will apply it next time without asking. Reply UNDO")
     assert "Now: **$4,120** disputed, **$2,730** accepted, **$0** waiting." in reply
-    assert "**Waiting on Sam, your bookkeeper:**" in reply
+    assert "**Waiting on you:** approve putting" in reply
 
 
 def test_an_answer_to_a_question_this_chat_never_showed_shows_it_first():

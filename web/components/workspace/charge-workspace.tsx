@@ -68,7 +68,7 @@ type PanelProps = {
   stage: Stage
   role: Role | null
   onClose: () => void
-  onAnswer: (questionId: string, text: string) => void
+  onAnswer: (questionId: string, text: string, saveRule: boolean) => void
 }
 
 export function EvidencePanel({ account, state, runId, charge, question, rule, stage, role, onClose, onAnswer }: PanelProps) {
@@ -94,7 +94,7 @@ export function EvidencePanel({ account, state, runId, charge, question, rule, s
       <FileBy fileBy={charge.fileBy} daysLeft={charge.daysLeft} className="in-panel" />
       {charge.status === 'Split decision' && charge.accepted !== null && charge.disputed !== null && <p className="muted small">One {dollars(charge.amount)} charge: {dollars(charge.accepted)} accepted and {dollars(charge.disputed)} disputed.</p>}
 
-      {asksOwner && <OwnerQuestion key={question.id} question={question} code={charge.code} owner={owner} controller={account.brand.controller.name} role={role} onAnswer={onAnswer} />}
+      {asksOwner && <OwnerQuestion key={question.id} question={question} code={charge.code} owner={owner} role={role} onAnswer={onAnswer} />}
 
       <div className="panel-tabs" role="tablist" aria-label="Charge details">
         <button role="tab" id="tab-evidence" aria-controls="pane-evidence" aria-selected={tab === 'evidence'} className={tab === 'evidence' ? 'active' : ''} onClick={() => setTab('evidence')}>Evidence</button>
@@ -103,7 +103,7 @@ export function EvidencePanel({ account, state, runId, charge, question, rule, s
 
       {tab === 'evidence' && <div role="tabpanel" id="pane-evidence" aria-labelledby="tab-evidence">
         <EvidenceTab charge={charge} detail={detail} runId={runId} distributor={distributor} finding={finding} rehearsal={rehearsal} />
-        {!asksOwner && charge.status !== 'Needs your input' && charge.status !== 'Reviewing' && <div className="decision-note"><ShieldCheck /><p><strong>{appliedRule ? `Applied ${appliedRule.label}, set by ${owner}.` : charge.status === 'Accepted' ? 'Supported by the deal and its evidence.' : charge.status === 'Split decision' ? 'Part accepted; the unsupported part is disputed.' : charge.status === 'Can’t verify' ? 'The deal term couldn’t be verified, so nothing was decided.' : 'The evidence supports challenging this amount.'}</strong><span>Accounting entries still need the controller’s approval.</span></p></div>}
+        {!asksOwner && charge.status !== 'Needs your input' && charge.status !== 'Reviewing' && <div className="decision-note"><ShieldCheck /><p><strong>{appliedRule ? `Applied ${appliedRule.label}, set by ${owner}.` : charge.status === 'Accepted' ? 'Supported by the deal and its evidence.' : charge.status === 'Split decision' ? 'Part accepted; the unsupported part is disputed.' : charge.status === 'Can’t verify' ? 'The deal term couldn’t be verified, so nothing was decided.' : 'The evidence supports challenging this amount.'}</strong><span>Accounting entries still need {firstName(owner)}’s approval.</span></p></div>}
         {stage === 'checking' && charge.status === 'Reviewing' && <p className="muted small">This charge is still being checked.</p>}
       </div>}
       {tab === 'trace' && <div role="tabpanel" id="pane-trace" aria-labelledby="tab-trace">
@@ -113,19 +113,21 @@ export function EvidencePanel({ account, state, runId, charge, question, rule, s
   </aside>
 }
 
-function OwnerQuestion({ question, code, owner, controller, role, onAnswer }: { question: Question; code: string; owner: string; controller: string; role: Role | null; onAnswer: (questionId: string, text: string) => void }) {
+function OwnerQuestion({ question, code, owner, role, onAnswer }: { question: Question; code: string; owner: string; role: Role | null; onAnswer: (questionId: string, text: string, saveRule: boolean) => void }) {
   const replies = suggestedReplies(code)
   const [text, setText] = useState(replies[0])
+  const [saveRule, setSaveRule] = useState(true)
   const [sent, setSent] = useState(false)
   return <div className="policy-box">
     <div className="eyebrow"><ShieldCheck /> Your decision</div>
     <h3>{question.text}</h3>
-    <p className="small muted">Your answer becomes a rule, so a charge like this is never asked about twice. {controller} still approves the accounting separately.</p>
+    <p className="small muted">{saveRule ? 'Your answer becomes a rule, so a charge like this is never asked about twice.' : 'Your answer settles this charge only; the next one like it asks again.'} You approve the accounting separately.</p>
     <div className="reply-chips" role="group" aria-label="Suggested answers">{replies.map((r) => <button key={r} type="button" aria-pressed={text === r} onClick={() => setText(r)}>{r.charAt(0).toUpperCase() + r.slice(1)}</button>)}</div>
     <label className="note-label" htmlFor="owner-answer">Your answer</label>
     <textarea id="owner-answer" value={text} onChange={(event) => setText(event.target.value)} rows={2} />
-    <button className="primary full" disabled={!text.trim() || sent} onClick={() => { if (role === 'owner') setSent(true); onAnswer(question.id, text) }}><Check /> {sent ? 'Sent · saving the rule' : `Send as ${owner}`}</button>
-    {role !== 'owner' && <p className="role-hint">Only {firstName(owner)} can answer. You’ll be asked to sign in as the owner.</p>}
+    <label className="cx-check"><input type="checkbox" checked={saveRule} onChange={(event) => setSaveRule(event.target.checked)} /><span>Save as a rule for next time</span></label>
+    <button className="primary full" disabled={!text.trim() || sent} onClick={() => { if (role === 'owner') setSent(true); onAnswer(question.id, text, saveRule) }}><Check /> {sent ? (saveRule ? 'Sent · saving the rule' : 'Sent · deciding this charge') : `Send as ${owner}`}</button>
+    {role !== 'owner' && <p className="role-hint">Only {firstName(owner)} can answer. You’ll be asked to sign in as the admin.</p>}
   </div>
 }
 

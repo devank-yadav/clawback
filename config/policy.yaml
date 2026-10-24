@@ -1,6 +1,8 @@
 # Owner policy, set once (Devank owns this file). See docs/design.md, "Rules engine, decision gate and approvals".
 auto_dispute_limit_usd: 5000        # disputes above this need the owner before filing
-controller_approval_over_usd: 1000  # credit memos above this need the controller (never the owner or an agent)
+approval_over_usd: 1000            # credit memos above this wait for the admin's yes (never an agent's)
+auto_post_limit: null              # fair-charge memos up to this post without asking; null: always ask (the admin can
+                                    # set one per account by ticking "post automatically" when approving a memo)
 confidence_floor: 0.90              # Investigator confidence below this goes to Ask
 match_tolerance_usd: 1.00           # a delta within this counts as a match
 rule_match_similarity: 0.85         # Moss similarity needed to apply a saved rule (tune on the eval)

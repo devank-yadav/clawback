@@ -39,7 +39,7 @@ Do this in the first hour while Devank writes the contracts; everyone else is bl
 
 - [ ] **Tiger Data (Tiger Cloud):** create an account, claim the MLH offer (ask at the MLH table or check mlh.link/calhacks13), create a service. Send: the connection string → `DATABASE_URL`.
 - [ ] **QuickBooks sandbox:** developer.intuit.com → create an app with the Accounting scope (a sandbox company comes with it) → copy the development client ID and secret → open the OAuth 2.0 Playground, pick the app and the accounting scope, get tokens. Send: `QBO_CLIENT_ID`, `QBO_CLIENT_SECRET`, `QBO_REALM_ID` (company ID), `QBO_REFRESH_TOKEN`. Send the refresh token right away; it rotates.
-- [ ] **Twilio:** trial account → get a trial number → add **your phone (owner)** and **Manasv's phone (controller)** as verified caller IDs (the trial only texts verified numbers). Send: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`, `OWNER_PHONE`, `CONTROLLER_PHONE`.
+- [ ] **Twilio:** trial account → get a trial number → add **the owner's phone** (the admin gets every question and approval) as a verified caller ID (the trial only texts verified numbers). Send: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`, `OWNER_PHONE`.
 - [ ] **Capital One Nessie:** get an API key at nessieisreal.com. Send: `NESSIE_API_KEY`.
 - [ ] **Gemini:** Google AI Studio → create an API key. Send: `GEMINI_API_KEY`.
 - [ ] **Agentverse (Fetch.ai):** create an account at agentverse.ai, get an API key. Send: `AGENTVERSE_API_KEY`.

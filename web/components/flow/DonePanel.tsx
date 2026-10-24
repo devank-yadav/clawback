@@ -68,7 +68,7 @@ export function DonePanel({ onOpen, onNew, rail }: { onOpen: (id: string) => voi
             : <>Every charge was fair. Nothing to fight.</>}
         </h1>
         <p>{facts.join(" · ")}</p>
-        <p className="cx-small cx-muted">{view.stage === "refused" ? `${cast.controller} held the credit memo: nothing posted.` : view.postingLabel}</p>
+        <p className="cx-small cx-muted">{view.stage === "refused" ? `${cast.owner} held the credit memo: nothing posted.` : view.postingLabel}</p>
       </section>
 
       {rail}

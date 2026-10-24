@@ -1226,12 +1226,14 @@
           }
         ],
         "proposed_by": "bookkeeper",
-        "approver_role": "controller",
+        "approver_role": "owner",
         "status": "pending",
         "text": "Approve credit memo of $2,730 (3 lines)?",
         "note": null,
         "requested_at": "2026-10-24T10:31:20-07:00",
-        "decided_at": null
+        "decided_at": null,
+        "sets_auto_post": null,
+        "posted_by_auto_post": null
       }
     },
     {
@@ -1240,7 +1242,7 @@
       "at": "2026-10-24T10:31:22-07:00",
       "type": "log",
       "data": {
-        "text": "Texted Sam (controller): approve a $2,730 credit memo? Nothing posts until Sam says yes.",
+        "text": "Texted Dana: approve a $2,730 credit memo? Nothing posts until Dana says yes.",
         "level": "info",
         "actor": "bookkeeper",
         "charge_id": null
@@ -1270,12 +1272,14 @@
           }
         ],
         "proposed_by": "bookkeeper",
-        "approver_role": "controller",
+        "approver_role": "owner",
         "status": "refused",
         "text": "Approve credit memo of $2,730 (3 lines)?",
         "note": "Hold this until I've seen the broker's Mar 28 email for the April 1 to 7 bars.",
         "requested_at": "2026-10-24T10:31:20-07:00",
-        "decided_at": "2026-10-24T10:31:28-07:00"
+        "decided_at": "2026-10-24T10:31:28-07:00",
+        "sets_auto_post": null,
+        "posted_by_auto_post": null
       }
     },
     {
@@ -1284,9 +1288,9 @@
       "at": "2026-10-24T10:31:29-07:00",
       "type": "log",
       "data": {
-        "text": "Sam refused the $2,730 credit memo. Nothing posts to QuickBooks; Sam's note is on the card and the memo goes back to Dana.",
+        "text": "Dana held the $2,730 credit memo. Nothing posts to QuickBooks; the note is on the card.",
         "level": "warn",
-        "actor": "controller",
+        "actor": "owner",
         "charge_id": null
       }
     },
