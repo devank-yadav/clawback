@@ -250,3 +250,75 @@ export type RunFixture = {
   charges: Record<string, ChargeDetail>;
   evidence: Record<string, Evidence>;
 };
+
+// ---- Coach, scenario box, eval, audit (api/contracts.py)
+export type Redline = {
+  clause_ref: string;
+  original_quote: string;
+  suggested_text: string;
+  reason: string;
+  dollars_at_stake: Money;
+  finding_ids: string[];
+  quote: Quote | null;
+};
+export type CoachResponse = { draft_doc_id: string; redlines: Redline[] };
+
+export type EvalReport = {
+  status: "not_run" | "running" | "done";
+  mode: "engine" | "agent" | null;
+  run_at: string | null;
+  cases: number;
+  correct: number | null;
+  amounts_correct: number | null;
+  asked: number | null;
+  wrong_automatic: number | null;
+  unnecessary_questions: number | null;
+};
+
+export type ScenarioCharge = {
+  description: string;
+  amount: Money;
+  code?: "PA" | "DF" | null;
+  product?: string | null;
+  units?: number | null;
+  rate?: number | null;
+  period_start?: string | null;
+  period_end?: string | null;
+  notice_date?: string | null;
+};
+export type ScenarioRequest = { clause: string; charge: ScenarioCharge };
+export type ScenarioExample = { id: string; label: string; request: ScenarioRequest };
+export type Term = {
+  id: string;
+  reader: "claude" | "gemini" | "claude-b" | "merged";
+  status: "pending" | "verified" | "rejected" | "disputed";
+  type: string;
+  params: Record<string, unknown>;
+  exact_quote: string;
+  discretion: boolean;
+  source_approved: boolean;
+  reasons: string[];
+};
+export type ScenarioResponse = {
+  stub: boolean;
+  decision: Decision | null;
+  finding: Finding | null;
+  evidence: Evidence[];
+  message: string | null;
+  terms: Term[];
+  rehearsal: Rehearsal | null;
+  rule: Rule | null;
+  unclear: string[];
+};
+
+export type AuditEntry = {
+  id: number;
+  at: string;
+  actor: string;
+  action: string;
+  object_ref: string;
+  evidence: Record<string, unknown>;
+  prev_hash: string;
+  hash: string;
+};
+export type AuditVerify = { ok: boolean; checked: number; broken_at: number | null; reason: string };
