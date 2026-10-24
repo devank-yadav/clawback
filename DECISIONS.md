@@ -21,3 +21,4 @@ One line per decision, written the moment it's made: `date time · decision · w
 - 2026-10-24 01:31 · Every agent request is deterministic (no run IDs, stable remittance ID REM-INV-3102) so DEMO_MODE recordings replay; full demo replays offline in about 9 s · Devank
 - 2026-10-24 01:31 · Owner answers become rules only for discretion clauses; a charge is asked about at most once per run · Devank
 - 2026-10-24 01:31 · Rehearsed answers may use any number the agent was given (prior payments included) and write dates as ranges, since the outbound filter reads "before <date>" as a deadline · Devank
+- 2026-10-24 02:30 · Review board uses a charge list with an evidence panel beside it (mobile: full-screen detail) instead of three pile columns; piles become groups in the list · Rishi
