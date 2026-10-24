@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime
 
 from api import contracts
 from api.engine import types as eng
+from api.evidence import ops_quote
 
 
 def to_engine_term(t: contracts.Term) -> eng.Term:
@@ -25,7 +27,7 @@ def to_engine_charge(c: contracts.Charge, counterparty: str = "Northmart") -> en
     return eng.Charge(
         id=c.id, ref=c.ref, code=c.code, description=c.description, products=_products(c.product), units=c.units,
         rate=c.rate, amount=c.amount, period_start=c.period_start, period_end=c.period_end,
-        counterparty=counterparty, notice_date=c.notice_date,
+        counterparty=counterparty, notice_date=c.notice_date, line_ref=c.line_ref,
     )
 
 
@@ -36,6 +38,21 @@ def to_engine_sales(r: contracts.SalesRow) -> eng.SalesWeek:
 def to_engine_prior(p: contracts.PriorPayment) -> eng.PriorPayment:
     return eng.PriorPayment(p.ref, p.paid_on, p.promo_id, _products(p.product), p.period_start, p.period_end,
                             p.units, p.amount)
+
+
+def to_engine_ops(deliveries: Iterable[contracts.DeliveryRow], prices: Iterable[contracts.PriceRow],
+                  terms: Iterable[contracts.OpsTerm]) -> eng.OpsData:
+    """An account's ops rows for compute_allowed(..., ops=). A term whose quote isn't found word for word in its source
+    document (evidence.ops_quote) goes in rejected, so the engine treats it as missing and the gate asks."""
+    return eng.OpsData(
+        deliveries=tuple(eng.Delivery(
+            d.line_ref, d.product, d.shipped_units, d.received_units, d.unit_price, d.received_by or "",
+            d.received_at.date() if isinstance(d.received_at, datetime) else d.received_at) for d in deliveries),
+        prices=tuple(eng.AgreedPrice(p.product, p.agreed_price, p.effective_from, p.effective_to, p.source_doc or "")
+                     for p in prices),
+        terms=tuple(eng.OpsTerm(t.key, t.value, t.source_doc, t.quote,
+                                eng.TermStatus.VERIFIED if ops_quote(t) else eng.TermStatus.REJECTED) for t in terms),
+    )
 
 
 def to_engine_rule(r: contracts.Rule) -> eng.Rule:

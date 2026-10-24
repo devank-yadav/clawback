@@ -1,6 +1,6 @@
 """Evidence for one run: every deal sentence, email, notice, sales week, charge row and prior payment the
-agents may cite, with stable IDs. The drawer opens these ("Why?"); agents cite them by ID and code checks
-every cited ID exists.
+agents may cite, plus the operations records (proof of delivery, agreed prices, ops terms), with stable IDs.
+The drawer opens these ("Why?"); agents cite them by ID and code checks every cited ID exists.
 """
 
 from __future__ import annotations
@@ -11,8 +11,11 @@ from collections.abc import Iterable, Mapping, Sequence
 from decimal import Decimal
 
 from api import documents, rows
-from api.contracts import Charge, Evidence, MathPart, PriorPayment, Quote, SalesRow, Term
-from api.engine.allowed import product_key
+from api.contracts import (
+    Charge, DeliveryRow, Evidence, MathPart, OpsTerm, PriceRow, PriorPayment, Quote, SalesRow, Term,
+)
+from api.engine import quote_check
+from api.engine.allowed import OPS_CODES, SPOILS_ALLOWANCE, product_key, usd
 
 def day(d, year: bool = False) -> str:
     """Mar 7, or Mar 7, 2026 with year. Built by hand: strftime has no portable day without a leading zero (Windows raises)."""
@@ -135,11 +138,117 @@ def from_payments(payments: Iterable[PriorPayment]) -> dict[str, Evidence]:
         rows=[p.model_dump(mode="json")]) for p in payments}
 
 
+def pod_id(line_ref: str) -> str:
+    return f"ev-pod-{line_ref.strip()}"
+
+
+def price_id(product: str) -> str:
+    """ev-price-original; a product name of several words is joined with hyphens (ev-price-oat-milk)."""
+    return f"ev-price-{product_key(product).replace(' ', '-')}"
+
+
+def term_id(key: str) -> str:
+    return f"ev-term-{key}"
+
+
+def from_deliveries(deliveries: Iterable[DeliveryRow]) -> dict[str, Evidence]:
+    """One item per proof-of-delivery line (ev-pod-L-1001): shipped, received, who signed, and the unit price invoiced."""
+    out = {}
+    for r in deliveries:
+        signed = (f", signed for by {r.received_by}" if r.received_by else "") + (
+            f" on {day(r.received_at, year=True)}" if r.received_at else "")
+        out[pod_id(r.line_ref)] = Evidence(
+            id=pod_id(r.line_ref), kind="delivery", label=f"Delivery {r.line_ref}",
+            summary=f"{r.shipped_units:,} units of {r.product} shipped and {r.received_units:,} received{signed}, "
+                    f"invoiced at {usd(r.unit_price)} a unit.",
+            rows=[r.model_dump(mode="json")])
+    return out
+
+
+def from_prices(prices: Iterable[PriceRow]) -> dict[str, Evidence]:
+    """The agreed price list, one item per product (ev-price-original) holding all of that product's rows."""
+    grouped: dict[str, list[PriceRow]] = defaultdict(list)
+    for r in prices:
+        grouped[price_id(r.product)].append(r)
+    out = {}
+    for ev_id, rs in grouped.items():
+        rs = sorted(rs, key=lambda r: r.effective_from)
+        spans = "; ".join(f"{usd(r.agreed_price)} a unit from {day(r.effective_from, year=True)}"
+                          + (f" to {day(r.effective_to, year=True)}" if r.effective_to else "") for r in rs)
+        docs = sorted({r.source_doc for r in rs if r.source_doc})
+        out[ev_id] = Evidence(
+            id=ev_id, kind="price", label=f"Price list: {rs[0].product}",
+            summary=f"Agreed price for {rs[0].product}: {spans}" + (f", per {', '.join(docs)}" if docs else "") + ".",
+            rows=[r.model_dump(mode="json") for r in rs])
+    return out
+
+
+def ops_quote(t: OpsTerm) -> Quote | None:
+    """Where an ops term's quote sits in its source document: found word for word (spaces and dashes normalized, as
+    for deal terms) and stating the term's value. None otherwise, and the term is rejected."""
+    try:
+        doc, text = documents.load(t.source_doc)
+    except (KeyError, OSError):
+        return None
+    span = quote_check.find_quote(text, t.quote)
+    if span is None or quote_check.missing_numbers(t.value, t.quote):
+        return None
+    return quote_in(doc.id, text, *span, t.quote)
+
+
+def from_ops_terms(terms: Iterable[OpsTerm]) -> dict[str, Evidence]:
+    """One item per ops term (ev-term-spoils_allowance_pct) with its sentence highlighted in the deal. A term whose
+    quote isn't found word for word gets none: it's rejected, like a deal term."""
+    out = {}
+    for t in terms:
+        if (quote := ops_quote(t)) is None:
+            continue
+        doc, _ = documents.load(quote.doc_id)
+        name, pct = t.key.removesuffix("_pct").replace("_", " "), t.key.endswith("_pct")
+        section = _SECTION.search(quote.context_before[-12:]) if doc.kind == "deal" else None
+        out[term_id(t.key)] = Evidence(
+            id=term_id(t.key), kind="policy", label=f"§{section.group(1)} {name}" if section else name.capitalize(),
+            summary=f"The {'deal' if doc.kind == 'deal' else doc.kind} sets the {name} at {t.value}{'%' if pct else ''}.",
+            quote=quote, rows=[t.model_dump(mode="json")])
+    return out
+
+
+def from_ops(deliveries: Iterable[DeliveryRow] = (), prices: Iterable[PriceRow] = (),
+             terms: Iterable[OpsTerm] = ()) -> dict[str, Evidence]:
+    """All of an account's operations evidence, to merge into build()'s."""
+    return {**from_deliveries(deliveries), **from_prices(prices), **from_ops_terms(terms)}
+
+
+_POD_STEP = re.compile(r"Delivery (\S+): ")
+
+
+def _ops_link(step: str, charge: Charge, ev: Mapping[str, Evidence]) -> str | None:
+    """SH / PR / SP steps (allowed.py's fixed forms): a delivery line opens its proof of delivery, the price list the
+    agreed price of the charge's delivery line, the spoils allowance its ops term, and what's claimed the charge row."""
+    line = pod_id(charge.line_ref) if charge.line_ref else None
+    if m := _POD_STEP.match(step):
+        target = pod_id(m.group(1))
+    elif step.startswith("Price list:"):
+        pod = ev.get(line) if line else None
+        target = price_id(str(pod.rows[0]["product"])) if pod and pod.rows else None
+    elif step.startswith("Spoils allowance"):
+        target = term_id(SPOILS_ALLOWANCE)
+    elif step.startswith("Claimed") or (charge.code == "PR" and step.startswith("Invoiced ")):
+        target = f"ev-charge-{charge.id}"
+    elif " units x $" in step:  # SH: the delivery's unit price; PR: the units claimed
+        target = line if charge.code == "SH" else f"ev-charge-{charge.id}"
+    else:
+        target = None
+    return target if target in ev else None
+
+
 def math_parts(steps: Sequence[str], used: Iterable, charge: Charge, terms: Iterable[Term],
                ev: Mapping[str, Evidence]) -> list[MathPart]:
     """The engine's math steps (allowed.py writes each in a fixed form), each linked to the evidence it rests on, so
     every number on the card opens its source (F7). `used` is the allowance's engine terms. A step with nothing to
     point at stays plain text."""
+    if charge.code in OPS_CODES:
+        return [MathPart(text=step, evidence_id=_ops_link(step, charge, ev)) for step in steps]
     by_id = {t.id: t for t in terms}
 
     def clause(kind: str) -> str | None:
