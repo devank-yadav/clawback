@@ -1,0 +1,46 @@
+# Vultr deploy: api + web + caddy. Runbook: docs/deploy.md. Offline check: make deploy-check.
+# The database stays on Tiger Data, so DATABASE_URL in .env is the only database setting.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    env_file: ${CLAWBACK_ENV_FILE:-.env}
+    restart: unless-stopped
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: web
+    restart: unless-stopped
+    expose:
+      - "3000"
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env, e.g. clawback.example.com}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+
+volumes:
+  caddy_data:
+  caddy_config:

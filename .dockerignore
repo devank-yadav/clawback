@@ -1,0 +1,13 @@
+# Keeps secrets and build junk out of the api image (build context is the repo root).
+.env
+.env.*
+!.env.example
+*.pem
+.git
+**/__pycache__
+**/*.pyc
+.venv
+.pytest_cache
+web/node_modules
+web/.next
+eval/latest*.json
