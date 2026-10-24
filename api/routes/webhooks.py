@@ -1,5 +1,8 @@
 """Twilio inbound SMS (F8, F10): the owner's answer and the controller's yes / no, the same way as answering in the app.
 
+Also the WhatsApp Sandbox's "When a message comes in" URL (SMS_CHANNEL=whatsapp): the fields are the same and From
+is "whatsapp:+1555…", which matches on its digits like any other format.
+
 From is matched to OWNER_PHONE or CONTROLLER_PHONE; anyone else gets an empty reply and changes nothing. The
 reply text goes through the same parser as the app (api/replies.py via api/pipeline.answer). What Clawback texts
 back (the rule echo, UNDO, the re-ask) is returned as TwiML, so Twilio sends it without an outbound API call.
