@@ -1,6 +1,6 @@
 # api/ (owner: Devank; only Devank edits engine/, agents/, contracts.py)
 
-FastAPI + Pydantic + SQLAlchemy on Postgres (Tiger Data). See docs/design.md sections: Agents; Rules engine,
+FastAPI + Pydantic + psycopg 3 (no ORM) on Postgres (Tiger Data). See docs/design.md sections: Agents; Rules engine,
 decision gate and approvals; Data model; API, live updates and integrations.
 
 ## Build order
@@ -41,5 +41,9 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - Tests never call live services: api/conftest.py blanks every live key for the session and blocks real Claude clients.
 - POST /coach redlines summer-draft from the newest finished March run (api/agents/coach.py); POST /scenario runs a
   pasted clause and charge (api/scenario.py); GET /scenario/examples has three recorded cases.
+- `make seed` (api/db/seed.py) applies api/db/migrations/001_init.sql and upserts data/ through api/rows.py and
+  api/documents.py; a second run changes nothing. On TimescaleDB, store_sales is a hypertable and promo_units_weekly
+  its continuous aggregate; plain Postgres gets a warning and plain tables. QuickBooks is seeded too when the QBO_*
+  keys are set. The pipeline still reads data/ directly. DB tests: TEST_DATABASE_URL=<throwaway db> pytest.
 - Stub routes serve the fixture run in api/stubs/fixtures.py. After changing it, run `python -m api.stubs.fixtures`
   to rewrite web/fixtures/*.json (a test fails if they're stale).
