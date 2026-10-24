@@ -28,6 +28,7 @@ class TermType(StrEnum):
     FEE_SCHEDULE = "fee_schedule"
     DISPUTE_WINDOW = "dispute_window"
     NOTICE_PERIOD = "notice_period"
+    QUANTITY_VARIANCE = "quantity_variance"
 
 
 class TermStatus(StrEnum):
@@ -49,8 +50,9 @@ class Term:
     """A merged, checked deal term. Params by type:
     promo_rate {"rate"} · product_scope {"products"} · unit_cap {"max_units"} · date_range {"start", "end"}
     · fee_discretion {"max_fee"} · amendment {"extra_units"} over effective_from..effective_to
-    · fee_schedule {"fee_code", "basis", "rate", "min", "max", "per", "tiers", "requires_proof"} (see allowed.py,
-    "Fee schedules") · dispute_window {"days", "from"} · notice_period {"days"}.
+    · fee_schedule {"fee_code", "basis", "rate", "min", "max", "per", "tiers", "requires_proof", "applies_to",
+    "requires_fault", "add_on"} (see allowed.py, "Fee schedules") · dispute_window {"days", "from"}
+    · notice_period {"days"} · quantity_variance {"pct"}.
     noticed_on: when the other side gave notice of the document that states this term (a policy change); a change
     applies no earlier than noticed_on + the deal's notice_period days.
     """
@@ -159,7 +161,10 @@ class FeeLine:
     base_amount is what a percent fee is taken on (the MCB amount, a retailer invoice's total, landed cost);
     pass_through is cost charged on at cost beside the fee (landed cost of goods credited to a retailer);
     group is the invoice, PO or incident the fee's min and max apply to; on is the purchase/invoice date the fee
-    schedule in effect is picked by; days drives tiers (days late, say); proof_doc names the backup document."""
+    schedule in effect is picked by; days drives tiers (days late, say); proof_doc names the backup document.
+    From our side's records (api/fee_accounts.py): po_type is the purchase order's type, caused_by who the delivery
+    log says caused a miss ("carrier", "retailer", "supplier" or ""), variance_pct how far the delivered quantity was
+    from the order, for a quantity fee (None for any other)."""
 
     deduction_ref: str
     on: date
@@ -171,6 +176,9 @@ class FeeLine:
     days: int | None = None
     proof_doc: str = ""
     description: str = ""
+    po_type: str = ""
+    caused_by: str = ""
+    variance_pct: Decimal | None = None
 
 
 @dataclass(frozen=True)

@@ -53,6 +53,8 @@ def _term_summary(t: Term) -> str:
         "fee_schedule": lambda: _fee_summary(t),
         "dispute_window": lambda: f"disputes are due within {p.get('days')} days of the {p.get('from', 'deduction')}",
         "notice_period": lambda: f"a change needs {p.get('days')} days' notice",
+        "quantity_variance": lambda: f"the buyer may accept up to {p.get('pct')}% over or short"
+                                     + (", at its discretion" if t.discretion else ""),
     }[t.type]()
 
 
@@ -60,7 +62,8 @@ def _fee_summary(t: Term) -> str:
     p = t.params
     rate = p.get("rate")
     how = {"percent": f"{rate}%", "per_unit": f"${rate} per unit", "per_carton": f"${rate} per carton",
-           "per_po": f"${rate} per PO", "flat": f"${rate} flat"}.get(p.get("basis"), str(rate))
+           "per_po": f"${rate} per PO", "flat": f"${rate} flat", "annual_percent": f"{rate}% a year",
+           "as_assessed": "as the distributor assesses it"}.get(p.get("basis"), str(rate))
     if p.get("tiers"):
         how = ", ".join(f"{x['rate']}{'%' if p.get('basis') == 'percent' else ''} for {x['from_days']}"
                         + (f"-{x['to_days']}" if x.get("to_days") is not None else "+") + " days" for x in p["tiers"])
@@ -69,6 +72,9 @@ def _fee_summary(t: Term) -> str:
     per = f" per {p.get('per')}" if limits and p.get("per") else ""
     out = f"{p.get('fee_code')} fee: {how}" + (f", {' and '.join(limits)}{per}" if limits else "")
     out += ", backup required" if p.get("requires_proof") else ""
+    out += f", only on {p['applies_to']} orders" if p.get("applies_to") else ""
+    out += ", only for the supplier's own failure" if p.get("requires_fault") else ""
+    out += ", on top of each other fee" if p.get("add_on") else ""
     return out + (", depending on someone's judgment" if t.discretion else "")
 
 

@@ -1,11 +1,10 @@
 key,version,fee_code,basis,rate,max,per,condition,discretion,source_doc,quote
-sa_rate,all,New Store/Club Discount,percent,10,,po,po_type=new_store,no,walmart-supplier-agreement-2013,New Store/Club Discount (% Applied to each line item for each new store P.O.) | 10
-nw_rate,all,New Distribution Center,percent,10,,po,po_type=new_dc,no,walmart-supplier-agreement-2013,NW New Distribution Center | 10
+sa_rate,all,New Store/Club Discount,percent,10,,po,po_type=New Store,no,walmart-supplier-agreement-2013,New Store/Club Discount (% Applied to each line item for each new store P.O.) | 10
+nw_rate,all,New Distribution Center,percent,10,,po,po_type=New Distribution Center,no,walmart-supplier-agreement-2013,NW New Distribution Center | 10
 dm_rate,all,Defective/Returned Mdse. Allowance,percent,1.5,,invoice,,no,walmart-supplier-agreement-2013,Defective/Returned Mdse. Allowance – Not applicable in Puerto Rico. (When selected must mark option 3 under warranty policy.) | 1.5
 remedies_need_failure,all,Rejection; Assessment of monetary fines,condition,,,,supplier_fault,no,walmart-supplier-agreement-2013,failure to comply with any of the terms and conditions of this Agreement or any Order shall be grounds for the exercise by Company of any one or more of the following remedies
 rj_allowance,all,Rejection,percent,10,,incident,,no,walmart-supplier-agreement-2013,in the absence of proof of a higher expense that the Company shall claim an allowance for each rejection at the rate of 10% of the price for each rejection made by Company
 fn_fines,all,Assessment of monetary fines,discretion,,,incident,,yes,walmart-supplier-agreement-2013,(d) Assessment of monetary fines as determined in CompanyÂ’s reasonable discretion;
-rt_handling,all,Returned merchandise,percent,10,,incident,,no,walmart-supplier-agreement-2013,Supplier will be charged current merchandise costs plus a 10% handling charge for all returned merchandise.
-rt_year_end,all,Returned merchandise,condition,,,,year_end_claim,no,walmart-supplier-agreement-2013,or additional claims will be filed by the Return Center at our fiscal year end.
+rt_handling,all,Return Policy,percent,10,,incident,,no,walmart-supplier-agreement-2013,Supplier will be charged current merchandise costs plus a 10% handling charge for all returned merchandise.
+rt_year_end,all,Return Policy,condition,,,,year_end_claim,no,walmart-supplier-agreement-2013,or additional claims will be filed by the Return Center at our fiscal year end.
 in_rate,all,Interest,annual_percent,12,,incident,,no,walmart-supplier-agreement-2013,Company reserves the right to charge Supplier interest at the rate of 12% per annum
-in_grace,all,Interest,condition,30,,,grace_days=30,no,walmart-supplier-agreement-2013,including debit balances not paid within thirty (30) days after due

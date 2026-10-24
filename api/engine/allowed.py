@@ -338,9 +338,21 @@ def _spoilage(charge: Charge, ops: OpsData) -> Allowance:
 #   min, max        clamp each group's fee; the minimum applies only to a group that owes some fee
 #   per             what a group is: invoice / po / incident (FeeLine.group, else each line alone) or month
 #   requires_proof  every backup line must name a proof_doc that exists, else the gate asks a person
-# allowed = sum of the groups' clamped fees + every line's pass_through (cost charged on at cost, e.g. landed cost).
-# A schedule from a later document (a policy change) applies to a line only from its effective_from, and never
-# sooner than its noticed_on + the deal's notice_period days.
+#   annual_percent  rate% a year on base_amount for the line's days (interest) · as_assessed: the line's base_amount,
+#                   an amount the other side set (a fine at its discretion; the term's discretion sends it to the gate)
+#   applies_to      only lines whose purchase order is of this type owe the fee (FeeLine.po_type, our PO record)
+#   requires_fault  a remedy for the supplier's failure: a line the delivery log blames on the carrier or the
+#                   retailer (FeeLine.caused_by) owes nothing, not even an add-on, whatever discretion the fee has
+#   add_on          a fee charged on top of every other fee (Five Below's $100 per PO per incident): each group that
+#                   owes its own fee also owes the add-on in force on its date, once
+# allowed = sum of the groups' clamped fees + their add-ons + the owed lines' pass_through (cost charged on at cost).
+# A schedule from a later document (a policy change, a newer contract version) applies to a line only from its
+# effective_from, and never sooner than its noticed_on + the deal's notice_period days. Two schedules for the same fee
+# in force from the same day that price it differently: the deal contradicts itself, so the gate asks.
+# A quantity_variance term (the buyer may accept a delivery up to pct% off the order, at its discretion) joins the
+# allowance's terms when a quantity line (FeeLine.variance_pct set) falls within it, so the gate treats it as discretion.
+
+NOT_SUPPLIERS_FAULT = frozenset({"carrier", "retailer"})
 
 
 def fee_key(name: str) -> str:
@@ -398,6 +410,32 @@ def _pct(rate: Decimal) -> str:
     return f"{rate.normalize():f}%"
 
 
+def _in_force(pool: Sequence[Term], on: date, notice: int | None) -> Term | None:
+    """The schedule in force on a date: the latest applies_from on or before it, then the later one in the list."""
+    hits = [(applies_from(t, notice), n, t) for n, t in enumerate(pool) if applies_from(t, notice) <= on]
+    return max(hits, key=lambda x: (x[0], x[1]))[2] if hits else None
+
+
+def _add_ons(terms: Sequence[Term]) -> list[Term]:
+    return [t for t in terms if t.type == TermType.FEE_SCHEDULE and t.source_approved
+            and t.status == TermStatus.VERIFIED and t.params.get("add_on")]
+
+
+def _excused(term: Term, ln: FeeLine) -> str | None:
+    """Why this line owes nothing under the schedule (scope or fault), or None."""
+    scope = term.params.get("applies_to")
+    if scope and fee_key(ln.po_type) != fee_key(scope):
+        return f"{ln.group or 'The purchase order'} is a {ln.po_type.lower()} order; the fee applies only to {scope}"
+    if term.params.get("requires_fault") and ln.caused_by in NOT_SUPPLIERS_FAULT:
+        return f"the delivery log shows the {ln.caused_by} caused it for {ln.group or 'this line'}, not the supplier"
+    return None
+
+
+def _priced(term: Term) -> tuple:
+    p = term.params
+    return tuple(str(p.get(k)) for k in ("basis", "rate", "min", "max", "per", "tiers", "applies_to"))
+
+
 def _fee_schedule(charge: Charge, schedules: list[Term], terms: Sequence[Term], fees: FeeData) -> Allowance:
     code = fees.codes.get(charge.code, charge.code)
     if not schedules:
@@ -413,12 +451,39 @@ def _fee_schedule(charge: Charge, schedules: list[Term], terms: Sequence[Term], 
     groups: dict[tuple, list[tuple[FeeLine, Term]]] = {}
     unproven: list[str] = []
     no_days: list[str] = []
+    owed: list[FeeLine] = []
+    within: list[Term] = []
+    variances = [t for t in terms if t.type == TermType.QUANTITY_VARIANCE and t.source_approved
+                 and t.status != TermStatus.REJECTED]
     for i, ln in enumerate(lines):
-        in_force = [(applies_from(t, notice), n, t) for n, t in enumerate(schedules) if applies_from(t, notice) <= ln.on]
-        if not in_force:
+        term = _in_force(schedules, ln.on, notice)
+        if term is None:
             return _missing(charge, f"a {code} fee schedule in effect on {_day(ln.on)}",
                             f"No {code} fee schedule was in effect on {_day(ln.on)}.", terms=tuple(schedules))
-        term = max(in_force, key=lambda x: (x[0], x[1]))[2]
+        start = applies_from(term, notice)
+        rivals = [t for t in schedules if t is not term and applies_from(t, notice) == start
+                  and t.status == TermStatus.VERIFIED and _priced(t) != _priced(term)]
+        if rivals:  # the deal states two rules for the same fee: no amount means anything until a person picks one
+            return _missing(charge, f"one rule for {code} (the deal states {len(rivals) + 1})",
+                            f"The deal states {len(rivals) + 1} different rules for {code}: "
+                            + "; ".join(f'"{t.exact_quote}"' for t in [term, *rivals]) + ".",
+                            terms=(term, *rivals))
+        if term.params.get("applies_to") and not ln.po_type:
+            return _missing(charge, f"the purchase order type for {ln.group or ln.deduction_ref}",
+                            f"The {code} fee applies only to {term.params['applies_to']}, and our records don't give "
+                            f"the type of {ln.group or 'this purchase order'}.", terms=(term,))
+        why = _excused(term, ln)
+        if why:
+            if term not in used:
+                used.append(term)
+            steps.append(f"No {_fee_label(term)} fee: {why}.")
+            continue
+        owed.append(ln)
+        variance = _in_force(variances, ln.on, notice) if ln.variance_pct is not None else None
+        if variance is not None and ln.variance_pct <= Decimal(str(variance.params["pct"])) and variance not in within:
+            within.append(variance)
+            steps.append(f"{ln.group or 'The delivery'} was {ln.variance_pct.normalize():f}% off the order, within "
+                         f"the {_pct(Decimal(str(variance.params['pct'])))} the buyer may permit at its discretion.")
         for t in schedules:  # its stated date has passed but its notice hasn't run: it can't price this line yet
             if t is not term and t not in held and (t.effective_from or date.min) <= ln.on < applies_from(t, notice):
                 held.append(t)
@@ -426,20 +491,21 @@ def _fee_schedule(charge: Charge, schedules: list[Term], terms: Sequence[Term], 
             used.append(term)
         if term.params.get("requires_proof") and ln.proof_doc not in fees.proof_docs:
             unproven.append(ln.group or ln.description or ln.deduction_ref)
-        if term.params.get("tiers") and ln.days is None:
+        if (term.params.get("tiers") or term.params.get("basis") == "annual_percent") and ln.days is None:
             no_days.append(ln.group or ln.description or ln.deduction_ref)
         per = term.params.get("per") or "incident"
         key = (f"{ln.on:%Y-%m}",) if per == "month" else (ln.group or f"line {i + 1}",)
         groups.setdefault((id(term),) + key, []).append((ln, term))
     if no_days:
         return _missing(charge, f"the days for {', '.join(no_days)}",
-                        f"The {code} fee is tiered by days and the backup doesn't give them.", terms=tuple(used))
+                        f"The {code} fee is counted by days and the backup doesn't give them.", terms=tuple(used))
 
     for t in held:
         steps.append(f"A {_fee_label(t)} change set to start {_day(t.effective_from or date.min)} was noticed "
                      f"{_day(t.noticed_on)}; with {notice} days' notice it applies only from "
                      f"{_day(applies_from(t, notice))}, so earlier purchases keep the earlier schedule.")
     fee_total = Decimal(0)
+    add_ons = _add_ons(terms)
     for (_, *key), members in groups.items():
         term = members[0][1]
         basis = term.params.get("basis")
@@ -462,6 +528,12 @@ def _fee_schedule(charge: Charge, schedules: list[Term], terms: Sequence[Term], 
                 elif basis == "per_carton":
                     raw += rate * ln.cartons
                     parts.append(f"{ln.cartons:,} cartons x {usd(rate)}")
+                elif basis == "annual_percent":
+                    raw += rate * Decimal(str(ln.base_amount)) / 100 * ln.days / 365
+                    parts.append(f"{_pct(rate)} a year on ${money(ln.base_amount):,} for {ln.days} days")
+                elif basis == "as_assessed":
+                    raw += Decimal(str(ln.base_amount))
+                    parts.append(f"${money(ln.base_amount):,} as assessed")
                 else:
                     return _missing(charge, f"a known basis for the {code} fee",
                                     f"The {code} fee schedule has basis {basis!r}, which the engine doesn't price.",
@@ -478,13 +550,22 @@ def _fee_schedule(charge: Charge, schedules: list[Term], terms: Sequence[Term], 
             fee, clamp = money(hi), f"; maximum ${money(hi):,}"
         fee_total += fee
         steps.append(f"Fee {label}: {how} = ${raw:,}{clamp} -> ${fee:,}.")
-    pass_through = money(sum((Decimal(str(ln.pass_through)) for ln in lines), Decimal(0)))
+        extra = _in_force([t for t in add_ons if t is not term], members[0][0].on, notice) if fee > 0 else None
+        if extra is not None:
+            plus = money(_dec(extra.params.get("rate")) or Decimal(0))
+            fee_total += plus
+            steps.append(f"Plus the {_fee_label(extra)} for {label}: ${plus:,}.")
+            if extra not in used:
+                used.append(extra)
+    pass_through = money(sum((Decimal(str(ln.pass_through)) for ln in owed), Decimal(0)))
     if pass_through:
         steps.append(f"Cost passed through at cost: ${pass_through:,}.")
     allowed = fee_total + pass_through
     steps.append(f"Allowed: ${allowed:,}; taken ${money(charge.amount):,}.")
     facts = {"fee_code": code, "fee_amount": money(fee_total), "pass_through": pass_through,
              "line_refs": tuple(ln.group or ln.description for ln in lines)}
+    if not owed:
+        facts["not_owed"] = True  # every line is out of the fee's scope or not the supplier's fault
     missing: tuple[str, ...] = ()
     if unproven:
         facts["missing_proof"] = tuple(unproven)
@@ -492,7 +573,7 @@ def _fee_schedule(charge: Charge, schedules: list[Term], terms: Sequence[Term], 
         steps.append(f"The deal requires backup for this fee; none came for {', '.join(unproven)}.")
     if held:
         facts["change_before_notice"] = tuple(t.id for t in held)
-    used_terms = tuple(used) + tuple(held) + ((notice_t,) if held and notice_t else ())
+    used_terms = tuple(used) + tuple(held) + ((notice_t,) if held and notice_t else ()) + tuple(within)
     return _result(charge, allowed, terms=used_terms, facts=facts, steps=tuple(steps), missing=missing,
                    firm=pass_through)
 

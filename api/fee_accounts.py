@@ -6,8 +6,16 @@ engine needs and the pipeline passes to compute_allowed():
                                     change the policy: they apply no sooner than their notice date + notice_period),
                                     as_of (the day a dispute would be filed), invoice_date, older_charges
     fees/backup.csv                 FeeBackupRow lines, keyed by the charge's ref
-    purchases/purchase-orders.csv   po, written_on, product, cases: what off-invoice (OI) allowances are counted on
+    purchases/purchase-orders.csv   po, written_on, product, cases (or units): what off-invoice (OI) allowances are
+                                    counted on. Optional columns: po_type (the PO's type, for a fee that applies only
+                                    to one type), and received_units, for a quantity fee's variance from the order
+    deliveries/appointments.csv     optional: po, cause ("carrier", "retailer", "supplier" or blank): who the delivery
+                                    log says caused a miss, for a fee that is a remedy for the supplier's failure
     charges/<older_charges>         deductions taken from earlier payments, reviewed with this one (not in its total)
+
+fees.yaml may also give `governs` (a contract version's first purchase date, for its terms that state none: which
+version governs a PO is set by the date it was written) and `quantity_codes` (charge codes for over or short shipped
+quantities, whose lines carry their variance from the order).
 
 No AI here and no money math.
 """
@@ -15,6 +23,7 @@ No AI here and no money math.
 from __future__ import annotations
 
 import csv
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 from functools import cache
@@ -90,14 +99,48 @@ def noticed_on(doc_id: str, account: accounts.Account | str | None = None) -> da
     return received.date() if received else None
 
 
+def governs_from(doc_id: str, account: accounts.Account | str | None = None) -> date | None:
+    """The first purchase date a contract version governs (fees.yaml governs), for its terms that state none."""
+    return _date((config(account).get("governs") or {}).get(doc_id, {}).get("from"))
+
+
 def engine_terms(terms: list[Term], account: accounts.Account | str | None = None) -> list[eng.Term]:
-    return [adapters.to_engine_term(t, noticed_on(t.source_doc_id, account)) for t in terms]
+    out = []
+    for t in terms:
+        start = governs_from(t.source_doc_id, account)
+        if start and t.effective_from is None:
+            t = t.model_copy(update={"effective_from": start})
+        out.append(adapters.to_engine_term(t, noticed_on(t.source_doc_id, account)))
+    return out
+
+
+def appointments(account: accounts.Account | str | None = None) -> list[dict[str, str]]:
+    return _csv(_account(account).dir / "deliveries" / "appointments.csv")
+
+
+def _units(r: dict[str, str]) -> int:
+    return int(r.get("cases") or r["units"])
+
+
+def _enrich(line: eng.FeeLine, pos: dict[str, dict], causes: dict[str, str], quantity_refs: set[str]) -> eng.FeeLine:
+    """Our side's records for the line's purchase order (its group): the PO's type, who caused a delivery miss, and
+    for a quantity fee how far the delivery was from the order."""
+    po = pos.get(line.group, {})
+    variance = None
+    if line.deduction_ref in quantity_refs and po.get("received_units"):
+        ordered = _units(po)
+        variance = (abs(Decimal(po["received_units"]) - ordered) * 100 / ordered).quantize(Decimal("0.01"))
+    return replace(line, po_type=po.get("po_type", ""), caused_by=causes.get(line.group, ""), variance_pct=variance)
 
 
 def fee_data(account: accounts.Account | str | None = None) -> eng.FeeData:
     a, c = _account(account), config(account)
+    pos = {r["po"]: r for r in purchases(a)}
+    causes = {r["po"]: (r.get("cause") or "").strip().lower() for r in appointments(a)}
+    quantity = set(c.get("quantity_codes") or [])
+    quantity_refs = {ch.ref for ch in charges(a) + older_charges(a) if ch.code in quantity}
     return eng.FeeData(
-        lines=tuple(adapters.to_engine_fee_line(r) for r in backup(a)),
+        lines=tuple(_enrich(adapters.to_engine_fee_line(r), pos, causes, quantity_refs) for r in backup(a)),
         codes=dict(c.get("codes", {})),
         proof_docs=frozenset(a.docs),
         as_of=_date(c.get("as_of")),
@@ -111,7 +154,7 @@ def sales_rows(account: accounts.Account | str | None = None) -> list[SalesRow]:
     order."""
     out = []
     for r in purchases(account):
-        day, cases = date.fromisoformat(r["written_on"]), int(r["cases"])
+        day, cases = date.fromisoformat(r["written_on"]), _units(r)
         out.append(SalesRow(week_start=day, week_end=day, product=r["product"], promo_units=cases, total_units=cases))
     return out
 
@@ -139,6 +182,7 @@ def evidence(account: accounts.Account | str | None = None) -> dict[str, Evidenc
         d = date.fromisoformat(r["written_on"])
         out[f"ev-po-{r['po']}"] = Evidence(
             id=f"ev-po-{r['po']}", kind="sales", label=f"PO {r['po']}",
-            summary=f"Purchase order written {d:%b} {d.day}: {int(r['cases']):,} cases of {r['product']}.",
+            summary=f"Purchase order written {d:%b} {d.day}: {_units(r):,} {'cases' if r.get('cases') else 'units'} "
+                    f"of {r['product']}" + (f" ({r['po_type']})" if r.get("po_type") else "") + ".",
             rows=[dict(r)])
     return out

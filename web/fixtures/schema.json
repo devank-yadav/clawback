@@ -1842,7 +1842,8 @@
               "amendment",
               "fee_schedule",
               "dispute_window",
-              "notice_period"
+              "notice_period",
+              "quantity_variance"
             ],
             "title": "Term Type",
             "type": "string"
@@ -2915,7 +2916,8 @@
               "amendment",
               "fee_schedule",
               "dispute_window",
-              "notice_period"
+              "notice_period",
+              "quantity_variance"
             ],
             "title": "Term Type",
             "type": "string"
@@ -4733,7 +4735,8 @@
               "amendment",
               "fee_schedule",
               "dispute_window",
-              "notice_period"
+              "notice_period",
+              "quantity_variance"
             ],
             "title": "Term Type",
             "type": "string"
@@ -4839,7 +4842,8 @@
               "amendment",
               "fee_schedule",
               "dispute_window",
-              "notice_period"
+              "notice_period",
+              "quantity_variance"
             ],
             "title": "Type",
             "type": "string"
@@ -5117,7 +5121,8 @@
               "amendment",
               "fee_schedule",
               "dispute_window",
-              "notice_period"
+              "notice_period",
+              "quantity_variance"
             ],
             "title": "Term Type",
             "type": "string"

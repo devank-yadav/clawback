@@ -16,7 +16,8 @@ order and the current merchandise cost for returned merchandise during that peri
 | Copperline Pour-Over Kettle | 571204907 | 4 | $22.75 |
 
 Purchase orders show their order type. New store purchase orders are marked "New Store" with the opening store
-number; purchase orders for a distribution center's first fill are marked "New DC" with the center's number. Every
+number; purchase orders for a distribution center's first fill are marked "New Distribution Center" with the center's
+number. Every
 other purchase order is a regular replenishment order.
 
 Supplier's terms: 1% 30 days, net 45, end of month dating, freight collect (F.O.B. Supplier), routed by Company's
