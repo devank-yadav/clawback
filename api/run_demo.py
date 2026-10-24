@@ -1,7 +1,8 @@
 """One full demo run from the command line: March, the owner's answer, then April.
 
 `make record` runs it with RECORD_FIXTURES=1 so every AI answer is saved for DEMO_MODE; `make demo` replays.
---portal also sends the judge's preset replies on D-0417 (claims, an agreement, then the signed amendment).
+--portal also sends the judge's preset replies on D-0417 (claims, an agreement, then the signed amendment);
+--coach adds the Deal Coach's redlines and the scenario box's examples.
 """
 
 from __future__ import annotations
@@ -49,6 +50,22 @@ def _portal(march: pipeline.Run) -> None:
     print(f"\nAfter the portal: disputed ${t.disputed:,.0f} · accepted ${t.accepted:,.0f}\n")
 
 
+def _coach(march: pipeline.Run) -> None:
+    """Deal Coach redlines for the summer draft, then the scenario box's examples."""
+    from api import scenario
+    from api.agents import coach
+
+    redlines = coach.coach(pipeline.coach_costs(march)).redlines
+    for r in redlines:
+        print(f"  REDLINE      {r.clause_ref} (${r.dollars_at_stake:,.0f}, {', '.join(r.finding_ids)}): {r.suggested_text}")
+    if not redlines:
+        print("  REDLINE      none: the Deal Coach had no answer for these costs (in DEMO_MODE: not recorded)")
+    for ex in scenario.EXAMPLES:
+        r = scenario.run(ex.request)
+        print(f"  SCENARIO     [{ex.label}] {r.message}")
+    print()
+
+
 def main() -> int:
     load_dotenv()
     march = pipeline.start("march", background=False)
@@ -70,6 +87,8 @@ def main() -> int:
     print(f"\nMarch: disputed ${t.disputed:,.0f} · accepted ${t.accepted:,.0f} · questions {t.questions}\n")
     if "--portal" in sys.argv:
         _portal(march)
+    if "--coach" in sys.argv:
+        _coach(march)
     april = pipeline.start("april", background=False)
     _print(april)
     t = [e.data for e in april.events if e.type == "totals"][-1]

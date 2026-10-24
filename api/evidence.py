@@ -25,7 +25,8 @@ def _paragraph(text: str, start: int, end: int) -> tuple[str, str]:
     return text[a:start], text[end:b]
 
 
-def _quote(doc_id: str, text: str, start: int, end: int, sentence: str) -> Quote:
+def quote_in(doc_id: str, text: str, start: int, end: int, sentence: str) -> Quote:
+    """The sentence at text[start:end] with the rest of its paragraph, for highlighting in place."""
     before, after = _paragraph(text, start, end)
     return Quote(doc_id=doc_id, text=sentence, char_start=start, char_end=end, context_before=before,
                  context_after=after)
@@ -70,7 +71,7 @@ def from_terms(terms: Iterable[Term]) -> dict[str, Evidence]:
         else:
             kind, label = "clause", f"§{section}" if section else f"{doc.id}"
         out[ev_id] = Evidence(id=ev_id, kind=kind, label=label, summary=summary[0].upper() + summary[1:] + ("" if summary.endswith(".") else "."),
-                              quote=_quote(doc.id, text, ts[0].char_start, ts[0].char_end, ts[0].exact_quote),
+                              quote=quote_in(doc.id, text, ts[0].char_start, ts[0].char_end, ts[0].exact_quote),
                               sender=doc.sender, approved_sender=doc.approved_sender if doc.kind == "email" else None,
                               sent_at=doc.received_at if doc.kind == "email" else None)
     return out
@@ -81,7 +82,7 @@ def from_notices() -> dict[str, Evidence]:
     for n in rows.notices():
         doc, text = documents.load(n.doc_id)
         m = re.search(r"Northmart will charge[^.]*\.", text, re.S)
-        quote = _quote(doc.id, text, m.start(), m.end(), " ".join(m.group().split())) if m else None
+        quote = quote_in(doc.id, text, m.start(), m.end(), " ".join(m.group().split())) if m else None
         out[f"ev-{n.doc_id}"] = Evidence(
             id=f"ev-{n.doc_id}", kind="notice", label=f"Notice {n.notice_date:%b %-d}",
             summary=f"Northmart gave written notice of a ${n.amount:,.2f} fee on {n.notice_date:%b %-d, %Y}.",

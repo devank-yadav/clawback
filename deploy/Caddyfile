@@ -1,0 +1,21 @@
+# One domain, automatic HTTPS (Let's Encrypt) once DNS points at the VM. DOMAIN comes from .env via docker-compose.yml.
+# /api/*      -> FastAPI with the /api prefix stripped (so /api/health is the API's /health)
+# /webhooks/* -> FastAPI as is (Twilio signs https://DOMAIN/webhooks/twilio/sms)
+# everything else -> Next.js (board, portal, inbox, ...)
+{$DOMAIN} {
+	encode zstd gzip
+
+	handle_path /api/* {
+		reverse_proxy api:8000 {
+			flush_interval -1
+		}
+	}
+
+	handle /webhooks/* {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

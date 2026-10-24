@@ -31,5 +31,9 @@ decision gate and approvals; Data model; API, live updates and integrations.
   answers with "sim-" ids and every ledger post says it's simulated. Texts (api/integrations/sms.py) go out only
   with the Twilio keys and outside DEMO_MODE; otherwise they wait in GET /inbox. Inbound texts: POST
   /webhooks/twilio/sms (signature checked when TWILIO_AUTH_TOKEN is set).
+- Every document is read twice (api/agents/readers.py): Reader A is Claude, Reader B is Gemini when GEMINI_API_KEY is
+  set and a second Claude prompt until then (the log says which). Re-record Reader B with Gemini once the key works.
+- POST /coach redlines summer-draft from the newest finished March run (api/agents/coach.py); POST /scenario runs a
+  pasted clause and charge (api/scenario.py); GET /scenario/examples has three recorded cases.
 - Stub routes serve the fixture run in api/stubs/fixtures.py. After changing it, run `python -m api.stubs.fixtures`
   to rewrite web/fixtures/*.json (a test fails if they're stale).

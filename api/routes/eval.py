@@ -35,7 +35,8 @@ def latest_path() -> Path:
 
 def to_report(s: dict) -> EvalReport:
     """eval/run.py's summary -> the contract the scoreboard reads."""
-    return EvalReport(status="done", run_at=s.get("run_at"), cases=s["cases"], correct=s["correct"],
+    return EvalReport(status="done", mode=s.get("mode", "engine"), run_at=s.get("run_at"), cases=s["cases"],
+                      correct=s["correct"],
                       amounts_correct=s["correct_amounts"], asked=s["asked"], wrong_automatic=s["wrong_actions"],
                       unnecessary_questions=s["unnecessary_questions"])
 
@@ -50,7 +51,11 @@ def run_eval() -> EvalReport:
 
 @router.get("/eval/latest", response_model=EvalReport)
 def latest() -> EvalReport:
-    try:
-        return to_report(json.loads(latest_path().read_text()))
-    except FileNotFoundError:
-        return EvalReport(status="not_run", cases=CASES)
+    """The agent-mode score when one has been saved (readers and agents in the loop: the real number), else
+    engine mode's. `mode` on the report says which."""
+    for path in (_harness().LATEST_AGENT, latest_path()):
+        try:
+            return to_report(json.loads(path.read_text()))
+        except FileNotFoundError:
+            continue
+    return EvalReport(status="not_run", cases=CASES)

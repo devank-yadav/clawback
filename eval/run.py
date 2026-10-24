@@ -29,6 +29,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+if str(ROOT / "eval") not in sys.path:
+    sys.path.insert(0, str(ROOT / "eval"))  # eval/agent.py
 
 from api.engine.allowed import compute_allowed, split_products  # noqa: E402
 from api.engine.gate import decide  # noqa: E402
@@ -48,6 +50,7 @@ from api.engine.types import (  # noqa: E402
 
 DEFAULT_DATA = Path(os.environ.get("CLAWBACK_DATA_DIR", ROOT / "data"))
 LATEST = ROOT / "eval" / "latest.json"  # the newest summary, for GET /eval/latest
+LATEST_AGENT = ROOT / "eval" / "latest-agent.json"  # the newest agent-mode summary (preferred by GET /eval/latest)
 COUNTERPARTY = "Northmart"
 ACTS = {DecisionKind.DISPUTE, DecisionKind.SPLIT, DecisionKind.ACCEPT}  # automatic actions; Ask and Skip are not
 
@@ -186,8 +189,12 @@ def load(data_dir: Path) -> tuple[list[dict[str, str]], dict[str, dict[str, str]
 
 def score(case: Case, expected: Expected, policy) -> Result:
     allowance = compute_allowed(case.charge, case.terms, case.sales, case.priors)
-    d = decide(case.charge, allowance, case.finding, policy, case.rules)
-    r = Result(case.id, case.tag, expected, d.kind, d.disputed, d.accepted, d.gate_row, d.reason)
+    return judge(case.id, case.tag, expected, decide(case.charge, allowance, case.finding, policy, case.rules))
+
+
+def judge(case_id: str, tag: str, expected: Expected, d) -> Result:
+    """Score one decision against the key (both modes use this)."""
+    r = Result(case_id, tag, expected, d.kind, d.disputed, d.accepted, d.gate_row, d.reason)
 
     same_kind = d.kind == expected.decision
     same_amounts = d.disputed == expected.disputed and d.accepted == expected.accepted
@@ -223,10 +230,10 @@ def run(data_dir: Path = DEFAULT_DATA) -> list[Result]:
     return results
 
 
-def summary(results: list[Result]) -> dict:
+def summary(results: list[Result], mode: str = "engine") -> dict:
     count = lambda v: sum(1 for r in results if r.verdict == v)  # noqa: E731
     return {
-        "mode": "engine",
+        "mode": mode,
         "cases": len(results),
         "correct": count("correct"),
         "correct_amounts": sum(1 for r in results if r.disputed == r.expected.disputed and r.accepted == r.expected.accepted),
@@ -247,17 +254,62 @@ def save(s: dict, path: Path = LATEST) -> dict:
     return saved
 
 
+def _main_agent(args) -> int:
+    from dotenv import load_dotenv
+
+    import agent  # eval/agent.py, next to this file
+
+    load_dotenv(ROOT / ".env")  # the agents' API keys
+
+    only = set(args.cases.split(",")) if args.cases else None
+    if args.estimate:
+        policy = load_policy()
+        rows, key = load(args.data)
+        cases = [agent.build(r, key[r["case_id"]], policy, sys.modules[__name__]) for r in rows
+                 if not only or r["case_id"] in only]
+        e = agent.estimate(cases, policy, sys.modules[__name__])
+        print(json.dumps(e, indent=2) if args.json else
+              f"Agent mode would make {e['calls']} AI calls for {e['cases']} cases: {e['reader_calls']} reads (two "
+              f"readers per document), {e['investigator_calls']} findings, {e['rehearsal_calls']} rehearsals. "
+              "Nothing was called.")
+        return 0
+    results, models = agent.run(args.data, only, ev=sys.modules[__name__])
+    s = {**summary(results, mode="agent"), "readers": [list(m) for m in models],
+         "two_models": any("gemini" in m for m in models), "partial": bool(only)}
+    if not args.no_save and not only:
+        save(s, LATEST_AGENT if args.out == LATEST else args.out)
+    if args.json:
+        s["misses"] = json.loads(agent.misses_json(results))
+        print(json.dumps(s, indent=2, default=str))
+    else:
+        who = " + ".join(models[0]) if models else "?"
+        print(f"Eval (agent mode, readers {who}): {s['correct']}/{s['cases']} correct · {s['asked']} asked · "
+              f"{s['wrong_actions']} wrong automatic actions · {s['unnecessary_questions']} unnecessary questions · "
+              f"amounts right to the cent on {s['correct_amounts']}/{s['cases']}")
+        for r in results:
+            if r.verdict != "correct":
+                print(f"  {r.case_id} [{r.tag}] {r.verdict}: got {r.decision.value} (row {r.gate_row}), "
+                      f"key {r.expected.decision.value}; {'; '.join(r.notes)}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--data", type=Path, default=DEFAULT_DATA, help="data directory (default: data/)")
     ap.add_argument("--json", action="store_true", help="print the summary and misses as JSON")
     ap.add_argument("--out", type=Path, default=LATEST, help="where to save the summary (default: eval/latest.json)")
     ap.add_argument("--no-save", action="store_true", help="don't save the summary")
+    ap.add_argument("--mode", choices=["engine", "agent"], default="engine",
+                    help="engine: math and gate alone, free; agent: readers and agents in the loop (eval/agent.py)")
+    ap.add_argument("--cases", help="agent mode: only these case ids, comma-separated (e.g. E01,E28)")
+    ap.add_argument("--estimate", action="store_true", help="agent mode: count the AI calls a run would make; call nothing")
     args = ap.parse_args(argv)
     if not (args.data / "eval" / "charges-30.csv").exists():
         print(f"No eval set at {args.data / 'eval'}; merge the story branch or pass --data.", file=sys.stderr)
         return 2
 
+    if args.mode == "agent":
+        return _main_agent(args)
     results = run(args.data)
     s = summary(results)
     misses = [r for r in results if r.verdict != "correct"]

@@ -30,6 +30,7 @@ PATHS = {
     "display-fee-2026-04-25": "notices/display-fee-2026-04-25.md",
 }
 SIGNED_BY_BOTH = {"spring-promo", "amendment-1"}  # both signature blocks are filled in
+_PASTED: dict[str, tuple[Document, str]] = {}  # the judge's clauses from the scenario box
 
 _EMAIL = re.compile(r"[\w.+-]+@[\w.-]+\.\w+")
 _MD_DATE = re.compile(r"\*\*(?:[A-Za-z ]*?date):\*\*\s*([A-Z][a-z]+ \d{1,2}, \d{4})", re.I)
@@ -46,7 +47,21 @@ def _kind(doc_id: str, path: str) -> str:
     return "draft" if "draft" in doc_id else "deal"
 
 
+def paste(text: str, kind: str = "deal", sender: str | None = None, received_at: datetime | None = None) -> Document:
+    """A document that isn't a file under data/: a clause pasted into the scenario box (treated as part of the
+    signed deal for that one case), or an eval case's deal or email."""
+    basis = text if kind == "deal" and sender is None else f"{kind}|{sender}|{text}"  # a pasted clause keeps its id
+    sha = hashlib.sha256(basis.encode()).hexdigest()
+    approved = sender is not None and sender.lower() in load_policy().approved_amendment_senders
+    doc = Document(id=f"pasted-{sha[:10]}", kind=kind, path="(not a file in data/)", sender=sender,
+                   approved_sender=approved, signed_by_both=kind == "deal", received_at=received_at, sha256=sha)
+    _PASTED[doc.id] = (doc, text)
+    return doc
+
+
 def load(doc_id: str) -> tuple[Document, str]:
+    if doc_id in _PASTED:
+        return _PASTED[doc_id]
     path = PATHS[doc_id]
     text = (DATA / path).read_text()
     kind = _kind(doc_id, path)
