@@ -17,7 +17,7 @@ from typing import Any
 
 import anthropic
 
-from api import adapters, evidence as evidence_mod, rows
+from api import adapters, evidence as evidence_mod, replies, rows
 from api.agents import investigator, negotiator, reader, rule_writer
 from api.contracts import (
     Answer, Approval, ApprovalLine, Charge, ChargeDetail, Decision, Dispute, DisputeLine, Event, EventAdapter,
@@ -224,9 +224,15 @@ def _decide(run: Run, charge_id: str, policy: eng.Policy) -> eng.Decision:
     c = run.charges[charge_id]
     rules = [adapters.to_engine_rule(r) for r in RULES if r.status == "active"]
     d = gate.decide(adapters.to_engine_charge(c), run.allowances[charge_id], run.eng_findings[charge_id], policy, rules)
+    return _record(run, charge_id, d, decided_by="gate")
+
+
+def _record(run: Run, charge_id: str, d: eng.Decision, decided_by: str) -> eng.Decision:
+    """Store and show a decision; an Ask sends the owner one question (never a second for the same charge)."""
+    c = run.charges[charge_id]
     run.decisions[charge_id] = d
     shown = adapters.to_contract_decision(d, waiting=c.amount if d.kind == eng.DecisionKind.ASK else Decimal(0),
-                                          decided_by="gate", decided_at=_now())
+                                          decided_by=decided_by, decided_at=_now())
     run.shown[charge_id] = shown
     run.emit("decision", shown)
     if d.rule_id:
@@ -258,13 +264,15 @@ def _ask_owner(run: Run, charge_id: str) -> None:
 
 
 def _after_decisions(run: Run, policy: eng.Policy) -> None:
-    disputed = [cid for cid, d in run.decisions.items() if d.disputed > 0]
-    if disputed and not any(e.type == "dispute" for e in run.events):
+    filed = {ln.charge_id for e in run.events if e.type == "dispute" for ln in e.data.lines}
+    disputed = [cid for cid, d in run.decisions.items() if d.disputed > 0 and cid not in filed]
+    if disputed:  # the first pass files D-0417; a line settled later (an owner's DISPUTE) gets its own
         _file_dispute(run, disputed, policy)
     if any(d.kind == eng.DecisionKind.ASK for d in run.decisions.values()):
         run.emit("run", RunInfo(run_id=run.id, kind=run.kind, status="waiting", demo_mode=replay.demo_mode()))
         return
-    _request_credit_memo(run, policy)
+    if not any(e.type == "approval" for e in run.events):
+        _request_credit_memo(run, policy)
     if run.kind == "april":
         run.log("0 questions asked: every fee was decided by a saved rule." if not run.questions
                 else f"{len(run.questions)} question(s) asked.", "good" if not run.questions else "info", "gate")
@@ -314,33 +322,69 @@ def _request_credit_memo(run: Run, policy: eng.Policy) -> None:
 
 def answer(question_id: str, text: str, from_role: str = "owner",
            client: anthropic.Anthropic | None = None) -> tuple[Answer, Rule | None]:
-    """The owner's reply (SMS or in-app). A reply Clawback understands becomes a rule and the waiting charges
-    are decided again; otherwise the question stays open."""
+    """The owner's reply (SMS or in-app). Code reads it first (api/replies.py):
+    - a rule ("accept if notice is at least 14 days") is saved and the waiting charges are decided again;
+    - ACCEPT or DISPUTE alone settles this charge only, and no rule is saved;
+    - UNDO cancels the newest rule for next time (charges it already decided keep their decision);
+    - anything else goes to Claude's rule writer; if that can't read it either, the owner is asked again.
+    Returns the answer and the rule it saved or undid, if any."""
     run_id, charge_id = QUESTIONS[question_id]
     run, policy = RUNS[run_id], load_policy()
-    q = run.questions[question_id]
-    a = run.allowances[charge_id]
-    learned = _now()
+    q, a, now, owner = run.questions[question_id], run.allowances[charge_id], _now(), OWNER.split()[0]
     eng_term = next((t for t in a.terms if gate.uses_discretion(t, policy)), None)
-    if eng_term is None:  # not a discretion clause: nothing to learn a rule from
-        ans = Answer(question_id=question_id, from_role=from_role, text=text, answered_at=learned)
+    term = next((t for t in run.terms if eng_term and t.id == eng_term.id), None)
+    subject = "display fees" if "display" in run.charges[charge_id].description.lower() else "these fees"
+    reply = replies.parse_owner_reply(text)
+
+    def record(rule_id: str | None = None) -> Answer:
+        ans = Answer(question_id=question_id, from_role=from_role, text=text, answered_at=now, rule_id=rule_id)
         run.emit("answer", ans)
-        run.log(f"Recorded {OWNER.split()[0]}'s answer on {charge_id}; it isn't a discretion clause, so no rule.",
-                actor="gate", charge_id=charge_id)
+        return ans
+
+    if reply.kind == "undo":
+        ans = record()
+        undone = replies.undo_rule(RULES)
+        if undone:
+            RULES[:] = [undone if r.id == undone.id else r for r in RULES]
+            run.emit("rule", undone)
+        run.log(f"Texted {owner}: \"{replies.undo_text(undone)}\"", actor="gate", charge_id=charge_id)
+        return ans, undone
+    if q.answer is not None:
+        ans = record()
+        run.log(f"{charge_id} is already settled; only UNDO changes it now.", actor="gate", charge_id=charge_id)
         return ans, None
-    term = next(t for t in run.terms if t.id == eng_term.id)
-    rule = rule_writer.write_rule(q, text, term, COUNTERPARTY, dict(a.facts), len(RULES) + 1, OWNER, learned, client)
-    ans = Answer(question_id=question_id, from_role=from_role, text=text, answered_at=learned,
-                 rule_id=rule.id if rule else None)
-    run.emit("answer", ans)
+
+    if reply.kind == "once":
+        ans = record()
+        run.questions[question_id] = q.model_copy(update={"answer": text, "answered_at": now})
+        d = gate.decide_by_owner(adapters.to_engine_charge(run.charges[charge_id]), a, eng.DecisionKind(reply.decision),
+                                 policy, run.decisions[charge_id].gate_row, cap_at_deal=term is not None)
+        _record(run, charge_id, d, decided_by="owner")
+        run.log(f"Texted {owner}: \"{replies.once_text(reply, charge_id)}\"", actor="gate", charge_id=charge_id)
+        _after_decisions(run, policy)
+        return ans, None
+
+    rule, echo = None, ""
+    if term and reply.kind == "rule":
+        rule = replies.rule_from_reply(reply, rule_id=f"rule-{len(RULES) + 1}", pattern_text=term.exact_quote,
+                                       term_type=term.type, counterparty=COUNTERPARTY, approver=OWNER, learned_at=now,
+                                       source_question_id=question_id, subject=subject)
+        echo = replies.confirmation_text(reply, subject)
+    elif term:  # the parser couldn't read it: Claude tries, and code still checks the condition
+        rule = rule_writer.write_rule(q, text, term, COUNTERPARTY, dict(a.facts), len(RULES) + 1, OWNER, now, client)
+        echo = rule_writer.echo(rule) if rule else ""
     if rule is None:
-        run.log(f"Couldn't turn \"{text}\" into a rule; the question stays open.", "warn", "gate", charge_id)
+        ans = record()
+        why = reply.reason or "a rule needs a discretion clause; this one isn't"
+        run.log(f"Couldn't use \"{text}\" ({why}). Texted {owner}: \"{replies.REASK_TEXT}\"", "warn", "gate", charge_id)
         return ans, None
+
+    ans = record(rule.id)
     RULES.append(rule)
-    run.questions[question_id] = q.model_copy(update={"answer": text, "answered_at": learned, "rule_id": rule.id})
+    run.questions[question_id] = q.model_copy(update={"answer": text, "answered_at": now, "rule_id": rule.id})
     run.evidence[f"ev-{rule.id}"] = _rule_evidence(rule)
     run.emit("rule", rule)
-    run.log(f"Saved {rule.label} and texted {OWNER.split()[0]}: \"{rule_writer.echo(rule)}\"", "good", "gate")
+    run.log(f"Saved {rule.label} and texted {owner}: \"{echo}\"", "good", "gate")
     for cid, d in list(run.decisions.items()):
         if d.kind == eng.DecisionKind.ASK:
             _decide(run, cid, policy)

@@ -97,6 +97,22 @@ def decide(
     return out(DecisionKind.ASK, 9, "Not enough support to dispute automatically.")
 
 
+def decide_by_owner(charge: Charge, allowance: Allowance, choice: DecisionKind, policy: Policy,
+                    gate_row: int, cap_at_deal: bool) -> Decision:
+    """The owner settles one charge (ACCEPT or DISPUTE, no rule saved). With cap_at_deal (a discretion fee),
+    accepting never accepts more than the deal's maximum: the part above it stays disputed, as with a rule
+    (row 3). Otherwise accepting takes the owner at their word and accepts the whole charge."""
+    taken, allowed, delta = allowance.taken, allowance.allowed, allowance.delta
+    if choice == DecisionKind.DISPUTE:
+        return Decision(charge.id, DecisionKind.DISPUTE, money(taken), ZERO, gate_row, None, "Owner chose to dispute.")
+    if choice != DecisionKind.ACCEPT:
+        raise ValueError(f"owner decides accept or dispute, not {choice}")
+    if cap_at_deal and delta > policy.match_tolerance:
+        return Decision(charge.id, DecisionKind.SPLIT, money(delta), money(allowed), gate_row, None,
+                        "Owner accepted; the part above the deal is disputed.")
+    return Decision(charge.id, DecisionKind.ACCEPT, ZERO, money(taken), gate_row, None, "Owner chose to accept.")
+
+
 def summarize(decisions: Iterable[Decision]) -> Totals:
     decisions = list(decisions)
     return Totals(

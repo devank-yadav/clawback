@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from api.adapters import to_engine_rule
 from api.contracts import Rule
 from api.engine.rules import evaluate, find_rule
 from api.engine.types import DecisionKind, TermType
@@ -17,7 +18,6 @@ from api.replies import (
     parse_controller_reply,
     parse_owner_reply,
     rule_from_reply,
-    to_engine_rule,
     undo_rule,
     undo_text,
 )

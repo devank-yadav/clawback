@@ -4,8 +4,8 @@ The owner answers a discretion question (C6: "accept if notice is at least 14 da
 saved rule; UNDO cancels it; "accept" or "dispute" alone settles only this charge. The controller answers an
 approval ("yes", or "no" plus a note). Anything else is unclear and gets the question again, never a guess.
 
-The design has Claude word the rule. This parser runs first; Claude is only needed for replies it calls
-unclear, and whatever Claude returns should still be built through rule_from_reply so the shape stays fixed.
+The design has Claude word the rule. This parser runs first (api/pipeline.answer); Claude's rule writer
+(api/agents/rule_writer.py) only sees replies it calls unclear, and its condition is still checked by code.
 Replies are data: nothing in them can change the policy, the counterparty or the term type.
 """
 
@@ -18,7 +18,6 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 from api.contracts import Role, Rule, TermType
-from api.engine import types as eng
 
 Op = Literal[">=", ">", "<=", "<"]
 Choice = Literal["accept", "dispute"]
@@ -254,17 +253,6 @@ def rule_from_reply(
         learned_at=learned_at,
         source_question_id=source_question_id,
         status="active",
-    )
-
-
-def to_engine_rule(rule: Rule) -> eng.Rule:
-    """contracts.Rule -> the engine's Rule, so api/engine/rules.evaluate can decide with it.
-    Lives here until api/adapters.py has one (Devank's call)."""
-    return eng.Rule(
-        id=rule.id, pattern_text=rule.pattern_text, term_type=eng.TermType(rule.term_type),
-        counterparty=rule.counterparty, condition=rule.condition, decision=eng.DecisionKind(rule.decision),
-        else_decision=eng.DecisionKind(rule.else_decision), approver=rule.approver,
-        learned_at=rule.learned_at.date(), source_question_id=rule.source_question_id or "", status=rule.status,
     )
 
 
