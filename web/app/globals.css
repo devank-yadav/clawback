@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+/* Tokens from web/CLAUDE.md. `sunk` and `line-soft` are the only additions: a recessed surface for
+   evidence wells and a lighter divider for rows inside a panel. */
+:root {
+  --bg: #eef1f4;
+  --panel: #ffffff;
+  --sunk: #f6f8fa;
+  --ink: #15202b;
+  --muted: #5b6876;
+  --line: #d5dbe2;
+  --line-soft: #e6eaef;
+  --accent: #1f4fd1;
+  --dispute: #c2372f;
+  --dispute-soft: #fbe7e5;
+  --accept: #6b7480;
+  --accept-soft: #eceff2;
+  --ask: #b7791f;
+  --ask-soft: #fcf1dc;
+  --good: #1d7a46;
+  --highlight: #fff1a8;
+  --highlight-ink: #15202b;
+  --highlight-strong: #ffd84a;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f151c;
+    --panel: #18212b;
+    --sunk: #131b24;
+    --ink: #e7edf3;
+    --muted: #9aa7b4;
+    --line: #2b3744;
+    --line-soft: #222d39;
+    --accent: #7aa2ff;
+    --dispute: #ff7b70;
+    --dispute-soft: #3a1c1b;
+    --accept: #a3adb8;
+    --accept-soft: #232d38;
+    --ask: #f2b552;
+    --ask-soft: #3a2d14;
+    --good: #5fd394;
+    --highlight: #5b4e12;
+    --highlight-ink: #fff7cc;
+    --highlight-strong: #8a7414;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-sunk: var(--sunk);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-accent: var(--accent);
+  --color-dispute: var(--dispute);
+  --color-dispute-soft: var(--dispute-soft);
+  --color-accept: var(--accept);
+  --color-accept-soft: var(--accept-soft);
+  --color-ask: var(--ask);
+  --color-ask-soft: var(--ask-soft);
+  --color-good: var(--good);
+  --color-highlight: var(--highlight);
+  --color-highlight-ink: var(--highlight-ink);
+  --color-highlight-strong: var(--highlight-strong);
+
+  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-source), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+/* Every number: JetBrains Mono with tabular figures. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 0;
+  letter-spacing: -0.01em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Highlighter marks on quoted deal sentences: the one loud thing on the page. */
+mark.hl {
+  background: linear-gradient(to bottom, transparent 8%, var(--highlight) 8%, var(--highlight) 92%, transparent 92%);
+  color: var(--highlight-ink);
+  padding: 0 0.12em;
+  margin: 0 -0.04em;
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: background-color 200ms ease, box-shadow 200ms ease;
+}
+mark.hl[data-active="true"] {
+  background: var(--highlight-strong);
+  box-shadow: 0 0 0 2px var(--highlight-strong);
+}
+
+.hatch-dispute {
+  background-color: var(--dispute-soft);
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--dispute) 22%, transparent) 0 2px,
+    transparent 2px 7px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

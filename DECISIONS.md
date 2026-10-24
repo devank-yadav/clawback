@@ -24,3 +24,4 @@ One line per decision, written the moment it's made: `date time · decision · w
 - 2026-10-24 01:41 · Owner replies go through api/replies.py first (rule, one-off ACCEPT/DISPUTE, UNDO, re-ask); Claude's rule writer only sees replies the parser can't read, so the demo answer needs no AI call · Devank
 - 2026-10-24 01:41 · A one-off ACCEPT on a discretion fee accepts up to the deal's maximum; on any other charge it accepts the whole charge. UNDO cancels the rule for next time; charges it decided keep their decision · Devank
 - 2026-10-24 01:41 · A line settled after D-0417 is filed (an owner's DISPUTE) gets its own dispute; the credit memo is requested once per run · Devank
+- 2026-10-24 02:30 · Review board uses a charge list with an evidence panel beside it (mobile: full-screen detail) instead of three pile columns; piles become groups in the list · Rishi
