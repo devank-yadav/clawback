@@ -22,7 +22,12 @@ log {text, level} · finding {charge_id, expected, taken, delta, type, finding, 
 / payment · /board (meters, live feed, Dispute/Accept/Ask columns, evidence drawer) · /portal (Northmart theme)
 · /results · /april · /coach · /scenario · /audit · /inbox (fallback for SMS questions)
 
-## Design tokens (from the prototype; define as CSS variables with light and dark values)
+## Workspace screens (current visual baseline)
+`/` is the v0 workspace (Overview, Payments, Approvals, Rules) in `app/(workspace)/` and `components/workspace/`.
+Rishi chose it over the older tokens below; keep its styles as they are and read web/README.md before changing data
+flow. The tokens below still apply to `/board/demo`, which keeps its own root layout.
+
+## Design tokens for the earlier board (from the prototype; define as CSS variables with light and dark values)
 - Fonts: Archivo (headings, 600/800), Source Sans 3 (text), JetBrains Mono (every number, tabular figures).
 - Light: bg #eef1f4, panel #ffffff, ink #15202b, muted #5b6876, line #d5dbe2, accent #1f4fd1,
   dispute red #c2372f (soft #fbe7e5), accept gray #6b7480 (soft #eceff2), ask amber #b7791f (soft #fcf1dc),

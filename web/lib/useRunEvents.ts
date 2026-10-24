@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { eventsAfter, replayDelay, waitsForPerson } from "./fixture";
+import { OWNER_RULE_REPLY } from "./cast";
+import * as api from "./live";
 import type {
   Answer,
   Approval,
@@ -119,16 +121,24 @@ function reduce(state: RunState, action: Action): RunState {
   }
 }
 
+/** "fixture" replays web/fixtures/ (no backend, no keys); "live" follows the FastAPI event stream. */
+export type DataSource = "fixture" | "live";
+export const DATA_SOURCE: DataSource = process.env.NEXT_PUBLIC_DATA_SOURCE === "live" ? "live" : "fixture";
+
 /**
  * Folds the run's event stream into screen state.
- * Today it replays web/fixtures/ and pauses wherever a person has to act. Card R7 swaps the source for
- * GET /runs/{id}/events (Last-Event-ID = state.lastEventId), and the two actions POST to the API instead.
+ * fixture: replays web/fixtures/ and pauses wherever a person has to act; the two actions continue the recording.
+ * live: POST /runs, then GET /runs/{id}/events (EventSource reconnects with Last-Event-ID); the actions POST to the API
+ * and the result comes back as events, so the screen never claims something happened before the API says so.
  */
-export function useRunEvents(runId: string) {
+export function useRunEvents(runId: string, source: DataSource = DATA_SOURCE) {
   const [state, dispatch] = useReducer(reduce, initial);
+  const [epoch, setEpoch] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const timers = useRef<number[]>([]);
   const busy = useRef(false);
   const last = useRef<RunEvent | undefined>(undefined);
+  const started = useRef<{ epoch: number; run: Promise<api.StartedRun> } | null>(null);
 
   /** Plays events until the next point where a person must act (or the end). */
   const play = useCallback((events: RunEvent[], resume = false) => {
@@ -154,30 +164,83 @@ export function useRunEvents(runId: string) {
 
   useEffect(() => {
     dispatch({ kind: "reset" });
+    // Deferred so every setState here happens outside the effect body.
+    const clear = window.setTimeout(() => setError(null), 0);
     last.current = undefined;
-    play(eventsAfter(0));
-    const pending = timers.current;
+    busy.current = false;
+
+    if (source === "fixture") {
+      play(eventsAfter(0));
+      const pending = timers.current;
+      return () => {
+        window.clearTimeout(clear);
+        pending.forEach((t) => window.clearTimeout(t));
+        timers.current = [];
+        busy.current = false;
+      };
+    }
+
+    // One POST /runs per epoch, even though React StrictMode mounts this effect twice in dev.
+    if (started.current?.epoch !== epoch) started.current = { epoch, run: api.startRun() };
+    let stream: EventSource | null = null;
+    let cancelled = false;
+    started.current.run
+      .then((run) => {
+        if (cancelled) return;
+        stream = new EventSource(api.apiUrl(run.events_url));
+        stream.onmessage = (m) => {
+          try {
+            dispatch({ kind: "event", event: JSON.parse(m.data) as RunEvent });
+          } catch {
+            /* a malformed frame must not wipe the board */
+          }
+        };
+        stream.onopen = () => setError(null);
+        stream.onerror = () => setError("Lost the connection to the Clawback API. Reconnecting…");
+        dispatch({ kind: "playing", on: true });
+      })
+      .catch((e: Error) => !cancelled && setError(`Can't reach the Clawback API (${e.message}). Check NEXT_PUBLIC_API_BASE.`));
     return () => {
-      pending.forEach((t) => window.clearTimeout(t));
-      timers.current = [];
+      cancelled = true;
+      window.clearTimeout(clear);
+      stream?.close();
     };
-  }, [runId, play]);
+  }, [runId, source, epoch, play]);
+
+  const fail = (e: Error) => setError(`The API didn't accept that action (${e.message}).`);
 
   const answerQuestion = useCallback(
-    (questionId: string) => {
-      if (busy.current || state.questions[questionId]?.answer) return;
+    (questionId: string, text: string = OWNER_RULE_REPLY) => {
+      if (state.questions[questionId]?.answer) return;
+      if (source === "live") {
+        api.answerQuestion(questionId, text).catch(fail);
+        return;
+      }
+      if (busy.current) return;
       play(eventsAfter(state.lastEventId), true);
     },
-    [play, state.questions, state.lastEventId],
+    [play, source, state.questions, state.lastEventId],
   );
 
   const controllerDecides = useCallback(
-    (approve: boolean) => {
-      if (busy.current || state.approval?.status !== "pending") return;
+    (approve: boolean, note: string | null = null) => {
+      const approval = state.approval;
+      if (approval?.status !== "pending") return;
+      if (source === "live") {
+        api.decideApproval(approval.id, approve, note).catch(fail);
+        return;
+      }
+      if (busy.current) return;
       play(eventsAfter(state.lastEventId, approve ? "approved" : "refused"), true);
     },
-    [play, state.approval, state.lastEventId],
+    [play, source, state.approval, state.lastEventId],
   );
 
-  return { state, answerQuestion, controllerDecides, source: "fixture" as const };
+  /** Back to the start of the demo (live: POST /demo/reset first, then a fresh run). */
+  const reset = useCallback(() => {
+    if (source === "live") api.resetDemo().then(() => setEpoch((n) => n + 1), fail);
+    else setEpoch((n) => n + 1);
+  }, [source]);
+
+  return { state, answerQuestion, controllerDecides, reset, source, error };
 }

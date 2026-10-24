@@ -19,3 +19,9 @@ export const shortDate = (iso: string) => day.format(new Date(iso));
 
 /** "Mar 11" from a YYYY-MM-DD date. */
 export const shortDay = (ymd: string) => isoDay.format(new Date(`${ymd}T00:00:00Z`));
+
+/** $1,200.00: the workspace screens always show cents. */
+export const dollars = (n: number) => cents.format(n);
+
+/** Percent of `whole`, for bar widths only. Layout, not accounting: amounts and decisions come from the API. */
+export const share = (part: number, whole: number) => (whole > 0 ? Math.min(100, Math.max(0, (part / whole) * 100)) : 0);
