@@ -113,7 +113,7 @@ def test_f4_findings_cite_the_right_clause_and_rows(client, cid):
 
 # ---------------------------------------------------------------- F5 Decision gate
 
-def test_f5_readers_disagreeing_on_the_rate_forces_ask():
+def test_f5_readers_disagreeing_on_a_term_forces_ask():
     """Quote check -> engine -> gate: from the same §3.1 sentence Claude reads both flavours, Gemini only Original."""
     source = documents.load("spring-promo")[1]
     claude = {"type": "product_scope", "params": {"products": [s.ORIG, s.CHOC]}, "exact_quote": s.Q_RATE}
