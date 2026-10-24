@@ -1,12 +1,14 @@
 """The math engine (F3): what the deal allows for one charge. docs/design.md, "Math engine", steps 1 to 7, plus the
-operations charges (shortage, price mismatch, spoilage), checked against delivery records instead of store sales.
+operations charges (shortage, price mismatch, spoilage), checked against delivery records instead of store sales, and
+fee-schedule charges (a % with a minimum and a cap, per unit, per PO, per carton or flat, maybe tiered by days),
+checked against the other side's fee backup. Any charge also gets the deal's dispute window, when it states one.
 
 Plain code, no AI. Every amount the product shows comes from here or from gate.py.
 """
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Iterable, Sequence
 
@@ -15,6 +17,8 @@ from api.engine.types import (
     Allowance,
     Charge,
     Delivery,
+    FeeData,
+    FeeLine,
     OpsData,
     PriorPayment,
     SalesWeek,
@@ -24,7 +28,7 @@ from api.engine.types import (
     money,
 )
 
-PROMO_CODES = frozenset({"PA"})
+PROMO_CODES = frozenset({"PA", "OI"})  # OI: an off-invoice allowance the distributor recovers by deduction
 FEE_CODES = frozenset({"DF"})
 OPS_CODES = frozenset({"SH", "PR", "SP"})  # shortage, price mismatch, spoilage: checked against OpsData
 SPOILS_ALLOWANCE = "spoils_allowance_pct"  # the ops term an SP charge is capped by
@@ -78,11 +82,23 @@ def compute_allowed(
     sales: Iterable[SalesWeek] = (),
     prior_payments: Iterable[PriorPayment] = (),
     ops: OpsData | None = None,
+    fees: FeeData | None = None,
 ) -> Allowance:
     """Step 1: the code says which promo the charge claims (PA promo allowance, DF display fee). SH, PR and SP
-    (shortage, price mismatch, spoilage) are checked against the account's delivery records, price list and ops terms."""
+    (shortage, price mismatch, spoilage) are checked against the account's delivery records, price list and ops terms.
+    A code the deal names in a fee_schedule term (directly, or through fees.codes) is priced by that schedule.
+    Then the deal's dispute window, if it states one, is checked for every charge."""
+    fees = fees or FeeData()
+    return _dispute_window(_allowed(charge, terms, list(sales), list(prior_payments), ops, fees), charge, terms, fees)
+
+
+def _allowed(charge: Charge, terms: Sequence[Term], sales: list[SalesWeek], priors: list[PriorPayment],
+             ops: OpsData | None, fees: FeeData) -> Allowance:
     if charge.code in PROMO_CODES:
-        return _promo(charge, terms, list(sales), list(prior_payments))
+        return _promo(charge, terms, sales, priors)
+    schedules = fee_terms(charge, terms, fees)
+    if schedules or charge.code in fees.codes:
+        return _fee_schedule(charge, schedules, terms, fees)
     if charge.code in FEE_CODES:
         return _fee(charge, terms)
     if charge.code in OPS_CODES:
@@ -311,3 +327,195 @@ def _spoilage(charge: Charge, ops: OpsData) -> Allowance:
     facts = {"line_refs": tuple(d.line_ref for d in lines), "allowance_pct": pct, "period_invoiced": invoiced,
              "spoils_allowance": cap}
     return _result(charge, allowed, facts=facts, steps=tuple(steps))
+
+
+# --- Fee schedules -----------------------------------------------------------------------------------------------
+# A fee_schedule term prices one kind of fee (params, as in api/contracts.py FeeScheduleParams):
+#   fee_code        the fee's name as the deal writes it ("MCB", "Extra Performance"); FeeData.codes maps charge codes
+#   basis           percent (rate% of each backup line's base_amount) · per_unit (rate x units) · per_carton
+#                   (rate x cartons) · per_po and flat (rate once per group, whatever its lines)
+#   rate            the rate; with tiers, each line's rate is the tier its days fall in (no tier: no fee)
+#   min, max        clamp each group's fee; the minimum applies only to a group that owes some fee
+#   per             what a group is: invoice / po / incident (FeeLine.group, else each line alone) or month
+#   requires_proof  every backup line must name a proof_doc that exists, else the gate asks a person
+# allowed = sum of the groups' clamped fees + every line's pass_through (cost charged on at cost, e.g. landed cost).
+# A schedule from a later document (a policy change) applies to a line only from its effective_from, and never
+# sooner than its noticed_on + the deal's notice_period days.
+
+
+def fee_key(name: str) -> str:
+    return " ".join(str(name).lower().split())
+
+
+def fee_terms(charge: Charge, terms: Sequence[Term], fees: FeeData) -> list[Term]:
+    """The fee_schedule terms for this charge's fee, from approved sources: the verified ones, or (only if none is)
+    the rejected or disputed ones, so the gate can Skip or Ask."""
+    want = fee_key(fees.codes.get(charge.code, charge.code))
+    pool = [t for t in terms if t.type == TermType.FEE_SCHEDULE and t.source_approved
+            and fee_key(t.params.get("fee_code", "")) == want]
+    live = [t for t in pool if t.status != TermStatus.REJECTED]
+    return live or pool
+
+
+def notice_days_required(terms: Sequence[Term]) -> tuple[int | None, Term | None]:
+    t = _pick(terms, TermType.NOTICE_PERIOD)
+    if t is None or t.status != TermStatus.VERIFIED:
+        return None, None
+    return int(t.params["days"]), t
+
+
+def applies_from(term: Term, notice: int | None) -> date:
+    """The first purchase date a schedule can price: its effective_from, pushed to noticed_on + notice days when the
+    notice was short. A term with neither date applies from the start."""
+    start = term.effective_from or date.min
+    if term.noticed_on is not None and notice is not None:
+        start = max(start, term.noticed_on + timedelta(days=notice))
+    return start
+
+
+def _dec(value) -> Decimal | None:
+    return None if value is None or value == "" else Decimal(str(value))
+
+
+def _line_rate(term: Term, line: FeeLine) -> Decimal | None:
+    tiers = term.params.get("tiers") or []
+    if not tiers:
+        return _dec(term.params.get("rate"))
+    if line.days is None:
+        return None
+    for tier in tiers:
+        lo, hi = int(tier["from_days"]), tier.get("to_days")
+        if lo <= line.days and (hi is None or line.days <= int(hi)):
+            return Decimal(str(tier["rate"]))
+    return Decimal(0)  # outside every tier: no fee
+
+
+def _fee_label(term: Term) -> str:
+    return str(term.params.get("fee_code") or "fee")
+
+
+def _pct(rate: Decimal) -> str:
+    return f"{rate.normalize():f}%"
+
+
+def _fee_schedule(charge: Charge, schedules: list[Term], terms: Sequence[Term], fees: FeeData) -> Allowance:
+    code = fees.codes.get(charge.code, charge.code)
+    if not schedules:
+        return _missing(charge, f"a fee_schedule term for {code}", f"The deal states no fee schedule for {code}.")
+    lines = sorted((ln for ln in fees.lines if ln.deduction_ref.strip() == charge.ref.strip()),
+                   key=lambda ln: (ln.on, ln.group, ln.description))
+    if not lines:
+        return _missing(charge, f"the backup for {charge.ref}", f"No backup lines for {charge.ref}.")
+    notice, notice_t = notice_days_required(terms)
+    used: list[Term] = []
+    held: list[Term] = []
+    steps: list[str] = []
+    groups: dict[tuple, list[tuple[FeeLine, Term]]] = {}
+    unproven: list[str] = []
+    no_days: list[str] = []
+    for i, ln in enumerate(lines):
+        in_force = [(applies_from(t, notice), n, t) for n, t in enumerate(schedules) if applies_from(t, notice) <= ln.on]
+        if not in_force:
+            return _missing(charge, f"a {code} fee schedule in effect on {_day(ln.on)}",
+                            f"No {code} fee schedule was in effect on {_day(ln.on)}.", terms=tuple(schedules))
+        term = max(in_force, key=lambda x: (x[0], x[1]))[2]
+        for t in schedules:  # its stated date has passed but its notice hasn't run: it can't price this line yet
+            if t is not term and t not in held and (t.effective_from or date.min) <= ln.on < applies_from(t, notice):
+                held.append(t)
+        if term not in used:
+            used.append(term)
+        if term.params.get("requires_proof") and ln.proof_doc not in fees.proof_docs:
+            unproven.append(ln.group or ln.description or ln.deduction_ref)
+        if term.params.get("tiers") and ln.days is None:
+            no_days.append(ln.group or ln.description or ln.deduction_ref)
+        per = term.params.get("per") or "incident"
+        key = (f"{ln.on:%Y-%m}",) if per == "month" else (ln.group or f"line {i + 1}",)
+        groups.setdefault((id(term),) + key, []).append((ln, term))
+    if no_days:
+        return _missing(charge, f"the days for {', '.join(no_days)}",
+                        f"The {code} fee is tiered by days and the backup doesn't give them.", terms=tuple(used))
+
+    for t in held:
+        steps.append(f"A {_fee_label(t)} change set to start {_day(t.effective_from or date.min)} was noticed "
+                     f"{_day(t.noticed_on)}; with {notice} days' notice it applies only from "
+                     f"{_day(applies_from(t, notice))}, so earlier purchases keep the earlier schedule.")
+    fee_total = Decimal(0)
+    for (_, *key), members in groups.items():
+        term = members[0][1]
+        basis = term.params.get("basis")
+        lo, hi = _dec(term.params.get("min")), _dec(term.params.get("max"))
+        label = key[0]
+        if basis in ("per_po", "flat"):
+            rate = _dec(term.params.get("rate")) or Decimal(0)
+            raw = rate
+            how = f"{usd(rate)} {'per PO' if basis == 'per_po' else 'flat'}"
+        else:
+            raw, parts = Decimal(0), []
+            for ln, _t in members:
+                rate = _line_rate(term, ln)
+                if basis == "percent":
+                    raw += rate * Decimal(str(ln.base_amount)) / 100
+                    parts.append(f"{_pct(rate)} of ${money(ln.base_amount):,}")
+                elif basis == "per_unit":
+                    raw += rate * ln.units
+                    parts.append(f"{ln.units:,} units x {usd(rate)}")
+                elif basis == "per_carton":
+                    raw += rate * ln.cartons
+                    parts.append(f"{ln.cartons:,} cartons x {usd(rate)}")
+                else:
+                    return _missing(charge, f"a known basis for the {code} fee",
+                                    f"The {code} fee schedule has basis {basis!r}, which the engine doesn't price.",
+                                    terms=tuple(used))
+                if ln.days is not None and term.params.get("tiers"):
+                    parts[-1] += f" ({ln.days} days)"
+            how = " + ".join(parts)
+        raw = money(raw)
+        fee = raw
+        clamp = ""
+        if lo is not None and Decimal(0) < fee < lo:
+            fee, clamp = money(lo), f"; minimum ${money(lo):,}"
+        if hi is not None and fee > hi:
+            fee, clamp = money(hi), f"; maximum ${money(hi):,}"
+        fee_total += fee
+        steps.append(f"Fee {label}: {how} = ${raw:,}{clamp} -> ${fee:,}.")
+    pass_through = money(sum((Decimal(str(ln.pass_through)) for ln in lines), Decimal(0)))
+    if pass_through:
+        steps.append(f"Cost passed through at cost: ${pass_through:,}.")
+    allowed = fee_total + pass_through
+    steps.append(f"Allowed: ${allowed:,}; taken ${money(charge.amount):,}.")
+    facts = {"fee_code": code, "fee_amount": money(fee_total), "pass_through": pass_through,
+             "line_refs": tuple(ln.group or ln.description for ln in lines)}
+    missing: tuple[str, ...] = ()
+    if unproven:
+        facts["missing_proof"] = tuple(unproven)
+        missing = (f"the backup document for {', '.join(unproven)}",)
+        steps.append(f"The deal requires backup for this fee; none came for {', '.join(unproven)}.")
+    if held:
+        facts["change_before_notice"] = tuple(t.id for t in held)
+    used_terms = tuple(used) + tuple(held) + ((notice_t,) if held and notice_t else ())
+    return _result(charge, allowed, terms=used_terms, facts=facts, steps=tuple(steps), missing=missing,
+                   firm=pass_through)
+
+
+# --- Dispute window ----------------------------------------------------------------------------------------------
+# A dispute_window term {days, from: deduction|invoice}: the dispute is due within `days` of the deduction (the
+# charge's deducted_on) or of the invoice (FeeData.invoice_date), counted to FeeData.as_of, the day it would be filed.
+# The engine only records the facts; the gate decides (gate.py rows 10 and 7).
+
+def _dispute_window(a: Allowance, charge: Charge, terms: Sequence[Term], fees: FeeData) -> Allowance:
+    t = _pick(terms, TermType.DISPUTE_WINDOW)
+    if t is None or t.status != TermStatus.VERIFIED or fees.as_of is None:
+        return a
+    start = fees.invoice_date if t.params.get("from") == "invoice" else charge.deducted_on
+    if start is None:
+        return a
+    days = int(t.params["days"])
+    closes = start + timedelta(days=days)
+    left = (closes - fees.as_of).days
+    what = "invoice" if t.params.get("from") == "invoice" else "deduction"
+    step = (f"Disputes are due within {days} days of the {what} ({_day(start)}, {start.year}): the window "
+            + (f"closed {_day(closes)}, {closes.year}, {-left} days ago." if left < 0 else
+               f"closes {_day(closes)}, {closes.year}, in {left} days."))
+    facts = {**a.facts, "dispute_window_closes": closes, "dispute_days_left": left, "past_dispute_window": left < 0}
+    return Allowance(a.charge_id, a.taken, a.allowed, a.delta, a.covered_units, a.terms + (t,), a.missing, facts,
+                     a.steps + (step,), a.firm)

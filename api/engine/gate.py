@@ -1,8 +1,17 @@
-"""The decision gate (F5): docs/design.md, "Decision gate". Nine rows, first matching row wins."""
+"""The decision gate (F5): docs/design.md, "Decision gate". Nine rows, first matching row wins, plus row 10 for a
+deal's dispute window, checked right after rows 1 and 2:
+
+10. The deal's dispute window has closed and the charge is more than the match tolerance off the deal (or can't be
+    checked): Accept, with a note. The other side can refuse a late dispute outright, so filing only costs goodwill,
+    and asking the owner can't bring the window back. The note says what the deal would have allowed, for next time.
+    A window still open but closing within policy.dispute_window_warn_days doesn't ask either: the decision stands
+    and its reason says the date to file by, since a question would eat into the days left.
+"""
 
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from decimal import Decimal
 from typing import Iterable
 
@@ -43,6 +52,22 @@ def decide(
 ) -> Decision:
     """`matches` are Moss's candidate rules for the charge's discretion clause (rows 3 and 4); without one that
     clears policy.rule_match_similarity, the exact match on term type + counterparty decides."""
+    d = _decide(charge, allowance, finding, policy, rules, matches)
+    left = allowance.facts.get("dispute_days_left")
+    if left is not None and 0 <= left <= policy.dispute_window_warn_days and d.kind != DecisionKind.ACCEPT:
+        closes = allowance.facts["dispute_window_closes"]
+        d = replace(d, reason=f"{d.reason} File by {closes:%b} {closes.day}: the dispute window closes in {left} days.")
+    return d
+
+
+def _decide(
+    charge: Charge,
+    allowance: Allowance,
+    finding: Finding | None,
+    policy: Policy,
+    rules: Iterable[Rule] = (),
+    matches: Iterable[RuleMatch] = (),
+) -> Decision:
     rules = list(rules)
 
     def out(kind: DecisionKind, row: int, reason: str, disputed=ZERO, accepted=ZERO, rule_id=None,
@@ -59,6 +84,14 @@ def decide(
     if any(t.status == TermStatus.DISPUTED for t in allowance.terms):
         return out(DecisionKind.ASK, 2, "The two deal readers disagree on a term this charge depends on.")
 
+    # Row 10: the dispute window has closed.
+    if allowance.facts.get("past_dispute_window") and (allowance.missing or delta > policy.match_tolerance):
+        closed = allowance.facts.get("dispute_window_closes")
+        when = f" on {closed:%b} {closed.day}, {closed.year}" if closed else ""
+        note = "" if allowance.missing else f"; the deal allows ${allowed:,}, ${delta:,} less"
+        return out(DecisionKind.ACCEPT, 10, f"Past the dispute window (it closed{when}): accepted and noted{note}.",
+                   accepted=taken)
+
     # Rows 3 and 4: discretion.
     discretion = [t for t in allowance.terms if uses_discretion(t, policy)]
     if discretion:
@@ -74,8 +107,17 @@ def decide(
                            disputed=delta, accepted=allowed, rule_id=rule.id, similarity=similarity)
             return out(DecisionKind.ACCEPT, 3, f"Applied {name}.", accepted=taken, rule_id=rule.id, similarity=similarity)
         if verdict == DecisionKind.DISPUTE:
+            firm = min(taken, allowance.firm) if allowance.firm is not None else ZERO
+            if firm > 0:  # only the discretionary part is disputed; the cost under it is owed either way
+                return out(DecisionKind.SPLIT, 3, f"Applied {name}: the discretionary fee is disputed, the rest accepted.",
+                           disputed=taken - firm, accepted=firm, rule_id=rule.id, similarity=similarity)
             return out(DecisionKind.DISPUTE, 3, f"Applied {name}.", disputed=taken, rule_id=rule.id, similarity=similarity)
         return out(DecisionKind.ASK, 3, f"{name} says to ask.", rule_id=rule.id, similarity=similarity)
+
+    # A fee the deal says needs backup, and no backup came: a person looks before anything is accepted or filed.
+    if allowance.facts.get("missing_proof"):
+        return out(DecisionKind.ASK, 9, f"The deal requires backup for this fee and none came for "
+                                        f"{', '.join(allowance.facts['missing_proof'])}.")
 
     # Not in the design table: with a required term missing the amount means nothing, so it can only be Ask (row 9).
     if allowance.missing:
@@ -113,6 +155,10 @@ def decide_by_owner(charge: Charge, allowance: Allowance, choice: DecisionKind, 
     (row 3). Otherwise accepting takes the owner at their word and accepts the whole charge."""
     taken, allowed, delta = allowance.taken, allowance.allowed, allowance.delta
     if choice == DecisionKind.DISPUTE:
+        firm = min(taken, allowance.firm) if cap_at_deal and allowance.firm is not None else ZERO
+        if firm > 0:  # a discretionary fee on top of a cost: the owner disputes the fee, the cost stays owed
+            return Decision(charge.id, DecisionKind.SPLIT, money(taken - firm), money(firm), gate_row, None,
+                            "Owner chose to dispute the discretionary fee; the cost under it is accepted.")
         return Decision(charge.id, DecisionKind.DISPUTE, money(taken), ZERO, gate_row, None, "Owner chose to dispute.")
     if choice != DecisionKind.ACCEPT:
         raise ValueError(f"owner decides accept or dispute, not {choice}")

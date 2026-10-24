@@ -25,6 +25,9 @@ class TermType(StrEnum):
     DATE_RANGE = "date_range"
     FEE_DISCRETION = "fee_discretion"
     AMENDMENT = "amendment"
+    FEE_SCHEDULE = "fee_schedule"
+    DISPUTE_WINDOW = "dispute_window"
+    NOTICE_PERIOD = "notice_period"
 
 
 class TermStatus(StrEnum):
@@ -45,7 +48,11 @@ class DecisionKind(StrEnum):
 class Term:
     """A merged, checked deal term. Params by type:
     promo_rate {"rate"} · product_scope {"products"} · unit_cap {"max_units"} · date_range {"start", "end"}
-    · fee_discretion {"max_fee"} · amendment {"extra_units"} over effective_from..effective_to.
+    · fee_discretion {"max_fee"} · amendment {"extra_units"} over effective_from..effective_to
+    · fee_schedule {"fee_code", "basis", "rate", "min", "max", "per", "tiers", "requires_proof"} (see allowed.py,
+    "Fee schedules") · dispute_window {"days", "from"} · notice_period {"days"}.
+    noticed_on: when the other side gave notice of the document that states this term (a policy change); a change
+    applies no earlier than noticed_on + the deal's notice_period days.
     """
 
     id: str
@@ -59,6 +66,7 @@ class Term:
     source_doc_id: str = ""
     # False for anything from a sender not on the approved list: a claim, never applied.
     source_approved: bool = True
+    noticed_on: date | None = None
 
 
 @dataclass(frozen=True)
@@ -76,6 +84,7 @@ class Charge:
     counterparty: str = "Northmart"
     notice_date: date | None = None  # display fees only
     line_ref: str | None = None  # SH / PR: the delivery line the charge points to
+    deducted_on: date | None = None  # when the money was taken; the dispute window counts from here
 
 
 @dataclass(frozen=True)
@@ -145,6 +154,40 @@ class OpsData:
 
 
 @dataclass(frozen=True)
+class FeeLine:
+    """One line of the other side's backup for a fee charge, keyed by the charge's ref (deduction_ref).
+    base_amount is what a percent fee is taken on (the MCB amount, a retailer invoice's total, landed cost);
+    pass_through is cost charged on at cost beside the fee (landed cost of goods credited to a retailer);
+    group is the invoice, PO or incident the fee's min and max apply to; on is the purchase/invoice date the fee
+    schedule in effect is picked by; days drives tiers (days late, say); proof_doc names the backup document."""
+
+    deduction_ref: str
+    on: date
+    group: str = ""
+    base_amount: Decimal = Decimal(0)
+    pass_through: Decimal = Decimal(0)
+    units: int = 0
+    cartons: int = 0
+    days: int | None = None
+    proof_doc: str = ""
+    description: str = ""
+
+
+@dataclass(frozen=True)
+class FeeData:
+    """An account's fee backup and dates, for charges priced by a fee_schedule term.
+    codes maps a charge code to the fee_code the deal uses ("MCBF" -> "MCB"); a code equal to the fee_code needs
+    no entry. proof_docs are the documents that exist; a requires_proof line whose proof_doc isn't one is unproven.
+    as_of is the day the dispute would be filed; invoice_date is for a dispute_window counted from the invoice."""
+
+    lines: tuple[FeeLine, ...] = ()
+    codes: Mapping[str, str] = field(default_factory=dict)
+    proof_docs: frozenset[str] = frozenset()
+    as_of: date | None = None
+    invoice_date: date | None = None
+
+
+@dataclass(frozen=True)
 class Rule:
     """An owner answer turned into a rule. condition is "<fact> <op> <number>", e.g. "notice_days >= 14";
     decision applies when it holds, else_decision when it doesn't (or the fact is unknown)."""
@@ -181,6 +224,7 @@ class Policy:
     reminder_after_minutes: int
     discretion_words: tuple[str, ...]
     approved_amendment_senders: tuple[str, ...]
+    dispute_window_warn_days: int = 14  # this close to the end of a dispute window, the reason says "file by"
 
 
 @dataclass(frozen=True)
@@ -209,6 +253,9 @@ class Allowance:
     missing: tuple[str, ...] = ()  # required terms not found; the gate sends these to Ask
     facts: Mapping[str, Any] = field(default_factory=dict)  # e.g. notice_days, for rules; line_refs for SH / PR / SP
     steps: tuple[str, ...] = ()  # plain-English trail for the evidence card
+    # The part of `allowed` that doesn't depend on a discretion clause (landed cost under a discretionary admin fee).
+    # None: all of it does (a display fee), so a rule that disputes the fee disputes the whole charge.
+    firm: Decimal | None = None
 
 
 @dataclass(frozen=True)

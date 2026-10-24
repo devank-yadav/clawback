@@ -238,6 +238,7 @@ Amounts come from plain Python with unit tests; the gate applies the owner's wri
 | 7 | Delta over $1 and up to $5,000, Investigator confidence at least 0.9, at least two independent sources, comeback answered | Dispute (Split if part is allowed) | No, until resolved |
 | 8 | Same support as 7, but delta over $5,000 | Ask the owner before filing | No |
 | 9 | Anything else | Ask the owner | No |
+| 10 | The deal's dispute window has closed and the charge is off the deal (checked right after rows 1 and 2) | Accept, with a note of what the deal allows | Via approvals |
 
 **Approvals (separation of duties):**
 

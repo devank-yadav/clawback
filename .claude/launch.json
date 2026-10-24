@@ -1,0 +1,50 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api-demo",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "DEMO_MODE=true",
+        ".venv/bin/uvicorn",
+        "api.main:app",
+        "--port",
+        "8001"
+      ],
+      "port": 8001
+    },
+    {
+      "name": "web-live",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "NEXT_PUBLIC_DATA_SOURCE=live",
+        "NEXT_PUBLIC_API_BASE=http://localhost:8001",
+        "npm",
+        "--prefix",
+        "web",
+        "run",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "api-livebooks",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "DEMO_MODE=false",
+        "RECORD_FIXTURES=",
+        "ANTHROPIC_API_KEY=",
+        "GEMINI_API_KEY=",
+        "MOSS_API_KEY=",
+        "TWILIO_ACCOUNT_SID=",
+        "TWILIO_AUTH_TOKEN=",
+        "NESSIE_POLL=off",
+        ".venv/bin/uvicorn",
+        "api.main:app",
+        "--port",
+        "8002"
+      ],
+      "port": 8002
+    }
+  ]
+}

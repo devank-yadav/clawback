@@ -23,6 +23,7 @@ def day(d, year: bool = False) -> str:
 
 
 _SECTION = re.compile(r"(\d+\.\d+)\s+$")
+_HEADING = re.compile(r"^(\d+\.\d+)[ \t]+\S", re.M)  # a numbered section heading on its own line
 
 
 def _paragraph(text: str, start: int, end: int) -> tuple[str, str]:
@@ -49,7 +50,26 @@ def _term_summary(t: Term) -> str:
         "unit_cap": lambda: f"at most {int(p.get('max_units', 0)):,} units",
         "fee_discretion": lambda: f"a fee of up to ${Decimal(str(p.get('max_fee'))):,}" + (", at the distributor's discretion" if t.discretion else ""),
         "amendment": lambda: f"up to {int(p.get('extra_units', 0)):,} more units, {t.effective_from} to {t.effective_to}",
+        "fee_schedule": lambda: _fee_summary(t),
+        "dispute_window": lambda: f"disputes are due within {p.get('days')} days of the {p.get('from', 'deduction')}",
+        "notice_period": lambda: f"a change needs {p.get('days')} days' notice",
     }[t.type]()
+
+
+def _fee_summary(t: Term) -> str:
+    p = t.params
+    rate = p.get("rate")
+    how = {"percent": f"{rate}%", "per_unit": f"${rate} per unit", "per_carton": f"${rate} per carton",
+           "per_po": f"${rate} per PO", "flat": f"${rate} flat"}.get(p.get("basis"), str(rate))
+    if p.get("tiers"):
+        how = ", ".join(f"{x['rate']}{'%' if p.get('basis') == 'percent' else ''} for {x['from_days']}"
+                        + (f"-{x['to_days']}" if x.get("to_days") is not None else "+") + " days" for x in p["tiers"])
+    limits = [f"{name} ${Decimal(str(p[key])):,}" for key, name in (("min", "minimum"), ("max", "maximum"))
+              if p.get(key) is not None]
+    per = f" per {p.get('per')}" if limits and p.get("per") else ""
+    out = f"{p.get('fee_code')} fee: {how}" + (f", {' and '.join(limits)}{per}" if limits else "")
+    out += ", backup required" if p.get("requires_proof") else ""
+    return out + (", depending on someone's judgment" if t.discretion else "")
 
 
 def clause_id(t: Term) -> str:
@@ -57,6 +77,8 @@ def clause_id(t: Term) -> str:
     doc, text = documents.load(t.source_doc_id)
     if doc.kind == "deal" and (m := _SECTION.search(text[max(0, t.char_start - 12):t.char_start])):
         return f"ev-{doc.id}-{m.group(1)}"
+    if doc.kind == "deal" and (heads := _HEADING.findall(text[:t.char_start])):  # "6.4 Manufacturer Charge Backs"
+        return f"ev-{doc.id}-{heads[-1]}"
     return f"ev-{doc.id}"
 
 

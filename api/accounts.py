@@ -36,6 +36,7 @@ DATA = Path(__file__).resolve().parents[1] / "data"
 ROOTS: list[Path] = [DATA / "accounts"]  # the tests add api/tests/data/accounts
 DOC_DIRS = ("deals", "emails", "notices")
 DOC_SUFFIXES = (".md", ".eml")
+CONTRACTS = "contracts"  # data/contracts/: real contracts an account.yaml names in `contracts`
 DISPUTES_PER_MONTH = 10
 
 
@@ -124,6 +125,14 @@ def _load() -> tuple[dict[str, Account], list[str]]:
                     continue
                 if p.stem in docs:
                     mine.append(f"two documents named {p.stem!r}")
+                docs[p.stem] = p
+        for name in config.contracts:  # a real contract under data/contracts/, shared text, never edited
+            p = folder.parent.parent / CONTRACTS / name
+            if not p.is_file():
+                mine.append(f"contract {name!r} isn't in {CONTRACTS}/")
+            elif p.stem in docs:
+                mine.append(f"two documents named {p.stem!r}")
+            else:
                 docs[p.stem] = p
         if missing := [d for d in config.deal_docs if d not in docs]:
             mine.append(f"deal_docs not in deals/, emails/ or notices/: {missing}")

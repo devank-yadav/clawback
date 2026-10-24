@@ -1,0 +1,8 @@
+deduction_ref,on,group,description,base_amount,pass_through,units,cartons,days,proof_doc
+MCBF-26-0314,2026-03-14,MCB 03/01-03/14,MCB amount for Mar 1-14 (Cream Soda outbound cases),940.00,0,0,0,,lantern-hill-mcb-backup-2026-03-14
+MCBF-26-0328,2026-03-28,MCB 03/15-03/28,MCB amount for Mar 15-28 (Cream Soda outbound cases),3120.00,0,0,0,,lantern-hill-mcb-backup-2026-03-28
+EP-26-55120,2026-03-04,R-55120,Retailer ad and demo invoice R-55120 passed through,5400.00,0,0,0,,
+EP-26-55188,2026-03-18,R-55188,Retailer scan invoice R-55188 passed through,2600.00,0,0,0,,
+FP-26-2207,2026-03-16,FP-2207,48 cases at a landed cost of $21.50 (24 new stores),1032.00,1032.00,0,48,,lantern-hill-kehe-free-placements-2026-03-16
+SPL-26-88120,2026-03-20,CR-88120,240 units credited at a landed cost of $1.10,0,264.00,240,0,,
+SPL-25-80211,2025-09-26,CR-80211,180 units credited at a landed cost of $1.10,0,198.00,180,0,,
