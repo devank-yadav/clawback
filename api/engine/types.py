@@ -65,7 +65,7 @@ class Term:
 class Charge:
     id: str
     ref: str
-    code: str  # PA promotional allowance, DF display fee
+    code: str  # PA promotional allowance, DF display fee, SH shortage, PR price mismatch, SP spoilage
     description: str
     products: tuple[str, ...]
     units: int
@@ -75,6 +75,7 @@ class Charge:
     period_end: date
     counterparty: str = "Northmart"
     notice_date: date | None = None  # display fees only
+    line_ref: str | None = None  # SH / PR: the delivery line the charge points to
 
 
 @dataclass(frozen=True)
@@ -96,6 +97,51 @@ class PriorPayment:
     period_end: date
     units: int
     amount: Decimal
+
+
+@dataclass(frozen=True)
+class Delivery:
+    """One proof-of-delivery line: units shipped, units the store signed for, and the unit price invoiced."""
+
+    line_ref: str
+    product: str
+    shipped_units: int
+    received_units: int
+    unit_price: Decimal
+    received_by: str = ""
+    received_at: date | None = None
+
+
+@dataclass(frozen=True)
+class AgreedPrice:
+    """One row of the agreed price list. effective_to None: still in effect."""
+
+    product: str
+    agreed_price: Decimal
+    effective_from: date
+    effective_to: date | None = None
+    source_doc: str = ""
+
+
+@dataclass(frozen=True)
+class OpsTerm:
+    """An operations term from the deal, e.g. spoils_allowance_pct = "1.0". REJECTED when its quote isn't found word for
+    word in source_doc: the engine then treats it as missing."""
+
+    key: str
+    value: str
+    source_doc: str = ""
+    quote: str = ""
+    status: TermStatus = TermStatus.VERIFIED
+
+
+@dataclass(frozen=True)
+class OpsData:
+    """An account's operations records, for SH, PR and SP charges."""
+
+    deliveries: tuple[Delivery, ...] = ()
+    prices: tuple[AgreedPrice, ...] = ()
+    terms: tuple[OpsTerm, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -161,7 +207,7 @@ class Allowance:
     covered_units: int = 0
     terms: tuple[Term, ...] = ()  # every term the amount depends on
     missing: tuple[str, ...] = ()  # required terms not found; the gate sends these to Ask
-    facts: Mapping[str, Any] = field(default_factory=dict)  # e.g. notice_days, for rules
+    facts: Mapping[str, Any] = field(default_factory=dict)  # e.g. notice_days, for rules; line_refs for SH / PR / SP
     steps: tuple[str, ...] = ()  # plain-English trail for the evidence card
 
 

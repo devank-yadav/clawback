@@ -21,7 +21,10 @@ from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Any, Literal, Union
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, PlainSerializer, TypeAdapter, field_validator, model_validator
+from pydantic import (
+    AfterValidator, BaseModel, ConfigDict, Field, PlainSerializer, TypeAdapter, field_validator, model_serializer,
+    model_validator,
+)
 
 CENT = Decimal("0.01")
 
@@ -54,6 +57,9 @@ TermStatus = Literal["pending", "verified", "rejected", "disputed"]
 FindingType = Literal[
     "rate_over", "duplicate", "outside_dates", "amended_by_email", "over_cap",
     "product_not_covered", "discretionary_fee", "matches_deal",
+    # operations charges (SH shortage, PR price mismatch, SP spoilage), from api/agents/investigator_ops.py
+    "shortage_not_supported", "shortage_confirmed", "price_mismatch", "price_matches",
+    "spoilage_over_allowance", "spoilage_within_allowance",
 ]
 DecisionKind = Literal["dispute", "accept", "split", "ask", "skip"]
 GateRow = Annotated[int, Field(ge=1, le=9)]  # row number in the decision-gate table, docs/design.md
@@ -176,7 +182,7 @@ class Charge(Contract):
     id: str  # "C1"
     remittance_id: str | None = None
     ref: str  # Northmart's reference, "NM-2229"
-    code: str  # "PA" promotional allowance, "DF" display fee
+    code: str  # "PA" promotional allowance, "DF" display fee, "SH" shortage, "PR" price mismatch, "SP" spoilage
     description: str
     product: str | None  # "Original+Chocolate", "Mint", None for fees
     units: int
@@ -185,11 +191,26 @@ class Charge(Contract):
     period_start: date
     period_end: date
     notice_date: date | None = None  # display fees: when Northmart's written notice came
+    line_ref: str | None = None  # SH / PR: the delivery line (DeliveryRow.line_ref) the charge points to
 
     @field_validator("product", mode="before")
     @classmethod
     def _none_product(cls, v: Any) -> Any:
         return None if isinstance(v, str) and v.strip().lower() in ("", "none") else v
+
+    @field_validator("line_ref", mode="before")
+    @classmethod
+    def _none_line_ref(cls, v: Any) -> Any:
+        return None if isinstance(v, str) and not v.strip() else v
+
+    @model_serializer(mode="wrap")
+    def _drop_empty_line_ref(self, handler):
+        """A charge with no line_ref serializes exactly as before the field existed: charge rows reach the agents'
+        requests, and so the DEMO_MODE fixture keys (api/integrations/replay.py)."""
+        out = handler(self)
+        if self.line_ref is None and isinstance(out, dict):
+            out.pop("line_ref", None)
+        return out
 
 
 class PriorPayment(Contract):
@@ -222,7 +243,10 @@ class PromoPlan(Contract):
 
 # ---------------------------------------------------------------- evidence ("Why?")
 
-EvidenceKind = Literal["clause", "email", "claim", "notice", "sales", "charge", "prior_payment", "rule", "person", "approval"]
+EvidenceKind = Literal[
+    "clause", "email", "claim", "notice", "sales", "charge", "prior_payment", "rule", "person", "approval",
+    "delivery", "price", "policy",  # operations: proof of delivery, the agreed price list, ops terms (see "ops data")
+]
 
 
 class Quote(Contract):
@@ -742,3 +766,60 @@ class PaymentResponse(Contract):
     deposit_id: str | None
     run_id: str | None  # None while the poller hasn't seen the deposit yet: GET /runs/latest gives it
     message: str
+
+
+# ---- ops data
+# Operations records per account, for shortage (SH), price mismatch (PR) and spoilage (SP) charges. One model per
+# CSV, columns as named: deliveries/pod.csv, pricing/price-list.csv, terms/ops-terms.csv. The engine reads them as
+# api/engine/types.py OpsData (adapters.to_engine_ops); api/evidence.py turns them into "delivery", "price" and
+# "policy" evidence.
+
+def _blank_none(v: Any) -> Any:
+    return None if isinstance(v, str) and not v.strip() else v
+
+
+class DeliveryRow(Contract):
+    """One proof-of-delivery line: what was shipped, what the store signed for, and the unit price invoiced."""
+
+    line_ref: str  # "L-1001"; SH and PR charges point here with Charge.line_ref
+    product: str
+    shipped_units: int
+    received_units: int
+    unit_price: Rate  # the price invoiced per unit
+    received_by: str | None = None  # who signed the delivery
+    received_at: date | datetime | None = None  # a date, or a datetime with its offset
+
+    @field_validator("received_by", "received_at", mode="before")
+    @classmethod
+    def _blank(cls, v: Any) -> Any:
+        return _blank_none(v)
+
+
+class PriceRow(Contract):
+    """One row of the agreed price list: the price per unit for a product over a span of dates."""
+
+    product: str
+    agreed_price: Rate
+    effective_from: date
+    effective_to: date | None = None  # None: still in effect
+    source_doc: str | None = None  # the document id the price comes from
+
+    @field_validator("effective_to", "source_doc", mode="before")
+    @classmethod
+    def _blank(cls, v: Any) -> Any:
+        return _blank_none(v)
+
+
+class OpsTerm(Contract):
+    """An operations term from a deal, e.g. key spoils_allowance_pct, value "1.0". It counts only when `quote` is found
+    word for word in `source_doc` (a document id) and states the value; otherwise it's rejected, like a deal term."""
+
+    key: str
+    value: str
+    source_doc: str
+    quote: str
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def _text(cls, v: Any) -> Any:
+        return str(v) if isinstance(v, (int, float, Decimal)) else v
