@@ -90,9 +90,16 @@ class LiveBooks:
         q = {"minorversion": MINOR, **(params or {}), **({"requestid": request_id} if request_id else {})}
         request = {"method": method, "path": path, "params": q, "body": body}  # no token: it's never recorded
 
+        def send(req: dict, timeout: float) -> httpx.Response:
+            return self.http.request(req["method"], req["path"], params=req["params"], json=req["body"],
+                                     timeout=timeout,
+                                     headers={"Authorization": f"Bearer {self._token()}", "Accept": "application/json"})
+
         def live(req: dict, timeout: float) -> dict:
-            r = self.http.request(req["method"], req["path"], params=req["params"], json=req["body"], timeout=timeout,
-                                  headers={"Authorization": f"Bearer {self._token()}", "Accept": "application/json"})
+            r = send(req, timeout)
+            if r.status_code == 401 and hasattr(self._token, "expire"):  # the hour-long access token ran out
+                self._token.expire()
+                r = send(req, timeout)
             if r.status_code >= 400:
                 raise BooksError(f"QuickBooks {method} {path} returned {r.status_code}: {r.text[:300]}")
             return r.json()
@@ -250,6 +257,7 @@ def _refreshing_token() -> Callable[[], str]:
             cache["access"] = auth.access_token
         return cache["access"]
 
+    token.expire = lambda: cache.pop("access", None)  # Intuit's access tokens last an hour; a 401 calls this
     return token
 
 

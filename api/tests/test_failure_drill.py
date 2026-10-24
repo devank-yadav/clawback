@@ -1,6 +1,6 @@
 """The failure drill (docs/design.md, Proof > Test plan): Wi-Fi off, Gemini key revoked, expired QuickBooks token,
 controller says no, SMS not delivered, judge types nonsense in the portal. One test per drill, offline, with the
-fakes the other tests already use. Bugs a drill found are xfail(strict=True) and listed in the audit PR.
+fakes the other tests already use. The four bugs the audit found (PR #52) are fixed; their tests now pass.
 """
 
 import socket
@@ -87,8 +87,6 @@ def test_gemini_key_revoked_reader_b_falls_back_to_claude_and_the_log_says_so(mo
     assert (t.disputed, t.accepted, t.waiting, t.questions) == (D(4120), D(1530), D(1200), 1)
 
 
-@pytest.mark.xfail(strict=True, reason="api/pipeline.py:162 READER_NAMES always says \"Gemini isn't set up\" for "
-                                       "claude-b, even when GEMINI_API_KEY is set and Gemini failed")
 def test_gemini_key_revoked_log_does_not_say_gemini_is_not_set_up(monkeypatch):
     _revoked_gemini(monkeypatch)
     run = pipeline.start("march", ScenarioClaude(), background=False)
@@ -135,9 +133,6 @@ def test_expired_quickbooks_token_shows_failed_posts_nothing_and_keeps_the_meter
     assert last_totals(run) == before and sum(e.type == "totals" for e in run.events) == n_totals
 
 
-@pytest.mark.xfail(strict=True, reason="api/pipeline.py:541-545 + api/routes/approvals.py: after a failed write the "
-                                       "approval is already 'approved', so Sam's yes can't be given again (409) and "
-                                       "no other route retries the post")
 def test_after_a_failed_write_the_memo_can_still_be_posted(monkeypatch):
     run = finished_march(ScenarioClaude())
     monkeypatch.setattr(qbo, "_books", live_books(FakeQBO(fail=True)))
@@ -150,8 +145,6 @@ def test_after_a_failed_write_the_memo_can_still_be_posted(monkeypatch):
     assert posts(run)[-1].status == "posted"
 
 
-@pytest.mark.xfail(strict=True, reason="api/integrations/qbo.py:162-182 caches the access token forever: after "
-                                       "Intuit's one-hour expiry every write gets 401 until /demo/reset")
 def test_an_expired_access_token_is_refreshed(monkeypatch):
     import intuitlib.client
 
@@ -190,9 +183,6 @@ class FailsOnTheNote(FakeQBO):
         return super().__call__(request)
 
 
-@pytest.mark.xfail(strict=True, reason="api/pipeline.py:598-608: when the note fails after the memo posted, the "
-                                       "failure is emitted with the memo's id and entity (the board's reducer then "
-                                       "shows the posted memo as failed) and the log says the balance was noted")
 def test_a_write_failing_mid_sequence_reports_the_write_that_failed(monkeypatch):
     run = finished_march(ScenarioClaude())
     monkeypatch.setattr(qbo, "_books", live_books(FailsOnTheNote()))

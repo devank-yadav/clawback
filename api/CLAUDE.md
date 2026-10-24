@@ -29,7 +29,9 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - POST /runs starts a live pipeline run (api/pipeline.py); `{"fixture": true}` replays the recorded fake run instead.
 - QuickBooks (api/integrations/qbo.py): with the QBO_* keys set it writes to the sandbox; without them, or in
   DEMO_MODE, a stand-in answers with "sim-" ids and every ledger post says it's simulated and why. POST /demo/reset
-  (`make reset`) deletes the payments and credit memos it wrote and clears its invoice note first. Texts
+  (`make reset`) deletes the payments and credit memos it wrote and clears its invoice note first. Each write is its
+  own ledger post (memo LP-{approval}, note LP-{approval}-note); if one fails, Sam approving again (in the app, or YES
+  by text) retries what didn't post with the same request ids, and a 401 fetches a new access token once. Texts
   (api/integrations/sms.py) go out only with the Twilio keys and outside DEMO_MODE; otherwise they wait in GET
   /inbox. Inbound texts: POST /webhooks/twilio/sms (signature checked when TWILIO_AUTH_TOKEN is set).
 - A new run of the same payment replaces older ones: their open questions close (Question.closed_at) and an answer

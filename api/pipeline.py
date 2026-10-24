@@ -8,6 +8,7 @@ Runs, questions and rules live in memory until the database lands (D3). Only api
 from __future__ import annotations
 
 import logging
+import os
 import threading
 import uuid
 from dataclasses import dataclass, field
@@ -159,7 +160,7 @@ def _meters(run: Run) -> Totals:
                   undecided=m["undecided"], questions=sum(1 for q in run.questions.values()), skipped=m["skipped"])
 
 
-READER_NAMES = {"claude": "Claude", "gemini": "Gemini", "claude-b": "a second Claude read (Gemini isn't set up)"}
+READER_NAMES = {"claude": "Claude", "gemini": "Gemini", "claude-b": "a second Claude read"}
 
 
 def _read_terms(run: Run, client) -> list[Term]:
@@ -176,6 +177,8 @@ def _read_terms(run: Run, client) -> list[Term]:
                     "not applied.", "warn", "reader")
         else:
             second = READER_NAMES[r.models[1]] + (f" ({r.model_ids[1]})" if r.model_ids[1] else "")
+            if r.models[1] == "claude-b":  # the key set means Gemini was tried and failed, not that it's missing
+                second += " (Gemini didn't answer)" if os.getenv("GEMINI_API_KEY") else " (Gemini isn't set up)"
             run.log(f"Read {doc_id} with {READER_NAMES[r.models[0]]} and {second}: "
                     f"{len(verified)} terms agreed, every quote found word for word."
                     + (f" {len(rejected)} rejected: quote not found." if rejected else ""),
@@ -532,18 +535,25 @@ class AlreadyDecided(ValueError):
 def decide_approval(approval_id: str, approve: bool, note: str | None = None) -> tuple[Approval, list[LedgerPost]]:
     """The controller's yes or no on a run's credit memo (in-app or SMS). Yes posts it to QuickBooks (_post_books:
     the memo, applied to the invoice, plus the disputed-balance note); no posts nothing, keeps the note and tells
-    the owner. Raises KeyError if no live run asked for it, AlreadyDecided (a ValueError) if it was decided."""
+    the owner. A yes on an approved memo whose QuickBooks write failed retries the write (same request ids, so
+    nothing posts twice). Raises KeyError if no live run asked for it, AlreadyDecided (a ValueError) if it was decided."""
     with _state:  # an SMS yes and an in-app yes arriving together decide it once
         found = find_approval(approval_id)
         if found is None:
             raise KeyError(approval_id)
         run, approval = found
-        if approval.status != "pending":
+        retry = approve and approval.status == "approved" and _write_failed(run, approval_id)
+        if approval.status != "pending" and not retry:
             raise AlreadyDecided(approval)
-        decided = approval.model_copy(update={"status": "approved" if approve else "refused", "note": note or None,
-                                              "decided_at": _now()})
-        run.emit("approval", decided)
+        decided = approval if retry else approval.model_copy(update={
+            "status": "approved" if approve else "refused", "note": note or None, "decided_at": _now()})
+        if not retry:
+            run.emit("approval", decided)
     sam = NAMES["controller"]
+    if retry:
+        run.log(f"{sam} approved again: retrying the QuickBooks write for the ${approval.amount:,.0f} credit memo.",
+                actor="controller")
+        return decided, _post_books(run, decided)
     if not approve:
         run.log(f"{sam} refused the ${approval.amount:,.0f} credit memo" + (f": \"{note}\"" if note else "")
                 + f". Nothing posts to QuickBooks; the note is on the card and the memo goes back to {NAMES['owner']}.",
@@ -555,6 +565,29 @@ def decide_approval(approval_id: str, approve: bool, note: str | None = None) ->
     return decided, _post_books(run, decided)
 
 
+def _ledger_posts(run: Run, approval_id: str) -> dict[str, LedgerPost]:
+    """The newest state of each QuickBooks write for this approval (a retry re-emits a post under the same id)."""
+    latest: dict[str, LedgerPost] = {}
+    for e in run.events:
+        if e.type == "ledger_post" and e.data.approval_id == approval_id:
+            latest[e.data.id] = e.data
+    return latest
+
+
+def _write_failed(run: Run, approval_id: str) -> bool:
+    return any(p.status == "failed" for p in _ledger_posts(run, approval_id).values())
+
+
+def failed_approval() -> str | None:
+    """The newest approved memo whose QuickBooks write failed, for Sam's YES by text (it retries the write)."""
+    for run in reversed([r for r in RUNS.values() if r.replaced_by is None]):
+        ids = list(dict.fromkeys(e.data.id for e in run.events if e.type == "approval"))
+        for approval_id in reversed(ids):
+            if find_approval(approval_id)[1].status == "approved" and _write_failed(run, approval_id):
+                return approval_id
+    return None
+
+
 def _open_dispute_lines(run: Run) -> list[DisputeLine]:
     latest: dict[str, Dispute] = {}
     for e in run.events:
@@ -564,55 +597,83 @@ def _open_dispute_lines(run: Run) -> list[DisputeLine]:
 
 
 def _post_books(run: Run, approval: Approval) -> list[LedgerPost]:
-    """Write an approved credit memo to QuickBooks, apply it to the invoice and note the disputed balance.
-    Request ids come from the approval id, so a retry never posts twice."""
+    """Write an approved credit memo to QuickBooks, apply it to the invoice and note the disputed balance. Each write
+    shows as its own ledger post (the memo as LP-{approval}, the note as LP-{approval}-note), so a failure names the
+    write that failed and the board never shows a posted memo as failed. Approving again retries what didn't post;
+    request ids come from the approval id, so nothing posts twice."""
     books = qbo.books()
     sim = f" Simulated: {books.why}." if books.simulated else ""
+    retry_hint = " Approve again to retry: the same request ids mean it posts once."
     invoice_no = INVOICE_ID if run.kind == "march" else None
     lines = [LedgerLine(charge_id=ln.charge_id, amount=ln.amount,
                         description=f"{run.charges[ln.charge_id].ref}: {run.charges[ln.charge_id].description}")
              for ln in approval.lines]
+    open_lines = _open_dispute_lines(run) if invoice_no else []
+    total = totals.total_of(ln.amount for ln in open_lines)
+    note = (f"Open ${total:,.2f} disputed with {COUNTERPARTY}: "
+            + "; ".join(f"{ln.charge_id} {ln.ref} ${ln.amount:,.2f}" for ln in open_lines))
+    note_lines = [LedgerLine(charge_id=ln.charge_id, description=f"{ln.ref}: {ln.reason}", amount=ln.amount)
+                  for ln in open_lines]
+    memo_id, note_id = f"LP-{approval.id}", f"LP-{approval.id}-note"
+    done = {pid for pid, p in _ledger_posts(run, approval.id).items() if p.status == "posted"}
     posts: list[LedgerPost] = []
+    step, memo = "memo", None
     try:
-        open_now = books.open_balance(invoice_no) if invoice_no else None
-        if open_now is not None and open_now < approval.amount:  # the memo couldn't be applied and would sit there
-            raise qbo.BooksError(f"{invoice_no} has only ${open_now:,.2f} open, less than this ${approval.amount:,.2f} "
-                                 "memo, so nothing was posted. Run make reset between demo takes")
-        memo = books.post_credit_memo(f"{approval.id}-memo", [qbo.Line(ln.charge_id, ln.description, ln.amount)
-                                                             for ln in lines],
-                                      memo=f"Clawback {approval.id}: accepted deductions "
-                                           f"{', '.join(ln.charge_id for ln in lines)}")
-        if invoice_no:
-            books.apply_to_invoice(f"{approval.id}-apply", invoice_no, memo.id, approval.amount)
-        posts.append(LedgerPost(id=f"LP-{approval.id}", qbo_entity="credit_memo", qbo_id=memo.id,
-                                amount=approval.amount, lines=lines, status="posted", approval_id=approval.id,
-                                note=(f"Applied to {invoice_no}." if invoice_no else
-                                      "Left unapplied: this run has no invoice in QuickBooks.") + sim,
-                                posted_at=_now()))
-        open_lines = _open_dispute_lines(run) if invoice_no else []
-        if open_lines:
-            total = totals.total_of(ln.amount for ln in open_lines)
-            note = (f"Open ${total:,.2f} disputed with {COUNTERPARTY}: "
-                    + "; ".join(f"{ln.charge_id} {ln.ref} ${ln.amount:,.2f}" for ln in open_lines))
+        if memo_id not in done:
+            open_now = books.open_balance(invoice_no) if invoice_no else None
+            if open_now is not None and open_now < approval.amount:  # the memo couldn't be applied and would sit there
+                raise qbo.BooksError(f"{invoice_no} has only ${open_now:,.2f} open, less than this "
+                                     f"${approval.amount:,.2f} memo, so nothing was posted. Run make reset between "
+                                     "demo takes")
+            memo = books.post_credit_memo(f"{approval.id}-memo", [qbo.Line(ln.charge_id, ln.description, ln.amount)
+                                                                 for ln in lines],
+                                          memo=f"Clawback {approval.id}: accepted deductions "
+                                               f"{', '.join(ln.charge_id for ln in lines)}")
+            if invoice_no:
+                books.apply_to_invoice(f"{approval.id}-apply", invoice_no, memo.id, approval.amount)
+            posts.append(LedgerPost(id=memo_id, qbo_entity="credit_memo", qbo_id=memo.id, amount=approval.amount,
+                                    lines=lines, status="posted", approval_id=approval.id,
+                                    note=(f"Applied to {invoice_no}." if invoice_no else
+                                          "Left unapplied: this run has no invoice in QuickBooks.") + sim,
+                                    posted_at=_now()))
+        if open_lines and note_id not in done:
+            step = "note"
             noted = books.note_open_balance(f"{approval.id}-note", invoice_no, note, total)
-            posts.append(LedgerPost(id=f"LP-{approval.id}-note", qbo_entity="invoice_note", qbo_id=noted.id,
-                                    amount=total, status="posted", approval_id=approval.id, note=note + sim,
-                                    lines=[LedgerLine(charge_id=ln.charge_id, description=f"{ln.ref}: {ln.reason}",
-                                                      amount=ln.amount) for ln in open_lines], posted_at=_now()))
+            posts.append(LedgerPost(id=note_id, qbo_entity="invoice_note", qbo_id=noted.id, amount=total,
+                                    status="posted", approval_id=approval.id, note=note + sim, lines=note_lines,
+                                    posted_at=_now()))
     except qbo.BooksError as e:
-        posts.append(LedgerPost(id=f"LP-{approval.id}", qbo_entity="credit_memo", qbo_id=None, amount=approval.amount,
-                                lines=lines, status="failed", approval_id=approval.id,
-                                note=f"QuickBooks write failed ({e}). A retry uses the same request ids, so it posts once."))
+        if step == "note":
+            posts.append(LedgerPost(id=note_id, qbo_entity="invoice_note", qbo_id=None, amount=total, lines=note_lines,
+                                    status="failed", approval_id=approval.id,
+                                    note=f"QuickBooks didn't take the open-balance note ({e})." + retry_hint))
+        else:
+            made = (f"Credit memo {memo.id} was created but not applied to {invoice_no} ({e})." if memo else
+                    f"QuickBooks write failed ({e}).")
+            posts.append(LedgerPost(id=memo_id, qbo_entity="credit_memo", qbo_id=memo.id if memo else None,
+                                    amount=approval.amount, lines=lines, status="failed", approval_id=approval.id,
+                                    note=made + retry_hint))
     for p in posts:
         run.emit("ledger_post", p)
-    if posts and posts[0].status == "posted":
-        run.log(f"QuickBooks: ${approval.amount:,.0f} credit memo posted"
-                + (f" and applied to {invoice_no}" if invoice_no else "")
-                + (f"; ${posts[1].amount:,.0f} stays open, noted with the dispute lines" if len(posts) > 1 else "")
-                + (f" (simulated: {books.why})." if books.simulated else "."), "good", "bookkeeper")
-    else:
-        run.log(f"QuickBooks write failed for {approval.id}; nothing half-posted is shown as done.", "error", "bookkeeper")
+    memo_post = next((p for p in posts if p.qbo_entity == "credit_memo"), None)
+    note_post = next((p for p in posts if p.qbo_entity == "invoice_note"), None)
+    posted_memo = (f"${approval.amount:,.0f} credit memo posted" + (f" and applied to {invoice_no}" if invoice_no else ""))
+    if memo_post and memo_post.status == "failed":
+        run.log(f"QuickBooks write failed for {approval.id}; nothing half-posted is shown as done. {_sam_can_retry()}",
+                "error", "bookkeeper")
+    elif note_post and note_post.status == "failed":
+        run.log("QuickBooks: " + (f"{posted_memo}, but " if memo_post else "") + "the open-balance note failed. "
+                + _sam_can_retry(), "warn", "bookkeeper")
+    elif posts:
+        parts = ([posted_memo] if memo_post else []) + (
+            [f"${note_post.amount:,.0f} stays open, noted with the dispute lines"] if note_post else [])
+        run.log("QuickBooks: " + "; ".join(parts) + (f" (simulated: {books.why})." if books.simulated else "."),
+                "good", "bookkeeper")
     return posts
+
+
+def _sam_can_retry() -> str:
+    return f"{NAMES['controller']} can approve again to retry."
 
 
 def inbox() -> tuple[list[Question], list[Approval]]:

@@ -86,16 +86,21 @@ def _owner(text: str) -> list[str]:
 
 
 def _controller(text: str) -> list[str]:
+    reply = replies.parse_controller_reply(text)
     approval_id = pipeline.pending_approval("controller")
+    if approval_id is None and reply.kind == "approve":
+        approval_id = pipeline.failed_approval()  # YES again after QuickBooks failed: retry the write
     if approval_id is None:
         return [NO_QUESTION_TEXT]
-    reply = replies.parse_controller_reply(text)
     if reply.kind == "unclear":
         return [replies.CONTROLLER_REASK_TEXT]
     try:
-        approval, _ = pipeline.decide_approval(approval_id, reply.kind == "approve", reply.note or None)
+        approval, made = pipeline.decide_approval(approval_id, reply.kind == "approve", reply.note or None)
     except ValueError:  # decided in the app a moment ago
         return [NO_QUESTION_TEXT]
+    if approval.status == "approved" and any(p.status == "failed" for p in made):
+        return [f"Approved, but QuickBooks didn't take the ${approval.amount:,.0f} credit memo yet. "
+                "Reply YES to try again."]
     if approval.status == "approved":
         return [f"Approved: ${approval.amount:,.0f} credit memo ({len(approval.lines)} lines)."]
     return [f"Held: the ${approval.amount:,.0f} credit memo won't post. Your note is on the card."]
