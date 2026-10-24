@@ -15,3 +15,4 @@ discretion_words:
 approved_amendment_senders:          # only these (or a document signed by both parties) can change a deal
   - "dana@peakbar.example"           # owner (fictional)
   - "jordan@peakbar-broker.example"  # broker (fictional)
+dispute_window_warn_days: 14        # a dispute window closing this soon puts "file by <date>" on the decision

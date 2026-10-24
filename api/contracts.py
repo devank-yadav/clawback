@@ -52,7 +52,8 @@ Actor = Literal[
     "system", "reader", "investigator", "gate", "negotiator", "bookkeeper", "coach",
     "owner", "controller", "northmart", "policy",
 ]
-TermType = Literal["promo_rate", "product_scope", "unit_cap", "date_range", "fee_discretion", "amendment"]
+TermType = Literal["promo_rate", "product_scope", "unit_cap", "date_range", "fee_discretion", "amendment",
+                   "fee_schedule", "dispute_window", "notice_period"]
 TermStatus = Literal["pending", "verified", "rejected", "disputed"]
 FindingType = Literal[
     "rate_over", "duplicate", "outside_dates", "amended_by_email", "over_cap",
@@ -62,7 +63,7 @@ FindingType = Literal[
     "spoilage_over_allowance", "spoilage_within_allowance",
 ]
 DecisionKind = Literal["dispute", "accept", "split", "ask", "skip"]
-GateRow = Annotated[int, Field(ge=1, le=9)]  # row number in the decision-gate table, docs/design.md
+GateRow = Annotated[int, Field(ge=1, le=10)]  # row in the decision-gate table, docs/design.md (10: api/engine/gate.py)
 
 
 # ---------------------------------------------------------------- documents and terms
@@ -113,6 +114,51 @@ class AmendmentParams(Contract):
     extra_units: int
 
 
+class FeeTier(Contract):
+    """One band of a tiered fee: rate applies when the backup line's days fall in from_days..to_days (to_days None:
+    and up). "5% if 0-7 days late, 10% if 8-14" is two tiers."""
+
+    from_days: int
+    to_days: int | None = None
+    rate: Rate
+
+
+class FeeScheduleParams(Contract):
+    """How a fee is priced (api/engine/allowed.py, "Fee schedules"). rate is a percent for basis percent ("5" is
+    5%), else dollars per unit / carton / PO, or the flat fee. min and max clamp each `per` group's fee."""
+
+    fee_code: str  # the fee's name as the deal writes it: its defined abbreviation ("MCB") or its heading
+    basis: Literal["percent", "per_unit", "per_po", "per_carton", "flat"]
+    rate: Rate | None = None  # None only with tiers
+    min: Money | None = None
+    max: Money | None = None
+    per: Literal["invoice", "po", "incident", "month"] = "incident"
+    tiers: list[FeeTier] | None = None
+    requires_proof: bool = False  # the deal says backup comes with the fee; without it the gate asks
+
+    @model_validator(mode="after")
+    def _rate_or_tiers(self) -> "FeeScheduleParams":
+        if self.rate is None and not self.tiers:
+            raise ValueError("a fee schedule needs a rate or tiers")
+        return self
+
+
+class DisputeWindowParams(Contract):
+    """Disputes are due within `days` of the deduction or of the invoice."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    days: int
+    from_: Literal["deduction", "invoice"] = Field("deduction", alias="from")
+
+
+class NoticePeriodParams(Contract):
+    """A change to the terms needs `days` of notice; it applies only to purchases on or after its effective date,
+    and no sooner than `days` after the notice."""
+
+    days: int
+
+
 TERM_PARAMS: dict[str, type[Contract]] = {
     "promo_rate": PromoRateParams,
     "product_scope": ProductScopeParams,
@@ -120,6 +166,9 @@ TERM_PARAMS: dict[str, type[Contract]] = {
     "date_range": DateRangeParams,
     "fee_discretion": FeeDiscretionParams,
     "amendment": AmendmentParams,
+    "fee_schedule": FeeScheduleParams,
+    "dispute_window": DisputeWindowParams,
+    "notice_period": NoticePeriodParams,
 }
 
 
@@ -192,24 +241,27 @@ class Charge(Contract):
     period_end: date
     notice_date: date | None = None  # display fees: when Northmart's written notice came
     line_ref: str | None = None  # SH / PR: the delivery line (DeliveryRow.line_ref) the charge points to
+    deducted_on: date | None = None  # when the money was taken; a deal's dispute_window counts from here
 
     @field_validator("product", mode="before")
     @classmethod
     def _none_product(cls, v: Any) -> Any:
         return None if isinstance(v, str) and v.strip().lower() in ("", "none") else v
 
-    @field_validator("line_ref", mode="before")
+    @field_validator("line_ref", "deducted_on", mode="before")
     @classmethod
     def _none_line_ref(cls, v: Any) -> Any:
         return None if isinstance(v, str) and not v.strip() else v
 
     @model_serializer(mode="wrap")
     def _drop_empty_line_ref(self, handler):
-        """A charge with no line_ref serializes exactly as before the field existed: charge rows reach the agents'
-        requests, and so the DEMO_MODE fixture keys (api/integrations/replay.py)."""
+        """A charge with no line_ref (or deducted_on) serializes exactly as before the field existed: charge rows
+        reach the agents' requests, and so the DEMO_MODE fixture keys (api/integrations/replay.py)."""
         out = handler(self)
-        if self.line_ref is None and isinstance(out, dict):
-            out.pop("line_ref", None)
+        if isinstance(out, dict):
+            for name in ("line_ref", "deducted_on"):
+                if getattr(self, name) is None:
+                    out.pop(name, None)
         return out
 
 
@@ -985,3 +1037,30 @@ class AccountOverview(Contract):
     deductions_by_type: list[DeductionTypeTotal]  # in the window, largest amount first
     recent_remittances: list[RemittanceRow]  # newest first, at most six
     current: CurrentPayment
+
+
+# ---- fee data
+# The other side's backup for fee charges (fees/backup.csv), one row per line, keyed by the charge's ref. The engine
+# reads them as api/engine/types.py FeeLine (adapters.to_engine_fee_line).
+
+class FeeBackupRow(Contract):
+    deduction_ref: str  # the charge's ref
+    on: date  # the purchase, invoice or credit date; picks the fee schedule in effect
+    group: str | None = None  # the invoice, PO or incident a fee's min and max apply to
+    description: str | None = None
+    base_amount: Money = Decimal(0)  # what a percent fee is taken on
+    pass_through: Money = Decimal(0)  # cost charged on at cost (landed cost credited to a retailer)
+    units: int = 0
+    cartons: int = 0
+    days: int | None = None  # for tiered fees (days late)
+    proof_doc: str | None = None  # the backup document's id
+
+    @field_validator("group", "description", "proof_doc", "days", mode="before")
+    @classmethod
+    def _blank(cls, v: Any) -> Any:
+        return _blank_none(v)
+
+    @field_validator("base_amount", "pass_through", "units", "cartons", mode="before")
+    @classmethod
+    def _zero(cls, v: Any) -> Any:
+        return 0 if isinstance(v, str) and not v.strip() else v

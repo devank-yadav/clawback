@@ -20,12 +20,15 @@ from api.engine.rules import parse_condition
 
 SERVICE = "claude-rule-writer"
 FACTS = ("notice_days", "amount")
+# Facts a rule can also use when the charge has them: fee_amount, the fee part of a fee-schedule charge (landed cost
+# aside). Sent only when present, so a display fee's request (and its recorded answer's key) is unchanged.
+EXTRA_FACTS = ("fee_amount",)
 Verdict = Literal["accept", "dispute", "ask"]
 
 
 class LLMRule(Strict):
     understood: bool
-    fact: Literal["notice_days", "amount"] | None
+    fact: Literal["notice_days", "amount", "fee_amount"] | None
     op: Literal[">=", ">", "<=", "<", "=="] | None
     value: float | None
     decision: Verdict
@@ -40,7 +43,8 @@ def write_rule(question: Question, answer: str, term: Term, counterparty: str, f
     (its number among the account's rules); its id is rule_id, rule-<rule_number> by default."""
     user = json.dumps({"question": question.text, "owner_answer": answer,
                        "clause": {"type": term.type, "quote": term.exact_quote},
-                       "facts": {f: facts.get(f) for f in FACTS}}, indent=1, default=str)
+                       "facts": {f: facts.get(f) for f in FACTS}
+                       | {f: facts[f] for f in EXTRA_FACTS if facts.get(f) is not None}}, indent=1, default=str)
 
     def check(raw: dict) -> Rule | None:
         r = LLMRule.model_validate(raw)

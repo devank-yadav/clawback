@@ -18,6 +18,7 @@ from datetime import date, timedelta
 from typing import Any, Literal
 
 import anthropic
+from pydantic import ConfigDict, Field
 
 from api import accounts, documents
 from api.contracts import TERM_PARAMS, Document, ReaderOutput, ReaderTerm, Term, TermType
@@ -31,6 +32,20 @@ SERVICE = "claude-reader"  # fixtures in data/fixtures/claude-reader/
 
 def prompt(account: accounts.Account | str | None = None) -> str:
     return prompts.render("reader", account)
+
+
+def reads_fees(account: accounts.Account | str | None = None) -> bool:
+    """An account with fees/fees.yaml (api/fee_accounts.py): its documents are read for fee terms too."""
+    return (accounts.resolve(account).dir / "fees" / "fees.yaml").is_file()
+
+
+def with_fees(system: str, account: accounts.Account | str | None = None) -> tuple[str, type[Strict]]:
+    """The system prompt and output schema for one document. For an account with fee terms, the rendered prompt plus
+    prompts/reader_fees.md and the schema with the fee fields; for every other account (Peak Bar) exactly the prompt
+    and schema as recorded."""
+    if not reads_fees(account):
+        return system, LLMOutput
+    return f"{system}\n{prompts.render('reader_fees', account)}", LLMFeeOutput
 
 
 # What the model fills in. Strict JSON schemas can't hold a free-form dict, so params is one flat object
@@ -59,6 +74,38 @@ class LLMOutput(Strict):
     unclear: list[str]
 
 
+# The same with the fee-term fields (FeeScheduleParams, DisputeWindowParams, NoticePeriodParams), for documents read
+# with prompts/reader_fees.md (with_fees).
+class LLMTier(Strict):
+    from_days: int
+    to_days: int | None
+    rate: str
+
+
+class LLMFeeParams(LLMParams):
+    # "from" is a keyword: the field is from_, and the JSON (schema, answer and its dump) says "from".
+    model_config = ConfigDict(extra="forbid", serialize_by_alias=True, validate_by_name=True, validate_by_alias=True)
+
+    fee_code: str | None
+    basis: Literal["percent", "per_unit", "per_po", "per_carton", "flat"] | None
+    min: str | None
+    max: str | None
+    per: Literal["invoice", "po", "incident", "month"] | None
+    tiers: list[LLMTier] | None
+    requires_proof: bool | None
+    days: int | None
+    from_: Literal["deduction", "invoice"] | None = Field(alias="from")
+
+
+class LLMFeeTerm(LLMTerm):
+    params: LLMFeeParams
+
+
+class LLMFeeOutput(Strict):
+    terms: list[LLMFeeTerm]
+    unclear: list[str]
+
+
 @dataclass
 class ReaderResult:
     doc: Document
@@ -77,13 +124,13 @@ def _user_message(doc: Document, text: str) -> str:
             f"<document>\n{text}\n</document>")
 
 
-def _to_reader_output(raw: dict, doc: Document, text: str) -> ReaderOutput:
+def _to_reader_output(raw: dict, doc: Document, text: str, schema: type[Strict] = LLMOutput) -> ReaderOutput:
     """LLM JSON -> contracts.ReaderOutput. Raises ValidationError on anything the contract rejects."""
-    out = LLMOutput.model_validate(raw)
+    out = schema.model_validate(raw)
     terms = []
     for t in out.terms:
-        used = TERM_PARAMS[t.type].model_fields
-        params = {k: v for k, v in t.params.model_dump().items() if v is not None and k in used}
+        used = {f.alias or name for name, f in TERM_PARAMS[t.type].model_fields.items()}
+        params = {k: v for k, v in t.params.model_dump(by_alias=True).items() if v is not None and k in used}
         span = quote_check.find_quote(text, t.exact_quote) or (0, 0)
         terms.append(ReaderTerm(type=t.type, params=params, effective_from=t.effective_from,
                                 effective_to=t.effective_to, exact_quote=t.exact_quote, char_start=span[0],
@@ -96,8 +143,10 @@ def read_document(doc_id: str, base_terms: Sequence[Term] = (), client: anthropi
     """Read one document. `base_terms` are the deal's verified terms, used only to date an extension
     that states its end but not its start (it starts the day after the deal's date_range ends)."""
     doc, text = documents.load(doc_id)
-    ans = claude.ask(SERVICE, prompt(documents.account_of(doc_id)), _user_message(doc, text), LLMOutput,
-                     lambda raw: _to_reader_output(raw, doc, text), client, live_first=live_first, doc_id=doc_id)
+    account = documents.account_of(doc_id)
+    system, schema = with_fees(prompt(account), account)
+    ans = claude.ask(SERVICE, system, _user_message(doc, text), schema,
+                     lambda raw: _to_reader_output(raw, doc, text, schema), client, live_first=live_first, doc_id=doc_id)
     if ans.value is None:
         return ReaderResult(doc, [], [f"{doc_id}: reader output failed validation twice; needs a person"],
                             ans.source, ans.attempts, ans.errors)

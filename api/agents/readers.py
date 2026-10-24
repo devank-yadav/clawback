@@ -42,15 +42,23 @@ def _params(t: Term | None) -> str:
     return "nothing" if t is None else ", ".join(f"{k} {v}" for k, v in t.params.items()) or t.type
 
 
+def _pair_key(t: Term) -> tuple[str, str]:
+    """Terms are paired by type, in document order. A document states many fee schedules, so those pair by fee name
+    too: one reader finding an extra fee then disputes only that fee, not every fee after it."""
+    return t.type, " ".join(str(t.params.get("fee_code", "")).lower().split()) if t.type == "fee_schedule" else ""
+
+
 def merge(text: str, doc: Document, a: list[Term], b: list[Term]) -> tuple[list[Term], list[str]]:
-    by_type: dict[str, tuple[list[Term], list[Term]]] = defaultdict(lambda: ([], []))
+    by_type: dict[tuple[str, str], tuple[list[Term], list[Term]]] = defaultdict(lambda: ([], []))
     for t in sorted(a, key=lambda t: t.char_start):
-        by_type[t.type][0].append(t)
+        by_type[_pair_key(t)][0].append(t)
     for t in sorted(b, key=lambda t: t.char_start):
-        by_type[t.type][1].append(t)
+        by_type[_pair_key(t)][1].append(t)
     merged, notes = [], []
-    for type_, (ta, tb) in by_type.items():
-        for n, (x, y) in enumerate(zip_longest(ta, tb), 1):
+    count: dict[str, int] = defaultdict(int)
+    for (type_, _), (ta, tb) in by_type.items():
+        for x, y in zip_longest(ta, tb):
+            n = count[type_] = count[type_] + 1
             v = quote_check.verify_term(text, x.model_dump(mode="json") if x else None,
                                         y.model_dump(mode="json") if y else None)
             base = x or y

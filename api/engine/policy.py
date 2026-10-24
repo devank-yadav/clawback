@@ -23,4 +23,5 @@ def load_policy(path: str | Path = DEFAULT_PATH) -> Policy:
         reminder_after_minutes=int(raw["reminder_after_minutes"]),
         discretion_words=tuple(raw["discretion_words"]),
         approved_amendment_senders=tuple(s.lower() for s in raw["approved_amendment_senders"]),
+        dispute_window_warn_days=int(raw.get("dispute_window_warn_days", 14)),
     )

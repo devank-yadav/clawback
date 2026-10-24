@@ -10,12 +10,13 @@ from api.engine import types as eng
 from api.evidence import ops_quote
 
 
-def to_engine_term(t: contracts.Term) -> eng.Term:
+def to_engine_term(t: contracts.Term, noticed_on=None) -> eng.Term:
+    """noticed_on: when the other side gave notice of the document stating the term, for a policy change."""
     return eng.Term(
         id=t.id, type=eng.TermType(t.type), params=dict(t.params), exact_quote=t.exact_quote,
         effective_from=t.effective_from, effective_to=t.effective_to, discretion=t.discretion,
         status=eng.TermStatus(t.status) if t.status != "pending" else eng.TermStatus.DISPUTED,
-        source_doc_id=t.source_doc_id, source_approved=t.source_approved,
+        source_doc_id=t.source_doc_id, source_approved=t.source_approved, noticed_on=noticed_on,
     )
 
 
@@ -27,8 +28,14 @@ def to_engine_charge(c: contracts.Charge, counterparty: str = "Northmart") -> en
     return eng.Charge(
         id=c.id, ref=c.ref, code=c.code, description=c.description, products=_products(c.product), units=c.units,
         rate=c.rate, amount=c.amount, period_start=c.period_start, period_end=c.period_end,
-        counterparty=counterparty, notice_date=c.notice_date, line_ref=c.line_ref,
+        counterparty=counterparty, notice_date=c.notice_date, line_ref=c.line_ref, deducted_on=c.deducted_on,
     )
+
+
+def to_engine_fee_line(r: contracts.FeeBackupRow) -> eng.FeeLine:
+    return eng.FeeLine(deduction_ref=r.deduction_ref, on=r.on, group=r.group or "", base_amount=r.base_amount,
+                       pass_through=r.pass_through, units=r.units, cartons=r.cartons, days=r.days,
+                       proof_doc=r.proof_doc or "", description=r.description or "")
 
 
 def to_engine_sales(r: contracts.SalesRow) -> eng.SalesWeek:

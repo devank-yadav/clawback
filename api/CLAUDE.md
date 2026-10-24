@@ -77,3 +77,10 @@ decision gate and approvals; Data model; API, live updates and integrations.
   restores them, so Rule #1 and /audit/verify survive a restart; POST /demo/reset clears them.
 - Stub routes serve the fixture run in api/stubs/fixtures.py. After changing it, run `python -m api.stubs.fixtures`
   to rewrite web/fixtures/*.json (a test fails if they're stale).
+- Fee schedules (api/engine/allowed.py "Fee schedules"): a charge whose code the deal names in a fee_schedule term
+  (directly or via FeeData.codes) is priced from the other side's backup lines (FeeData.lines, keyed by the charge's
+  ref): % with min / max per invoice, PO, incident or month, per unit, per carton, per PO or flat, tiered by days,
+  plus any cost passed through at cost. A policy change counts from max(effective date, notice date + notice_period).
+  A deal's dispute_window is checked for every charge against FeeData.as_of; past it the gate accepts with a note
+  (row 10). Accounts with fees: api/fee_accounts.py (data/accounts/<id>/fees/fees.yaml); the readers get
+  prompts/reader_fees.md only for documents registered through it, so Peak Bar's requests are byte for byte as recorded.

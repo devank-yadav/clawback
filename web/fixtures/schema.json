@@ -334,6 +334,19 @@
             ],
             "default": null,
             "title": "Line Ref"
+          },
+          "deducted_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Deducted On"
           }
         },
         "required": [
@@ -486,7 +499,7 @@
             "type": "number"
           },
           "gate_row": {
-            "maximum": 9,
+            "maximum": 10,
             "minimum": 1,
             "title": "Gate Row",
             "type": "integer"
@@ -1800,7 +1813,10 @@
               "unit_cap",
               "date_range",
               "fee_discretion",
-              "amendment"
+              "amendment",
+              "fee_schedule",
+              "dispute_window",
+              "notice_period"
             ],
             "title": "Term Type",
             "type": "string"
@@ -2279,6 +2295,19 @@
             ],
             "default": null,
             "title": "Line Ref"
+          },
+          "deducted_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Deducted On"
           }
         },
         "required": [
@@ -2330,7 +2359,7 @@
             "type": "number"
           },
           "gate_row": {
-            "maximum": 9,
+            "maximum": 10,
             "minimum": 1,
             "title": "Gate Row",
             "type": "integer"
@@ -2762,7 +2791,10 @@
               "unit_cap",
               "date_range",
               "fee_discretion",
-              "amendment"
+              "amendment",
+              "fee_schedule",
+              "dispute_window",
+              "notice_period"
             ],
             "title": "Term Type",
             "type": "string"
@@ -4024,7 +4056,7 @@
             "type": "number"
           },
           "gate_row": {
-            "maximum": 9,
+            "maximum": 10,
             "minimum": 1,
             "title": "Gate Row",
             "type": "integer"
@@ -4456,7 +4488,10 @@
               "unit_cap",
               "date_range",
               "fee_discretion",
-              "amendment"
+              "amendment",
+              "fee_schedule",
+              "dispute_window",
+              "notice_period"
             ],
             "title": "Term Type",
             "type": "string"
@@ -4559,7 +4594,10 @@
               "unit_cap",
               "date_range",
               "fee_discretion",
-              "amendment"
+              "amendment",
+              "fee_schedule",
+              "dispute_window",
+              "notice_period"
             ],
             "title": "Type",
             "type": "string"
@@ -4834,7 +4872,10 @@
               "unit_cap",
               "date_range",
               "fee_discretion",
-              "amendment"
+              "amendment",
+              "fee_schedule",
+              "dispute_window",
+              "notice_period"
             ],
             "title": "Term Type",
             "type": "string"
