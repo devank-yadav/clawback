@@ -4,6 +4,7 @@
 # data/contracts/README.md); everything else here is written by our side, or is Five Below's own backup or email.
 # This file has exactly the AccountConfig shape.
 id: fizzwick
+supplier: fizzwick
 brand:
   name: Fizzwick Toys Co.
   kind: toy and novelty brand

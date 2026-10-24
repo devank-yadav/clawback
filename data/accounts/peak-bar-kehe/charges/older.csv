@@ -1,0 +1,2 @@
+charge_id,ref,code,description,product,units,rate,amount,period_start,period_end,line_ref,deducted_on
+K10,SPL-25-80211,SPL,Spoils credited to a retailer: 180 units (taken from the payment of 2025-10-06),Peak Bar Original,180,2.59,466.20,2025-09-01,2025-09-30,,2025-10-06

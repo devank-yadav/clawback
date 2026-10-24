@@ -3,6 +3,7 @@
 # The fee-schedule wiring (charge codes, backup, the policy change, the review date) is in fees/fees.yaml, loaded by
 # api/fee_accounts.py.
 id: lantern-hill
+supplier: lantern-hill
 brand:
   name: Lantern Hill Soda Co.
   kind: natural soda brand

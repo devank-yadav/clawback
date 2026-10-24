@@ -1,0 +1,15 @@
+# Fee-schedule wiring for this account (api/fee_accounts.py). account.yaml keeps the AccountConfig shape and names the
+# governing deal in `contracts`: Walmart's Supplier Agreement, real and unedited.
+# Charge code -> the fee as the agreement names it (codes SA, NW and DM are the agreement's own allowance codes).
+codes:
+  SA: New Store/Club Discount
+  NW: New Distribution Center
+  DM: Defective/Returned Mdse. Allowance
+  RJ: Rejection
+  FN: Assessment of monetary fines
+  RT: Return Policy
+  IN: Interest
+policy_changes: []
+# The day the remittance arrived and any dispute would be filed; the invoice date.
+as_of: 2026-04-10
+invoice_date: 2026-03-31

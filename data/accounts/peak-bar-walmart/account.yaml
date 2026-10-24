@@ -1,0 +1,48 @@
+# Peak Bar Co. <- Walmart. The deal is Walmart's real Supplier Agreement (effective 04/18/2013), word for word in
+# data/contracts/walmart-supplier-agreement-2013-peak-bar.txt (this account's byte-identical copy of the filing, named
+# in `contracts`); everything else here is written by our side, or is Walmart's own notice or backup. This file has
+# exactly the AccountConfig shape.
+id: peak-bar-walmart
+supplier: peak-bar
+brand:
+  name: Peak Bar Co.
+  kind: snack brand
+  city: Oakland, CA
+  initials: PB
+  colors: {primary: "#b4462b", accent: "#f2b552"}
+  owner: {name: Dana Okafor, email: dana@peakbar.example}
+  controller: {name: Sam Reyes}
+distributor:
+  name: Walmart
+  desk_email: supplierdeductions@walmart.example
+  portal_name: Walmart Retail Link
+  colors: {primary: "#0071ce", accent: "#ffc220"}
+invoice:
+  id: PBW-2603
+  expected: 88224.00
+  received: 77648.27
+  month: march
+  period_start: 2026-03-01
+  period_end: 2026-03-31
+contracts: [walmart-supplier-agreement-2013-peak-bar.txt]
+# The Supplier Agreement is read first; then our item setup with Walmart's acceptance, and Walmart's own notices and
+# backup for the month's deductions.
+deal_docs:
+  - walmart-supplier-agreement-2013-peak-bar
+  - peak-bar-walmart-item-setup-2026
+  - peak-bar-walmart-rejection-2026-03-18
+  - peak-bar-walmart-fine-2026-03-26
+  - peak-bar-walmart-fine-2026-03-27
+  - peak-bar-walmart-return-center-claim-2026-03-05
+  - peak-bar-walmart-interest-2026-03-31
+approved_senders: [dana@peakbar.example]
+dispute_start: 1010
+qbo:
+  customer: Walmart
+  invoice_no: PBW-2603
+  lines:
+    - {item: Peak Bar Original 12-Pack, qty: 1800, unit_price: 15.60}
+    - {item: Peak Bar Chocolate 12-Pack, qty: 1640, unit_price: 15.60}
+    - {item: Peak Bar Variety 24-Pack, qty: 1200, unit_price: 28.80}
+  payment_date: 2026-04-10
+nessie_description: Walmart remittance PBW-2603
