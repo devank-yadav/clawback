@@ -48,6 +48,26 @@ def _pair_key(t: Term) -> tuple[str, str]:
     return t.type, " ".join(str(t.params.get("fee_code", "")).lower().split()) if t.type == "fee_schedule" else ""
 
 
+def _pairs(type_: str, ta: list[Term], tb: list[Term]) -> list[tuple[Term | None, Term | None]]:
+    """The two readers' terms of one key, paired. Fee schedules pair a term with the other reader's that prices it
+    the same way first (one reader quoting an extra schedule under the same fee name, such as a short-shipment
+    chargeback named "Receipt of backorder", then disputes only that one), the rest in document order."""
+    if type_ != "fee_schedule":
+        return list(zip_longest(ta, tb))
+    pairs: list[tuple[Term | None, Term | None]] = []
+    left = list(tb)
+    alone: list[Term] = []
+    for x in ta:
+        y = next((y for y in left if fee_terms.priced_alike(x.params, y.params)), None)
+        if y is None:
+            alone.append(x)
+        else:
+            left.remove(y)
+            pairs.append((x, y))
+    pairs += list(zip_longest(alone, left))
+    return sorted(pairs, key=lambda p: min(t.char_start for t in p if t is not None))
+
+
 def merge(text: str, doc: Document, a: list[Term], b: list[Term]) -> tuple[list[Term], list[str]]:
     by_type: dict[tuple[str, str], tuple[list[Term], list[Term]]] = defaultdict(lambda: ([], []))
     for t in sorted(a, key=lambda t: t.char_start):
@@ -57,13 +77,13 @@ def merge(text: str, doc: Document, a: list[Term], b: list[Term]) -> tuple[list[
     merged, notes = [], []
     count: dict[str, int] = defaultdict(int)
     for (type_, _), (ta, tb) in by_type.items():
-        for x, y in zip_longest(ta, tb):
+        for x, y in _pairs(type_, ta, tb):
             n = count[type_] = count[type_] + 1
             update = {}
             if type_ == "fee_schedule" and x and y and fee_terms.priced_alike(x.params, y.params):
                 # Priced the same way: backup required or a judgment call if either reader says so.
-                proof = bool(x.params.get("requires_proof") or y.params.get("requires_proof"))
-                x, y = (t.model_copy(update={"params": {**t.params, "requires_proof": proof}}) for t in (x, y))
+                pa, pb = fee_terms.agreed(x.params, y.params)
+                x, y = x.model_copy(update={"params": pa}), y.model_copy(update={"params": pb})
                 update["discretion"] = x.discretion or y.discretion
             v = quote_check.verify_term(text, x.model_dump(mode="json") if x else None,
                                         y.model_dump(mode="json") if y else None)

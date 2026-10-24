@@ -80,7 +80,8 @@ def _ask_gemini(gemini, model: str, system: str, user: str, timeout: float, sche
     return replay.Metered(json.loads(response.text), usage_of(response), served if isinstance(served, str) else None)
 
 
-def _gemini(doc_id: str, system: str, user: str, check, gemini, live_first: bool, schema: type = LLMOutput):
+def _gemini(doc_id: str, system: str, user: str, check, gemini, live_first: bool, schema: type = LLMOutput,
+            timeout: float | None = None):
     """Each Gemini model in turn, each with one retry on a validation error.
     Returns (output or None, source, errors, the model that answered)."""
     errors: list[str] = []
@@ -91,7 +92,8 @@ def _gemini(doc_id: str, system: str, user: str, check, gemini, live_first: bool
                                               "Return the complete answer again, fixed.")
             request = {"model": model, "system": system, "user": prompt, "doc_id": doc_id}
             try:
-                res = replay.call_outside(GEMINI_SERVICE, request, live_first=live_first, fn=lambda req, timeout:
+                res = replay.call_outside(GEMINI_SERVICE, request, live_first=live_first, timeout=timeout,
+                                          fn=lambda req, timeout:
                                           _ask_gemini(gemini, req["model"], req["system"], req["user"], timeout, schema))
             except replay.OutsideCallFailed as e:
                 failed.append(str(e))
@@ -112,7 +114,8 @@ def read_document(doc_id: str, base_terms: Sequence[Term] = (), client: anthropi
     check = lambda raw: reader._to_reader_output(raw, doc, text, schema)  # noqa: E731
     errors: list[str] = []
     if gemini is not None or gemini_configured():
-        output, source, errors, model = _gemini(doc_id, system, user, check, gemini, live_first, schema)
+        output, source, errors, model = _gemini(doc_id, system, user, check, gemini, live_first, schema,
+                                                reader.timeout_for(text))
         if output is not None:
             return ReaderResult(doc, _relabel(reader._check(output, doc, text, base_terms), "gemini"), output.unclear,
                                 source, 1 + len(errors), errors, model="gemini", model_id=model)

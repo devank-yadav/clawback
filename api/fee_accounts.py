@@ -185,4 +185,20 @@ def evidence(account: accounts.Account | str | None = None) -> dict[str, Evidenc
             summary=f"Purchase order written {d:%b} {d.day}: {_units(r):,} {'cases' if r.get('cases') else 'units'} "
                     f"of {r['product']}" + (f" ({r['po_type']})" if r.get("po_type") else "") + ".",
             rows=[dict(r)])
+    # The delivery log is what the engine reads to excuse a fee that's a remedy for the supplier's own failure; without
+    # it in the evidence the Investigator can't see who caused the miss and won't vouch for the dispute (live, W6 and
+    # F5 asked "the delivery log the engine relied on is not among the cited evidence").
+    for r in appointments(account):
+        cause = (r.get("cause") or "").strip().lower()
+        summary = f"Delivery log for PO {r['po']}: " + (
+            f"late or missed, caused by the {cause}." if (r.get("late_or_missed") or "").strip().lower() == "yes" and cause
+            else f"cause recorded: {cause}." if cause else "no miss recorded.")
+        if (r.get("note") or "").strip():
+            summary += f" {r['note'].strip()}"
+        out[delivery_id(r["po"])] = Evidence(id=delivery_id(r["po"]), kind="delivery", label=f"Delivery log PO {r['po']}",
+                                             summary=summary, rows=[dict(r)])
     return out
+
+
+def delivery_id(po: str) -> str:
+    return f"ev-delivery-{po.strip()}"

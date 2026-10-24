@@ -48,7 +48,8 @@ def with_fees(system: str, account: accounts.Account | str | None = None) -> tup
         return system, LLMOutput
     names = fee_names(account)
     listed = (f"\nThis account's fee names, for fee_code: {'; '.join(names)}. Use the one that names the fee, exactly as "
-              "listed; only a fee none of them names gets the heading of its section.\n") if names else ""
+              "listed, when the row, item or heading that sets the fee is that name; a fee set somewhere else (another "
+              "section's charge for a similar problem) keeps its own name as the document writes it.\n") if names else ""
     return f"{system}\n{prompts.render('reader_fees', account)}{listed}", LLMFeeOutput
 
 
@@ -156,12 +157,13 @@ def _to_reader_output(raw: dict, doc: Document, text: str, schema: type[Strict] 
     return ReaderOutput(terms=terms, unclear=out.unclear)
 
 
-LONG_DOC_CHARS = 15_000  # a whole vendor policy, not a one-page deal
-LONG_READ_TIMEOUT_S = 150.0  # Opus listing a dozen fee terms with quotes takes well over the 30 s default
+LONG_DOC_CHARS = 8_000  # a vendor policy or a fee table, not a one-page deal
+LONG_READ_TIMEOUT_S = 180.0  # Opus listing dozens of fee terms with quotes takes well over the 30 s default (live:
+# 99 s for Five Below's 9,000-character Violation Summary, which timed out at 30 s and left Reader A with nothing)
 
 
 def timeout_for(text: str) -> float | None:
-    """A longer limit for a long document; None keeps the default (every Peak Bar document)."""
+    """A longer limit for a long document; None keeps the default (every Peak Bar document is under 3,000 chars)."""
     return LONG_READ_TIMEOUT_S if len(text) > LONG_DOC_CHARS else None
 
 
