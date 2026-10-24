@@ -28,3 +28,6 @@ One line per decision, written the moment it's made: `date time · decision · w
 - 2026-10-24 01:51 · Five preset portal replies live in the API (GET /portal/presets) so the portal and the acceptance test share them · Devank
 - 2026-10-24 01:51 · The $1,000 conceded on C4 gets its own credit memo; at exactly $1,000 it posts on policy (the controller signs off only above $1,000) · Devank
 - 2026-10-24 02:30 · Review board uses a charge list with an evidence panel beside it (mobile: full-screen detail) instead of three pile columns; piles become groups in the list · Rishi
+- 2026-10-24 02:05 · SMS replies (F8, F10): From must match OWNER_PHONE or CONTROLLER_PHONE, else ignored; the owner's reply answers the newest open question through pipeline.answer; the controller's reply decides the newest pending approval; texts back go out as TwiML; X-Twilio-Signature is checked whenever TWILIO_AUTH_TOKEN is set · cloud session for Devank
+- 2026-10-24 02:05 · Controller yes on a live run (F10) emits a credit_memo ledger_post with status "pending" until the QuickBooks writer exists; no never posts and keeps the note · cloud session for Devank
+- 2026-10-24 02:05 · make eval saves its summary to eval/latest.json (gitignored); GET /eval/latest serves it, POST /eval/run reruns the engine-mode eval in-process · cloud session for Devank

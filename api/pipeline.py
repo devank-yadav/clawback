@@ -20,7 +20,7 @@ import anthropic
 from api import adapters, evidence as evidence_mod, replies, rows
 from api.agents import investigator, negotiator, reader, rule_writer
 from api.contracts import (
-    Answer, Approval, ApprovalLine, Charge, ChargeDetail, Decision, Dispute, DisputeLine, Event, EventAdapter,
+    Answer, Approval, ApprovalLine, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, Dispute, DisputeLine, Event, EventAdapter,
     Evidence, Finding, LogLine, MathPart, Question, Rehearsal, Remittance, Rule, RunInfo, Term, Totals,
 )
 from api.engine import gate, totals
@@ -61,6 +61,7 @@ class Run:
     decisions: dict[str, eng.Decision] = field(default_factory=dict)
     shown: dict[str, Decision] = field(default_factory=dict)
     questions: dict[str, Question] = field(default_factory=dict)
+    texts: list[tuple[str, str]] = field(default_factory=list)  # (role, SMS body) sent back; the webhook replies with them
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     def emit(self, type_: str, data: Any) -> Any:
@@ -351,10 +352,12 @@ def answer(question_id: str, text: str, from_role: str = "owner",
         if undone:
             RULES[:] = [undone if r.id == undone.id else r for r in RULES]
             run.emit("rule", undone)
+        run.texts.append(("owner", replies.undo_text(undone)))
         run.log(f"Texted {owner}: \"{replies.undo_text(undone)}\"", actor="gate", charge_id=charge_id)
         return ans, undone
     if q.answer is not None:
         ans = record()
+        run.texts.append(("owner", f"{charge_id} is already settled. Reply UNDO to cancel the rule."))
         run.log(f"{charge_id} is already settled; only UNDO changes it now.", actor="gate", charge_id=charge_id)
         return ans, None
 
@@ -364,6 +367,7 @@ def answer(question_id: str, text: str, from_role: str = "owner",
         d = gate.decide_by_owner(adapters.to_engine_charge(run.charges[charge_id]), a, eng.DecisionKind(reply.decision),
                                  policy, run.decisions[charge_id].gate_row, cap_at_deal=term is not None)
         _record(run, charge_id, d, decided_by="owner")
+        run.texts.append(("owner", replies.once_text(reply, charge_id)))
         run.log(f"Texted {owner}: \"{replies.once_text(reply, charge_id)}\"", actor="gate", charge_id=charge_id)
         _after_decisions(run, policy)
         return ans, None
@@ -380,6 +384,7 @@ def answer(question_id: str, text: str, from_role: str = "owner",
     if rule is None:
         ans = record()
         why = reply.reason or "a rule needs a discretion clause; this one isn't"
+        run.texts.append(("owner", replies.REASK_TEXT))
         run.log(f"Couldn't use \"{text}\" ({why}). Texted {owner}: \"{replies.REASK_TEXT}\"", "warn", "gate", charge_id)
         return ans, None
 
@@ -388,9 +393,61 @@ def answer(question_id: str, text: str, from_role: str = "owner",
     run.questions[question_id] = q.model_copy(update={"answer": text, "answered_at": now, "rule_id": rule.id})
     run.evidence[f"ev-{rule.id}"] = _rule_evidence(rule)
     run.emit("rule", rule)
+    run.texts.append(("owner", echo))
     run.log(f"Saved {rule.label} and texted {owner}: \"{echo}\"", "good", "gate")
     for cid, d in list(run.decisions.items()):
         if d.kind == eng.DecisionKind.ASK:
             _decide(run, cid, policy)
     _after_decisions(run, policy)
     return ans, rule
+
+
+# ---------------------------------------------------------------- controller approvals (F10)
+
+def find_approval(approval_id: str) -> tuple[Run, Approval] | None:
+    """The live run that asked for this approval, and the approval as it stands now (its newest event)."""
+    for run in reversed(list(RUNS.values())):
+        latest = [e.data for e in run.events if e.type == "approval" and e.data.id == approval_id]
+        if latest:
+            return run, latest[-1]
+    return None
+
+
+def pending_approval(role: str = "controller") -> str | None:
+    """The newest approval still waiting on this role, for an SMS reply that doesn't name one."""
+    for run in reversed(list(RUNS.values())):
+        ids = list(dict.fromkeys(e.data.id for e in run.events if e.type == "approval"))
+        for approval_id in reversed(ids):
+            _, a = find_approval(approval_id)
+            if a.status == "pending" and a.approver_role == role:
+                return approval_id
+    return None
+
+
+def decide_approval(approval_id: str, approve: bool, note: str | None = None) -> tuple[Approval, LedgerPost | None]:
+    """The controller's yes or no on a run's credit memo (in-app or SMS). Yes queues the memo for QuickBooks, one
+    line per accepted charge, with the amounts the approval already holds; no posts nothing and keeps the note.
+    Raises KeyError if no live run asked for it, ValueError if it was already decided."""
+    with _state:  # an SMS yes and an in-app yes arriving together decide it once
+        found = find_approval(approval_id)
+        if found is None:
+            raise KeyError(approval_id)
+        run, approval = found
+        if approval.status != "pending":
+            raise ValueError(f"{approval_id} is already {approval.status}")
+        decided = approval.model_copy(update={"status": "approved" if approve else "refused", "note": note,
+                                              "decided_at": _now()})
+        run.emit("approval", decided)
+    if not approve:
+        run.log(f"Sam refused the ${approval.amount:,.0f} credit memo. Nothing posts to QuickBooks; Sam's note is on "
+                f"the card and the memo goes back to {OWNER.split()[0]}.", "warn", "controller")
+        return decided, None
+    run.log(f"Sam approved the ${approval.amount:,.0f} credit memo.", "good", "controller")
+    n = sum(1 for e in run.events if e.type == "ledger_post") + 1
+    post = LedgerPost(id=f"LP-{run.id}-{n}", qbo_entity="credit_memo", qbo_id=None, amount=approval.amount,
+                      lines=[LedgerLine(charge_id=ln.charge_id, description=run.charges[ln.charge_id].description,
+                                        amount=ln.amount) for ln in approval.lines],
+                      status="pending", approval_id=approval_id,
+                      note=f"Approved by Sam; waiting for the QuickBooks write to {INVOICE_ID}.")
+    run.emit("ledger_post", post)
+    return decided, post
