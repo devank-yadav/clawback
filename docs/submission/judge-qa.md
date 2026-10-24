@@ -53,8 +53,9 @@ more than the deal allows, and it accepts undercharges.
 Clawback asks once and saves the answer as Rule #1.
 
 **How does "never asks twice" work with different wording?**
-Today a saved rule matches on the same kind of clause and the same distributor, so April's display fees match
-Rule #1 with no question. Matching by meaning (Moss) for differently worded clauses isn't built yet. **[TODO]**
+Saved rules are indexed in Moss and matched by meaning: a differently worded display-fee clause still finds Rule #1
+(similarity at least 0.85, same kind of clause, same distributor), and the card shows the score. Without Moss it falls
+back to matching the kind of clause and the distributor. Show it in the scenario box with a reworded clause.
 
 **What if the two AI readers disagree?**
 The term is marked disputed and every charge that depends on it goes to the owner. Nothing is filed or booked.

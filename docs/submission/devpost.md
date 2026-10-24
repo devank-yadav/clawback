@@ -366,8 +366,10 @@ Paste each paragraph only once Part 2 marks that track ready. Each one says what
 screenshots and the file link exist. `docs/figma/` is empty today.
 
 **Moss.** Clawback's rule memory: when the owner answers once, the answer becomes a rule that decides the next
-month's fees. Today the match is exact (same kind of clause, same distributor). TODO (needs Devank): Moss matching a
-differently worded discretion clause to Rule #1, with a before/after, before this paragraph goes in.
+month's fees. Saved rules are indexed in Moss, and a new discretion clause is matched by meaning: a differently
+worded display-fee clause still finds Rule #1, with the similarity shown on the card (`api/integrations/moss.py`;
+the exact match on clause type and distributor stays as the fallback). TODO (needs Devank): the live before/after
+from `python -m api.integrations.moss` with the Moss keys, before this paragraph goes in.
 
 **MLH: Best Use of Gemini API.** Gemini is Clawback's second deal reader. Claude and Gemini read every document
 separately, and a term only counts when both read the same type and numbers and the sentence is found word for word.
@@ -394,9 +396,10 @@ TODO (needs Devank): the clip of a deposit starting the run.
 
 **Notability: Trust the Process.** TODO (needs Devank): planning sketches and standup notes from Notability.
 
-**Fetch.ai: ASI:One Agent Challenge.** TODO (needs Devank): Clawback's API has the two calls the assistant needs (a
-read-only summary of totals, open disputes and the pending question, and a way to answer that question), but the
-Agentverse agent itself isn't built. Paste a paragraph only once it's live in ASI:One.
+**Fetch.ai: ASI:One Agent Challenge.** The Clawback Assistant (`fetch_agent/`) is a uAgents agent with the Agent
+Chat Protocol: the owner asks it in ASI:One what Northmart took and gets the totals, open disputes and the pending
+question, and can answer that question in the chat. It's read-only otherwise and never approves money. TODO (needs
+Devank): register it on Agentverse and paste its address and an ASI:One chat clip once it's live.
 
 ---
 
@@ -413,8 +416,8 @@ checked against commit f55757a. Tag a track on Devpost only when every row says 
 | Real vs simulated | Yes: Part 1 |
 | The eval score | Yes: 30/30 in both modes, from `eval/latest.json` and `eval/latest-agent.json` (regenerate with `make eval` and `DEMO_MODE=true python eval/run.py --mode agent`) |
 | How approvals and refusals work | Yes: Part 1; refusal tested in `api/tests/test_books.py` |
-| Live scenario box for a judge's own clause | API yes (`POST /scenario`, three recorded examples at `GET /scenario/examples`). TODO (needs Devank): the `/scenario` screen (Rishi's card U6), and the test on 5 unseen clauses written by a non-teammate |
-| The judge arguing as Northmart on the portal | API yes (`/portal/disputes/D-0417/messages`, five presets, amendment concession). TODO (needs Devank): the `/portal` screen (Rishi's card U1) |
+| Live scenario box for a judge's own clause | Yes: the `/scenario` screen over `POST /scenario`, with three recorded examples. TODO (needs Devank): the test on 5 unseen clauses written by a non-teammate |
+| The judge arguing as Northmart on the portal | Yes: the `/portal` screen (Northmart's look) with five presets; attaching the signed amendment concedes $1,000 and keeps $540 |
 | Video opening with the moment | TODO (needs Devank): video link |
 | Every number on the evidence card opens its source | Partly: the math line and the comeback's sources open in the evidence panel. TODO (needs Devank): the rest (Rishi's card U2) |
 
@@ -448,7 +451,7 @@ checked against commit f55757a. Tag a track on Devpost only when every row says 
 
 | Devpost must show | In the repo now? |
 | --- | --- |
-| Before/after: a differently worded clause matched to Rule #1 | TODO (needs Devank): Moss isn't integrated. Rules match exactly on clause type and distributor (`api/engine/rules.py`), the design's fallback. Cut rule: Moss SDK not working by Sat 2 PM |
+| Before/after: a differently worded clause matched to Rule #1 | Code yes: `api/integrations/moss.py` (Moss SDK 1.21.0), similarity floor 0.85 in `config/policy.yaml`, tested with a fake. TODO (needs Devank): set `MOSS_PROJECT_ID` and `MOSS_API_KEY`, run `python -m api.integrations.moss` for the real scores, record one run, and screenshot the scenario box with a reworded clause |
 
 ### MLH: Best Use of Gemini API
 
@@ -497,7 +500,7 @@ checked against commit f55757a. Tag a track on Devpost only when every row says 
 
 | Devpost must show | In the repo now? |
 | --- | --- |
-| The agent registered on Agentverse, with the Agent Chat Protocol, usable in ASI:One | TODO (needs Devank): no agent code in the repo |
+| The agent registered on Agentverse, with the Agent Chat Protocol, usable in ASI:One | Code yes: `fetch_agent/` (uAgents mailbox agent, Chat Protocol, 81 tests). TODO (needs Devank): run it against the live API and connect it to Agentverse (`fetch_agent/README.md`) |
 | The API it would call | Yes: `GET /summary` (read-only, needs `CLAWBACK_READONLY_TOKEN`) and `POST /questions/{id}/answer` |
 | The agent address | TODO (needs Devank) |
 | An ASI:One chat clip | TODO (needs Devank). Cut rule: not live in ASI:One by Sat 8 PM |

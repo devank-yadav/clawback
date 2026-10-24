@@ -1,8 +1,8 @@
 # Live demo script (3 minutes, then 2 minutes of Q&A)
 
 > Spoken walkthrough for the judging table. Numbers are fixed by data/CLAUDE.md; never round or change them.
-> Steps marked **[PLANNED]** depend on screens not built yet (checked against `main` at commit f55757a, Sat Oct 24
-> morning). The API behind every step is built and tested.
+> Every screen below exists (portal, April, Coach, results, scenario, audit), and the API behind each step is built
+> and tested.
 > **In `make demo` (DEMO_MODE) no texts go out and QuickBooks writes are simulated:** answer Dana's question and
 > Sam's approval in the app. Phones buzz only in a live run with the Twilio keys set.
 > Cut lines are marked ✂ if we're running long. Everyone named is fictional; say so once at the start.
@@ -10,7 +10,7 @@
 ## Before the judge sits down (checklist)
 
 - [ ] `make reset` ran; the board is empty and Rule #1 does not exist yet.
-- [ ] Laptop on `/` (Overview, with the **Northmart pays** button). Tablet on `/portal` as Northmart. **[PLANNED: `/portal` screen]**
+- [ ] Laptop on `/` (Overview, with the **Northmart pays** button). Tablet on `/portal` as Northmart.
 - [ ] Owner phone (Dana) and controller phone (Sam) on the table, unlocked, volume up (live runs only; SMS or Twilio's WhatsApp Sandbox).
 - [ ] Printed deal (`data/deals/spring-promo.md`) with §3.1, §3.2 and §5.4 visible.
 - [ ] `DEMO_MODE=true` ready as the fallback (`make demo`); backup video open in a tab.
@@ -30,9 +30,9 @@
 | 1:50–2:00 | Meters land on $4,120 disputed, $2,730 accepted, 1 question. Controller phone buzzes: "Approve credit memo of $2,730 (3 lines)?" Manasv taps **yes**. | "Only a person moves money. The controller approves the $2,730 credit memo, and it goes into QuickBooks. The disputed $4,120 stays open." |
 | 2:00–2:25 | Turn to the judge. "Reply to our dispute on the tablet. Argue." Judge types (likely "there was no cap"). Clawback answers in the thread. | "Before filing, Clawback predicted your comeback and made sure it could answer it. §3.2 caps the promo at 5,000 bars. Weeks 1 to 3 sold 1,200 plus 980 plus 2,820, which is 5,000. Week 4's 1,540 bars aren't covered." |
 | 2:25–2:40 | If the judge doesn't, ask them to tap **Attach signed amendment**. C4 changes: $540 disputed, $1,000 accepted. | "Now you've shown a signed amendment raising the cap to 6,000. That's a valid document, so Clawback concedes $1,000 and keeps $540 disputed. It argues with proof, and backs down with proof." |
-| 2:40–2:50 | Open `/april`. **[PLANNED: screen; API is `POST /replay/april`]** | "Next month: a $1,200 fee with 18 days' notice is accepted and an $800 fee with 5 days' notice is disputed, both by Rule #1. Zero questions. It asks once and never twice." |
-| ✂ 2:50–2:55 | Open `/coach`. **[PLANNED: screen; API is `POST /coach`]** | "And it rewrites next month's deal so this fight doesn't happen again." |
-| 2:55–3:00 | Open `/results`. **[PLANNED: screen]** | "$4,120 disputed, $2,730 accepted, one question, and our real score on 30 planted charges: 30 of 30, with zero wrong automatic actions. That's Clawback." |
+| 2:40–2:50 | Open `/april`. | "Next month: a $1,200 fee with 18 days' notice is accepted and an $800 fee with 5 days' notice is disputed, both by Rule #1. Zero questions. It asks once and never twice." |
+| ✂ 2:50–2:55 | Open `/coach`. | "And it rewrites next month's deal so this fight doesn't happen again." |
+| 2:55–3:00 | Open `/results`. | "$4,120 disputed, $2,730 accepted, one question, and our real score on 30 planted charges: 30 of 30, with zero wrong automatic actions. That's Clawback." |
 
 ## Numbers to have in your head
 

@@ -72,3 +72,4 @@ One line per decision, written the moment it's made: `date time · decision · w
 2026-10-24 04:20 Web live mode attaches to /runs/latest and only 'Northmart pays' starts a run; board follows its run id; failed ledger posts shown; clause leads evidence (Rishi)
 2026-10-24 05:04 Web: /portal on Northmart theme (own root layout) and clickable math sources in the evidence panel; live runs' math parts carry no evidence_id yet, asked Devank (Rishi)
 2026-10-24 05:09 Web: /results /april /coach /scenario /audit screens and waiting-for-payment copy (Rishi)
+- 2026-10-24 07:20 · Merged #54 Moss, #55 Fetch.ai agent, #53 Devpost/README and #56 Rishi's screens (portal, clickable evidence, results, April, Coach, scenario, audit). Live runs now link every math step to its evidence (sales week, §3.1/§3.2/§5.4, NM-2178, the broker email, the notice), so the numbers on the card open their sources in live mode too (F7). Devpost, judge Q&A and demo script updated to match · Devank

@@ -22,7 +22,7 @@ from api import adapters, audit, evidence as evidence_mod, replies, rows
 from api.agents import investigator, negotiator, reader, readers, rule_writer
 from api.contracts import (
     Answer, Approval, ApprovalLine, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, Dispute, DisputeLine, Event, EventAdapter,
-    Evidence, Finding, LogLine, MathPart, Question, Rehearsal, Remittance, Rule, RunInfo, Term, Totals,
+    Evidence, Finding, LogLine, Question, Rehearsal, Remittance, Rule, RunInfo, Term, Totals,
 )
 from api.engine import gate, totals
 from api.engine import types as eng
@@ -241,7 +241,7 @@ def _process(run: Run, client) -> None:
         inv = investigator.investigate(c, a, run.evidence, client)
         if inv.output:
             f = Finding(**inv.output.model_dump(), id=f"F-{c.id}", expected=a.allowed, taken=a.taken, delta=a.delta,
-                        math=[MathPart(text=s) for s in a.steps])
+                        math=evidence_mod.math_parts(a.steps, a.terms, c, run.terms, run.evidence))
             run.findings[c.id] = f
             run.emit("finding", f)
             kinds = {run.evidence[i].kind for i in f.evidence_ids} - {"charge"}

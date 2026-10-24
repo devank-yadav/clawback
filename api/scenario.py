@@ -16,7 +16,7 @@ import anthropic
 from api import adapters, evidence as evidence_mod, pipeline, rows
 from api.agents import investigator, negotiator, readers
 from api.contracts import (
-    Charge, Finding, MathPart, Rehearsal, ScenarioCharge, ScenarioExample, ScenarioRequest, ScenarioResponse,
+    Charge, Finding, Rehearsal, ScenarioCharge, ScenarioExample, ScenarioRequest, ScenarioResponse,
 )
 from api.engine import gate
 from api.engine import types as eng
@@ -71,7 +71,8 @@ def run(req: ScenarioRequest, client: anthropic.Anthropic | None = None) -> Scen
                         [adapters.to_engine_sales(r) for r in sales], [adapters.to_engine_prior(p) for p in payments])
     inv = investigator.investigate(charge, a, evidence, client, live_first=True)
     finding = (Finding(**inv.output.model_dump(), id="F-S1", expected=a.allowed, taken=a.taken, delta=a.delta,
-                       math=[MathPart(text=s) for s in a.steps]) if inv.output else None)
+                       math=evidence_mod.math_parts(a.steps, a.terms, charge, terms, evidence))
+               if inv.output else None)
     discretion = any(gate.uses_discretion(t, policy) for t in a.terms)
     rehearsal = None
     if finding and a.delta > policy.match_tolerance and not discretion and not a.missing:
