@@ -1,0 +1,25 @@
+{
+  "answer": {
+    "question_id": "Q-1",
+    "from_role": "owner",
+    "text": "UNDO",
+    "answered_at": "2026-10-24T11:54:05.730609Z",
+    "rule_id": null
+  },
+  "rule": {
+    "id": "rule-1",
+    "label": "Rule #1",
+    "pattern_text": "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.",
+    "term_type": "fee_discretion",
+    "counterparty": "Northmart",
+    "condition": "notice_days >= 14",
+    "decision": "accept",
+    "else_decision": "dispute",
+    "summary": "Accept Northmart display fees with at least 14 days' notice; otherwise dispute.",
+    "approver": "Dana Okafor",
+    "approver_role": "owner",
+    "learned_at": "2026-10-24T11:54:05.717826Z",
+    "source_question_id": "Q-1",
+    "status": "undone"
+  }
+}

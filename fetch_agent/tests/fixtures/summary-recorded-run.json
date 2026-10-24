@@ -1,0 +1,87 @@
+{
+  "totals": {
+    "taken": 6850.0,
+    "disputed": 4120.0,
+    "accepted": 2730.0,
+    "waiting": 0.0,
+    "undecided": 0.0,
+    "questions": 1,
+    "skipped": 0
+  },
+  "open_disputes": [
+    {
+      "id": "D-0417",
+      "remittance_id": "REM-3102",
+      "counterparty": "Northmart",
+      "lines": [
+        {
+          "charge_id": "C1",
+          "ref": "NM-2229",
+          "amount": 600.0,
+          "reason": "Rate charged $1.50 a bar; the deal says $1.00.",
+          "clause_ref": "§3.1",
+          "quote": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
+          "math": "1,200 bars × ($1.50 − $1.00) = $600",
+          "evidence_ids": [
+            "ev-deal-3.1",
+            "ev-sales-w1",
+            "ev-charge-C1"
+          ]
+        },
+        {
+          "charge_id": "C2",
+          "ref": "NM-2231",
+          "amount": 980.0,
+          "reason": "Week 2 was already paid on Mar 14 (NM-2178).",
+          "clause_ref": "§4.2",
+          "quote": "A unit may be claimed only once.",
+          "math": "980 bars for Mar 8 to 14 already paid under NM-2178",
+          "evidence_ids": [
+            "ev-payment-NM-2178",
+            "ev-sales-w2",
+            "ev-charge-C2",
+            "ev-deal-4.2"
+          ]
+        },
+        {
+          "charge_id": "C4",
+          "ref": "NM-2236",
+          "amount": 1540.0,
+          "reason": "Over the 5,000-unit cap.",
+          "clause_ref": "§3.2",
+          "quote": "The promotional allowance applies to a maximum of 5,000 units in total.",
+          "math": "1,200 + 980 + 2,820 = 5,000 by Mar 21; 1,540 bars after the cap",
+          "evidence_ids": [
+            "ev-deal-3.2",
+            "ev-sales-w1",
+            "ev-sales-w2",
+            "ev-sales-w3",
+            "ev-sales-w4",
+            "ev-charge-C4"
+          ]
+        },
+        {
+          "charge_id": "C5",
+          "ref": "NM-2237",
+          "amount": 1000.0,
+          "reason": "Mint is not a promoted product.",
+          "clause_ref": "§3.1",
+          "quote": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
+          "math": "1,000 Mint bars; Mint isn't covered, so $0 allowed",
+          "evidence_ids": [
+            "ev-deal-3.1",
+            "ev-sales-mint",
+            "ev-charge-C5"
+          ]
+        }
+      ],
+      "total": 4120.0,
+      "status": "filed",
+      "approved_by": "policy",
+      "filed_at": "2026-10-24T10:31:03-07:00"
+    }
+  ],
+  "pending_question": null,
+  "pending_approvals": [],
+  "run_id": null
+}
