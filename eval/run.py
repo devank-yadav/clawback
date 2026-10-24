@@ -255,7 +255,11 @@ def save(s: dict, path: Path = LATEST) -> dict:
 
 
 def _main_agent(args) -> int:
+    from dotenv import load_dotenv
+
     import agent  # eval/agent.py, next to this file
+
+    load_dotenv(ROOT / ".env")  # the agents' API keys
 
     only = set(args.cases.split(",")) if args.cases else None
     if args.estimate:
