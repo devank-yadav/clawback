@@ -104,7 +104,7 @@ class CannotRun(ValueError):
     """The read's totals don't add up (or it has no charges), so it can't start a run. The route says 409."""
 
 
-# TODO(Devank): the one hook this needs in api/pipeline.py (another session is rewriting it, so it isn't added here).
+# The hook in api/pipeline.py (start(..., charges=)); kept here so the route explains itself if it's ever missing.
 # start() takes the confirmed charges and the run reads them instead of the files:
 #     def start(kind="march", client=None, background=True, deposit=None, charges: list[Charge] | None = None) -> Run:
 #         run = Run(id=..., kind=kind, deposit=deposit, charges={c.id: c for c in charges or ()})

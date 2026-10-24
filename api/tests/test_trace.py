@@ -221,9 +221,8 @@ def test_live_first_falls_back_to_the_recording_and_says_why(tmp_path):
 
 
 def test_nothing_outside_a_run_context_is_recorded(tmp_path):
-    run = pipeline.start("march", ScenarioClaude(), background=False)  # no contexts entered
-    assert trace.trace_for(run.id) == [] and not trace.known(run.id) and not trace._store
-    assert http.get(f"/runs/{run.id}/trace").json() == []  # a known run that recorded nothing
+    replay.call_outside("claude-investigator", {"x": 0}, lambda r, t: {"ok": True}, fixtures_dir=tmp_path)
+    assert not trace._store  # a call outside any run isn't recorded
     with trace.charge_context("C1"):  # a charge with no run isn't enough
         replay.call_outside("claude-investigator", {"x": 1}, lambda r, t: {"ok": True}, fixtures_dir=tmp_path)
     assert not trace._store

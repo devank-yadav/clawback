@@ -15,7 +15,7 @@ from decimal import Decimal
 
 import anthropic
 
-from api import accounts, documents, evidence as evidence_mod, pipeline, adapters, rows
+from api import accounts, documents, evidence as evidence_mod, pipeline, adapters, rows, trace
 from api.agents import investigator, negotiator, readers
 from api.contracts import Dispute, DisputeLine, Finding, PortalMessage, PortalPreset
 from api.engine import gate, outbound_filter, totals
@@ -70,7 +70,7 @@ def post(dispute_id: str, text: str, attachment_doc_id: str | None = None,
          client: anthropic.Anthropic | None = None) -> list[PortalMessage]:
     """The distributor's reply and Clawback's answer (if one goes out). Both also stream on the run."""
     run, dispute = find(dispute_id)
-    with accounts.using(run.account):  # what takes no account reads the run's files
+    with accounts.using(run.account), trace.run_context(run.id):  # the run's files; AI calls traced to the run
         return _post(run, dispute, text, attachment_doc_id, client)
 
 

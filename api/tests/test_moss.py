@@ -73,8 +73,8 @@ def reword_april(monkeypatch):
     """April's deal states the display-fee clause in other words; the charges, notices and math are unchanged."""
     real = pipeline.compute_allowed
 
-    def allowed(charge, terms, sales, payments):
-        a = real(charge, terms, sales, payments)
+    def allowed(charge, terms, sales, payments, ops=None):
+        a = real(charge, terms, sales, payments, ops=ops)
         if not charge.id.startswith("A"):
             return a
         return replace(a, terms=tuple(replace(t, exact_quote=REWORDED) if t.type == eng.TermType.FEE_DISCRETION else t

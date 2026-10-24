@@ -18,6 +18,7 @@ from api.engine.tests import scenario as s
 from api.integrations import replay
 from api.main import app
 from api.tests import remittance_pdf
+from api.tests.test_pipeline import ScenarioClaude
 
 SAMPLE = remittance_pdf.SAMPLE_TXT.read_text()
 SAMPLE_PDF = remittance_pdf.SAMPLE_PDF.read_bytes()
@@ -315,14 +316,14 @@ def test_demo_mode_replays_the_recorded_read(monkeypatch):
 
 # ---------------------------------------------------------------- starting a run
 
-def test_start_with_charges_waits_for_the_pipeline_hook():
-    assert "charges" not in inspect.signature(pipeline.start).parameters
-    with pytest.raises(remittance.NotWired, match="charges"):
-        remittance.start_with_charges("peak-bar", csv_charges())
+def test_start_with_charges_runs_the_read_charges():
+    assert "charges" in inspect.signature(pipeline.start).parameters
+    run = remittance.start_with_charges("peak-bar", csv_charges(), client=ScenarioClaude(), background=False)
+    assert list(run.charges) == ["C1", "C2", "C3", "C4", "C5", "C6"] and len(run.decisions) == 6
 
 
 def fake_start(seen):
-    def start(kind="march", client=None, background=True, deposit=None, charges=None):
+    def start(kind="march", client=None, background=True, deposit=None, charges=None, **_):
         seen.update(kind=kind, charges=charges, background=background)
         return SimpleNamespace(id="run-march-fromremit")
     return start
@@ -408,11 +409,8 @@ def test_route_refuses_bad_input(claude_answers):
     assert scan.status_code == 422 and "scan" in scan.json()["detail"]
 
 
-def test_route_run_says_what_is_missing_until_the_hook_lands(claude_answers):
+def test_route_run_needs_a_read_it_knows(claude_answers):
     claude_answers(answer())
-    read_id = client.post("/accounts/peak-bar/remittance", json={"text": SAMPLE}).json()["read_id"]
-    res = client.post("/accounts/peak-bar/remittance/run", json={"read_id": read_id})
-    assert res.status_code == 501 and "start()" in res.json()["detail"]
     assert client.post("/accounts/peak-bar/remittance/run", json={"read_id": "RR-nope"}).status_code == 404
 
 

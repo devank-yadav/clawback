@@ -17,17 +17,17 @@ import os
 import threading
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
 import anthropic
 
-from api import accounts, account_rows, adapters, audit, evidence as evidence_mod, replies, rows
-from api.agents import investigator, negotiator, reader, readers, rule_writer
+from api import accounts, account_rows, adapters, audit, evidence as evidence_mod, replies, rows, trace
+from api.agents import investigator, investigator_ops, negotiator, reader, readers, rule_writer
 from api.contracts import (
-    Answer, Approval, ApprovalLine, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, Dispute, DisputeLine, Event, EventAdapter,
-    Evidence, Finding, LogLine, Question, Rehearsal, Remittance, Rule, RunInfo, Term, Totals,
+    Answer, Approval, ApprovalLine, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, DeliveryRow, Dispute, DisputeLine, Event,
+    EventAdapter, Evidence, Finding, LogLine, OpsTerm, PriceRow, Question, Rehearsal, Remittance, Rule, RunInfo, Term, Totals,
 )
 from api.db import events as saved_events, state as saved_state
 from api.engine import gate, totals
@@ -160,16 +160,19 @@ def is_open(q: Question) -> bool:
 
 
 def start(kind: str | None = None, client: anthropic.Anthropic | None = None, background: bool = True,
-          deposit: Any = None, account: accounts.Account | str | None = None) -> Run:
+          deposit: Any = None, account: accounts.Account | str | None = None,
+          charges: list[Charge] | None = None) -> Run:
     """A new run of one of the account's months (Peak Bar's by default; its invoice month by default). `deposit` is the
     Nessie deposit that triggered it (api/integrations/nessie.Deposit), if any. It replaces older runs of the same
-    account's payment: their open questions close and they ask nobody again. Raises UnknownMonth for a month the
+    account's payment: their open questions close and they ask nobody again. `charges` are the lines a remittance
+    upload read (api/remittance.py); without them the month's charges file is used. Raises UnknownMonth for a month the
     account has no charges for, and accounts.UnknownAccount for an account that isn't there."""
     account = accounts.resolve(account or accounts.DEFAULT)
     kind = kind or account.invoice.month
     if kind not in account.months:
         raise UnknownMonth(f"{account.id} has no {kind} charges (its months: {', '.join(account.months)})")
-    run = Run(id=f"run-{kind}-{uuid.uuid4().hex[:8]}", kind=kind, account=account, deposit=deposit)
+    run = Run(id=f"run-{kind}-{uuid.uuid4().hex[:8]}", kind=kind, account=account, deposit=deposit,
+              charges={c.id: c for c in charges or ()})
     with _state:
         older = [r for r in RUNS.values() if r.kind == kind and r.account.id == account.id and r.replaced_by is None]
         RUNS[run.id] = run
@@ -184,7 +187,8 @@ def start(kind: str | None = None, client: anthropic.Anthropic | None = None, ba
 
 def _guarded(run: Run, client) -> None:
     try:
-        with accounts.using(run.account):  # what takes no account (the evidence builders) reads this run's files
+        # What takes no account (the evidence builders) reads this run's files; every AI call is traced to the run.
+        with accounts.using(run.account), trace.run_context(run.id):
             _process(run, client)
     except Exception as e:  # noqa: BLE001 - a crash shows on the board instead of hanging the stream
         log.exception("run %s failed", run.id)
@@ -243,7 +247,8 @@ def _process(run: Run, client) -> None:
     policy, account, inv, them = load_policy(), run.account, run.account.invoice, run.distributor
     # Stable IDs: agent requests (and their recorded fixture keys) must not change from run to run.
     remittance_id = f"REM-{inv.id}" if run.kind == inv.month else f"REM-{run.kind.upper()}"
-    charges = [c.model_copy(update={"remittance_id": remittance_id}) for c in rows.charges(run.kind, account=account)]
+    source = list(run.charges.values()) or rows.charges(run.kind, account=account)
+    charges = [c.model_copy(update={"remittance_id": remittance_id}) for c in source]
     run.charges = {c.id: c for c in charges}
     eng_charges = {c.id: run.engine_charge(c) for c in charges}
     taken = totals.taken(eng_charges.values())
@@ -272,43 +277,51 @@ def _process(run: Run, client) -> None:
     sales_rows, prior_rows = rows.sales(account=account), rows.prior_payments(account=account)
     run.evidence = evidence_mod.build(run.terms, charges, sales_rows, prior_rows)
     run.ops = account_rows.ops(account)  # for the shortage, price and spoilage math (api/engine)
+    ops_rows = _ops_rows(run.ops)
+    run.evidence.update(evidence_mod.from_ops(*ops_rows))  # nothing for an account with no ops files (Peak Bar)
+    eng_ops = adapters.to_engine_ops(*ops_rows)
     eng_terms = [adapters.to_engine_term(t) for t in run.terms]
     sales = [adapters.to_engine_sales(r) for r in sales_rows]
     payments = [adapters.to_engine_prior(p) for p in prior_rows]
 
     for c in charges:
-        run.emit("charge", c)
-        run.log(f"Checking {c.id}: {c.description}, ${c.amount:,.0f} taken.", actor="investigator", charge_id=c.id)
-        a = compute_allowed(eng_charges[c.id], eng_terms, sales, payments)
-        run.allowances[c.id] = a
-        found = investigator.investigate(c, a, run.evidence, client, account=account)
-        if found.output:
-            f = Finding(**found.output.model_dump(), id=f"F-{c.id}", expected=a.allowed, taken=a.taken, delta=a.delta,
-                        math=evidence_mod.math_parts(a.steps, a.terms, c, run.terms, run.evidence))
-            run.findings[c.id] = f
-            run.emit("finding", f)
-            kinds = {run.evidence[i].kind for i in f.evidence_ids} - {"charge"}
-        else:
-            run.log(f"Couldn't explain {c.id} from the evidence, so a person decides.", "warn", "investigator", c.id)
-            kinds = set()
-        discretion = any(gate.uses_discretion(t, policy) for t in a.terms)
-        if found.output and a.delta > policy.match_tolerance and not discretion and not a.missing:
-            run.log(f"Predicting {them}'s comeback before filing.", actor="negotiator", charge_id=c.id)
-            r = negotiator.rehearse(c, run.findings[c.id], a, run.evidence, run.terms, client, account=account)
-            run.rehearsals[c.id] = r
-            if r.answered:
-                run.emit("rehearsal", r)
+        with trace.charge_context(c.id):  # the trace files each AI call under its charge
+            run.emit("charge", c)
+            run.log(f"Checking {c.id}: {c.description}, ${c.amount:,.0f} taken.", actor="investigator", charge_id=c.id)
+            a = compute_allowed(eng_charges[c.id], eng_terms, sales, payments, ops=eng_ops)
+            run.allowances[c.id] = a
+            if investigator_ops.handles(c):  # shortage, price and spoilage: deliveries and price lists, not the promo
+                found = investigator_ops.investigate(c, a, run.evidence, client, brand=account.brand.name,
+                                                     distributor=them)
             else:
-                run.log(f"No solid answer to {them}'s likely comeback on {c.id}, so it isn't filed.", "warn",
-                        "negotiator", c.id)
-        o = found.output
-        run.eng_findings[c.id] = eng.Finding(
-            charge_id=c.id, confidence=Decimal(str(o.confidence)) if o else Decimal(0),
-            evidence_ids=tuple(o.evidence_ids) if o else (), independent_sources=len(kinds),
-            comeback_answered=run.rehearsals.get(c.id, Rehearsal(charge_id=c.id, predicted_rebuttal="", answer="",
-                                                                 answer_evidence_ids=[], answered=False)).answered,
-            type=o.type if o else "", finding=o.finding if o else "")
-        _decide(run, c.id, policy)
+                found = investigator.investigate(c, a, run.evidence, client, account=account)
+            if found.output:
+                f = Finding(**found.output.model_dump(), id=f"F-{c.id}", expected=a.allowed, taken=a.taken, delta=a.delta,
+                            math=evidence_mod.math_parts(a.steps, a.terms, c, run.terms, run.evidence))
+                run.findings[c.id] = f
+                run.emit("finding", f)
+                kinds = {run.evidence[i].kind for i in f.evidence_ids} - {"charge"}
+            else:
+                run.log(f"Couldn't explain {c.id} from the evidence, so a person decides.", "warn", "investigator", c.id)
+                kinds = set()
+            discretion = any(gate.uses_discretion(t, policy) for t in a.terms)
+            if found.output and a.delta > policy.match_tolerance and not discretion and not a.missing:
+                run.log(f"Predicting {them}'s comeback before filing.", actor="negotiator", charge_id=c.id)
+                r = negotiator.rehearse(c, run.findings[c.id], a, run.evidence, run.terms, client, account=account)
+                run.rehearsals[c.id] = r
+                if r.answered:
+                    run.emit("rehearsal", r)
+                else:
+                    run.log(f"No solid answer to {them}'s likely comeback on {c.id}, so it isn't filed.", "warn",
+                            "negotiator", c.id)
+            o = found.output
+            run.eng_findings[c.id] = eng.Finding(
+                charge_id=c.id, confidence=Decimal(str(o.confidence)) if o else Decimal(0),
+                evidence_ids=tuple(o.evidence_ids) if o else (), independent_sources=len(kinds),
+                comeback_answered=run.rehearsals.get(c.id, Rehearsal(charge_id=c.id, predicted_rebuttal="", answer="",
+                                                                     answer_evidence_ids=[], answered=False)).answered,
+                type=o.type if o else "", finding=o.finding if o else "")
+            _decide(run, c.id, policy)
     # A rule saved by an earlier run opens from this run's cards too. Added after the agents ran, so their
     # requests (and DEMO_MODE fixture keys) don't change.
     for rule in (r for r in rules_of(account) if any(d.rule_id == r.id for d in run.decisions.values())):
@@ -521,6 +534,14 @@ def _request_credit_memo(run: Run, policy: eng.Policy, accepted: list[tuple[str,
 
 def answer(question_id: str, text: str, from_role: str = "owner",
            client: anthropic.Anthropic | None = None) -> tuple[Answer, Rule | None]:
+    """See _answer. The rule writer's call, if any, is traced to the question's run."""
+    run_id = QUESTIONS[question_id][0]
+    with trace.run_context(run_id):
+        return _answer(question_id, text, from_role, client)
+
+
+def _answer(question_id: str, text: str, from_role: str = "owner",
+            client: anthropic.Anthropic | None = None) -> tuple[Answer, Rule | None]:
     """The owner's reply (SMS or in-app). Code reads it first (api/replies.py):
     - a rule ("accept if notice is at least 14 days") is saved and the waiting charges are decided again;
     - ACCEPT or DISPUTE alone settles this charge only, and no rule is saved;
@@ -859,3 +880,12 @@ def summary_of(run: Run):
     return Summary(totals=totals_[-1] if totals_ else _meters(run), run_id=run.id, pending_question=question,
                    open_disputes=[d for d in disputes.values() if d.status not in ("resolved", "withdrawn")],
                    pending_approvals=[a for a in approvals.values() if a.status == "pending"])
+
+
+def _ops_rows(ops: account_rows.Ops) -> tuple[list[DeliveryRow], list[PriceRow], list[OpsTerm]]:
+    """An account's ops rows as the evidence builders and the engine adapter take them. A term with no source document
+    or quote can't be checked, so it's left out: the engine then treats it as missing and the gate asks."""
+    return ([DeliveryRow.model_validate(d.model_dump()) for d in ops.deliveries],
+            [PriceRow.model_validate({**p.model_dump(), "effective_from": p.effective_from or date.min})
+             for p in ops.prices],
+            [OpsTerm.model_validate(t.model_dump()) for t in ops.terms if t.source_doc and t.quote])
