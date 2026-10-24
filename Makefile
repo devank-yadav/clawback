@@ -23,7 +23,7 @@ acceptance:
 		api/engine/tests/test_quote_check.py api/engine/tests/test_allowed.py api/engine/tests/test_gate.py \
 		api/engine/tests/test_eval_harness.py api/tests/test_replay.py api/tests/test_routes.py api/tests/test_disputes.py \
 		api/tests/test_books.py api/tests/test_coach_scenario.py \
-		api/tests/test_readers.py api/tests/test_sms_channel.py
+		api/tests/test_readers.py api/tests/test_audit.py api/tests/test_sms_channel.py
 	$(PYTHON) eval/run.py
 
 seed:
