@@ -4,8 +4,9 @@
 export type Money = number;
 export type Actor =
   | "system" | "reader" | "investigator" | "gate" | "negotiator" | "bookkeeper" | "coach"
-  | "owner" | "controller" | "northmart" | "distributor" | "policy";
-export type Role = "owner" | "controller";
+  | "owner" | "northmart" | "distributor" | "policy";
+/** One person decides everything: the admin, the brand's owner (answers the questions, approves the credit memos). */
+export type Role = "owner";
 export type DecisionKind = "dispute" | "accept" | "split" | "ask" | "skip";
 // The engine adds finding types as charge types grow (shortages, pricing, spoilage); unknown ones still render.
 export type FindingType =
@@ -153,7 +154,14 @@ export type Approval = {
   note: string | null;
   requested_at: string;
   decided_at: string | null;
+  /** The admin approved this one and ticked "Post fair charges like these automatically from now on". */
+  sets_auto_post?: AutoPost | null;
+  /** Posted without asking, by the admin's standing yes. */
+  posted_by_auto_post?: AutoPost | null;
 };
+
+/** The admin's auto-post limit: fair-charge credit memos up to `limit` post without asking. */
+export type AutoPost = { limit: Money; set_by: string; approval_id: string; set_at: string };
 
 export type DisputeLine = {
   charge_id: string;
@@ -367,7 +375,8 @@ export type Account = {
     initials: string;
     colors: Colors;
     owner: { name: string; email: string };
-    controller: { name: string };
+    /** Older account files name one; unused (the owner decides everything). */
+    controller?: { name: string } | null;
   };
   distributor: { name: string; desk_email: string; portal_name: string; colors: Colors };
   invoice: { id: string; expected: Money; received: Money; month: string; period_start: string; period_end: string };

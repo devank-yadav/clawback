@@ -180,7 +180,7 @@ def test_f8_f11_full_demo_over_the_api_with_wifi_off(client):
     assert (dispute.id, dispute.total, dispute.status) == ("D-0417", D(4120), "filed")
     approval = next(e.data for e in march.events if e.type == "approval")
     assert (approval.amount, approval.approver_role, approval.status, len(approval.lines)) == (
-        D(2730), "controller", "pending", 3)
+        D(2730), "owner", "pending", 3)
 
     april = _wait(client.post("/replay/april").json()["run_id"], "finished")
     assert not april.questions
@@ -195,7 +195,7 @@ def test_f8_f11_full_demo_over_the_api_with_wifi_off(client):
 
 # ---------------------------------------------------------------- F8 Ask once, by SMS (Twilio webhook, offline)
 
-OWNER_PHONE, CONTROLLER_PHONE = "+15550100001", "+15550100002"  # fake numbers; nothing is sent
+OWNER_PHONE = "+15550100001"  # a fake number; nothing is sent
 
 
 def _sms(client, sender: str, body: str, **headers) -> str:
@@ -207,7 +207,6 @@ def _sms(client, sender: str, body: str, **headers) -> str:
 @pytest.fixture
 def phones(monkeypatch):
     monkeypatch.setenv("OWNER_PHONE", OWNER_PHONE)
-    monkeypatch.setenv("CONTROLLER_PHONE", CONTROLLER_PHONE)
     monkeypatch.delenv("TWILIO_AUTH_TOKEN", raising=False)
 
 
@@ -255,7 +254,7 @@ def test_f8_twilio_signature_is_checked_when_the_token_is_set(client, phones, mo
     assert "Saved:" in _sms(client, OWNER_PHONE, form["Body"], **{"X-Twilio-Signature": sig})
 
 
-# ---------------------------------------------------------------- F10 controller approval on a live run
+# ---------------------------------------------------------------- F10 the admin's approval on a live run
 
 def _finished_march(client) -> tuple[pipeline.Run, str]:
     march = _march(client)
@@ -265,7 +264,7 @@ def _finished_march(client) -> tuple[pipeline.Run, str]:
     return march, approval.id
 
 
-def test_f10_controller_yes_in_app_posts_the_memo(client):
+def test_f10_admin_yes_in_app_posts_the_memo(client):
     march, ap = _finished_march(client)
     r = client.post(f"/approvals/{ap}", json={"approve": True})
     assert r.status_code == 200, r.text
@@ -281,7 +280,7 @@ def test_f10_controller_yes_in_app_posts_the_memo(client):
     assert client.post(f"/approvals/{ap}", json={"approve": False}).status_code == 409
 
 
-def test_f10_controller_no_posts_nothing_and_keeps_the_note(client):
+def test_f10_admin_no_posts_nothing_and_keeps_the_note(client):
     march, ap = _finished_march(client)
     body = client.post(f"/approvals/{ap}", json={"approve": False, "note": "Wait for Northmart's reply."}).json()
     assert body["ledger_post"] is None
@@ -290,18 +289,18 @@ def test_f10_controller_no_posts_nothing_and_keeps_the_note(client):
     assert client.post("/approvals/AP-nope", json={"approve": True}).status_code == 404
 
 
-def test_f10_controller_sms_yes_and_no(client, phones):
+def test_f10_admin_sms_yes_and_no(client, phones):
     march, ap = _finished_march(client)
-    assert "Reply YES to approve" in _sms(client, CONTROLLER_PHONE, "yes but only two lines")
-    assert "Held: the $2,730 credit memo won't post." in _sms(client, CONTROLLER_PHONE, "No, wait for D-0417")
+    assert "Reply YES to approve" in _sms(client, OWNER_PHONE, "yes but only two lines")
+    assert "Held: the $2,730 credit memo won't post." in _sms(client, OWNER_PHONE, "No, wait for D-0417")
     refused = [e.data for e in march.events if e.type == "approval"][-1]
     assert (refused.id, refused.status, refused.note) == (ap, "refused", "wait for D-0417")
     assert not any(e.type == "ledger_post" for e in march.events)
-    assert "nothing waiting" in _sms(client, CONTROLLER_PHONE, "yes")
+    assert "nothing waiting" in _sms(client, OWNER_PHONE, "yes")
 
     pipeline.reset()
     march, ap = _finished_march(client)
-    assert "Approved: $2,730 credit memo (3 lines)." in _sms(client, CONTROLLER_PHONE, "YES")
+    assert "Approved: $2,730 credit memo (3 lines)." in _sms(client, OWNER_PHONE, "YES")
     assert [e.data.status for e in march.events if e.type == "approval"] == ["pending", "approved"]
     assert next(e.data for e in march.events if e.type == "ledger_post").amount == D(2730)
 

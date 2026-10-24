@@ -12,7 +12,7 @@ import { askAdminToken, LIMIT_ADMIN_REASON, useSession, type Role } from '@/lib/
 import type { Account, Lookback, Overview, RunValue } from '@/lib/types'
 import { useFetched } from '@/lib/useFetched'
 import { useRunEvents } from '@/lib/useRunEvents'
-import { postingSentence, selectWorkspace, type ChargeView, type WorkspaceView } from '@/lib/workspace'
+import { approvedBy, postingSentence, selectWorkspace, type ChargeView, type WorkspaceView } from '@/lib/workspace'
 import { ChargeList, EvidencePanel, Status, type ChargeFilter } from './charge-workspace'
 import { MonthlyChart, TypeBars } from './charts'
 import { LookbackCard, PacketLink, ValueStrip } from './impact'
@@ -40,7 +40,7 @@ export default function ClawbackApp() {
 
 function Workspace({ account, accounts, view }: { account: Account; accounts: Account[] | null; view: View }) {
   const run = useRunEvents(account.id)
-  const { state, runId, answerQuestion, controllerDecides, startPayment, starting, limited, awaitingPayment, refresh, error } = run
+  const { state, runId, answerQuestion, decideApproval, startPayment, starting, limited, awaitingPayment, refresh, error } = run
   const ws = useMemo(() => selectWorkspace(state, account), [state, account])
   const { role } = useSession()
   const router = useRouter()
@@ -82,14 +82,14 @@ function Workspace({ account, accounts, view }: { account: Account; accounts: Ac
     : view === 'payments'
       ? { title: `${monthLabel(account.invoice.month)} payment`, line: `${distributor} · Invoice ${ws.remittance?.invoice_id ?? account.invoice.id}` }
       : view === 'approvals'
-        ? { title: 'Approvals', line: `Accounting entries wait for ${account.brand.controller.name}. Policy answers don’t post anything.` }
+        ? { title: 'Approvals', line: `Accounting entries wait for ${account.brand.owner.name}’s yes. Policy answers don’t post anything.` }
         : { title: 'Rules', line: `Answers ${account.brand.owner.name} gave once, applied every time after.` }
 
   const payButton = <button className="primary" disabled={starting} onClick={() => void startPayment()}>{starting ? 'Waiting for the deposit…' : payLabel} <ArrowRight /></button>
   const reviewHref = withAccount('/workspace', account.id, { view: 'payments' })
 
   return (
-    <AppShell account={account} accounts={accounts} active={view} crumb={CRUMB[view]} approvalsWaiting={ws.stage === 'controller' && ws.approval?.status === 'pending'} onReset={onReset}>
+    <AppShell account={account} accounts={accounts} active={view} crumb={CRUMB[view]} approvalsWaiting={ws.stage === 'approval' && ws.approval?.status === 'pending'} onReset={onReset}>
       <main className={`main-content ${selected ? 'with-panel' : ''}`}>
         <div className="page-heading">
           <div><div className="eyebrow">{account.brand.name}</div><h1>{heading.title}</h1><p>{heading.line}</p></div>
@@ -118,7 +118,7 @@ function Workspace({ account, accounts, view }: { account: Account; accounts: Ac
         )}
 
         {view === 'rules' && <RulesView account={account} ws={ws} askedCharge={askedCharge} reviewHref={reviewHref} />}
-        {view === 'approvals' && <ApprovalsView account={account} ws={ws} role={role} note={note} setNote={setNote} reviewHref={reviewHref} onDecide={controllerDecides} />}
+        {view === 'approvals' && <ApprovalsView account={account} ws={ws} role={role} note={note} setNote={setNote} reviewHref={reviewHref} onDecide={decideApproval} />}
       </main>
     </AppShell>
   )
@@ -126,10 +126,10 @@ function Workspace({ account, accounts, view }: { account: Account; accounts: Ac
 
 /** What the stream says just happened. Never worded as done until the matching event has arrived. */
 function stageFeedback(ws: WorkspaceView, account: Account) {
-  const controller = account.brand.controller.name
-  if (ws.stage === 'controller' && ws.rule) return `Rule saved by ${account.brand.owner.name}. The accounting entry is ready for ${controller}.`
-  if (ws.stage === 'refused') return `${controller} refused the entry. Nothing was posted.`
-  if (ws.stage === 'posted') return `${controller} approved. ${postingSentence(ws)}`
+  const owner = account.brand.owner.name
+  if (ws.stage === 'approval' && ws.rule) return `Rule saved by ${owner}. The accounting entry is ready for your approval.`
+  if (ws.stage === 'refused') return `${owner} held the entry. Nothing was posted.`
+  if (ws.stage === 'posted') return `${approvedBy(ws, owner)}. ${postingSentence(ws)}`
   return ''
 }
 
@@ -137,8 +137,8 @@ function statusWord(ws: WorkspaceView, awaitingPayment: boolean, overview: Overv
   if (awaitingPayment) return 'Waiting for payment'
   if (!ws.remittance) return overview ? overview.current.status.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Loading'
   if (!ws.reviewed) return 'Analyzing'
-  if (ws.stage === 'owner') return 'Needs the owner'
-  if (ws.stage === 'controller') return 'Needs the controller'
+  if (ws.stage === 'owner') return 'Needs your answer'
+  if (ws.stage === 'approval') return 'Needs your approval'
   if (ws.stage === 'refused') return 'Entry refused'
   if (ws.stage === 'posted') return 'Complete'
   return 'Reviewed'
@@ -228,30 +228,30 @@ function CurrentPayment({ account, overview, ws, awaitingPayment, reviewHref }: 
 
 function AttentionCard({ account, ws, awaitingPayment, reviewHref }: { account: Account; ws: WorkspaceView; awaitingPayment: boolean; reviewHref: string }) {
   const { stage, approval, question } = ws
-  const controllerName = account.brand.controller.name
-  const open = (stage === 'owner' && !!question && !question.answer) || (stage === 'controller' && approval?.status === 'pending')
-  const controller = stage !== 'checking' && stage !== 'owner'
-  const heading = awaitingPayment ? 'Nothing yet' : stage === 'checking' ? 'Checking your charges' : stage === 'owner' ? 'One question for you' : stage === 'controller' ? 'Ready for accounting' : stage === 'posted' ? 'All done' : 'Entry refused'
+  const owner = account.brand.owner.name
+  const open = (stage === 'owner' && !!question && !question.answer) || (stage === 'approval' && approval?.status === 'pending')
+  const accounting = stage !== 'checking' && stage !== 'owner'
+  const heading = awaitingPayment ? 'Nothing yet' : stage === 'checking' ? 'Checking your charges' : stage === 'owner' ? 'One question for you' : stage === 'approval' ? 'Ready for accounting' : stage === 'posted' ? 'All done' : 'Entry refused'
   const body = awaitingPayment
     ? `When ${account.distributor.name} pays, Clawback checks every deduction against the deal.`
     : stage === 'checking'
       ? 'Reading the deal, the emails and the records for each charge.'
       : stage === 'owner'
         ? question?.text ?? ''
-        : stage === 'controller'
-          ? approval ? `${dollars(approval.amount)} in accepted charges waits for ${controllerName}’s approval.` : 'The accounting entry is being prepared.'
+        : stage === 'approval'
+          ? approval ? `${dollars(approval.amount)} in accepted charges waits for your approval.` : 'The accounting entry is being prepared.'
           : stage === 'posted'
-            ? `${controllerName} approved. ${postingSentence(ws)}`
-            : `${controllerName} refused. Nothing was posted.${approval?.note ? ` “${approval.note}”` : ''}`
-  const href = stage === 'owner' ? withAccount('/workspace', account.id, { view: 'payments' }) : controller ? withAccount('/workspace', account.id, { view: 'approvals' }) : reviewHref
+            ? `${approvedBy(ws, owner)}. ${postingSentence(ws)}`
+            : `${owner} held it. Nothing was posted.${approval?.note ? ` “${approval.note}”` : ''}`
+  const href = stage === 'owner' ? withAccount('/workspace', account.id, { view: 'payments' }) : accounting ? withAccount('/workspace', account.id, { view: 'approvals' }) : reviewHref
   return (
     <section className="attention-card surface">
       <div className="attention-heading"><h2>Needs your attention</h2><span className="count-badge">{open ? '1' : '0'}</span></div>
-      <div className="attention-icon">{controller ? <ClipboardCheck /> : <CircleHelp />}</div>
-      <div className="eyebrow">{controller ? `For ${firstName(controllerName)} · Controller` : stage === 'owner' ? `For ${firstName(account.brand.owner.name)} · Owner` : 'Status'}</div>
+      <div className="attention-icon">{accounting ? <ClipboardCheck /> : <CircleHelp />}</div>
+      <div className="eyebrow">{stage === 'checking' ? 'Status' : `For ${firstName(owner)} · Admin`}</div>
       <h3>{heading}</h3>
       <p>{body}</p>
-      {!awaitingPayment && <Link className="secondary full" href={href}>{stage === 'owner' ? 'Answer the question' : controller ? 'Review the entry' : 'Open analysis'} <ArrowRight /></Link>}
+      {!awaitingPayment && <Link className="secondary full" href={href}>{stage === 'owner' ? 'Answer the question' : accounting ? 'Review the entry' : 'Open analysis'} <ArrowRight /></Link>}
     </section>
   )
 }
@@ -264,23 +264,23 @@ function PaymentStrip({ account, ws, awaitingPayment }: { account: Account; ws: 
 function Summary({ ws, compact = false }: { ws: WorkspaceView; compact?: boolean }) {
   const waiting = ws.totals?.waiting ?? 0
   const undecided = ws.totals?.undecided ?? 0
-  return <section className={`summary-grid ${compact ? 'compact' : ''}`} aria-label="Deduction decisions"><div><span>Disputing</span><strong>{dollars(ws.totals?.disputed ?? 0)}</strong><small>Being challenged · not recovered yet</small></div><div><span>Accepted</span><strong>{dollars(ws.totals?.accepted ?? 0)}</strong><small>Backed by the deal or your rule</small></div><div><span>{waiting > 0 ? 'Waiting on you' : 'Pending'}</span><strong>{dollars(waiting)}</strong><small>{waiting > 0 ? 'One answer from the owner' : undecided > 0 ? 'Still checking charges' : 'Every charge decided'}</small></div></section>
+  return <section className={`summary-grid ${compact ? 'compact' : ''}`} aria-label="Deduction decisions"><div><span>Disputing</span><strong>{dollars(ws.totals?.disputed ?? 0)}</strong><small>Being challenged · not recovered yet</small></div><div><span>Accepted</span><strong>{dollars(ws.totals?.accepted ?? 0)}</strong><small>Backed by the deal or your rule</small></div><div><span>{waiting > 0 ? 'Waiting on you' : 'Pending'}</span><strong>{dollars(waiting)}</strong><small>{waiting > 0 ? 'One answer from you' : undecided > 0 ? 'Still checking charges' : 'Every charge decided'}</small></div></section>
 }
 
 function RulesView({ account, ws, askedCharge, reviewHref }: { account: Account; ws: WorkspaceView; askedCharge?: ChargeView; reviewHref: string }) {
   const { rule, ruleCharges } = ws
   const owner = account.brand.owner.name
   if (!rule) return <section className="surface simple-view"><div className="list-heading"><div><h2>Saved rules</h2><p>A rule decides; it never posts an accounting entry.</p></div></div><div className="empty-state"><Layers3 /><h2>No rules yet</h2><p>{ws.stage === 'owner' ? `${owner} has one question to answer. The answer is saved as a rule.` : `When the deal leaves a charge to judgment, ${owner} answers once and it becomes a rule.`}</p>{askedCharge && <Link className="primary" href={reviewHref}>Answer the question <ArrowRight /></Link>}</div></section>
-  return <section className="surface simple-view"><div className="list-heading"><div><h2>Saved rules</h2><p>A rule decides; it never posts an accounting entry.</p></div></div><div className="rule-content"><Status value="Accepted" /><h2>{rule.label}</h2><p>{rule.summary}</p><div className="rule-meta"><span>Distributor<strong>{rule.counterparty}</strong></span><span>Set by<strong>{rule.approver_role === 'owner' ? `${owner} · Owner` : rule.approver}</strong></span><span>Applied to<strong>{ruleCharges.length ? ruleCharges.map((c) => `${c.ref} · ${c.accepted !== null ? dollars(c.accepted) : ''} accepted`).join(', ') : 'No charge yet'}</strong></span></div>{ruleCharges[0] && <Link className="secondary" href={reviewHref}>See the evidence</Link>}</div></section>
+  return <section className="surface simple-view"><div className="list-heading"><div><h2>Saved rules</h2><p>A rule decides; it never posts an accounting entry.</p></div></div><div className="rule-content"><Status value="Accepted" /><h2>{rule.label}</h2><p>{rule.summary}</p><div className="rule-meta"><span>Distributor<strong>{rule.counterparty}</strong></span><span>Set by<strong>{`${rule.approver} · Admin`}</strong></span><span>Applied to<strong>{ruleCharges.length ? ruleCharges.map((c) => `${c.ref} · ${c.accepted !== null ? dollars(c.accepted) : ''} accepted`).join(', ') : 'No charge yet'}</strong></span></div>{ruleCharges[0] && <Link className="secondary" href={reviewHref}>See the evidence</Link>}</div></section>
 }
 
-function ApprovalsView({ account, ws, role, note, setNote, reviewHref, onDecide }: { account: Account; ws: WorkspaceView; role: Role | null; note: string; setNote: (value: string) => void; reviewHref: string; onDecide: (approve: boolean, note: string | null) => void }) {
+function ApprovalsView({ account, ws, role, note, setNote, reviewHref, onDecide }: { account: Account; ws: WorkspaceView; role: Role | null; note: string; setNote: (value: string) => void; reviewHref: string; onDecide: (approve: boolean, note: string | null, autoPost: boolean) => void }) {
   const { approval, stage } = ws
   const owner = account.brand.owner.name
-  const controller = account.brand.controller.name
-  if (stage === 'checking' || stage === 'owner') return <section className="surface simple-view"><div className="empty-state"><ClipboardCheck /><h2>{stage === 'owner' ? 'The owner’s answer comes first' : 'Nothing to approve yet'}</h2><p>{stage === 'owner' ? `${owner} answers the open question, then ${controller} reviews the accounting entry.` : `When every charge is decided, the accepted ones go to ${controller} as one credit memo.`}</p>{stage === 'owner' && <Link className="primary" href={reviewHref}>Go to the question <ArrowRight /></Link>}</div></section>
-  if (!approval) return <section className="surface simple-view"><div className="empty-state"><ClipboardCheck /><h2>Preparing the entry</h2><p>The accepted charges are being gathered for {controller}.</p></div></section>
+  const [autoPost, setAutoPost] = useState(false)
+  if (stage === 'checking' || stage === 'owner') return <section className="surface simple-view"><div className="empty-state"><ClipboardCheck /><h2>{stage === 'owner' ? 'Your answer comes first' : 'Nothing to approve yet'}</h2><p>{stage === 'owner' ? `${owner} answers the open question, then reviews the accounting entry.` : `When every charge is decided, the accepted ones come to ${owner} as one credit memo.`}</p>{stage === 'owner' && <Link className="primary" href={reviewHref}>Go to the question <ArrowRight /></Link>}</div></section>
+  if (!approval) return <section className="surface simple-view"><div className="empty-state"><ClipboardCheck /><h2>Preparing the entry</h2><p>The accepted charges are being gathered for {owner}.</p></div></section>
   // What the API recorded wins once the approval event has arrived; the textarea is only a fallback.
   const shownNote = approval.note || note.trim()
-  return <section className="surface simple-view"><div className="list-heading"><div><h2>Credit memo</h2><p>{account.distributor.name} · {monthLabel(account.invoice.month)} · {ws.remittance?.invoice_id ?? account.invoice.id}</p></div></div><div className="rule-content"><Status value={ws.postingLabel} /><div className="proposal-amount">{dollars(approval.amount)}</div><h2>Book the accepted deductions</h2><p>Only charges the deal or {firstName(owner)}’s rule supports. The disputed {dollars(ws.totals?.disputed ?? 0)} stays open on the invoice.</p><div className="proposal-lines">{ws.proposalLines.map((line) => <span key={line.chargeId}>{line.label}<strong>{dollars(line.amount)}</strong></span>)}</div>{approval.status === 'pending' ? <><div className="approval-notice"><ShieldCheck /><span><strong>Needs {controller}’s approval</strong><small>{owner} set the policy, not this entry. Nothing posts until the controller says yes.</small></span></div><label className="note-label" htmlFor="controller-note">Note <span>(required to refuse)</span></label><textarea id="controller-note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Why you’re approving or refusing" /><div className="approval-actions"><button className="primary" onClick={() => onDecide(true, note.trim() || null)}>Approve credit memo</button><button className="secondary" disabled={!note.trim()} onClick={() => onDecide(false, note.trim())}>Refuse · don’t post</button></div>{role !== 'controller' && <p className="role-hint">Only {firstName(controller)} can approve. You’ll be asked to sign in as the controller.</p>}</> : <div className="feedback inline" role="status"><Check />{approval.status === 'approved' ? `Approved by ${controller}. ${postingSentence(ws)}` : `Refused by ${controller}. Nothing was posted.${shownNote ? ` Note: “${shownNote}”` : ''}`}</div>}</div></section>
+  return <section className="surface simple-view"><div className="list-heading"><div><h2>Credit memo</h2><p>{account.distributor.name} · {monthLabel(account.invoice.month)} · {ws.remittance?.invoice_id ?? account.invoice.id}</p></div></div><div className="rule-content"><Status value={ws.postingLabel} /><div className="proposal-amount">{dollars(approval.amount)}</div><h2>Book the accepted deductions</h2><p>Only charges the deal or {firstName(owner)}’s rule supports. The disputed {dollars(ws.totals?.disputed ?? 0)} stays open on the invoice.</p><div className="proposal-lines">{ws.proposalLines.map((line) => <span key={line.chargeId}>{line.label}<strong>{dollars(line.amount)}</strong></span>)}</div>{approval.status === 'pending' ? <><div className="approval-notice"><ShieldCheck /><span><strong>Needs {firstName(owner)}’s approval</strong><small>Nothing posts until you say yes.</small></span></div><label className="note-label" htmlFor="approval-note">Note <span>(required to refuse)</span></label><textarea id="approval-note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Why you’re approving or refusing" /><label className="cx-check"><input type="checkbox" checked={autoPost} onChange={(event) => setAutoPost(event.target.checked)} /><span>Post fair charges like these automatically from now on <small className="muted">(memos up to {dollars(approval.amount)} post without asking)</small></span></label><div className="approval-actions"><button className="primary" onClick={() => onDecide(true, note.trim() || null, autoPost)}>Approve credit memo</button><button className="secondary" disabled={!note.trim()} onClick={() => onDecide(false, note.trim(), false)}>Refuse · don’t post</button></div>{role !== 'owner' && <p className="role-hint">Only {firstName(owner)} can approve. You’ll be asked to sign in as the admin.</p>}</> : <div className="feedback inline" role="status"><Check />{approval.status === 'approved' ? `${approvedBy(ws, owner)}. ${postingSentence(ws)}${approval.sets_auto_post ? ` From now on, fair-charge memos up to ${dollars(approval.sets_auto_post.limit)} post without asking.` : ''}` : `Refused by ${owner}. Nothing was posted.${shownNote ? ` Note: “${shownNote}”` : ''}`}</div>}</div></section>
 }

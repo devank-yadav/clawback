@@ -7,14 +7,14 @@ import { money } from "@/lib/format";
 import type { FeedLine, RunState } from "@/lib/useRunEvents";
 import type { WorkspaceView } from "@/lib/workspace";
 
-export type StageKey = "payment" | "read" | "check" | "file" | "owner" | "controller" | "books";
+export type StageKey = "payment" | "read" | "check" | "file" | "owner" | "approval" | "books";
 export type StageState = "todo" | "active" | "waiting" | "done" | "skipped" | "failed";
 export type Who = "AI" | "CODE" | "PERSON";
 
 export type Stage = {
   key: StageKey;
   name: string;
-  /** Who does the work: "Claude + Gemini", "Negotiator", "Dana (owner)". */
+  /** Who does the work: "Claude + Gemini", "Negotiator", "Dana (admin)". */
   agent: string;
   who: Who;
   state: StageState;
@@ -24,7 +24,8 @@ export type Stage = {
   total: number | null;
 };
 
-export type Cast = { distributor: string; owner: string; controller: string };
+/** owner: the admin, the brand's owner: the one person who answers the question and approves the memo. */
+export type Cast = { distributor: string; owner: string };
 
 const last = (feed: FeedLine[], actors: string[]) => {
   for (let i = feed.length - 1; i >= 0; i--) if (actors.includes(feed[i].actor)) return feed[i];
@@ -92,7 +93,7 @@ export function buildStages(state: RunState, view: WorkspaceView, cast: Cast, ar
   const q = view.question;
   const asked = Object.values(state.questions).filter((x) => !x.closed_at);
   const owner: Stage = {
-    key: "owner", name: cast.owner, agent: `${cast.owner} (owner)`, who: "PERSON",
+    key: "owner", name: "Your answer", agent: `${cast.owner} (admin)`, who: "PERSON",
     state: view.stage === "owner" ? "waiting" : view.rule || asked.some((x) => x.answer) ? "done" : checked && valued && asked.length === 0 ? "skipped" : "todo",
     line: view.stage === "owner" && q
       ? `One question about ${q.charge_id}: the deal leaves it to judgment`
@@ -106,8 +107,8 @@ export function buildStages(state: RunState, view: WorkspaceView, cast: Cast, ar
 
   const a = view.approval;
   const finished = run?.status === "finished";
-  const controller: Stage = {
-    key: "controller", name: cast.controller, agent: `${cast.controller} (controller)`, who: "PERSON",
+  const approval: Stage = {
+    key: "approval", name: "Your approval", agent: `${cast.owner} (admin)`, who: "PERSON",
     state: !a
       ? finished && (view.totals?.accepted ?? 0) === 0 ? "skipped" : "todo"
       : a.status === "pending" ? "waiting" : a.status === "refused" ? "failed" : "done",
@@ -116,19 +117,21 @@ export function buildStages(state: RunState, view: WorkspaceView, cast: Cast, ar
       : a.status === "pending"
         ? `Approve credit memo of ${money(a.amount)} (${a.lines.length} line${a.lines.length === 1 ? "" : "s"})?`
         : a.status === "refused"
-          ? `Held by ${cast.controller}${a.note ? `: “${a.note}”` : ""}`
-          : a.note?.startsWith("Within policy") ? "Within policy: no approval needed" : `${cast.controller} approved ${money(a.amount)}`,
+          ? `Held by ${cast.owner}${a.note ? `: “${a.note}”` : ""}`
+          : a.posted_by_auto_post
+            ? `Posted by ${cast.owner}’s auto-post rule (up to ${money(a.posted_by_auto_post.limit)})`
+            : a.note?.startsWith("Within policy") ? "Within policy: no approval needed" : `${cast.owner} approved ${money(a.amount)}`,
     done: null, total: null,
   };
 
   const books: Stage = {
     key: "books", name: "QuickBooks", agent: "Bookkeeper", who: "CODE",
-    state: view.stage === "posted" ? "done" : view.postingProblem ? "failed" : view.stage === "refused" || controller.state === "skipped" ? "skipped" : a?.status === "approved" ? "active" : "todo",
-    line: view.stage === "refused" ? "Nothing posted" : controller.state === "skipped" ? "Nothing to post" : view.postingProblem ?? view.postingLabel,
+    state: view.stage === "posted" ? "done" : view.postingProblem ? "failed" : view.stage === "refused" || approval.state === "skipped" ? "skipped" : a?.status === "approved" ? "active" : "todo",
+    line: view.stage === "refused" ? "Nothing posted" : approval.state === "skipped" ? "Nothing to post" : view.postingProblem ?? view.postingLabel,
     done: null, total: null,
   };
 
-  return [payment, readStage, checkStage, file, owner, controller, books];
+  return [payment, readStage, checkStage, file, owner, approval, books];
 }
 
 /** The stage the eye should go to: the first one waiting on a person, else the one working, else the last done. */

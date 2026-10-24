@@ -1,8 +1,8 @@
-"""Owner and controller SMS replies, parsed without AI.
+"""The admin's SMS replies, parsed without AI. One person, the admin (the brand's owner), gets every text.
 
 The owner answers a discretion question (C6: "accept if notice is at least 14 days") and the answer becomes a
-saved rule; UNDO cancels it; "accept" or "dispute" alone settles only this charge. The controller answers an
-approval ("yes", or "no" plus a note). Anything else is unclear and gets the question again, never a guess.
+saved rule; UNDO cancels it; "accept" or "dispute" alone settles only this charge. The same person answers a
+credit memo approval ("yes", or "no" plus a note). Anything else is unclear and gets the question again, never a guess.
 
 The design has Claude word the rule. This parser runs first (api/pipeline.answer); Claude's rule writer
 (api/agents/rule_writer.py) only sees replies it calls unclear, and its condition is still checked by code.
@@ -28,7 +28,7 @@ REASK_TEXT = (
     "Sorry, I couldn't turn that into a rule. Reply like \"accept if notice is at least 14 days\", "
     "or ACCEPT or DISPUTE for this charge only."
 )
-CONTROLLER_REASK_TEXT = "Sorry, I didn't get that. Reply YES to approve, or NO with a note to hold it."
+APPROVAL_REASK_TEXT = "Sorry, I didn't get that. Reply YES to approve, or NO with a note to hold it."
 
 
 class _Parsed(BaseModel):
@@ -56,7 +56,7 @@ class OwnerReply(_Parsed):
         return f"{self.fact} {self.op} {self.value}"
 
 
-class ControllerReply(_Parsed):
+class ApprovalReply(_Parsed):
     kind: Literal["approve", "refuse", "unclear"]
     note: str = ""
 
@@ -285,23 +285,23 @@ def once_text(reply: OwnerReply, charge_id: str | None) -> str:
     return f"OK, I'll {verb}{what}. I didn't save a rule, so I'll ask again next time."
 
 
-# ---------------------------------------------------------------- controller
+# ---------------------------------------------------------------- approvals
 
 _APPROVE = {"yes", "y", "yep", "yeah", "approve", "approved", "ok", "okay", "go", "confirm", "confirmed", "sure", "post"}
 _REFUSE = {"no", "n", "nope", "refuse", "refused", "reject", "rejected", "deny", "denied", "hold", "wait", "stop"}
 
 
-def parse_controller_reply(text: str) -> ControllerReply:
+def parse_approval_reply(text: str) -> ApprovalReply:
     """YES approves with no conditions; NO (or HOLD, REFUSE) refuses and keeps the rest as the note shown on the
     card. A yes with extra words could be a condition ("yes but only 2 lines"), so it counts as unclear."""
     t = _norm(text)
     words = _words(t)
     if not words:
-        return ControllerReply(kind="unclear")
+        return ApprovalReply(kind="unclear")
     first = words[0]
     if first in _REFUSE:
         note = re.sub(rf"^\W*{re.escape(first)}\b[\s,.:;!-]*", "", text.strip(), flags=re.IGNORECASE).strip()
-        return ControllerReply(kind="refuse", note=note)
+        return ApprovalReply(kind="refuse", note=note)
     if first in _APPROVE and all(w in _APPROVE or w in _FILLER for w in words):
-        return ControllerReply(kind="approve")
-    return ControllerReply(kind="unclear")
+        return ApprovalReply(kind="approve")
+    return ApprovalReply(kind="unclear")

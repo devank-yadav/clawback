@@ -25,7 +25,7 @@ and every decision and cut. Log decisions in DECISIONS.md as you make them.
 | 6 | F4 Investigator, F5 gate, runs + SSE | Board fills live with the right piles | Sat 11 AM |
 | 7 | F8 owner question → rule (SMS via Manasv's script) | Rule #1 saved; April decided with 0 questions | Sat noon |
 | 8 | F9 Negotiator: rehearse, file D-0417, answer replies, concede on amendment-1 | 4 presets answered; $1,000 conceded | Sat 3 PM |
-| 9 | F10 controller approval + QuickBooks credit memo + open balance | "yes" posts, "no" posts nothing | Sat 4 PM |
+| 9 | F10 the admin's approval + QuickBooks credit memo + open balance | "yes" posts, "no" posts nothing | Sat 4 PM |
 | 10 | F16 Moss, F13 Deal Coach, F17 untrusted emails, F14 scenario endpoint | Each acceptance test passes | Sat 8 PM |
 | 11 | F11 DEMO_MODE record/replay, outbound filter, eval fixes | Full demo runs with Wi-Fi off | Sat 9 PM |
 

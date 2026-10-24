@@ -1,5 +1,5 @@
-"""C1 (judge-risk map): on the deployed site only the controller approves a memo and only the owner answers the owner's
-question, and nobody can burn AI credits by hammering the public routes."""
+"""C1 (judge-risk map): on the deployed site only the admin (the owner) answers the questions and approves the memos,
+and nobody can burn AI credits by hammering the public routes."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -22,7 +22,6 @@ def api(monkeypatch):
 
 def roles(monkeypatch):
     monkeypatch.setenv("OWNER_TOKEN", "owner-test-token")
-    monkeypatch.setenv("CONTROLLER_TOKEN", "controller-test-token")
 
 
 def as_(role):
@@ -36,13 +35,13 @@ def test_only_the_owner_answers_the_owners_question(api, monkeypatch):
     (qid,) = run.questions
     body = {"text": "accept if notice is at least 14 days"}
     assert client.post(f"/questions/{qid}/answer", json=body).status_code == 401
-    assert client.post(f"/questions/{qid}/answer", json=body, headers=as_("controller")).status_code == 401
+    assert client.post(f"/questions/{qid}/answer", json=body, headers=as_("visitor")).status_code == 401
     assert run.questions[qid].answer is None  # nothing happened
     r = client.post(f"/questions/{qid}/answer", json=body, headers=as_("owner"))
     assert r.status_code == 200 and r.json()["rule"]["label"] == "Rule #1"
 
 
-def test_only_the_controller_approves_the_memo(api, monkeypatch):
+def test_only_the_admin_approves_the_memo(api, monkeypatch):
     client, fake = api
     roles(monkeypatch)
     run = pipeline.start("march", fake, background=False)
@@ -50,9 +49,9 @@ def test_only_the_controller_approves_the_memo(api, monkeypatch):
                 headers=as_("owner"))
     (ap,) = [e.data.id for e in run.events if e.type == "approval" and e.data.status == "pending"]
     assert client.post(f"/approvals/{ap}", json={"approve": True}).status_code == 401
-    assert client.post(f"/approvals/{ap}", json={"approve": True}, headers=as_("owner")).status_code == 401
-    assert not [e for e in run.events if e.type == "ledger_post"]  # the owner can't move money either
-    r = client.post(f"/approvals/{ap}", json={"approve": True}, headers=as_("controller"))
+    assert client.post(f"/approvals/{ap}", json={"approve": True}, headers=as_("visitor")).status_code == 401
+    assert not [e for e in run.events if e.type == "ledger_post"]  # a visitor can't move money
+    r = client.post(f"/approvals/{ap}", json={"approve": True}, headers=as_("owner"))
     assert r.status_code == 200 and r.json()["approval"]["status"] == "approved"
 
 

@@ -254,7 +254,7 @@ def test_every_fee_charge_cites_its_backup(run, kehe):
     assert run.run.evidence[f"ev-{fake.KEHE_ACCOUNTS[kehe.id]['policy']}-6.4"].kind == "clause"
 
 
-def test_the_run_files_the_disputes_and_asks_the_controller(run):
+def test_the_run_files_the_disputes_and_asks_the_admin(run):
     events = [e.type for e in run.run.events]
     assert "dispute" in events and "approval" in events
 

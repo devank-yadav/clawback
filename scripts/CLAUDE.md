@@ -5,7 +5,7 @@ and exits with a clear message naming any missing key. Devank wires them into th
 
 - check_data.py: asserts every number in data/CLAUDE.md (sums, per-charge decisions, totals 4,120 / 2,730 / 6,850).
 - check_eval.py: asserts data/eval/ has 30 cases with the 12 / 12 / 6 mix and expected amounts on every row.
-- send_sms.py: sends one SMS through Twilio to OWNER_PHONE or CONTROLLER_PHONE (arg: owner|controller, text).
+- send_sms.py: sends one SMS through Twilio to OWNER_PHONE, the admin (arg: owner, text).
 - nessie_deposit.py: creates (once) customer "Peak Bar Co." + a checking account, posts a $41,350 deposit
   described "Northmart remittance INV-3102", prints the account ID (goes in `NESSIE_ACCOUNT_ID`) and the deposit ID. Endpoints per Nessie's docs (verify).
 - seed_quickbooks.py: in the QBO sandbox, creates customer Northmart, items Peak Bar Original / Chocolate / Mint,

@@ -86,10 +86,10 @@ def test_dispute_and_books(march):
     assert sum(ln.amount for ln in dispute.lines) == dispute.total
     approvals = [e.data for e in march.events if e.type == "approval"]
     assert [a.status for a in approvals] == ["pending", "approved"]
-    assert approvals[-1].approver_role == "controller" and approvals[-1].amount == Decimal(2730)
+    assert approvals[-1].approver_role == "owner" and approvals[-1].amount == Decimal(2730)
     memo = next(e.data for e in march.events if e.type == "ledger_post" and e.data.qbo_entity == "credit_memo")
     assert memo.amount == Decimal(2730) and len(memo.lines) == 3 and memo.approval_id == approvals[-1].id
-    # the memo posts only after the controller says yes
+    # the memo posts only after the admin says yes
     ids = {e.data.id if e.type == "ledger_post" else e.data.status: e.id
            for e in march.events if e.type in ("approval", "ledger_post")}
     assert ids["approved"] < ids[memo.id]
@@ -185,7 +185,7 @@ def test_refusal_posts_nothing_and_keeps_totals(march):
     refused = _load("refusal-events.json")
     approvals = [e.data for e in refused.events if e.type == "approval"]
     assert [a.status for a in approvals] == ["pending", "refused"]
-    assert approvals[-1].note and approvals[-1].approver_role == "controller" and approvals[-1].decided_at
+    assert approvals[-1].note and approvals[-1].approver_role == "owner" and approvals[-1].decided_at
     assert not [e for e in refused.events if e.type == "ledger_post"]
     totals = [e.data for e in refused.events if e.type == "totals"]
     assert totals[-1] == [e.data for e in march.events if e.type == "totals"][-1]

@@ -27,7 +27,7 @@ Evidence for the Figma track ("Idea to Demo"). Figma file: **Clawback — Produc
 | Clawback · Payment review | `/review` | `components/console/Review.tsx` |
 | Clawback · Owner policy decision | `/review` (the charge waiting on the owner) | `Review.tsx` → `OwnerDecision` |
 | Clawback · Agent activity | `/activity?charge=C1` | `components/console/Activity.tsx` |
-| Clawback · Controller approval | `/approval` | `components/console/Approval.tsx` |
+| Clawback · Controller approval (now the admin's approval) | `/approval` | `components/console/Approval.tsx` |
 
 Colors come straight from the Figma frames (`app/(console)/console.css`); type is Inter, as in the frames.
 

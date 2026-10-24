@@ -53,7 +53,7 @@ export default function Home() {
   const asking = view.question && !view.question.answer ? 1 : 0;
   const approving = view.approval?.status === "pending" ? 1 : 0;
   const disputes = view.charges.filter((c) => (c.disputed ?? 0) > 0).length;
-  const status = asking ? "Needs your decision" : approving ? "Controller review" : view.reviewed ? "Review ready" : r ? "Agents checking" : "Waiting for payment";
+  const status = asking ? "Needs your decision" : approving ? "Needs your approval" : view.reviewed ? "Review ready" : r ? "Agents checking" : "Waiting for payment";
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const range = o?.months.length ? `${monthName(o.months[0].month)}–${monthName(o.months[o.months.length - 1].month)}` : "";
@@ -97,9 +97,9 @@ export default function Home() {
           <span className="cx-small cx-muted">{asking ? "1 policy question from your agents." : "No open questions."}</span>
         </Link>
         <Link className="cx-tile" href={link("/approval")}>
-          <span className="cx-tile-top">Accounting · {cast.controller}</span>
+          <span className="cx-tile-top">Accounting · {cast.owner}</span>
           <strong>{approving}</strong>
-          <span className="cx-small cx-muted">{approving ? "Fair-charge entry awaiting the controller." : view.postingLabel}</span>
+          <span className="cx-small cx-muted">{approving ? "Fair-charge entry awaiting your approval." : view.postingLabel}</span>
         </Link>
         <Link className="cx-tile" href={link("/review")}>
           <span className="cx-tile-top">Disputes</span>

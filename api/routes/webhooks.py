@@ -1,10 +1,12 @@
-"""Twilio inbound SMS (F8, F10): the owner's answer and the controller's yes / no, the same way as answering in the app.
+"""Twilio inbound SMS (F8, F10): the admin's answer and yes / no, the same way as answering in the app.
 
 Also the WhatsApp Sandbox's "When a message comes in" URL (SMS_CHANNEL=whatsapp): the fields are the same and From
 is "whatsapp:+1555…", which matches on its digits like any other format.
 
-From is matched to OWNER_PHONE or CONTROLLER_PHONE; anyone else gets an empty reply and changes nothing. The
-reply text goes through the same parser as the app (api/replies.py via api/pipeline.answer). What Clawback texts
+From is matched to OWNER_PHONE (the admin, the one person who decides); anyone else gets an empty reply and changes
+nothing. An open question takes the reply first; with none, a YES or NO (or anything while a memo waits) goes to the
+credit memo approval; anything else (UNDO, a late reply) goes to the newest question. The reply text goes through the same parser as the app
+(api/replies.py via api/pipeline.answer). What Clawback texts
 back (the rule echo, UNDO, the re-ask) is returned as TwiML, so Twilio sends it without an outbound API call.
 
 When TWILIO_AUTH_TOKEN is set, X-Twilio-Signature must match (HMAC-SHA1 over the public URL plus the sorted form
@@ -42,10 +44,7 @@ def _digits(phone: str) -> str:
 def _role(sender: str) -> str | None:
     if not _digits(sender):
         return None
-    for role, env in (("owner", "OWNER_PHONE"), ("controller", "CONTROLLER_PHONE")):
-        if _digits(os.getenv(env, "")) == _digits(sender):
-            return role
-    return None
+    return "owner" if _digits(os.getenv("OWNER_PHONE", "")) == _digits(sender) else None
 
 
 def signature(url: str, form: dict[str, str], token: str) -> str:
@@ -72,6 +71,11 @@ def _open_question() -> str | None:
     return (open_ or [qid for qid, _ in qs] or [None])[-1]
 
 
+def _has_open_question() -> bool:
+    qid = _open_question()
+    return qid is not None and pipeline.is_open(pipeline.RUNS[pipeline.QUESTIONS[qid][0]].questions[qid])
+
+
 def _owner(text: str) -> list[str]:
     qid = _open_question()
     if qid is None:
@@ -85,15 +89,20 @@ def _owner(text: str) -> list[str]:
     return [t for role, t in run.texts[before:] if role == "owner"]
 
 
-def _controller(text: str) -> list[str]:
-    reply = replies.parse_controller_reply(text)
-    approval_id = pipeline.pending_approval("controller")
+def _waiting_approval(reply: replies.ApprovalReply) -> str | None:
+    approval_id = pipeline.pending_approval()
     if approval_id is None and reply.kind == "approve":
         approval_id = pipeline.failed_approval()  # YES again after QuickBooks failed: retry the write
+    return approval_id
+
+
+def _approval(text: str) -> list[str]:
+    reply = replies.parse_approval_reply(text)
+    approval_id = _waiting_approval(reply)
     if approval_id is None:
         return [NO_QUESTION_TEXT]
     if reply.kind == "unclear":
-        return [replies.CONTROLLER_REASK_TEXT]
+        return [replies.APPROVAL_REASK_TEXT]
     try:
         approval, made = pipeline.decide_approval(approval_id, reply.kind == "approve", reply.note or None)
     except ValueError:  # decided in the app a moment ago
@@ -112,6 +121,11 @@ async def twilio_sms(request: Request) -> Response:
     _check_signature(request, form)
     role = _role(form.get("From", ""))
     if role is None:
-        return _twiml()  # not the owner or the controller: say nothing, change nothing
+        return _twiml()  # not the admin: say nothing, change nothing
     text = form.get("Body", "")
-    return _twiml(*(_owner(text) if role == "owner" else _controller(text)))
+    if _has_open_question():
+        return _twiml(*_owner(text))
+    reply = replies.parse_approval_reply(text)
+    undo = reply.kind == "unclear" and replies.parse_owner_reply(text).kind == "undo"  # UNDO is about the rule
+    to_approval = not undo and (reply.kind != "unclear" or pipeline.pending_approval() is not None)
+    return _twiml(*(_approval(text) if to_approval else _owner(text)))

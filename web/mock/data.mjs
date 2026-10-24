@@ -18,7 +18,7 @@ export const ACCOUNTS = [
     brand: {
       name: "Peak Bar Co.", kind: "Snack bars", city: "Portland, OR", initials: "PB",
       colors: { primary: "#3f5a3c", accent: "#d9c27a" },
-      owner: { name: "Dana Okafor", email: "dana@peakbar.example" }, controller: { name: "Sam Reyes" },
+      owner: { name: "Dana Okafor", email: "dana@peakbar.example" },
     },
     distributor: { name: "Northmart", desk_email: "deductions@northmart.example", portal_name: "Northmart Supplier Portal", colors: { primary: "#0b4f9e", accent: "#f2b134" } },
     invoice: { id: "INV-3102", expected: 48200, received: 41350, month: "2026-03", period_start: "2026-03-01", period_end: "2026-03-31" },
@@ -32,7 +32,7 @@ export const ACCOUNTS = [
     brand: {
       name: "Fernway Kombucha", kind: "Bottled kombucha", city: "Oakland, CA", initials: "FK",
       colors: { primary: "#c4532d", accent: "#f3d9c4" },
-      owner: { name: "Maya Lindqvist", email: "maya@fernway.example" }, controller: { name: "Theo Park" },
+      owner: { name: "Maya Lindqvist", email: "maya@fernway.example" },
     },
     distributor: { name: "Larkfield Foods", desk_email: "supplier-deductions@larkfield.example", portal_name: "Larkfield Supplier Hub", colors: { primary: "#2f6b4f", accent: "#e2b33c" } },
     invoice: { id: "INV-7741", expected: 36480, received: 33077, month: "2026-03", period_start: "2026-03-01", period_end: "2026-03-31" },
@@ -97,7 +97,7 @@ export const ACCOUNTS = [
     brand: {
       name: "Little Ember Hot Sauce", kind: "Small-batch hot sauce", city: "Austin, TX", initials: "LE",
       colors: { primary: "#b8321f", accent: "#f7c873" },
-      owner: { name: "Rosa Delgado", email: "rosa@littleember.example" }, controller: { name: "Ben Achebe" },
+      owner: { name: "Rosa Delgado", email: "rosa@littleember.example" },
     },
     distributor: { name: "Tallgrass Wholesale", desk_email: "vendor-claims@tallgrass.example", portal_name: "Tallgrass Vendor Desk", colors: { primary: "#5b2d82", accent: "#f0c419" } },
     invoice: { id: "INV-2290", expected: 22750, received: 19822, month: "2026-03", period_start: "2026-03-01", period_end: "2026-03-31" },
@@ -157,7 +157,7 @@ export const ACCOUNTS = [
     brand: {
       name: "Brightfold Oat Milk", kind: "Oat milk", city: "Minneapolis, MN", initials: "BO",
       colors: { primary: "#e0a526", accent: "#213547" },
-      owner: { name: "Hannah Osei", email: "hannah@brightfold.example" }, controller: { name: "Luis Moreno" },
+      owner: { name: "Hannah Osei", email: "hannah@brightfold.example" },
     },
     distributor: { name: "Orchard & Pine Distributors", desk_email: "deductions@orchardpine.example", portal_name: "Orchard & Pine Partner Portal", colors: { primary: "#1f4e79", accent: "#8cc63f" } },
     invoice: { id: "INV-5108", expected: 58900, received: 53498, month: "2026-03", period_start: "2026-03-01", period_end: "2026-03-31" },

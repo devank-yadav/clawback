@@ -86,5 +86,5 @@ export function inkOn(hex: string): string {
   return l > 0.4 ? "#1f1f23" : "#fff";
 }
 
-/** First name, for short copy ("Only Sam can approve"). */
+/** First name, for short copy ("Only Dana can approve"). */
 export const firstName = (full: string) => full.split(" ")[0] ?? full;

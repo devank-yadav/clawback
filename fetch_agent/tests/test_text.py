@@ -20,8 +20,8 @@ def test_owner_approvals_point_to_the_inbox():
                  status="pending", text="Approve filing D-0418 for $6,200?")
     assert say._approval(a) == ("**Waiting on you:** a $6,200 dispute needs your OK before Clawback files it. "
                                 "Approve it in the Clawback inbox; this chat can't approve money.")
-    other = a.model_copy(update={"kind": "closed_period", "approver_role": "controller", "text": "Post to March?"})
-    assert say._approval(other) == "**Waiting on Sam, your bookkeeper:** Post to March? This chat can't approve money."
+    other = a.model_copy(update={"kind": "closed_period", "text": "Post to March?"})
+    assert say._approval(other) == "**Waiting on you:** Post to March? This chat can't approve money."
 
 
 def test_one_charge_is_singular():

@@ -76,6 +76,6 @@ export function Elapsed({ from, running, decidedIn }: { from: string | null; run
 /** The agents' labels in the activity feed (LogLine.actor). */
 export const ACTOR: Record<string, string> = {
   system: "Clawback", reader: "Deal readers", investigator: "Investigator", gate: "Rules", negotiator: "Negotiator",
-  bookkeeper: "Bookkeeper", coach: "Deal coach", owner: "Owner", controller: "Controller", policy: "Policy",
+  bookkeeper: "Bookkeeper", coach: "Deal coach", owner: "Admin", policy: "Policy",
   northmart: "Distributor", distributor: "Distributor",
 };

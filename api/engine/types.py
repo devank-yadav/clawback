@@ -225,7 +225,7 @@ class RuleMatch:
 @dataclass(frozen=True)
 class Policy:
     auto_dispute_limit: Decimal
-    controller_approval_over: Decimal
+    approval_over: Decimal  # credit memos above this wait for the admin's yes
     confidence_floor: Decimal
     match_tolerance: Decimal
     rule_match_similarity: Decimal
@@ -235,6 +235,7 @@ class Policy:
     dispute_window_warn_days: int = 14  # this close to the end of a dispute window, the reason says "file by"
     default_dispute_days: int = 90  # the dispute window when an account's ops terms state none
     manual_minutes_per_charge: Decimal | None = None  # None: no manual-time comparison
+    auto_post_limit: Decimal | None = None  # fair-charge memos up to this post without asking; None: always ask
 
 
 @dataclass(frozen=True)

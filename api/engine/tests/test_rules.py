@@ -78,7 +78,8 @@ def test_bad_conditions_raise(bad):
 def test_policy_loads_as_decimals():
     p = load_policy()
     assert p.auto_dispute_limit == Decimal("5000")
-    assert p.controller_approval_over == Decimal("1000")
+    assert p.approval_over == Decimal("1000")
+    assert p.auto_post_limit is None
     assert p.confidence_floor == Decimal("0.90")
     assert p.match_tolerance == Decimal("1.00")
     assert p.rule_match_similarity == Decimal("0.85")

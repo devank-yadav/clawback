@@ -1,4 +1,4 @@
-"""Owner and controller SMS replies: the demo answer becomes Rule #1 exactly as the fixture shows it."""
+"""The admin's SMS replies (answers and approvals): the demo answer becomes Rule #1 exactly as the fixture shows it."""
 
 import json
 from datetime import datetime
@@ -11,11 +11,11 @@ from api.contracts import Rule
 from api.engine.rules import evaluate, find_rule
 from api.engine.types import DecisionKind, TermType
 from api.replies import (
-    CONTROLLER_REASK_TEXT,
+    APPROVAL_REASK_TEXT,
     REASK_TEXT,
     confirmation_text,
     once_text,
-    parse_controller_reply,
+    parse_approval_reply,
     parse_owner_reply,
     rule_from_reply,
     undo_rule,
@@ -249,11 +249,11 @@ def test_texts_refuse_non_rule_replies():
         confirmation_text(parse_owner_reply("maybe"))
 
 
-# ---------------------------------------------------------------- controller
+# ---------------------------------------------------------------- approvals
 
 @pytest.mark.parametrize("text", ["yes", "YES", "Yes!", "y", "approve", "approved", "ok", "yes approve", "yes please"])
-def test_controller_approves(text):
-    assert parse_controller_reply(text).kind == "approve"
+def test_approval_yes(text):
+    assert parse_approval_reply(text).kind == "approve"
 
 
 @pytest.mark.parametrize("text, note", [
@@ -264,12 +264,12 @@ def test_controller_approves(text):
     ("hold: need the broker email", "need the broker email"),
     ("refuse", ""),
 ])
-def test_controller_refuses_with_note(text, note):
-    r = parse_controller_reply(text)
+def test_approval_no_with_note(text, note):
+    r = parse_approval_reply(text)
     assert (r.kind, r.note) == ("refuse", note)
 
 
 @pytest.mark.parametrize("text", ["", "maybe", "yes but only 2 lines", "yes for C3, no for C6", "what is this?", "approve $5,000"])
-def test_controller_unclear(text):
-    assert parse_controller_reply(text).kind == "unclear"
-    assert "YES" in CONTROLLER_REASK_TEXT and "NO" in CONTROLLER_REASK_TEXT
+def test_approval_unclear(text):
+    assert parse_approval_reply(text).kind == "unclear"
+    assert "YES" in APPROVAL_REASK_TEXT and "NO" in APPROVAL_REASK_TEXT

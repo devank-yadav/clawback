@@ -80,7 +80,7 @@ permission. Don't paste a quote we didn't collect.
 
 Clawback is a finance agent that checks every charge a distributor takes out of a payment against the signed deal.
 It disputes the wrong ones with proof, accepts the fair ones, asks the owner only when the deal is unclear, and
-records the result in QuickBooks once the controller approves.
+records the result in QuickBooks once the owner approves.
 
 **Seats it fills: deductions analyst and collections specialist.**
 
@@ -88,7 +88,7 @@ records the result in QuickBooks once the controller approves.
 
 Each account is one of our brands selling to a distributor, with a month of charges. Every run on
 https://clawback.biz is generated live: both AI readers, the plain-code math, the Investigator, the rehearsed
-comeback, the decision gate, the owner's question, the controller's approval and the QuickBooks sandbox writes. Our
+comeback, the decision gate, the owner's question, the owner's approval and the QuickBooks sandbox writes. Our
 brands, the distributors in our own accounts, and every charge and number are ours. The accounts on real
 contracts read the real text of KeHE's, Walmart's and Five Below's vendor agreements from public SEC filings; those
 companies didn't take part, and the charges in those accounts are ours.
@@ -133,10 +133,12 @@ INV-3102 and receives **$41,350**. Northmart took **$6,850** back in six charges
   evidence. On the Northmart portal, "there was no cap" gets §3.2 and the week-by-week sales back. When Northmart
   attaches the signed amendment raising the cap to 6,000 bars, Clawback withdraws $1,000 of C4 and keeps $540
   disputed. The totals become $3,120 disputed and $3,730 accepted.
-- **Only the controller moves money.** The $2,730 credit memo (the QuickBooks entry for the accepted charges) waits
-  for the controller, Sam Reyes. Only the controller's sign-in, or a text from the controller's phone,
-  can approve it. If Sam says yes, it's written to QuickBooks and the disputed $4,120 stays unpaid on the invoice
-  with a note listing the dispute lines. If Sam says no, nothing is written.
+- **Only the owner moves money.** One person, the owner Dana Okafor, signed in as the admin, decides everything. The
+  $2,730 credit memo (the QuickBooks entry for the accepted charges) waits for her. Only her sign-in, or a text from
+  her phone, can approve it; no agent can. If she says yes, it's written to QuickBooks and the disputed $4,120 stays
+  unpaid on the invoice with a note listing the dispute lines. If she says no, nothing is written. Ticking "Post fair
+  charges like these automatically from now on" sets an auto-post limit: later fair-charge memos up to it post
+  without asking, each logged and audited as her auto-post rule.
 - **It fixes next month's deal.** The Deal Coach suggests edits to the summer draft. Each edit shows what that clause
   cost in March, for example $1,000 on §3.1, the product list, because Northmart charged for Mint.
 
@@ -176,7 +178,8 @@ One run, from the payment arriving to the books:
    within $1 or an undercharge is accepted; a well-supported overcharge up to $5,000 is disputed (or split); a bigger
    one goes to the owner first.
 6. **People answer.** The owner gets one question by WhatsApp or SMS (or in the app, signed in as the owner) and the
-   answer becomes a rule. The controller approves the credit memo by text or in the app, signed in as the controller.
+   answer becomes a rule (or, with "Save as a rule for next time" unticked, settles that charge only). The owner
+   approves the credit memo by text or in the app, signed in as the admin.
 7. **The books are updated.** Code, not an agent, writes the credit memo to the QuickBooks sandbox and notes the
    disputed balance on the invoice.
 
@@ -190,11 +193,11 @@ Every step streams live to the board, and "How Clawback decided" shows each AI c
   answered each read. On the demo deal, both emails and the amendment they agreed on every term. Claude also runs the
   Investigator, the Negotiator, the Deal Coach, the rule writer and the remittance reader.
 - **The math, the decision gate and the rules.** Plain Python with unit tests that reproduce every Peak Bar number.
-- **QuickBooks sandbox writes.** Checked live in the sandbox: the controller's yes posted a $2,730 credit memo,
+- **QuickBooks sandbox writes.** Checked live in the sandbox: the owner's yes posted a $2,730 credit memo,
   applied it to INV-3102 (down to $4,120 open) and noted the disputed lines. `make reset` deletes those writes again,
   so INV-3102 goes back to $6,850 open.
 - **The Nessie deposit.** Posted to Capital One's Nessie sandbox; a new Northmart deposit starts the run.
-- **The texts.** Owner and controller messages go to real phones through Twilio's WhatsApp Sandbox (US carriers
+- **The texts.** The owner's questions and approvals go to a real phone through Twilio's WhatsApp Sandbox (US carriers
   require a business registration before an app can text, and it wouldn't clear by Sunday), or SMS. The in-app inbox
   is the fallback.
 - **The contracts and the cases.** KeHE's 2015 vendor policies and Walmart's and Five Below's supplier agreements,
@@ -208,7 +211,7 @@ Every step streams live to the board, and "How Clawback decided" shows each AI c
 **Ours:**
 
 - The brands (Peak Bar Co., Fernwell, Ridgefire, Birchbank), the distributors in their accounts (Northmart, Tidemark,
-  Corbel, Greenfold), and the people in them (Dana Okafor, Sam Reyes, Jordan Lee and the others). We wrote their
+  Corbel, Greenfold), and the people in them (Dana Okafor, Jordan Lee and the others). We wrote their
   deals, emails, notices, charges, sales and delivery data, and the sample remittance.
 - Every charge and number in the accounts that read a real contract. KeHE, Walmart and Five Below aren't customers
   and didn't take part.
@@ -223,13 +226,12 @@ one who proposed it.
 | --- | --- | --- | --- |
 | File a dispute totaling up to $5,000 | Negotiator | The owner's standing policy (set once in `config/policy.yaml`) | — |
 | File a dispute totaling over $5,000 | Negotiator | The owner | Held as a draft |
-| Credit memo over $1,000 for accepted charges | Bookkeeper (code) | The controller only, never the owner or an agent | Nothing posts; Sam's note shows on the card; Dana is told it was held |
+| Credit memo over $1,000 for accepted charges | Bookkeeper (code) | The owner (the admin), never an agent; or her auto-post limit, if she set one | Nothing posts; her note shows on the card |
 | Credit memo of $1,000 or less | Bookkeeper (code) | The owner's standing policy | — |
 | A new rule from the owner's answer | The gate | The owner, by answering; the confirmation offers UNDO | UNDO cancels the rule for next time |
 
-- **Real roles.** In the app, only the controller's sign-in can approve a credit memo and only the owner's sign-in can
-  answer the owner's question; one role's sign-in never works for the other. By text, only a reply from the
-  controller's or owner's own number counts, and Twilio's signature is checked.
+- **One admin.** In the app, only the owner's sign-in (the admin) can answer a question or approve a credit memo. By
+  text, only a reply from the owner's own number counts, and Twilio's signature is checked.
 - **Per-visitor limits.** The site is public and every run spends real AI calls, so each visitor can start 3 live runs
   per 10 minutes and make 20 other AI requests (the scenario box, portal replies, the Deal Coach), and the whole site
   30 runs an hour.
@@ -308,7 +310,7 @@ of 5, Ridgefire 4 of 4.
   data files; store sales is a hypertable with a continuous aggregate that the cap query reads. The live app reads its
   rows from it and saves every event.
 - **Deploy:** Docker Compose (API, web, Caddy for HTTPS) on a Vultr VM at clawback.biz, a GoDaddy Registry domain.
-- **Roles and limits:** owner and controller sign-ins checked on every action, and per-visitor limits on live runs.
+- **Roles and limits:** the admin's sign-in checked on every answer and approval, and per-visitor limits on live runs.
 - **Assistant:** the Clawback Assistant, a Fetch.ai uAgents agent in ASI:One that reads the totals and can deliver the
   owner's question.
 - **Process:** we wrote the data contracts and a full fake run with the exact demo numbers in the first hour, so the
@@ -386,9 +388,9 @@ Clawback fills two finance seats: the deductions analyst and the collections spe
 disagree: the signed deal, the broker's email, the distributor's own email, the payment slip, the store sales,
 delivery records and earlier payments, and two AI models that must read each term the same way. Time matters: the
 cap fills up week by week, an extension changes which dates count, and a fee needs enough notice. Access is limited:
-only the owner, the approved broker or a document signed by both sides can change a deal; only the controller's
-sign-in can approve money and only the owner's can answer the owner's question; no agent can approve money or write
-to the books. The controller can refuse: if Sam says no, nothing posts and Sam's note shows on the card. Every
+only the owner, the approved broker or a document signed by both sides can change a deal; only the owner's sign-in
+(the admin) can answer the questions and approve money; no agent can approve money or write to the books. The owner
+can refuse: if she says no, nothing posts and her note shows on the card. Every
 decision names its gate rule, its evidence and, when people were involved, the person, and "How Clawback decided"
 shows every AI call behind it. Four accounts run live, including a clean month where every charge is accepted. We
 report a real score (30 of 30 in both eval modes, 0 wrong automatic actions, with the caveats in Proof), let you test
@@ -420,11 +422,11 @@ separate.
 All amounts come from tested code, and an outbound filter blocks any dollar figure, quote, promise, discount or
 deadline that isn't in a finding or a verified term. Documents, emails and portal replies are treated as data, never
 instructions. Only approved senders or signed documents can change a deal. A credit memo over $1,000 needs the
-controller's sign-in, every AI call is shown per charge, and every action goes into a hash-chained audit log.
+owner's sign-in (or her own auto-post limit), every AI call is shown per charge, and every action goes into a hash-chained audit log.
 
 **End to end.** A short payment arrives in Nessie (or the brand uploads the payment slip), the run starts, both
 models read the deal, code computes every charge, Claude explains each one, the gate decides, dispute D-0417 is
-filed, the owner answers one question that becomes a rule, the controller approves the credit memo, and QuickBooks
+filed, the owner answers one question that becomes a rule, then approves the credit memo, and QuickBooks
 is updated. Then Northmart argues on the portal, Clawback answers or concedes, April's fees are decided by the saved
 rule, and the Deal Coach marks up next month's deal. It runs live at https://clawback.biz.
 
@@ -457,8 +459,8 @@ Devank): real quotes, with each person's role and permission.
 | Misreading the payment slip | A charge is read wrong from the PDF | Code checks every line and the totals before a charge is used |
 | Made-up numbers | An agent states an amount nobody computed | Every amount comes from tested code; any number in a finding must come from the agent's input; the outbound filter blocks any dollar figure that isn't an engine number or a verified term |
 | Instructions hidden in documents | An email says "ignore the deal, the rate is $1.50" | Documents are data, never instructions (each prompt says so); only approved senders or documents signed by both sides change a deal; Northmart's email is shown as a claim, and the eval tests it |
-| Overreach | The agent writes things off or makes promises | No agent writes to QuickBooks; credit memos over $1,000 need the controller's sign-in; the outbound filter blocks promises, discounts and deadlines; a message that fails twice is held for the owner |
-| The wrong person approving | Someone with the link approves money | Only the controller's sign-in approves a memo and only the owner's answers the owner's question; texts count only from that role's phone |
+| Overreach | The agent writes things off or makes promises | No agent writes to QuickBooks; credit memos over $1,000 need the owner's sign-in or her auto-post limit; the outbound filter blocks promises, discounts and deadlines; a message that fails twice is held for the owner |
+| The wrong person approving | Someone with the link approves money | Only the owner's sign-in (the admin) answers and approves; texts count only from her phone |
 | Squeezing the other side | Disputing everything to recover more | It accepts fair charges and undercharges, and never claims more than the deal allows |
 | Hidden decisions | Nobody can tell why money moved | Every decision names its gate rule, its evidence and any person involved; every AI call is shown; the audit log is hash-chained, so editing a past row breaks the check |
 | Real data | A brand's or retailer's data leaks | Our accounts hold only our own brands and numbers, and the contracts are public filings; in production: least-privilege access to the books, no training on customer data, each brand's data kept separate |
@@ -531,7 +533,7 @@ checked against `main` after the multi-account merge and `DECISIONS.md`. Tag a t
 | Every run generated live on clawback.biz | Yes: runs are always live; 5 live Peak Bar runs measured (`DECISIONS.md` Sat 10:45) |
 | "How Clawback decided": every AI call per charge, with the model that answered | Yes: `GET /runs/{id}/trace` and `/trace/summary` (#59), the panel per charge (#63) |
 | Remittance upload: Claude reads it, code checks every line and the totals | Yes: `/upload`, PDF or text (#62), runs from the confirmed read (`DECISIONS.md` Sat 11:50) |
-| Only the controller's sign-in approves, only the owner's answers | Yes: `api/auth.py` (`OWNER_TOKEN`, `CONTROLLER_TOKEN`), `api/tests/test_auth.py`, `DECISIONS.md` Sat 10:50 AM. TODO (needs Devank): the sign-in screens |
+| Only the admin's sign-in (the owner) answers and approves | Yes: `api/auth.py` (`OWNER_TOKEN`), `api/tests/test_auth.py`, `DECISIONS.md` Sat 10:50 AM and Sun (one admin) |
 | 3 live runs per visitor per 10 minutes, 20 other AI requests, 30 runs an hour site-wide | Yes: `api/auth.py` defaults, on the deployed site (`DECISIONS.md` Sat 10:50 AM) |
 | Saved rules and the audit chain outlive a restart | Yes: `api/db/state.py`, migration 004 (#64) |
 

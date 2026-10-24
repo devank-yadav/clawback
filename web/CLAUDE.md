@@ -23,8 +23,8 @@ log {text, level} · stage {stage: read|check, status, done, total, label, charg
 ## Screens
 `/?account=…` is the agents' flow (`app/(console)/page.tsx`, `components/flow/`, `flow.css`): drop in the payment
 advice or press "<distributor> pays", watch the seven stages on the rail (payment, read the deal, check each charge,
-file the dispute, owner, controller, QuickBooks) and the charge × agent matrix, answer the owner and the controller
-inline, then the result. Reading and checking progress comes from `stage` events (`state.stages`); the later stages
+file the dispute, your answer, your approval, QuickBooks) and the charge × agent matrix, answer and approve inline
+(one person, the admin: the brand's owner), then the result. Reading and checking progress comes from `stage` events (`state.stages`); the later stages
 from dispute / question / approval / ledger_post. `?run=latest` opens the last run.
 `/workspace?account=…&view=overview|payments|approvals|rules` (the workspace; old `/?view=` links redirect there) ·
 `/results` `/april` `/coach` `/scenario` `/audit` (same shell) · `/home` `/review` `/activity` `/approval` (the

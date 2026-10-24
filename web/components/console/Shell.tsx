@@ -37,13 +37,12 @@ export function Shell({ crumbs, right, children }: { crumbs: string[]; right?: R
   const { view, cast, account, accounts, link, error, accountsError } = useRun();
   const asking = view.stage === "owner" ? 1 : 0;
   const approving = view.approval?.status === "pending" ? 1 : 0;
-  const controllerPage = path.startsWith("/approval");
   const items = [
     { href: "/", label: "Agents at work", d: I.agents, count: 0 },
     { href: "/home", label: "Home", d: I.home, count: 0 },
     { href: "/review", label: "Payment review", d: I.review, count: asking },
     { href: "/activity", label: "Agent activity", d: I.agents, count: 0 },
-    { href: "/approval", label: "Controller approval", d: I.approval, count: approving },
+    { href: "/approval", label: "Your approval", d: I.approval, count: approving },
   ];
   return (
     <div className="cx-shell">
@@ -83,7 +82,7 @@ export function Shell({ crumbs, right, children }: { crumbs: string[]; right?: R
           </Link>
         ))}
         <div className="cx-side-foot">
-          {controllerPage ? `${cast.controllerFull} · Controller` : `${cast.ownerFull} · Owner`}
+          {`${cast.ownerFull} · Admin`}
           <small>{account ? `${account.distributor.name} · invoice ${account.invoice.id}` : " "}</small>
         </div>
       </aside>

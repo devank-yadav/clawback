@@ -333,20 +333,22 @@
         }
       ],
       "proposed_by": "bookkeeper",
-      "approver_role": "controller",
+      "approver_role": "owner",
       "status": "pending",
       "text": "Approve credit memo of $2,730 (3 lines)?",
       "note": null,
       "requested_at": "2026-10-24T10:31:20-07:00",
-      "decided_at": null
+      "decided_at": null,
+      "sets_auto_post": null,
+      "posted_by_auto_post": null
     },
     "prev_hash": "d6fa62b34d0aa0ee99de8e056701903a61657bf556ae5920936866d26b4fb9e0",
-    "hash": "3268eb4efda0dfe550ff25acf2cf0f94401a6bfaae0bf25cdfd4c0401ecc9254"
+    "hash": "c8f308fde44c91f303dcb83373106c27649467a2b44cfc02e1dcf1c45240dc36"
   },
   {
     "id": 13,
     "at": "2026-10-24T10:31:28-07:00",
-    "actor": "controller:Sam",
+    "actor": "owner:Dana",
     "action": "credit_memo_approved",
     "object_ref": "approval:AP-1",
     "evidence": {
@@ -369,15 +371,17 @@
         }
       ],
       "proposed_by": "bookkeeper",
-      "approver_role": "controller",
+      "approver_role": "owner",
       "status": "approved",
       "text": "Approve credit memo of $2,730 (3 lines)?",
       "note": null,
       "requested_at": "2026-10-24T10:31:20-07:00",
-      "decided_at": "2026-10-24T10:31:28-07:00"
+      "decided_at": "2026-10-24T10:31:28-07:00",
+      "sets_auto_post": null,
+      "posted_by_auto_post": null
     },
-    "prev_hash": "3268eb4efda0dfe550ff25acf2cf0f94401a6bfaae0bf25cdfd4c0401ecc9254",
-    "hash": "26e79dc4b170699967a681edc8d2aa0cd2960614ae1256f558766275dc44e589"
+    "prev_hash": "c8f308fde44c91f303dcb83373106c27649467a2b44cfc02e1dcf1c45240dc36",
+    "hash": "b2563d5c16471b771b39cbf65beca5b76ebb852c3c5055f6c8a8f0a0303e6024"
   },
   {
     "id": 14,
@@ -414,8 +418,8 @@
       "note": "Credit memo applied to INV-3102.",
       "posted_at": "2026-10-24T10:31:30-07:00"
     },
-    "prev_hash": "26e79dc4b170699967a681edc8d2aa0cd2960614ae1256f558766275dc44e589",
-    "hash": "c2ec1e50dd6ce4f5f14f8a2033385313906ab4b1d839a03f91bf173633dcc533"
+    "prev_hash": "b2563d5c16471b771b39cbf65beca5b76ebb852c3c5055f6c8a8f0a0303e6024",
+    "hash": "a62d534522618aa34a680cd5b06705518871dcb3249ca4454c734a8ee4265c27"
   },
   {
     "id": 15,
@@ -457,8 +461,8 @@
       "note": "$4,120 left open on INV-3102, disputed under D-0417.",
       "posted_at": "2026-10-24T10:31:32-07:00"
     },
-    "prev_hash": "c2ec1e50dd6ce4f5f14f8a2033385313906ab4b1d839a03f91bf173633dcc533",
-    "hash": "17ed2ea0afb3a9ba1562490ca5ec5dc316d044c7ee4aecc63f24800a416880da"
+    "prev_hash": "a62d534522618aa34a680cd5b06705518871dcb3249ca4454c734a8ee4265c27",
+    "hash": "eeaecaed4a91aee6cebb44535364ed6e5ce46f02adc6265d559cf0b7839ee21c"
   },
   {
     "id": 16,
@@ -480,8 +484,8 @@
       "evidence_ids": [],
       "created_at": "2026-10-24T10:31:41-07:00"
     },
-    "prev_hash": "17ed2ea0afb3a9ba1562490ca5ec5dc316d044c7ee4aecc63f24800a416880da",
-    "hash": "ea80ca753f63eed3e8acf95d6819500b75a757596e7fe00176cce6bc5438cca9"
+    "prev_hash": "eeaecaed4a91aee6cebb44535364ed6e5ce46f02adc6265d559cf0b7839ee21c",
+    "hash": "c2846640bcebc3cb20a69196f32471ade629fa31b56d10d2872b2000116ea35c"
   },
   {
     "id": 17,
@@ -509,7 +513,7 @@
       ],
       "created_at": "2026-10-24T10:31:45-07:00"
     },
-    "prev_hash": "ea80ca753f63eed3e8acf95d6819500b75a757596e7fe00176cce6bc5438cca9",
-    "hash": "c518acfe62b3e9c2fcc5a8011e1cc7ceba1833406faaeb2dadb5ca5fad9ba684"
+    "prev_hash": "c2846640bcebc3cb20a69196f32471ade629fa31b56d10d2872b2000116ea35c",
+    "hash": "787111e5cc057ec467a0c54f7cd250107c6783a0c097b90aab0dac5494868008"
   }
 ]

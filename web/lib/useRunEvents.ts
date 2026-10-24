@@ -225,21 +225,21 @@ export function useRunEvents(account: string | null, runId: string = "latest") {
 
   const fail = useCallback((e: Error) => setError(`Clawback didn't accept that action (${e.message}).`), []);
 
-  /** The owner's answer. Only the signed-in owner may send it; the API checks the owner's access code. */
+  /** The admin's answer; saveRule false settles this charge only. The API checks the admin's access code. */
   const answerQuestion = useCallback(
-    (questionId: string, text: string) => {
+    (questionId: string, text: string, saveRule = true) => {
       if (state.questions[questionId]?.answer || !text.trim()) return;
-      asRole("owner", (code) => api.answerQuestion(questionId, text.trim(), code), fail);
+      asRole("owner", (code) => api.answerQuestion(questionId, text.trim(), code, saveRule), fail);
     },
     [state.questions, fail],
   );
 
-  /** The controller's yes or no. Only the signed-in controller may send it; the API checks the controller's access code. */
-  const controllerDecides = useCallback(
-    (approve: boolean, note: string | null = null) => {
+  /** The admin's yes or no on the credit memo; autoPost with a yes posts memos like it without asking from now on. */
+  const decideApproval = useCallback(
+    (approve: boolean, note: string | null = null, autoPost = false) => {
       const approval = state.approval;
       if (approval?.status !== "pending") return;
-      asRole("controller", (code) => api.decideApproval(approval.id, approve, note, code), fail);
+      asRole("owner", (code) => api.decideApproval(approval.id, approve, note, code, approve && autoPost), fail);
     },
     [state.approval, fail],
   );
@@ -280,5 +280,5 @@ export function useRunEvents(account: string | null, runId: string = "latest") {
   const awaitingPayment = !!account && followed === null && !error;
   const runId_ = followed?.run_id ?? null;
 
-  return { state, runId: runId_, answerQuestion, controllerDecides, startPayment, follow, starting, limited, awaitingPayment, refresh, error };
+  return { state, runId: runId_, answerQuestion, decideApproval, startPayment, follow, starting, limited, awaitingPayment, refresh, error };
 }

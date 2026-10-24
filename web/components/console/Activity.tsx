@@ -84,7 +84,7 @@ export default function Activity() {
               <h3 style={{ fontSize: 15, fontWeight: 400 }}>{charge.status === "Reviewing" ? "Still checking" : "Ready, not sent"}</h3>
               <span className="cx-tiny">{charge.waiting ? "Waiting on the owner" : charge.disputed ? "Proposed dispute" : "Fair amount"}</span>
               <Money value={(charge.waiting || charge.disputed || charge.accepted) ?? 0} className="cx-big" />
-              <p className="cx-small cx-muted">{CAST.owner} decides policy. {CAST.controller}’s accounting approval is a separate step.</p>
+              <p className="cx-small cx-muted">{CAST.owner} decides policy, then approves the accounting entry as a separate step.</p>
               {(detail?.evidence ?? []).slice(0, 3).map((e) => <span key={e.id} className="cx-small">↗ {e.label}</span>)}
               <Link className="cx-btn" href={link("/review", { charge: charge.id })}>Open in payment review</Link>
               <p className="cx-tiny">{view.disputeLabel}. No accounting entry posted from this screen.</p>

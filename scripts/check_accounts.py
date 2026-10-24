@@ -227,7 +227,7 @@ def check_yaml(acct, docs):
 
     check(f"{acct.label}: id matches the folder", y.get("id") == acct.id, y.get("id"))
     for path in ("brand.name", "brand.kind", "brand.city", "brand.initials", "brand.owner.name",
-                 "brand.controller.name", "distributor.name", "distributor.portal_name", "invoice.id", "qbo.customer",
+                 "distributor.name", "distributor.portal_name", "invoice.id", "qbo.customer",
                  "qbo.invoice_no", "nessie_description"):
         field(path)
     initials = field("brand.initials")

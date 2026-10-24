@@ -38,7 +38,7 @@ What each setting means:
 | | `DEMO_MODE=true` | `DEMO_MODE=false` |
 | --- | --- | --- |
 | Claude and Gemini | Replays `data/fixtures/` (free; a run takes about 6 s) | Live calls (API credits; up to about 60 s a run). The scenario box and portal replies try live first either way |
-| Texts to Dana and Sam | Not sent; the question and approval wait in the app | Sent over the Twilio WhatsApp Sandbox |
+| Texts to Dana | Not sent; the question and approval wait in the app | Sent over the Twilio WhatsApp Sandbox |
 | Replies from the phones | Handled (the webhook works either way) | Handled |
 | "Northmart pays" | Starts the run directly | Posts a Nessie deposit; the poller starts the run |
 | QuickBooks | Stand-in; ledger posts say "Simulated: DEMO_MODE is on" | Live sandbox writes, with the token caveat below |
@@ -175,7 +175,7 @@ grep -E '^(DOMAIN|PUBLIC_BASE_URL|DEMO_MODE|RECORD_FIXTURES|NESSIE_POLL|SMS_CHAN
 
 # Which keys are filled, names only:
 for k in ANTHROPIC_API_KEY GEMINI_API_KEY TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_FROM OWNER_PHONE \
-         CONTROLLER_PHONE NESSIE_API_KEY NESSIE_ACCOUNT_ID QBO_CLIENT_ID QBO_CLIENT_SECRET QBO_REALM_ID \
+         NESSIE_API_KEY NESSIE_ACCOUNT_ID QBO_CLIENT_ID QBO_CLIENT_SECRET QBO_REALM_ID \
          QBO_REFRESH_TOKEN CLAWBACK_READONLY_TOKEN; do
   grep -qE "^$k=.+" .env && echo "set    $k" || echo "empty  $k"
 done
@@ -228,14 +228,14 @@ Then by hand:
 
 - [ ] Two phones on **cellular data** (not venue Wi-Fi) open `https://clawback.biz/`; a run fills the board; refresh mid-run keeps the state (F19).
 - [ ] Owner beat: a WhatsApp reply from Dana's phone lands on the board (`docker compose logs caddy | grep webhooks` shows the POST with status 200), or the in-app fallback works.
-- [ ] Controller beat: Sam's yes posts the credit memo (simulated in DEMO_MODE).
+- [ ] Approval beat: Dana's yes posts the credit memo (simulated in DEMO_MODE).
 - [ ] `/portal` on the judge's tablet, once that screen is in `web/` (at `f55757a` the app has only `/` and `/board/<run>`).
 - [ ] Scoreboard: `curl -s https://clawback.biz/api/eval/latest` says `not_run` on a fresh deploy, because `eval/latest*.json` are gitignored and kept out of the image. `curl -s -X POST https://clawback.biz/api/eval/run` fills it with the engine-mode score until the `api` container is recreated.
 - [ ] Send Manasv the URL for `[LIVE URL]` in `docs/devpost.md`.
 
 ## 9. Twilio webhook
 
-Owner and controller texts use the **Twilio WhatsApp Sandbox** (`SMS_CHANNEL=whatsapp`; US SMS is blocked by A2P
+The owner's texts (questions and approvals) use the **Twilio WhatsApp Sandbox** (`SMS_CHANNEL=whatsapp`; US SMS is blocked by A2P
 10DLC). Twilio Console → Messaging → Try it out → Send a WhatsApp message → **Sandbox settings** → "When a message
 comes in": `https://clawback.biz/webhooks/twilio/sms`, method `POST` → Save.
 
@@ -293,7 +293,7 @@ docker compose up -d --build
 | No certificate; the Caddy log shows challenge errors | `dig +short clawback.biz @1.1.1.1` shows only `<VM_IP>` (the old ALIAS and wildcard are gone); `curl -sI http://clawback.biz` from a laptop says `Server: Caddy`. Caddy retries by itself; after repeated failures Let's Encrypt limits retries for about an hour, and Caddy also tries ZeroSSL |
 | `502` on `/api/...` | `docker compose ps` (api healthy?), `docker compose logs api --tail 50` |
 | Board says "Can't reach the Clawback API" | `curl https://clawback.biz/api/health`; the web image bakes `NEXT_PUBLIC_API_BASE=/api` at build time |
-| Phone replies don't land | `docker compose logs caddy \| grep webhooks`. 403: `PUBLIC_BASE_URL` and the Sandbox URL differ. 200 but nothing changes: the sender isn't `OWNER_PHONE` / `CONTROLLER_PHONE`, or nothing is waiting on them. No line at all: the Sandbox URL is wrong |
+| Phone replies don't land | `docker compose logs caddy \| grep webhooks`. 403: `PUBLIC_BASE_URL` and the Sandbox URL differ. 200 but nothing changes: the sender isn't `OWNER_PHONE`, or nothing is waiting on her. No line at all: the Sandbox URL is wrong |
 | Board stops updating mid-run | `deploy/smoke.sh`'s stream check; the API sends `: keep-alive` every few seconds and the browser reconnects with `Last-Event-ID` |
 | QuickBooks writes fail an hour in (`DEMO_MODE=false`) | Step 0's token caveat: reset twice. `invalid_grant`: get a new refresh token from Intuit's OAuth Playground, put it in the VM's `.env`, delete `state/qbo.env`, `docker compose up -d --force-recreate api` |
 | Disk filling up | `docker system df`; `docker image prune -f` removes old untagged builds |

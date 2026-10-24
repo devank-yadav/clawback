@@ -21,7 +21,7 @@ def _clean(tmp_path, monkeypatch):
 
 
 def full_story():
-    """March, Dana's answer, Sam's yes, then Northmart's signed amendment on the portal."""
+    """March, Dana's answer, Dana's yes, then Northmart's signed amendment on the portal."""
     fake = PortalClaude()
     run = finished_march(fake)
     approval = next(e.data for e in run.events if e.type == "approval" and e.data.status == "pending")
@@ -41,7 +41,7 @@ def test_every_action_is_written_in_order():
     assert ("gate", "question_asked", "question:Q-1") in by_action
     assert ("owner:Dana", "answer_received", "question:Q-1") in by_action
     assert ("owner:Dana", "rule_saved", "rule:rule-1") in by_action
-    assert ("controller:Sam", "credit_memo_approved", f"approval:AP-{run.id}") in by_action
+    assert ("owner:Dana", "credit_memo_approved", f"approval:AP-{run.id}") in by_action
     assert ("policy", "credit_memo_approved", f"approval:AP-{run.id}-2") in by_action  # the $1,000 concession
     assert ("bookkeeper", "qbo_credit_memo_posted", f"ledger:LP-AP-{run.id}") in by_action
     assert ("negotiator", "dispute_answered", "dispute:D-0417") in by_action
