@@ -381,6 +381,7 @@
       "id": "LP-1",
       "qbo_entity": "credit_memo",
       "qbo_id": null,
+      "qbo_url": null,
       "amount": "2730.00",
       "lines": [
         {
@@ -405,7 +406,7 @@
       "posted_at": "2026-10-24T10:31:30-07:00"
     },
     "prev_hash": "4519a92d5c492a126e0415a1b480256c14585456c253fc45422ab6ce02dfee57",
-    "hash": "def33a3b48fca04c823e238d5c588e077c6f57725f6c59975192ee2f62202fae"
+    "hash": "9655d22ff05b033b0393b1adc7fecc2febcb6a47b5e875f116736fef7f7a5012"
   },
   {
     "id": 15,
@@ -418,6 +419,7 @@
       "id": "LP-2",
       "qbo_entity": "invoice_note",
       "qbo_id": null,
+      "qbo_url": null,
       "amount": "4120.00",
       "lines": [
         {
@@ -446,8 +448,8 @@
       "note": "$4,120 left open on INV-3102, disputed under D-0417.",
       "posted_at": "2026-10-24T10:31:32-07:00"
     },
-    "prev_hash": "def33a3b48fca04c823e238d5c588e077c6f57725f6c59975192ee2f62202fae",
-    "hash": "db34519933317b22342c5527624aaedb345693d827b2f854df6904e310b224a4"
+    "prev_hash": "9655d22ff05b033b0393b1adc7fecc2febcb6a47b5e875f116736fef7f7a5012",
+    "hash": "99f7fab2d05fd28b61d01bd6f47715be56ae8b004886b7a56be438113cdfc76e"
   },
   {
     "id": 16,
@@ -469,8 +471,8 @@
       "evidence_ids": [],
       "created_at": "2026-10-24T10:31:41-07:00"
     },
-    "prev_hash": "db34519933317b22342c5527624aaedb345693d827b2f854df6904e310b224a4",
-    "hash": "7a2618ad47c6af6721254b3a6c884e7955e73c9d06d6fb13c6e34704feb31459"
+    "prev_hash": "99f7fab2d05fd28b61d01bd6f47715be56ae8b004886b7a56be438113cdfc76e",
+    "hash": "16c5d9106743c36d894d9e5e8b03615c6afdb18d823252ab1c8293db7cd65e84"
   },
   {
     "id": 17,
@@ -498,7 +500,7 @@
       ],
       "created_at": "2026-10-24T10:31:45-07:00"
     },
-    "prev_hash": "7a2618ad47c6af6721254b3a6c884e7955e73c9d06d6fb13c6e34704feb31459",
-    "hash": "ab00b83175128281669727a5744ee3d754a530c7c4094984b104a2e1aa28f001"
+    "prev_hash": "16c5d9106743c36d894d9e5e8b03615c6afdb18d823252ab1c8293db7cd65e84",
+    "hash": "1b08a63dff0df988f4690d966e6772830ebce8dce426d05d1a89baa3a767dd12"
   }
 ]

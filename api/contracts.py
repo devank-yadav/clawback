@@ -425,6 +425,7 @@ class LedgerPost(Contract):
     id: str
     qbo_entity: Literal["customer", "item", "invoice", "payment", "credit_memo", "invoice_note"]
     qbo_id: str | None
+    qbo_url: str | None = None  # link to the record in the QuickBooks sandbox, set by the integration once posted
     amount: Money
     lines: list[LedgerLine] = []
     status: Literal["pending", "posted", "held", "failed", "voided"]
@@ -469,6 +470,7 @@ class ChargeDetail(Contract):
     finding: Finding | None
     decision: Decision | None
     rehearsal: Rehearsal | None
+    rule: Rule | None = None  # the saved rule decision.rule_id names, for the RuleCard ("learned Oct 24, approved by Dana")
     evidence: list[Evidence]
 
 

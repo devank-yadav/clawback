@@ -165,3 +165,17 @@ def test_fixture_amounts_match_engine(name, cid):
     a = compute_allowed(charges[cid], s.spring_terms(), s.store_sales(), s.prior_payments())
     f = _load(name).charges[cid].finding
     assert (f.expected, f.taken, f.delta) == (a.allowed, a.taken, a.delta)
+
+
+def test_rule_card_data_on_charges(march, april):
+    """The RuleCard ("Applied Rule #1, learned Oct 24, approved by Dana") reads the rule from the charge detail;
+    the April run never emits a rule event, so this is its only source there."""
+    rule = next(e.data for e in march.events if e.type == "rule")
+    for run, cid in [(march, "C6"), (april, "A1"), (april, "A2")]:
+        assert run.charges[cid].rule == rule
+    assert all(d.rule is None for cid, d in march.charges.items() if cid != "C6")
+
+
+def test_remittance_has_received_at(march):
+    rem = march.events[0].data.remittance
+    assert rem.received_at is not None and rem.received_at <= march.events[0].at

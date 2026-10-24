@@ -398,6 +398,22 @@
         "reason": "Rule #1: 18 days' notice is at least 14, so accept."
       },
       "rehearsal": null,
+      "rule": {
+        "id": "rule-1",
+        "label": "Rule #1",
+        "pattern_text": "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.",
+        "term_type": "fee_discretion",
+        "counterparty": "Northmart",
+        "condition": "notice_days >= 14",
+        "decision": "accept",
+        "else_decision": "dispute",
+        "summary": "Accept Northmart display fees with at least 14 days' notice; otherwise dispute.",
+        "approver": "Dana Okafor",
+        "approver_role": "owner",
+        "learned_at": "2026-10-24T10:31:17-07:00",
+        "source_question_id": "Q-1",
+        "status": "active"
+      },
       "evidence": [
         {
           "id": "ev-deal-5.4",
@@ -574,6 +590,22 @@
         "reason": "Rule #1: 5 days' notice is under 14, so dispute."
       },
       "rehearsal": null,
+      "rule": {
+        "id": "rule-1",
+        "label": "Rule #1",
+        "pattern_text": "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.",
+        "term_type": "fee_discretion",
+        "counterparty": "Northmart",
+        "condition": "notice_days >= 14",
+        "decision": "accept",
+        "else_decision": "dispute",
+        "summary": "Accept Northmart display fees with at least 14 days' notice; otherwise dispute.",
+        "approver": "Dana Okafor",
+        "approver_role": "owner",
+        "learned_at": "2026-10-24T10:31:17-07:00",
+        "source_question_id": "Q-1",
+        "status": "active"
+      },
       "evidence": [
         {
           "id": "ev-deal-5.4",
