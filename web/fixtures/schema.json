@@ -3192,6 +3192,22 @@
         "title": "Status",
         "type": "string"
       },
+      "mode": {
+        "anyOf": [
+          {
+            "enum": [
+              "engine",
+              "agent"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Mode"
+      },
       "run_at": {
         "anyOf": [
           {

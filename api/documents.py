@@ -47,11 +47,14 @@ def _kind(doc_id: str, path: str) -> str:
     return "draft" if "draft" in doc_id else "deal"
 
 
-def paste(text: str) -> Document:
-    """A clause the judge pasted into the scenario box, treated as part of the signed deal for that one case."""
-    sha = hashlib.sha256(text.encode()).hexdigest()
-    doc = Document(id=f"pasted-{sha[:10]}", kind="deal", path="(pasted in the scenario box)", signed_by_both=True,
-                   sha256=sha)
+def paste(text: str, kind: str = "deal", sender: str | None = None, received_at: datetime | None = None) -> Document:
+    """A document that isn't a file under data/: a clause pasted into the scenario box (treated as part of the
+    signed deal for that one case), or an eval case's deal or email."""
+    basis = text if kind == "deal" and sender is None else f"{kind}|{sender}|{text}"  # a pasted clause keeps its id
+    sha = hashlib.sha256(basis.encode()).hexdigest()
+    approved = sender is not None and sender.lower() in load_policy().approved_amendment_senders
+    doc = Document(id=f"pasted-{sha[:10]}", kind=kind, path="(not a file in data/)", sender=sender,
+                   approved_sender=approved, signed_by_both=kind == "deal", received_at=received_at, sha256=sha)
     _PASTED[doc.id] = (doc, text)
     return doc
 

@@ -24,4 +24,5 @@ web/out/
 
 # eval/run.py output (served by GET /eval/latest)
 eval/latest.json
+eval/latest-agent.json
 eval/latest.tmp

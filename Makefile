@@ -1,5 +1,5 @@
 # Targets are wired up as each part lands. Keep target names stable; the guides and the demo checklist use them.
-.PHONY: dev api web test acceptance seed eval record demo reset check-data
+.PHONY: dev api web test acceptance seed eval eval-agent record demo reset check-data
 
 # Macs often have only python3. Override with: make test PYTHON=python
 PYTHON ?= python3
@@ -23,7 +23,8 @@ acceptance:
 		api/engine/tests/test_quote_check.py api/engine/tests/test_allowed.py api/engine/tests/test_gate.py \
 		api/engine/tests/test_eval_harness.py api/tests/test_replay.py api/tests/test_routes.py api/tests/test_disputes.py \
 		api/tests/test_books.py api/tests/test_coach_scenario.py \
-		api/tests/test_readers.py api/tests/test_audit.py api/tests/test_sms_channel.py
+		api/tests/test_readers.py api/tests/test_audit.py api/tests/test_sms_channel.py \
+		api/tests/test_eval_agent.py
 	$(PYTHON) eval/run.py
 
 seed:
@@ -31,6 +32,10 @@ seed:
 
 eval:
 	$(PYTHON) eval/run.py
+
+# Readers and agents in the loop: about 111 AI calls live (see --estimate); free in DEMO_MODE once recorded.
+eval-agent:
+	RECORD_FIXTURES=1 $(PYTHON) eval/run.py --mode agent
 
 record:
 	RECORD_FIXTURES=1 $(PYTHON) -m api.run_demo --portal --coach

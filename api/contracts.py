@@ -694,6 +694,7 @@ class CoachResponse(Contract):
 
 class EvalReport(Contract):
     status: Literal["not_run", "running", "done"]
+    mode: Literal["engine", "agent"] | None = None  # engine: math and gate alone; agent: readers and agents in the loop
     run_at: datetime | None = None
     cases: int
     correct: int | None = None
