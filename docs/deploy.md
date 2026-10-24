@@ -1,6 +1,8 @@
 # Deploy runbook: Vultr VM + GoDaddy domain (F19)
 
 Sat 4–8 PM, after the 4 PM checkpoint. Goal: judges' phones open the board at `https://<DOMAIN>`.
+
+**Domain: `clawback.biz`** (registered 2026-10-24 with the MLH GoDaddy Registry code). Everywhere below, `<DOMAIN>` is `clawback.biz`.
 Tracks: MLH Vultr (hosting) and MLH GoDaddy (domain); the Devpost proof for both is the live URL.
 
 Nothing here needs a key in the repo. Credentials for Vultr, GoDaddy and `.env` never go in the repo, chat or Slack.
