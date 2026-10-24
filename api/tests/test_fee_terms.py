@@ -91,3 +91,45 @@ def test_rule_writer_sends_fee_amount_only_when_there_is_one(monkeypatch):
     rule_writer.write_rule(q, "accept", t, "KeHE", {"fee_amount": Decimal("185.76")}, 2, "Teresa", q.sent_at)
     assert sent == [{"notice_days": 20, "amount": None},
                     {"notice_days": None, "amount": None, "fee_amount": "185.76"}]
+
+
+# --- One canonical form for fee terms (api/agents/fee_terms.py) ---------------------------------------------------
+
+from api.agents import fee_terms  # noqa: E402
+
+VOCAB = ["MCB", "Extra Performance", "Free Placements", "Spoils"]
+Q_MCB = ("KeHE will charge a bi weekly processing fee of 5% of the MCB amount (with a minimum of $65 per purchasing "
+         "Vendor/facility).")
+
+
+@pytest.mark.parametrize("name, want", [
+    ("MCB", "MCB"), ("mcb", "MCB"), ("MCB processing fee", "MCB"), ("Manufacturer Charge Backs (MCB)", "MCB"),
+    ("Extra Performance administrative charge", "Extra Performance"), ("FREE PLACEMENTS", "Free Placements"),
+    ("Spoils processing fee", "Spoils"), ("Lumping fee", "Lumping fee"),
+])
+def test_fee_code_takes_the_accounts_name(name, want):
+    assert fee_terms.fee_code(name, VOCAB) == want
+
+
+def test_rate_and_limits_in_one_form():
+    assert fee_terms.rate("5%", "percent", Q_MCB) == "5"
+    assert fee_terms.rate("0.05", "percent", Q_MCB) == "5"  # a fraction for the 5% the sentence writes
+    assert fee_terms.rate("0.29", "per_unit", "a $0.29 per unit fee") == "0.29"  # dollars stay dollars
+    assert fee_terms.rate("0.5", "percent", "a 0.5% fee") == "0.5"  # the sentence writes 0.5%: kept
+    assert fee_terms.rate("$1,500.00", "flat", "") == "1500"
+    p = fee_terms.canonical({"fee_code": "MCB processing fee", "basis": "percent", "rate": "5%", "min": "$65.00",
+                             "max": "0", "tiers": []}, Q_MCB, VOCAB)
+    assert p == {"fee_code": "MCB", "basis": "percent", "rate": "5", "min": "65", "per": "incident",
+                 "requires_proof": False}
+
+
+def test_priced_alike_ignores_requires_proof_only():
+    a = fee_terms.canonical({"fee_code": "MCB", "basis": "percent", "rate": "5", "min": "65", "requires_proof": True},
+                            Q_MCB, VOCAB)
+    b = fee_terms.canonical({"fee_code": "MCB fee", "basis": "percent", "rate": "0.05", "min": "65.00"}, Q_MCB, VOCAB)
+    assert fee_terms.priced_alike(a, b)
+    assert not fee_terms.priced_alike(a, {**b, "per": "invoice"})
+    assert not fee_terms.priced_alike(a, {**b, "min": "75"})
+    tiered = {"fee_code": "Late", "basis": "percent", "tiers": [{"from_days": 0, "to_days": 7, "rate": "5%"}]}
+    assert fee_terms.canonical(tiered, "5% if 0 to 7 days late", [])["tiers"] == [
+        {"from_days": 0, "to_days": 7, "rate": "5"}]

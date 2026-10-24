@@ -60,8 +60,9 @@ PROMOTION = [
     term("unit_cap", Q_CAP, max_units=4000),
 ]
 
-Q_BROKER = "KeHE asked to extend promotion LH-OI-2603 through April 4, same terms, up to 600 additional cases. Approved."
-BROKER = [term("amendment", Q_BROKER, effective_to="2026-04-04", extra_units=600)]
+Q_BROKER = ("KeHE asked to extend promotion LH-OI-2603 from March 29 through April 4, same terms, up to 600 "
+            "additional cases. Approved.")
+BROKER = [term("amendment", Q_BROKER, effective_from="2026-03-29", effective_to="2026-04-04", extra_units=600)]
 
 Q_EP_NEW = ("Effective March 9, 2026, the Extra Performance administrative charge will be 7% on the total amount of "
             "each invoice with a maximum of $250 per invoice.")
@@ -84,3 +85,30 @@ OWNER_ANSWER = "Pay KeHE's 18% placement fee when it's $150 or less. Above that 
 RULE = {"understood": True, "fact": "fee_amount", "op": "<=", "value": 150, "decision": "accept",
         "else_decision": "dispute",
         "summary": "Accept KeHE's free placement admin fee up to $150; above that, dispute the fee and pay the landed cost."}
+
+# Reader B again, stating the same terms in other forms only: longer fee names, "%" and "$" signs, a percent as a
+# fraction, a minimum of 0 for none, per and requires_proof left out, an empty tier list, the MCB quote without its
+# backup sentence, and §6.6 without the discretion flag. Every one of these must still agree with Reader A.
+Q_MCB_ONLY = ("KeHE will charge a bi weekly processing fee of 5% of the MCB amount (with a minimum of $65 per "
+              "purchasing Vendor/facility).")
+POLICY_B_VARIANT = [
+    term("fee_schedule", Q_MCB_ONLY, effective_from=POLICY_FROM, fee_code="MCB processing fee", basis="percent",
+         rate="5%", min="$65.00"),
+    term("fee_schedule", Q_EP, fee_code="Extra Performance administrative charge", basis="percent", rate="0.05",
+         max="175.00", per="invoice", requires_proof=False, tiers=[]),
+    term("fee_schedule", Q_FP, discretion=False, effective_from=POLICY_FROM, fee_code="FREE PLACEMENTS",
+         basis="percent", rate="18%", min="0"),
+    term("fee_schedule", Q_SPOILS, effective_from=POLICY_FROM, fee_code="Spoils processing fee", basis="per_unit",
+         rate="$0.29"),
+    term("dispute_window", Q_WINDOW, days=180, **{"from": "deduction"}),
+    term("notice_period", Q_NOTICE, days=30),
+]
+EP_NOTICE_VARIANT = [term("fee_schedule", Q_EP_NEW, effective_from="2026-03-09",
+                          fee_code="Extra Performance admin charge", basis="percent", rate="7%", max="$250",
+                          per="invoice")]
+READERS_B_VARIANT = {
+    **READERS,
+    "kehe-vendor-policies-2015": (READERS["kehe-vendor-policies-2015"][0], {"terms": POLICY_B_VARIANT, "unclear": []}),
+    "lantern-hill-kehe-ep-admin-2026-03-02": (READERS["lantern-hill-kehe-ep-admin-2026-03-02"][0],
+                                              {"terms": EP_NOTICE_VARIANT, "unclear": []}),
+}

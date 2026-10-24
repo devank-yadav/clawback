@@ -17,7 +17,7 @@ from itertools import zip_longest
 import anthropic
 
 from api import documents
-from api.agents import reader, reader_b
+from api.agents import fee_terms, reader, reader_b
 from api.agents.reader import ReaderResult
 from api.contracts import Document, Term
 from api.engine import quote_check
@@ -59,11 +59,17 @@ def merge(text: str, doc: Document, a: list[Term], b: list[Term]) -> tuple[list[
     for (type_, _), (ta, tb) in by_type.items():
         for x, y in zip_longest(ta, tb):
             n = count[type_] = count[type_] + 1
+            update = {}
+            if type_ == "fee_schedule" and x and y and fee_terms.priced_alike(x.params, y.params):
+                # Priced the same way: backup required or a judgment call if either reader says so.
+                proof = bool(x.params.get("requires_proof") or y.params.get("requires_proof"))
+                x, y = (t.model_copy(update={"params": {**t.params, "requires_proof": proof}}) for t in (x, y))
+                update["discretion"] = x.discretion or y.discretion
             v = quote_check.verify_term(text, x.model_dump(mode="json") if x else None,
                                         y.model_dump(mode="json") if y else None)
             base = x or y
             merged.append(base.model_copy(update={
-                "id": f"{doc.id}/{type_}" + (f"-{n}" if n > 1 else ""), "reader": "merged", "status": v.status,
+                **update, "id": f"{doc.id}/{type_}" + (f"-{n}" if n > 1 else ""), "reader": "merged", "status": v.status,
                 "char_start": v.char_start if v.char_start is not None else base.char_start,
                 "char_end": v.char_end if v.char_end is not None else base.char_end,
                 "source_approved": documents.can_change_deal(doc), "reasons": list(v.reasons)}))

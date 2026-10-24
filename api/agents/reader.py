@@ -18,12 +18,13 @@ from datetime import date, timedelta
 from typing import Any, Literal
 
 import anthropic
+import yaml
 from pydantic import ConfigDict, Field
 
 from api import accounts, documents
 from api.contracts import TERM_PARAMS, Document, ReaderOutput, ReaderTerm, Term, TermType
 from api.engine import quote_check
-from api.agents import claude, prompts
+from api.agents import claude, fee_terms, prompts
 from api.agents.claude import Strict
 
 MODEL = claude.MODEL
@@ -45,7 +46,17 @@ def with_fees(system: str, account: accounts.Account | str | None = None) -> tup
     and schema as recorded."""
     if not reads_fees(account):
         return system, LLMOutput
-    return f"{system}\n{prompts.render('reader_fees', account)}", LLMFeeOutput
+    names = fee_names(account)
+    listed = (f"\nThis account's fee names, for fee_code: {'; '.join(names)}. Use the one that names the fee, exactly as "
+              "listed; only a fee none of them names gets the heading of its section.\n") if names else ""
+    return f"{system}\n{prompts.render('reader_fees', account)}{listed}", LLMFeeOutput
+
+
+def fee_names(account: accounts.Account | str | None = None) -> list[str]:
+    """The fee names the account's fees/fees.yaml maps its charge codes to: the fee_code vocabulary."""
+    path = accounts.resolve(account).dir / "fees" / "fees.yaml"
+    codes = (yaml.safe_load(path.read_text()) or {}).get("codes", {}) if path.is_file() else {}
+    return list(dict.fromkeys(str(v) for v in codes.values()))
 
 
 # What the model fills in. Strict JSON schemas can't hold a free-form dict, so params is one flat object
@@ -127,10 +138,13 @@ def _user_message(doc: Document, text: str) -> str:
 def _to_reader_output(raw: dict, doc: Document, text: str, schema: type[Strict] = LLMOutput) -> ReaderOutput:
     """LLM JSON -> contracts.ReaderOutput. Raises ValidationError on anything the contract rejects."""
     out = schema.model_validate(raw)
+    vocabulary = fee_names(documents.account_of(doc.id)) if schema is LLMFeeOutput else []
     terms = []
     for t in out.terms:
         used = {f.alias or name for name, f in TERM_PARAMS[t.type].model_fields.items()}
         params = {k: v for k, v in t.params.model_dump(by_alias=True).items() if v is not None and k in used}
+        if t.type == "fee_schedule":  # one form, whichever reader wrote it (api/agents/fee_terms.py)
+            params = fee_terms.canonical(params, t.exact_quote, vocabulary)
         span = quote_check.find_quote(text, t.exact_quote) or (0, 0)
         terms.append(ReaderTerm(type=t.type, params=params, effective_from=t.effective_from,
                                 effective_to=t.effective_to, exact_quote=t.exact_quote, char_start=span[0],
