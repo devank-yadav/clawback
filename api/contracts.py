@@ -298,6 +298,7 @@ class PromoPlan(Contract):
 EvidenceKind = Literal[
     "clause", "email", "claim", "notice", "sales", "charge", "prior_payment", "rule", "person", "approval",
     "delivery", "price", "policy",  # operations: proof of delivery, the agreed price list, ops terms (see "ops data")
+    "backup",  # the other side's backup for a fee charge (see "fee data")
 ]
 
 
@@ -952,6 +953,9 @@ class AccountConfig(Contract):
     distributor: Distributor
     invoice: AccountInvoice
     deal_docs: list[str] = Field(min_length=1)  # document ids, the signed deal first, then emails that may change it
+    # Real contracts this account's deal is, under data/contracts/ (file names, read unedited); each is a document
+    # whose id is its stem, e.g. KeHE's vendor policies for Lantern Hill.
+    contracts: list[str] = []
     approved_senders: list[str]  # only these (or a document signed by both parties) can change the deal
     dispute_start: int = Field(ge=1)  # the invoice month files D-<start>; each later month starts 10 higher
     qbo: QboConfig

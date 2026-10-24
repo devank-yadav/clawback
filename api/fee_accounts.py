@@ -1,176 +1,144 @@
-"""Accounts whose charges include fee-schedule fees: data/accounts/<id>/ with a fees/fees.yaml (Lantern Hill Soda Co.
-<- KeHE Distributors is the first). Everything such an account needs beyond PR #64's account layout, behind a few
-functions the pipeline can call once it runs per account (see the PR for the wiring):
+"""Fee-schedule wiring for an account with fees/fees.yaml (Lantern Hill Soda Co. <- KeHE Distributors is the first).
+Everything else about the account is the usual data/accounts/<id>/ layout (api/accounts.py); this adds what the fee
+engine needs and the pipeline passes to compute_allowed():
 
-    account.yaml                       AccountConfig's shape, nothing else (PR #64 validates it strictly)
-    fees/fees.yaml                     contract (the governing policy, under data/contracts/), codes, policy_changes,
-                                       as_of, invoice_date, older_charges
-    deals/ emails/ notices/            our side's documents and the other side's notices (ids are file stems)
-    fees/backup/                       the other side's backup documents (proof for requires_proof fees)
-    fees/backup.csv                    FeeBackupRow lines, keyed by the charge's ref
-    purchases/purchase-orders.csv      po, written_on, product, cases: what off-invoice (OI) charges are checked against
-    charges/<month>.csv  expected.csv  the month's charges and their expected decisions
+    fees/fees.yaml                  codes (charge code -> the fee_code the deal names), policy_changes (documents that
+                                    change the policy: they apply no sooner than their notice date + notice_period),
+                                    as_of (the day a dispute would be filed), invoice_date, older_charges
+    fees/backup.csv                 FeeBackupRow lines, keyed by the charge's ref
+    purchases/purchase-orders.csv   po, written_on, product, cases: what off-invoice (OI) allowances are counted on
+    charges/<older_charges>         deductions taken from earlier payments, reviewed with this one (not in its total)
 
-load() reads it all; register() makes its documents readable by both readers with the fee-term prompt section;
-engine_terms(), fee_data() and engine_sales() give compute_allowed() what it needs. No AI here and no money math.
+No AI here and no money math.
 """
 
 from __future__ import annotations
 
 import csv
-import email
-import email.utils
-import hashlib
-import re
-from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date
+from decimal import Decimal
+from functools import cache
 from pathlib import Path
 
 import yaml
 
-from api import adapters, documents
-from api.contracts import Charge, Document, FeeBackupRow, Term
+from api import accounts, adapters, documents
+from api.contracts import Charge, Evidence, FeeBackupRow, SalesRow, Term
 from api.engine import types as eng
 
-ACCOUNTS = Path(__file__).resolve().parents[1] / "data" / "accounts"
-DOC_DIRS = {"deals": "deal", "emails": "email", "notices": "notice", "fees/backup": "notice"}
-_EMAIL = re.compile(r"[\w.+-]+@[\w.-]+\.\w+")
-_MD_DATE = re.compile(r"\*\*(?:[A-Za-z ]*?date):\*\*\s*([A-Z][a-z]+ \d{1,2}, \d{4})", re.I)
-_MD_FROM = re.compile(r"^\*\*From:\*\*(.*)$", re.M)
+
+def _account(account: accounts.Account | str | None) -> accounts.Account:
+    return accounts.resolve(account)
 
 
-@dataclass
-class FeeAccount:
-    id: str
-    dir: Path
-    config: dict  # account.yaml
-    fees: dict  # fees/fees.yaml
-    docs: dict[str, tuple[Document, str]] = field(repr=False)
-    read_order: list[str]  # the governing policy, then account.yaml's deal_docs
-    charges: list[Charge]  # the invoice month's, in the remittance's total
-    older_charges: list[Charge]  # reviewed with it, taken from earlier payments
-    purchases: list[dict]
-    backup: list[FeeBackupRow]
-
-    @property
-    def brand(self) -> str:
-        return self.config["brand"]["name"]
-
-    @property
-    def distributor(self) -> str:
-        return self.config["distributor"]["name"]
-
-    def all_charges(self) -> list[Charge]:
-        return self.charges + self.older_charges
-
-    def expected(self) -> list[dict]:
-        return _csv(self.dir / "expected.csv")
+def has_fees(account: accounts.Account | str | None = None) -> bool:
+    return (_account(account).dir / "fees" / "fees.yaml").is_file()
 
 
-def has_fees(account_id: str) -> bool:
-    return (ACCOUNTS / account_id / "fees" / "fees.yaml").exists()
+@cache
+def _config(folder: Path) -> dict:
+    return yaml.safe_load((folder / "fees" / "fees.yaml").read_text()) or {}
 
 
-def _csv(path: Path) -> list[dict]:
-    if not path.exists():
+def config(account: accounts.Account | str | None = None) -> dict:
+    return _config(_account(account).dir)
+
+
+def _csv(path: Path) -> list[dict[str, str]]:
+    if not path.is_file():
         return []
     with path.open(newline="") as f:
         return list(csv.DictReader(f))
 
 
-def _charges(path: Path) -> list[Charge]:
-    return [Charge.model_validate({k: v for k, v in row.items() if k != "charge_id"} | {"id": row["charge_id"]})
-            for row in _csv(path)]
-
-
-def _doc(doc_id: str, kind: str, rel: str, text: str, approved: set[str], signed: bool,
-         received_at: datetime | None = None) -> Document:
-    sender = None
-    if kind == "email":
-        msg = email.message_from_string(text)
-        sender = email.utils.parseaddr(msg.get("From", ""))[1] or None
-        received_at = email.utils.parsedate_to_datetime(msg["Date"]).replace(tzinfo=None) if msg.get("Date") else None
-    else:
-        if (m := _MD_FROM.search(text)) and (e := _EMAIL.search(m.group(1))):
-            sender = e.group()
-        if m := _MD_DATE.search(text):
-            received_at = datetime.strptime(m.group(1), "%B %d, %Y")
-    return Document(id=doc_id, kind=kind, path=rel, sender=sender,
-                    approved_sender=sender is not None and sender.lower() in approved, signed_by_both=signed,
-                    received_at=received_at, sha256=hashlib.sha256(text.encode()).hexdigest())
-
-
-def load(account_id: str) -> FeeAccount:
-    root = ACCOUNTS / account_id
-    config = yaml.safe_load((root / "account.yaml").read_text())
-    fees = yaml.safe_load((root / "fees" / "fees.yaml").read_text())
-    approved = {s.strip().lower() for s in config["approved_senders"]}
-    docs: dict[str, tuple[Document, str]] = {}
-    c = fees["contract"]
-    path = ACCOUNTS.parent / c["path"]  # under data/
-    text = path.read_text()
-    when = datetime.combine(_date(c["date"]), datetime.min.time())
-    # The policy binds both sides (accepting a PO accepts it), so it counts as signed by both, like a deal.
-    docs[c["id"]] = (_doc(c["id"], "deal", str(path.relative_to(ACCOUNTS.parent)), text, approved, True, when), text)
-    for folder, kind in DOC_DIRS.items():
-        for p in sorted((root / folder).glob("*.md")) + sorted((root / folder).glob("*.eml")):
-            text = p.read_text()
-            # Our promotion submission carries KeHE's acceptance, so it's signed by both; the rest change the deal
-            # only through an approved sender.
-            docs[p.stem] = (_doc(p.stem, kind, str(p.relative_to(ACCOUNTS.parent)), text, approved, kind == "deal"),
-                            text)
-    month = config["invoice"]["month"]
-    return FeeAccount(
-        id=account_id, dir=root, config=config, fees=fees, docs=docs,
-        read_order=[c["id"], *config["deal_docs"]],
-        charges=_charges(root / "charges" / f"{month}.csv"),
-        older_charges=_charges(root / fees["older_charges"]) if fees.get("older_charges") else [],
-        purchases=_csv(root / "purchases" / "purchase-orders.csv"),
-        backup=[FeeBackupRow.model_validate(r) for r in _csv(root / "fees" / "backup.csv")],
-    )
-
-
-def _date(value) -> date:
+def _date(value) -> date | None:
+    if value in (None, ""):
+        return None
     return value if isinstance(value, date) else date.fromisoformat(str(value))
 
 
-def register(acct: FeeAccount) -> None:
-    """Make the account's documents loadable (documents.load) and read with the fee-term prompt section."""
-    for doc, text in acct.docs.values():
-        documents.register(doc, text, parties=(acct.brand, acct.distributor))
+def _charges(path: Path) -> list[Charge]:
+    return [Charge.model_validate({k: v for k, v in r.items() if k != "charge_id"} | {"id": r["charge_id"]})
+            for r in _csv(path)]
 
 
-def noticed_on(acct: FeeAccount, doc_id: str) -> date | None:
+def charges(account: accounts.Account | str | None = None, month: str | None = None) -> list[Charge]:
+    """The month's charges, read from the file with their deducted_on dates."""
+    a = _account(account)
+    return _charges(a.dir / "charges" / f"{month or a.invoice.month}.csv")
+
+
+def older_charges(account: accounts.Account | str | None = None) -> list[Charge]:
+    """Deductions taken from earlier payments and reviewed with this one (fees.yaml older_charges)."""
+    rel = config(account).get("older_charges")
+    return _charges(_account(account).dir / rel) if rel else []
+
+
+def backup(account: accounts.Account | str | None = None) -> list[FeeBackupRow]:
+    return [FeeBackupRow.model_validate(r) for r in _csv(_account(account).dir / "fees" / "backup.csv")]
+
+
+def purchases(account: accounts.Account | str | None = None) -> list[dict[str, str]]:
+    return _csv(_account(account).dir / "purchases" / "purchase-orders.csv")
+
+
+def noticed_on(doc_id: str, account: accounts.Account | str | None = None) -> date | None:
     """A policy-change document's notice date (fees.yaml policy_changes); None for every other document."""
-    if doc_id not in acct.fees.get("policy_changes", []):
+    if doc_id not in config(account).get("policy_changes", []):
         return None
-    received = acct.docs[doc_id][0].received_at
+    received = documents.load(doc_id)[0].received_at
     return received.date() if received else None
 
 
-def engine_terms(acct: FeeAccount, terms: list[Term]) -> list[eng.Term]:
-    return [adapters.to_engine_term(t, noticed_on(acct, t.source_doc_id)) for t in terms]
+def engine_terms(terms: list[Term], account: accounts.Account | str | None = None) -> list[eng.Term]:
+    return [adapters.to_engine_term(t, noticed_on(t.source_doc_id, account)) for t in terms]
 
 
-def engine_charge(acct: FeeAccount, c: Charge) -> eng.Charge:
-    return adapters.to_engine_charge(c, counterparty=acct.distributor)
-
-
-def fee_data(acct: FeeAccount) -> eng.FeeData:
+def fee_data(account: accounts.Account | str | None = None) -> eng.FeeData:
+    a, c = _account(account), config(account)
     return eng.FeeData(
-        lines=tuple(adapters.to_engine_fee_line(r) for r in acct.backup),
-        codes=dict(acct.fees.get("codes", {})),
-        proof_docs=frozenset(acct.docs),
-        as_of=_date(acct.fees["as_of"]) if acct.fees.get("as_of") else None,
-        invoice_date=_date(acct.fees["invoice_date"]) if acct.fees.get("invoice_date") else None,
+        lines=tuple(adapters.to_engine_fee_line(r) for r in backup(a)),
+        codes=dict(c.get("codes", {})),
+        proof_docs=frozenset(a.docs),
+        as_of=_date(c.get("as_of")),
+        invoice_date=_date(c.get("invoice_date")),
     )
 
 
-def engine_sales(acct: FeeAccount) -> list[eng.SalesWeek]:
+def sales_rows(account: accounts.Account | str | None = None) -> list[SalesRow]:
     """Each purchase order as a one-day row (written_on to written_on, cases as the promoted units), so the promo
-    engine counts an off-invoice allowance by the date its PO was written (policy §6.2) and caps it in that order."""
+    engine counts an off-invoice allowance by the date its PO was written (KeHE policy §6.2) and caps it in that
+    order."""
     out = []
-    for r in acct.purchases:
+    for r in purchases(account):
         day, cases = date.fromisoformat(r["written_on"]), int(r["cases"])
-        out.append(eng.SalesWeek(day, day, r["product"], cases, cases))
+        out.append(SalesRow(week_start=day, week_end=day, product=r["product"], promo_units=cases, total_units=cases))
+    return out
+
+
+def evidence(account: accounts.Account | str | None = None) -> dict[str, Evidence]:
+    """The backup behind each fee charge (ev-backup-<ref>) and each purchase order (ev-po-<po>), for the evidence card
+    and the agents to cite."""
+    out: dict[str, Evidence] = {}
+    by_ref: dict[str, list[FeeBackupRow]] = {}
+    for r in backup(account):
+        by_ref.setdefault(r.deduction_ref, []).append(r)
+    for ref, lines in by_ref.items():
+        total = sum((r.base_amount for r in lines), Decimal(0))
+        cost = sum((r.pass_through for r in lines), Decimal(0))
+        parts = [f"{len(lines)} backup line{'s' if len(lines) > 1 else ''}"]
+        if total:
+            parts.append(f"${total:,.2f} the fee is taken on")
+        if cost:
+            parts.append(f"${cost:,.2f} cost at cost")
+        out[f"ev-backup-{ref}"] = Evidence(
+            id=f"ev-backup-{ref}", kind="backup", label=f"Backup {ref}", summary="Deduction backup: " + ", ".join(parts) + ".",
+            rows=[{k: (float(v) if isinstance(v, Decimal) else v.isoformat() if isinstance(v, date) else v)
+                   for k, v in r.model_dump().items()} for r in lines])
+    for r in purchases(account):
+        d = date.fromisoformat(r["written_on"])
+        out[f"ev-po-{r['po']}"] = Evidence(
+            id=f"ev-po-{r['po']}", kind="sales", label=f"PO {r['po']}",
+            summary=f"Purchase order written {d:%b} {d.day}: {int(r['cases']):,} cases of {r['product']}.",
+            rows=[dict(r)])
     return out

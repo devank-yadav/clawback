@@ -1,7 +1,7 @@
 # Lantern Hill Soda Co. <- KeHE Distributors. The deal is KeHE's real Vendor Policies & Procedures (May 31, 2015),
 # word for word in data/contracts/kehe-vendor-policies-2015.txt; everything else here is written by our side.
-# This file has exactly the AccountConfig shape (api/contracts.py "# ---- accounts", PR #64). The fee-schedule wiring
-# lives in fees/fees.yaml, loaded by api/fee_accounts.py.
+# The fee-schedule wiring (charge codes, backup, the policy change, the review date) is in fees/fees.yaml, loaded by
+# api/fee_accounts.py.
 id: lantern-hill
 brand:
   name: Lantern Hill Soda Co.
@@ -23,9 +23,11 @@ invoice:
   month: march
   period_start: 2026-03-01
   period_end: 2026-03-31
-# KeHE's policy (data/contracts/, see fees/fees.yaml) is read first; then our promotion submission, the broker's
-# extension and KeHE's portal notice changing the Extra Performance charge.
-deal_docs: [lantern-hill-promotion-2026-03, lantern-hill-broker-2026-03-24, kehe-ep-admin-2026-03-02]
+# KeHE's policy is the deal (the real text in data/contracts/); then our promotion submission, the broker's extension
+# and KeHE's portal notice changing the Extra Performance charge.
+contracts: [kehe-vendor-policies-2015.txt]
+deal_docs: [kehe-vendor-policies-2015, lantern-hill-promotion-2026-03, lantern-hill-broker-2026-03-24,
+            lantern-hill-kehe-ep-admin-2026-03-02]
 # Policy §10.7 lets KeHE change the policy by posting on its Vendor Portal (with 30 days' notice, which the engine
 # checks), so the portal's posting address is approved alongside the owner and the broker (§6.1).
 approved_senders: [teresa@lanternhillsoda.example, avery@harborline-brokers.example, vendorportal@kehe.example]
@@ -38,4 +40,4 @@ qbo:
     - {item: Lantern Hill Blood Orange Soda, qty: 2160, unit_price: 9.60}
     - {item: Lantern Hill Cream Soda, qty: 700, unit_price: 9.60}
   payment_date: 2026-04-10
-nessie_description: KeHE remittance LH-2603
+nessie_description: KeHE Distributors remittance LH-2603

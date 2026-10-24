@@ -5,7 +5,7 @@ This document can also set fees, a deadline for disputing deductions, and a noti
   - rate: a decimal string; for percent, the percent itself ("5" for 5%), else dollars ("0.29").
   - min and max: the fee's minimum and maximum in dollars as decimal strings, or null when none is stated.
   - per: what the minimum or maximum applies to: "invoice", "po", "incident" (each charge) or "month"; "incident" when nothing is stated.
-  - tiers: only when the rate changes with a number of days (e.g. 5% if 0 to 7 days late, 10% if 8 to 14): one {from_days, to_days, rate} per band, to_days null for "and over"; rate null then. Otherwise null.
+  - tiers: only when the rate changes with a number of days (e.g. 5% if 0 to 7 days late, 10% if 8 to 14): one entry per band with from_days, to_days and rate, to_days null for "and over"; the top-level rate is null then. Otherwise null.
   - requires_proof: true when the document says backup, proof or documentation comes with the fee; else false. When that is said in the sentence right after the fee's, exact_quote is both sentences, as written.
   A fee charged on top of a cost (landed cost plus a processing fee) is a fee_schedule for the fee part only.
 - dispute_window: how long the supplier has to dispute a deduction. params.days, and params.from: "deduction" or "invoice", whichever the deadline counts from.

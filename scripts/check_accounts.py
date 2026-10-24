@@ -43,6 +43,10 @@ TOLERANCE = Decimal(str(POLICY["match_tolerance_usd"]))
 DISCRETION_WORDS = tuple(w.lower() for w in POLICY["discretion_words"])
 
 CODES = {"PA", "DF", "SH", "PR", "SP"}  # promo allowance, discretionary fee, shortage, price mismatch, spoilage
+# An account with fees/fees.yaml (fee schedules, api/fee_accounts.py) also knows OI (an off-invoice allowance recovered
+# by deduction) and the charge codes its fees.yaml maps to the deal's fees. Its decisions are worked out by the engine
+# itself in api/tests (test_lantern_hill.py), not again here.
+FEE_CODES = {"OI"}
 DECISIONS = {"dispute", "accept", "split", "ask"}
 OUTCOMES = {"recovered", "accepted", "written_off", "open"}
 INVOICE_STATUSES = {"paid", "open"}
@@ -128,6 +132,9 @@ class Account:
         self.id = folder.name
         self.label = folder.name
         self.yaml = None
+        fees = folder / "fees" / "fees.yaml"
+        self.fees = (yaml.safe_load(fees.read_text(encoding="utf-8")) or {}) if fees.exists() else None
+        self.codes = CODES | (FEE_CODES | set(self.fees.get("codes", {})) if self.fees is not None else set())
 
     def path(self, rel):
         """The account's file, or Peak Bar's file where it is now if it hasn't moved yet."""
@@ -149,7 +156,10 @@ class Account:
         want = cols or COLS.get(rel)
         if want:
             if want == CHARGE_COLS:  # line_ref is optional for an account with no SH/PR charges
-                ok = got in (CHARGE_COLS, CHARGE_COLS[:-1])
+                ok = got in (CHARGE_COLS, CHARGE_COLS[:-1]) or (self.fees is not None and got == CHARGE_COLS
+                                                                 + ["deducted_on"])
+            elif rel == "expected.csv" and self.fees is not None:  # may add gate_row and asked
+                ok = got[:4] == want[:4] and set(want) <= set(got)
             else:
                 ok = got == want
             check(f"{self.label}: {rel} columns", ok, got)
@@ -161,6 +171,9 @@ class Account:
         for sub, ext in DOC_DIRS.items():
             for p in sorted((self.dir / sub).glob(f"*{ext}")):
                 out[p.stem] = (sub, p)
+        for name in (self.yaml or {}).get("contracts", []):  # a real contract under data/contracts/, its own name
+            p = DATA / "contracts" / name
+            out[p.stem] = ("deals", p)
         return out
 
 
@@ -243,7 +256,11 @@ def check_yaml(acct, docs):
 def check_docs(acct, docs):
     print(f"{acct.label}: documents")
     check(f"{acct.label}: has a deal in deals/", any(sub == "deals" for sub, _ in docs.values()))
+    contracts = {Path(n).stem for n in (acct.yaml or {}).get("contracts", [])}
     for stem, (sub, path) in docs.items():
+        if stem in contracts:
+            check(f"{acct.label}: contract {path.name} is in data/contracts/", path.is_file())
+            continue
         text = path.read_text(encoding="utf-8")
         if acct.id != PEAK_BAR:
             check(f"{acct.label}: {sub}/{path.name} stem starts with the account id", stem.startswith(f"{acct.id}-"))
@@ -352,7 +369,7 @@ def check_charges(acct, charges, pod, prices, sales, plan):
     weeks = {(r["week_start"], r["week_end"]) for r in sales or []}
     for c in charges:
         cid = c["charge_id"]
-        check(f"{acct.label}: {cid} code {c['code']} is known", c["code"] in CODES)
+        check(f"{acct.label}: {cid} code {c['code']} is known", c["code"] in acct.codes)
         check(f"{acct.label}: {cid} units x rate = amount",
               money(Decimal(c["units"]) * Decimal(c["rate"])) == money(c["amount"]), c["amount"])
         check(f"{acct.label}: {cid} period dates are valid",
@@ -561,7 +578,7 @@ def check_history(acct, charges, prior):
     for d in deductions:
         amount, recovered = money(d["amount"]), money(d["recovered"])
         check(f"{acct.label}: deduction {d['ref']} code {d['code']} and outcome {d['outcome']} are known",
-              d["code"] in CODES and d["outcome"] in OUTCOMES)
+              d["code"] in acct.codes and d["outcome"] in OUTCOMES)
         if d["outcome"] == "recovered":
             ok = Decimal(0) < recovered <= amount
         else:
@@ -618,10 +635,11 @@ def check_history(acct, charges, prior):
 
 def check_account(acct):
     print(f"\n== {acct.id}")
-    docs = acct.docs()
     yaml_path = acct.dir / "account.yaml"
     if yaml_path.exists():
         acct.yaml = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
+    docs = acct.docs()
+    if yaml_path.exists():
         check_yaml(acct, docs)
         check_docs(acct, docs)
     elif acct.id != PEAK_BAR:
@@ -634,8 +652,9 @@ def check_account(acct):
     if not acct.yaml:  # Peak Bar before its files move: history only
         return docs, check_history(acct, charges, prior)
 
-    sales = acct.rows("sales/store-sales.csv")
-    plan_rows = acct.rows("plan/promo-plan.csv")
+    fee_account = acct.fees is not None  # its promo is counted on purchase orders, not store sales
+    sales = acct.rows("sales/store-sales.csv", required=not fee_account)
+    plan_rows = acct.rows("plan/promo-plan.csv", required=not fee_account)
     codes = {c["code"] for c in charges or []}
     needs_ops = bool(codes & {"SH", "PR", "SP"})
     pod = acct.rows("deliveries/pod.csv", required=needs_ops)
@@ -662,7 +681,9 @@ def check_account(acct):
             if term_rows is not None and None not in (plan, sales, prior, pod, prices):
                 def recompute(c):
                     return allowed_for(c, plan, sales, prior, pod, prices, terms)
-            check_expected(acct, charges, expected, recompute)
+            older = acct.rows(acct.fees["older_charges"], CHARGE_COLS) if fee_account and acct.fees.get(
+                "older_charges") else []
+            check_expected(acct, charges + (older or []), expected, recompute)
     return docs, check_history(acct, charges, prior)
 
 

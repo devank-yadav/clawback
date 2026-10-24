@@ -1,0 +1,22 @@
+month,ref,code,description,amount,outcome,recovered
+2025-10,SPL-25-80211,SPL,Spoils credited to a retailer: 180 units,286.20,accepted,0.00
+2025-10,OI-25-10101,OI,Off-invoice allowance not taken: fall promotion POs,1950.00,accepted,0.00
+2025-10,EP-25-51022,EP,Extra Performance admin charge: retailer invoice R-51022,175.00,accepted,0.00
+2025-11,MCBF-25-1114,MCBF,MCB processing fee: Nov 1-14,65.00,accepted,0.00
+2025-11,SPL-25-81140,SPL,Spoils credited to a retailer: 210 units,412.30,recovered,48.30
+2025-11,EP-25-51388,EP,Extra Performance admin charge: retailer invoice R-51388,140.00,accepted,0.00
+2025-12,OI-25-12101,OI,Off-invoice allowance not taken: holiday promotion POs,2730.00,accepted,0.00
+2025-12,FP-25-1904,FP,Free placements: 12 cases at 6 new stores,304.44,accepted,0.00
+2026-01,MCBF-26-0115,MCBF,MCB processing fee: Jan 1-15,98.50,accepted,0.00
+2026-01,SPL-26-86012,SPL,Spoils credited to a retailer: 96 units,133.44,accepted,0.00
+2026-02,EP-26-53310,EP,Extra Performance admin charge: retailer invoice R-53310,175.00,recovered,40.00
+2026-02,OI-26-02101,OI,Off-invoice allowance not taken: February POs,1260.00,accepted,0.00
+2026-03,OI-26-03101,OI,Off-invoice allowance not taken: POs Mar 1-14,3525.00,open,0.00
+2026-03,OI-26-03102,OI,Off-invoice allowance not taken: POs Mar 15-28,3375.00,open,0.00
+2026-03,OI-26-03103,OI,Off-invoice allowance not taken: POs Mar 29-Apr 4,615.00,open,0.00
+2026-03,MCBF-26-0314,MCBF,MCB processing fee: Mar 1-14,65.00,open,0.00
+2026-03,MCBF-26-0328,MCBF,MCB processing fee: Mar 15-28,312.00,open,0.00
+2026-03,EP-26-55120,EP,Extra Performance admin charge: retailer invoice R-55120,270.00,open,0.00
+2026-03,EP-26-55188,EP,Extra Performance admin charge: retailer invoice R-55188,182.00,open,0.00
+2026-03,FP-26-2207,FP,Free placements: 48 cases at 24 new stores,1217.76,open,0.00
+2026-03,SPL-26-88120,SPL,Spoils credited to a retailer: 240 units,381.60,open,0.00

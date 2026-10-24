@@ -2,7 +2,7 @@
 
 **Vendor:** Lantern Hill Soda Co., 41 Riverside Drive, Asheville, NC 28801
 **Submitted to:** KeHE Distributors, LLC, through the KeHE Vendor Portal
-**Submitted by:** Teresa Quan, Founder (teresa@lanternhillsoda.example)
+**From:** Teresa Quan, Founder (teresa@lanternhillsoda.example)
 **Date:** February 9, 2026
 **Promotion ID:** LH-OI-2603
 

@@ -23,7 +23,7 @@ from typing import Any
 
 import anthropic
 
-from api import accounts, account_rows, adapters, audit, evidence as evidence_mod, replies, rows, trace
+from api import accounts, account_rows, adapters, audit, evidence as evidence_mod, fee_accounts, replies, rows, trace
 from api.agents import investigator, investigator_ops, negotiator, reader, readers, rule_writer
 from api.contracts import (
     Answer, Approval, ApprovalLine, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, DeliveryRow, Dispute, DisputeLine, Event,
@@ -210,9 +210,11 @@ READER_NAMES = {"claude": "Claude", "gemini": "Gemini", "claude-b": "a second Cl
 def _read_terms(run: Run, client) -> list[Term]:
     """Both readers on every deal document; a term counts only when they agree and its quote is found."""
     terms: list[Term] = []
-    deal_docs = run.account.config.deal_docs
-    for doc_id in deal_docs:
-        r = readers.read_both(doc_id, base_terms=[t for t in terms if t.source_doc_id == deal_docs[0]], client=client)
+    deals: list[str] = []  # the deal documents read so far: an extension is dated from their date_range
+    for doc_id in run.account.config.deal_docs:
+        r = readers.read_both(doc_id, base_terms=[t for t in terms if t.source_doc_id in deals], client=client)
+        if r.doc.kind == "deal":
+            deals.append(doc_id)
         run.reader_models = r.models
         verified = [t for t in r.terms if t.status == "verified"]
         rejected = [t for t in r.terms if t.status == "rejected"]
@@ -247,11 +249,14 @@ def _process(run: Run, client) -> None:
     policy, account, inv, them = load_policy(), run.account, run.account.invoice, run.distributor
     # Stable IDs: agent requests (and their recorded fixture keys) must not change from run to run.
     remittance_id = f"REM-{inv.id}" if run.kind == inv.month else f"REM-{run.kind.upper()}"
-    source = list(run.charges.values()) or rows.charges(run.kind, account=account)
+    fees = fee_accounts.has_fees(account)  # fee-schedule charges, a dispute window, older deductions (KeHE's policy)
+    source = list(run.charges.values()) or (fee_accounts.charges(account, run.kind) if fees else
+                                            rows.charges(run.kind, account=account))
+    older = fee_accounts.older_charges(account) if fees and not run.charges and run.kind == inv.month else []
     charges = [c.model_copy(update={"remittance_id": remittance_id}) for c in source]
-    run.charges = {c.id: c for c in charges}
-    eng_charges = {c.id: run.engine_charge(c) for c in charges}
-    taken = totals.taken(eng_charges.values())
+    run.charges = {c.id: c for c in charges + older}
+    eng_charges = {c.id: run.engine_charge(c) for c in charges + older}
+    taken = totals.taken(eng_charges[c.id] for c in charges)  # this payment's charges; older ones were taken before
     remittance = None
     if run.kind == inv.month:
         dep = run.deposit
@@ -270,25 +275,35 @@ def _process(run: Run, client) -> None:
                 "info" if short == taken else "warn")
     else:
         run.log(f"{them} took {len(charges)} charges, ${taken:,.0f} in all.")
+    if older:
+        run.log(f"Also checking {len(older)} older deduction{'s' if len(older) > 1 else ''} taken from earlier payments: "
+                + ", ".join(f"{c.id} (${c.amount:,.2f}, taken {c.deducted_on:%b} {c.deducted_on.day}, "
+                            f"{c.deducted_on.year})" for c in older) + ".")
     run.emit("totals", _meters(run))
 
     run.log("Reading the deal and the emails about it.", actor="reader")
     run.terms = _read_terms(run, client)
     sales_rows, prior_rows = rows.sales(account=account), rows.prior_payments(account=account)
-    run.evidence = evidence_mod.build(run.terms, charges, sales_rows, prior_rows)
+    run.evidence = evidence_mod.build(run.terms, charges + older, sales_rows, prior_rows)
     run.ops = account_rows.ops(account)  # for the shortage, price and spoilage math (api/engine)
     ops_rows = _ops_rows(run.ops)
     run.evidence.update(evidence_mod.from_ops(*ops_rows))  # nothing for an account with no ops files (Peak Bar)
     eng_ops = adapters.to_engine_ops(*ops_rows)
     eng_terms = [adapters.to_engine_term(t) for t in run.terms]
+    fee_data = None
+    if fees:  # policy changes dated by their notice, purchase orders as the promo's units, the fee backup
+        eng_terms = fee_accounts.engine_terms(run.terms, account)
+        sales_rows = sales_rows + fee_accounts.sales_rows(account)
+        run.evidence.update(fee_accounts.evidence(account))
+        fee_data = fee_accounts.fee_data(account)
     sales = [adapters.to_engine_sales(r) for r in sales_rows]
     payments = [adapters.to_engine_prior(p) for p in prior_rows]
 
-    for c in charges:
+    for c in charges + older:
         with trace.charge_context(c.id):  # the trace files each AI call under its charge
             run.emit("charge", c)
             run.log(f"Checking {c.id}: {c.description}, ${c.amount:,.0f} taken.", actor="investigator", charge_id=c.id)
-            a = compute_allowed(eng_charges[c.id], eng_terms, sales, payments, ops=eng_ops)
+            a = compute_allowed(eng_charges[c.id], eng_terms, sales, payments, ops=eng_ops, fees=fee_data)
             run.allowances[c.id] = a
             if investigator_ops.handles(c):  # shortage, price and spoilage: deliveries and price lists, not the promo
                 found = investigator_ops.investigate(c, a, run.evidence, client, brand=account.brand.name,

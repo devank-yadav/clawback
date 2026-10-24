@@ -73,7 +73,7 @@ READERS = {
     "kehe-vendor-policies-2015": ({"terms": POLICY, "unclear": POLICY_UNCLEAR}, {"terms": POLICY_B, "unclear": []}),
     "lantern-hill-promotion-2026-03": ({"terms": PROMOTION, "unclear": []}, {"terms": PROMOTION, "unclear": []}),
     "lantern-hill-broker-2026-03-24": ({"terms": BROKER, "unclear": []}, {"terms": BROKER, "unclear": []}),
-    "kehe-ep-admin-2026-03-02": ({"terms": EP_NOTICE, "unclear": []}, {"terms": EP_NOTICE, "unclear": []}),
+    "lantern-hill-kehe-ep-admin-2026-03-02": ({"terms": EP_NOTICE, "unclear": []}, {"terms": EP_NOTICE, "unclear": []}),
 }
 
 # The Investigator plus the rehearsal on every charge: confident, two independent sources, the comeback answered.

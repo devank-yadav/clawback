@@ -783,7 +783,8 @@
               "approval",
               "delivery",
               "price",
-              "policy"
+              "policy",
+              "backup"
             ],
             "title": "Kind",
             "type": "string"
@@ -2436,7 +2437,8 @@
               "approval",
               "delivery",
               "price",
-              "policy"
+              "policy",
+              "backup"
             ],
             "title": "Kind",
             "type": "string"
@@ -3016,7 +3018,8 @@
           "approval",
           "delivery",
           "price",
-          "policy"
+          "policy",
+          "backup"
         ],
         "title": "Kind",
         "type": "string"
@@ -4133,7 +4136,8 @@
               "approval",
               "delivery",
               "price",
-              "policy"
+              "policy",
+              "backup"
             ],
             "title": "Kind",
             "type": "string"

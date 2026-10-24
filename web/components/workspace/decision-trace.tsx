@@ -24,6 +24,7 @@ export function gateRowText(row: number, distributor: string): string {
     7: `${distributor} took more than the deal allows, two sources back it, and the likely pushback has an answer.`,
     8: 'Over $5,000, so the owner approves before anything is filed.',
     9: 'Not clear enough to act on alone, so the owner decides.',
+    10: 'The deal’s window to dispute this charge has closed, so it’s accepted with a note of what the deal allows.',
   } as Record<number, string>)[row] ?? `Gate rule ${row}.`
 }
 

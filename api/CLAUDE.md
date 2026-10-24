@@ -82,5 +82,7 @@ decision gate and approvals; Data model; API, live updates and integrations.
   ref): % with min / max per invoice, PO, incident or month, per unit, per carton, per PO or flat, tiered by days,
   plus any cost passed through at cost. A policy change counts from max(effective date, notice date + notice_period).
   A deal's dispute_window is checked for every charge against FeeData.as_of; past it the gate accepts with a note
-  (row 10). Accounts with fees: api/fee_accounts.py (data/accounts/<id>/fees/fees.yaml); the readers get
-  prompts/reader_fees.md only for documents registered through it, so Peak Bar's requests are byte for byte as recorded.
+  (row 10). An account with data/accounts/<id>/fees/fees.yaml (api/fee_accounts.py: codes, policy changes, as_of,
+  older charges, fees/backup.csv, purchases/) runs through the same pipeline with those passed in; its readers also get
+  prompts/reader_fees.md (reader.with_fees), so Peak Bar's requests stay byte for byte as recorded. account.yaml
+  `contracts:` names real contracts under data/contracts/ that are the account's documents (KeHE's for lantern-hill).
