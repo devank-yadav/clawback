@@ -17,6 +17,7 @@ import { Elapsed, Meter, ACTOR } from "./parts";
 import { ReaderCard, Spotlight } from "./Spotlight";
 import { StageRail } from "./StageRail";
 import { StageHero } from "./StageHero";
+import { AgentStrip } from "./AgentStrip";
 import { StartPanel } from "./StartPanel";
 import { buildStages, focusStage } from "./stages";
 import { money } from "@/lib/format";
@@ -24,7 +25,7 @@ import { money } from "@/lib/format";
 const noop = () => () => {};
 /** ?run=latest opens the account's last run instead of the start screen. */
 function useOpenLatest() {
-  return useSyncExternalStore(noop, () => new URLSearchParams(window.location.search).get("run") === "latest", () => false);
+  return useSyncExternalStore(noop, () => !!new URLSearchParams(window.location.search).get("run"), () => false);
 }
 
 // The run this tab watched while it worked, kept for the session: once it finishes the page shows its result, even
@@ -123,6 +124,7 @@ function FlowFor() {
             </p>
             <Elapsed from={r?.received_at ?? state.feed[0]?.at ?? null} running={status === "started"} decidedIn={view.value?.seconds_to_decided ?? null} />
           </div>
+          <AgentStrip state={state} view={view} owner={cast.owner} distributor={cast.distributor} />
           <StageHero stage={focus} stages={stages} feed={state.feed} done={status === "finished"} />
           <Spotlight focus={focus} />
           <StageRail stages={stages} compact />
@@ -143,6 +145,7 @@ function FlowFor() {
 
       {phase === "done" && (
         <main className="fl-main">
+          <AgentStrip state={state} view={view} owner={cast.owner} distributor={cast.distributor} />
           <DonePanel onOpen={setDrawer} onNew={restart} rail={<StageRail stages={stages} compact />} next={focus && focus.state === "waiting" ? <Spotlight focus={focus} /> : null} failed={status === "failed"} />
         </main>
       )}

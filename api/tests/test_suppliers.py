@@ -43,3 +43,26 @@ def test_untracking_moves_it_last_and_tracking_brings_it_back(api, two_accounts)
     r = client.post("/suppliers/peak-bar/tracking", json={"account_id": "peak-bar", "tracked": True})
     assert r.json()["distributors"][0]["tracked"] is True
     assert client.post("/suppliers/peak-bar/tracking", json={"account_id": "test-oat", "tracked": False}).status_code == 404
+
+
+def test_history_lists_runs_newest_first_and_marks_the_replaced_one(api):
+    client, fake = api
+    assert client.get("/accounts/peak-bar/runs").json() == []  # nothing until the agents have run
+    first = pipeline.start("march", fake, background=False)
+    second = pipeline.start("march", fake, background=False)
+    got = client.get("/accounts/peak-bar/runs").json()
+    assert [r["run_id"] for r in got] == [second.id, first.id]
+    assert (got[0]["replaced"], got[1]["replaced"]) == (False, True)
+    assert (got[0]["taken"], got[0]["disputed"], got[0]["questions"]) == (6850.0, 4120.0, 1)
+
+
+def test_saved_lists_locked_deal_records_and_rules(api):
+    client, fake = api
+    got = client.get("/accounts/peak-bar/saved").json()
+    deal = next(d for d in got["documents"] if d["id"] == "spring-promo")
+    assert deal["locked"] is True and deal["chars"] > 0
+    assert {r["label"] for r in got["records"]} >= {"Store sales", "Past payments"} and got["rules"] == []
+    text = client.get("/accounts/peak-bar/documents/spring-promo").json()
+    assert "maximum of 5,000 units" in text["text"] and text["locked"] is True
+    assert client.get("/accounts/peak-bar/documents/nope").status_code == 404
+    assert client.put("/accounts/peak-bar/documents/spring-promo", json={"text": "x"}).status_code == 405  # never edited

@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import { Check, Info, LogIn, LogOut, X } from 'lucide-react'
+import { Check, Info, X } from 'lucide-react'
 import { inkOn } from '@/lib/accounts'
 import { ApiError, resetWorkspace } from '@/lib/api'
-import { askAdminToken, askSignIn, signOut, useSession } from '@/lib/session'
+import { askAdminToken, useSession } from '@/lib/session'
 import type { Account } from '@/lib/types'
 import TopBar from './TopBar'
 import SessionDialogs, { roleName } from './SessionDialogs'
@@ -66,10 +66,7 @@ export default function AppShell({ account, active, crumb, onReset, children }: 
     <div className="app-shell">
       <TopBar
         account={account}
-        active={active === '/results' ? 'results' : undefined}
-        right={account && (person
-          ? <span className="viewer"><span className="viewer-avatar" aria-hidden>{person.split(' ').map((p) => p[0]).join('').slice(0, 2)}</span><span><strong>{person}</strong></span><button className="icon-button" onClick={signOut} aria-label="Sign out" title="Sign out"><LogOut /></button></span>
-          : <button className="secondary viewer-signin" onClick={() => askSignIn('owner')}><LogIn /> Sign in</button>)}
+        active={active === '/results' ? 'history' : undefined}
         extra={<>
           <button role="menuitem" className="tb-row" onClick={() => setDetailsOpen(true)}><span><strong>Account details</strong><small>{account?.brand.name ?? ''} · {account?.distributor.name ?? ''}</small></span></button>
           <button role="menuitem" className="tb-row" disabled={resetState.busy} onClick={() => void reset()}><span><strong>{resetState.busy ? 'Resetting…' : 'Reset the demo'}</strong><small>Every distributor back to waiting for its payment</small></span></button>

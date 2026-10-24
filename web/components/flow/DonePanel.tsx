@@ -36,7 +36,7 @@ function Pile({ title, tone, total, charges, amount, onOpen }: { title: string; 
 const cost = (usd: number) => (usd > 0 && usd < 0.01 ? "<$0.01" : money(usd));
 
 export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: string) => void; onNew: () => void; rail: ReactNode; next: ReactNode; failed: boolean }) {
-  const { view, state, account, cast, link } = useRun();
+  const { view, state, cast, link } = useRun();
   const t = view.totals;
   const v = view.value;
   const r = view.remittance;
@@ -56,30 +56,25 @@ export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: 
 
   return (
     <>
-      <section className="fl-done-hero" aria-live="polite">
-        <div className="fl-done-top">
-          <span className="cx-eyebrow">{account ? `${account.brand.name} · ${distributor}${r?.invoice_id ? ` · invoice ${r.invoice_id}` : ""}` : " "}</span>
-          <button className="cx-btn" onClick={onNew}>Check a new payment</button>
+      <section className="fl-sum" aria-live="polite">
+        <div className="fl-sum-text">
+          {failed ? (
+            <h1>The agents stopped before finishing</h1>
+          ) : (
+            <h1>
+              {r ? <>{distributor} kept <b>{money(r.taken)}</b></> : <>{distributor}’s charges</>}
+              {t && t.disputed > 0 && <> · <span className="is-dispute">{money(t.disputed)} {held ? "held for you" : "disputed"}</span></>}
+              {t && t.accepted > 0 && <> · <span className="is-fair">{money(t.accepted)} fair</span></>}
+              {t && t.waiting > 0 && <> · <span className="is-wait">{money(t.waiting)} waits on you</span></>}
+            </h1>
+          )}
+          <div className="fl-facts">
+            {failed && <span>{state.feed.filter((l) => l.level === "error").at(-1)?.text ?? "See the activity"}</span>}
+            {facts.map((f) => <span key={f}>{f}</span>)}
+            <span>{posting}</span>
+          </div>
         </div>
-        {failed ? (
-          <h1>The agents stopped before finishing</h1>
-        ) : (
-          <h1>
-            {r ? <>{distributor} kept <b>{money(r.taken)}</b> from this payment.</> : <>{distributor}’s charges are checked.</>}
-          </h1>
-        )}
-        {!failed && t && (
-          <p className="fl-done-sub">
-            {t.disputed > 0
-              ? <>{money(t.disputed)} of it isn’t allowed by the deal and {held ? "is ready to dispute, held for you" : "is disputed with proof"}.</>
-              : t.waiting > 0 ? <>Nothing disputed so far.</> : <>Every charge was allowed by the deal.</>}
-            {t.accepted > 0 && <> {money(t.accepted)} was fair and accepted.</>}
-            {t.waiting > 0 && <> {money(t.waiting)} waits on your decision.</>}
-          </p>
-        )}
-        {failed && <p className="fl-done-sub">{state.feed.filter((l) => l.level === "error").at(-1)?.text ?? "Open the activity to see what happened."}</p>}
-        {facts.length > 0 && <div className="fl-facts">{facts.map((f) => <span key={f}>{f}</span>)}</div>}
-        <p className="cx-small cx-muted">{posting}</p>
+        <button className="cx-btn" onClick={onNew}>Check a new payment</button>
       </section>
 
       {next && <section className="fl-nextstep" aria-label="Your next step"><span className="cx-eyebrow">Your next step</span>{next}</section>}

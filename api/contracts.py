@@ -1211,3 +1211,53 @@ class SupplierItem(Contract):
 class TrackRequest(Contract):
     account_id: str
     tracked: bool
+
+
+class RunSummary(Contract):
+    """GET /accounts/{id}/runs: one past or current run of the agents, from its own events (newest first)."""
+
+    run_id: str
+    kind: str  # the month: "march", "april"
+    status: Literal["started", "waiting", "finished", "failed"]
+    started_at: datetime
+    replaced: bool  # a newer run of the same payment replaced it (its open questions closed)
+    invoice_id: str | None
+    taken: Money | None  # what the distributor kept from the payment
+    charges: int
+    disputed: Money | None
+    accepted: Money | None
+    waiting: Money | None
+    questions: int
+
+
+class SavedDocument(Contract):
+    """A document the agents read for this distributor. The signed deal and real contracts are locked: nobody edits
+    them, agents included."""
+
+    id: str
+    kind: DocumentKind
+    title: str
+    sender: str | None
+    locked: bool
+    chars: int
+
+
+class SavedRecords(Contract):
+    label: str  # "Store sales", "Past payments", ...
+    rows: int
+
+
+class SavedOverview(Contract):
+    """GET /accounts/{id}/saved: everything Clawback keeps for this distributor."""
+
+    documents: list[SavedDocument]
+    rules: list[Rule]
+    records: list[SavedRecords]
+
+
+class DocumentText(Contract):
+    id: str
+    title: str
+    kind: DocumentKind
+    locked: bool
+    text: str

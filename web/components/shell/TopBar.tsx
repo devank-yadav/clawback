@@ -9,6 +9,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Logo } from "@/components/console/ui";
 import { inkOn, withAccount } from "@/lib/accounts";
+import { roleName } from "@/components/shell/SessionDialogs";
+import { signOut, useSession } from "@/lib/session";
 import * as api from "@/lib/api";
 import type { Account, RelationshipStatus } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
@@ -16,17 +18,15 @@ import { useFetched } from "@/lib/useFetched";
 const MAIN = [
   { key: "agents", href: "/", label: "Agents" },
   { key: "distributors", href: "/distributors", label: "Distributors" },
-  { key: "results", href: "/results", label: "Results" },
+  { key: "history", href: "/history", label: "History" },
+  { key: "saved", href: "/saved", label: "Saved" },
 ];
 
 const MORE: { href: string; label: string; view?: string; hint: string }[] = [
-  { href: "/workspace", label: "Overview", hint: "Six months with this distributor" },
-  { href: "/workspace", view: "payments", label: "Payments", hint: "Every charge and its evidence" },
-  { href: "/workspace", view: "rules", label: "Rules", hint: "What you told the agents once" },
-  { href: "/april", label: "Next month", hint: "The agents again, with your rules" },
+  { href: "/workspace", label: "Overview & payments", hint: "This distributor, every charge and its evidence" },
+  { href: "/april", label: "Next month", hint: "The agents again, using your saved rules" },
   { href: "/coach", label: "Deal coach", hint: "Fixes for the next deal" },
-  { href: "/scenario", label: "Try a clause", hint: "Paste a clause, see the decision" },
-  { href: "/audit", label: "Audit log", hint: "Every step, hash-chained" },
+  { href: "/scenario", label: "Try a clause", hint: "Paste a clause, watch the decision" },
 ];
 
 export const STATUS_TONE: Record<RelationshipStatus, string> = {
@@ -112,18 +112,34 @@ function More({ account, extra }: { account: Account | null; extra?: ReactNode }
   );
 }
 
-export default function TopBar({ account, active, right, extra }: { account: Account | null; active?: string; right?: ReactNode; extra?: ReactNode }) {
+/** Who's signed in, only once someone is: signing in happens when an action needs it (answer or approve). */
+function Who({ account }: { account: Account | null }) {
+  const { role } = useSession();
+  if (!role || !account) return null;
+  const name = roleName(role, account);
+  return (
+    <span className="tb-who">
+      <i aria-hidden="true">{name.split(" ").map((p) => p[0]).join("").slice(0, 2)}</i>
+      <span>{name}</span>
+      <button onClick={signOut} title="Sign out" aria-label="Sign out">Sign out</button>
+    </span>
+  );
+}
+
+export default function TopBar({ account, active, extra }: { account: Account | null; active?: string; right?: ReactNode; extra?: ReactNode }) {
   return (
     <header className="tb">
       <Link href={withAccount("/", account?.id)} className="tb-logo"><Logo /> clawback</Link>
-      <Switcher account={account} />
       <nav className="tb-nav" aria-label="Clawback">
         {MAIN.map((m) => (
           <Link key={m.key} href={withAccount(m.href, account?.id)} className="tb-link" aria-current={active === m.key ? "page" : undefined}>{m.label}</Link>
         ))}
         <More account={account} extra={extra} />
       </nav>
-      {right && <div className="tb-right">{right}</div>}
+      <div className="tb-right">
+        <Who account={account} />
+        <Switcher account={account} />
+      </div>
     </header>
   );
 }
