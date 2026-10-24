@@ -42,6 +42,7 @@ export type WorkspaceView = {
   proposalLines: ProposalLine[];
   /** What the controller's approval actually produced, in words that never overstate it. */
   postingLabel: string;
+  postingProblem: string | null;
   disputeLabel: string;
 };
 
@@ -82,7 +83,16 @@ function postingLabel(approval: Approval | null, ledger: LedgerPost[], source: D
   const post = memoPost(ledger);
   if (post?.status === "posted" && source === "live" && post.qbo_id && !post.qbo_id.startsWith("sim-")) return "Posted · QuickBooks sandbox";
   if (post?.status === "posted") return "Simulated posted";
+  if (post?.status === "failed") return "Posting failed";
+  if (post?.status === "held") return "Posting held";
+  if (post?.status === "voided") return "Posting voided";
   return "Approved · posting pending";
+}
+
+/** Why the API did not post the credit memo (its note), when it failed or is held. */
+export function postingProblem(ledger: LedgerPost[]): string | null {
+  const post = memoPost(ledger);
+  return post && (post.status === "failed" || post.status === "held") ? (post.note ?? "QuickBooks did not take the entry.") : null;
 }
 
 export function selectWorkspace(state: RunState, source: DataSource): WorkspaceView {
@@ -117,6 +127,7 @@ export function selectWorkspace(state: RunState, source: DataSource): WorkspaceV
       return { chargeId: l.charge_id, label: `${c?.title ?? l.charge_id}${suffix}`, amount: l.amount };
     }),
     postingLabel: postingLabel(approval, state.ledger, source),
+    postingProblem: postingProblem(state.ledger),
     // Filing is the Negotiator's job and happens on the API; a fixture replay never files anything.
     disputeLabel:
       source === "live" && dispute?.status === "filed"
@@ -125,9 +136,11 @@ export function selectWorkspace(state: RunState, source: DataSource): WorkspaceV
   };
 }
 
-/** The evidence rows behind a charge, first = the one the drawer quotes. */
+/** The evidence rows behind a charge, the deal clause first (it is the sentence the drawer quotes). */
 export function evidenceRows(detail: ChargeDetail | null): { id: string; label: string; summary: string; text: string; kind: Evidence["kind"] }[] {
-  return (detail?.evidence ?? []).map((e) => ({
+  const all = detail?.evidence ?? [];
+  const ordered = [...all.filter((e) => e.kind === "clause"), ...all.filter((e) => e.kind !== "clause")];
+  return ordered.map((e) => ({
     id: e.id,
     label: e.label,
     summary: e.summary,

@@ -23,8 +23,21 @@ async function call<T>(path: string, init?: { method?: string; body?: unknown })
 
 export type StartedRun = { run_id: string; events_url: string };
 
-/** POST /runs: the pipeline decides whether this is a recorded (DEMO_MODE) or a live run. */
-export const startRun = () => call<StartedRun>("/runs", { method: "POST", body: { kind: "march" } });
+export type PaymentStarted = { via: "nessie" | "direct"; deposit_id: string | null; run_id: string | null; message: string };
+
+/** GET /runs/latest: the run already in progress, or null when none has started (the API answers 404). */
+export async function latestRun(): Promise<StartedRun | null> {
+  const res = await fetch(apiUrl("/runs/latest"), { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`GET /runs/latest answered ${res.status}`);
+  return (await res.json()) as StartedRun;
+}
+
+/** POST /payments/northmart: the "Northmart pays" button, the only thing that starts a run. run_id is null until Nessie's deposit is seen. */
+export const northmartPays = () => call<PaymentStarted>("/payments/northmart", { method: "POST" });
+
+/** The stream for a run the page already knows the id of. */
+export const runRef = (runId: string): StartedRun => ({ run_id: runId, events_url: `/runs/${encodeURIComponent(runId)}/events` });
 
 /** POST /questions/{id}/answer: the owner's reply; the rule and the new decisions arrive on the event stream. */
 export const answerQuestion = (questionId: string, text: string) =>

@@ -4,10 +4,11 @@ import { useCallback, useState, type ReactNode } from "react";
 import { chargeLine, openQuestionOf, sentence, statusOf } from "@/components/board/ChargeList";
 import { Glyph, Pill } from "@/components/board/parts";
 import { CAST } from "@/lib/cast";
-import { chargeDetail, recordedAnswer } from "@/lib/fixture";
+import { recordedAnswer } from "@/lib/fixture";
+import { useChargeDetail } from "@/lib/useChargeDetail";
 import { money, rate, shortDate, shortDay, units } from "@/lib/format";
 import type { Decision, Evidence, MathPart, Quote } from "@/lib/types";
-import type { RunState } from "@/lib/useRunEvents";
+import { DATA_SOURCE, type RunState } from "@/lib/useRunEvents";
 
 type Props = {
   chargeId: string;
@@ -50,7 +51,7 @@ const PRIMARY_TITLE: Partial<Record<Evidence["kind"], string>> = {
 };
 
 export function EvidencePanel({ chargeId, state, onAnswer, headingRef }: Props) {
-  const detail = chargeDetail(chargeId);
+  const detail = useChargeDetail(chargeId, state.run?.run_id, DATA_SOURCE);
   const charge = state.charges[chargeId] ?? detail?.charge;
   const f = state.findings[chargeId];
   const d = state.decisions[chargeId];

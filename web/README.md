@@ -44,11 +44,12 @@ NEXT_PUBLIC_API_BASE=http://localhost:8000
 
 | Screen action | Call |
 | --- | --- |
-| Open the app | `POST /runs`, then `GET /runs/{id}/events` (SSE; the browser reconnects with `Last-Event-ID`) |
+| Open or refresh the app | `GET /runs/latest` (404 = no run yet), then `GET /runs/{id}/events` (SSE; resumes with `Last-Event-ID` / `?after=`). Never starts a run. |
+| "Northmart pays" | `POST /payments/northmart`, then follow the run it started (the only thing that starts a run) |
 | Evidence panel | `GET /charges/{id}?run_id=` |
 | Confirm rule | `POST /questions/{id}/answer` with the text "accept if notice is at least 14 days" |
 | Approve or refuse | `POST /approvals/{id}` with `{approve, note}` |
-| Reset fictional demo | `POST /demo/reset`, then a new run |
+| Reset fictional demo | `POST /demo/reset`, then wait for "Northmart pays" |
 
 In live mode a step shows as done only when its event arrives from the stream, never because a button was clicked. Local API: `make api` (port 8000). The API's CORS list allows only `http://localhost:3000` and `PUBLIC_BASE_URL`, so run live mode locally on port 3000.
 
@@ -78,7 +79,7 @@ lib/fixture.ts, fixtures/   recorded runs (written by `python -m api.stubs.fixtu
 ## Known limitations and backend needs
 
 - Fixture mode replays one recording. The owner's reply is the recorded one, and a refusal shows the recorded note from `refusal-events.json`, not what you typed (nothing is sent). Live mode sends your note to `POST /approvals/{id}` and shows what the API recorded.
-- Not in the workspace yet: April replay, Deal Coach, Scenario box, Audit log, Northmart portal, `/results` (the API has routes for them; the screens are separate cards R4 to R6).
-- `/board/demo` still reads only the fixture (it predates live mode).
+- A failed or held QuickBooks post is shown with the API's note. Not in the workspace yet: April replay, Deal Coach, Scenario box, Audit log, Northmart portal, `/results` (the API has routes for them; the screens are separate cards R4 to R6).
+- `/board/<run id>` follows that run in live mode; `/board/demo` follows the latest one.
 - On Windows the API's live pipeline fails at `api/evidence.py` (`%-d` in `strftime` works on Linux and macOS only). Needs Devank; use WSL, Docker, or fixture mode until then.
 - Evidence text is the recorded excerpt. Ledger posts from the fixture have no QuickBooks id, so they are labelled "Simulated posted".

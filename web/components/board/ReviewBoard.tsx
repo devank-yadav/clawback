@@ -27,7 +27,7 @@ function useIsDesktop() {
 }
 
 export default function ReviewBoard({ runId }: { runId: string }) {
-  const { state, answerQuestion, controllerDecides } = useRunEvents(runId, "fixture"); // this board predates the workspace screens and still reads only the recorded run
+  const { state, answerQuestion, controllerDecides, awaitingPayment, error, source } = useRunEvents(runId);
   const isDesktop = useIsDesktop();
   const router = useRouter();
   const pathname = usePathname();
@@ -37,9 +37,10 @@ export default function ReviewBoard({ runId }: { runId: string }) {
   const sheetHeading = useRef<HTMLHeadingElement>(null);
 
   const fromUrl = params.get("charge");
-  const valid = fromUrl && chargeDetail(fromUrl) ? fromUrl : null;
+  const known = (id: string) => (source === "live" ? !!state.charges[id] : !!chargeDetail(id));
+  const valid = fromUrl && known(fromUrl) ? fromUrl : null;
   // Desktop always shows a charge; C1 first because it arrives first and carries the split.
-  const selected = valid ?? (isDesktop ? "C1" : null);
+  const selected = valid ?? (isDesktop && (source === "fixture" || state.order.length > 0) ? (state.order[0] ?? "C1") : null);
 
   const select = useCallback(
     (id: string) => {
@@ -84,6 +85,8 @@ export default function ReviewBoard({ runId }: { runId: string }) {
       <div className="min-h-dvh" aria-hidden={sheetOpen || undefined} inert={sheetOpen || undefined}>
         <TopBar />
         <main className="mx-auto w-full max-w-[1320px] px-4 pt-5 pb-16 sm:px-6 lg:pt-8">
+          {error && <p role="alert" className="mb-4 rounded-xl border border-dispute/40 bg-dispute-soft p-3 text-[16px]">{error}</p>}
+          {awaitingPayment && <p role="status" className="mb-4 rounded-xl border border-line bg-panel p-3 text-[16px]">No run has started yet. Press “Northmart pays” on the home screen.</p>}
           <PaymentSummary remittance={state.run?.remittance ?? null} totals={state.totals} approval={state.approval} ledger={state.ledger} latest={latest} playing={state.playing} />
 
           <div className="mt-6 grid grid-cols-1 gap-6 lg:mt-8 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-8 xl:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">

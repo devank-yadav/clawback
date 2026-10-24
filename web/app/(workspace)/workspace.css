@@ -8,3 +8,4 @@
 /* Integration additions (not in the v0 export): API error banner and data-source tag. */
 .feedback.error{background:var(--red-soft);border-color:#ead3d3;color:#7d4545}
 .demo-settings [data-source=fixture]{color:var(--amber)}
+.math-lines{margin:0;padding:0;list-style:none;border:1px solid var(--line);border-radius:10px;overflow:hidden}.math-lines li{padding:10px 13px;border-bottom:1px solid var(--line);font-size:13px}.math-lines li:last-child{border:0}.rebuttal{padding:14px;background:#f7f7f5;border-radius:10px}.rebuttal small{display:block;color:var(--sub);font-size:11px;font-weight:600}.rebuttal p{font-size:13px;margin:3px 0 11px}.rebuttal p:last-child{margin-bottom:0}.feedback.error{background:var(--red-soft);border-color:#ead5d8;color:var(--red)}
