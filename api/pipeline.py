@@ -17,7 +17,7 @@ from typing import Any
 
 import anthropic
 
-from api import adapters, evidence as evidence_mod, replies, rows
+from api import adapters, audit, evidence as evidence_mod, replies, rows
 from api.agents import investigator, negotiator, reader, readers, rule_writer
 from api.contracts import (
     Answer, Approval, ApprovalLine, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, Dispute, DisputeLine, Event, EventAdapter,
@@ -74,6 +74,7 @@ class Run:
             ev = EventAdapter.validate_python({"id": len(self.events) + 1, "run_id": self.id, "at": _now(),
                                                "type": type_, "data": data.model_dump(mode="json")})
             self.events.append(ev)
+            audit.record(ev)  # every decision, question, answer, rule, approval, posting, dispute and portal message
         return ev
 
     def log(self, text: str, level: str = "info", actor: str = "system", charge_id: str | None = None) -> None:
@@ -105,6 +106,7 @@ def reset() -> None:
         _counter.update(question=0, dispute=0)
     qbo.reset()
     sms.outbox.clear()
+    audit.reset()
 
 
 def start(kind: str = "march", client: anthropic.Anthropic | None = None, background: bool = True) -> Run:
