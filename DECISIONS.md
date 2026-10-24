@@ -15,3 +15,6 @@ One line per decision, written the moment it's made: `date time · decision · w
 - 2026-10-24 00:45 · Eval: "split" counts as a dispute; eval/run.py will accept it and check both amounts · Devank
 - 2026-10-24 01:00 · QBO seed splits INV-3102 into Original 9,000 x $2.40, Chocolate 8,000 x $2.40, Mint 3,700 x $2.00 (= $48,200); payment dated 2026-04-20; Devank to confirm · Manasv
 - 2026-10-24 00:58 · $5,000 auto-dispute limit is checked per charge in the gate (row 8) and on the dispute's total at filing time (Negotiator, D8); design.md gate row 7 now reads "up to $5,000" · Devank
+- 2026-10-24 01:25 · Deal Reader A is claude-opus-5-5 with structured outputs (messages.parse + strict schema), not tool use: forced tool_choice returns 400 on this model; server-side fallbacks "default" on · Devank
+- 2026-10-24 01:25 · Reader `unclear` lines are shown for review, never sent as questions; a charge whose term is missing reaches Ask through the gate, so the demo stays at 1 question · Devank
+- 2026-10-24 01:25 · An extension that states only its end date starts the day after the deal's date_range ends (set by code, not the model) · Devank

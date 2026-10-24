@@ -154,6 +154,8 @@ class Term(ReaderTerm):
     id: str
     reader: Literal["claude", "gemini", "merged"]
     status: TermStatus = "pending"
+    source_approved: bool = True  # False: the sender can't change the deal, so the term is a claim, never applied
+    reasons: list[str] = []  # why the code check rejected or disputed it
 
 
 # ---------------------------------------------------------------- money in, data rows
