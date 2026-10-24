@@ -2,8 +2,11 @@
 // Approve and refuse share every event up to the controller's reply, then branch.
 
 import refusalJson from "@/fixtures/refusal-events.json";
+import aprilJson from "@/fixtures/april-events.json";
+import auditJson from "@/fixtures/audit.json";
+import coachJson from "@/fixtures/coach.json";
 import runJson from "@/fixtures/run-events.json";
-import type { ChargeDetail, Evidence, RunEvent, RunFixture } from "./types";
+import type { AuditEntry, ChargeDetail, CoachResponse, Evidence, RunEvent, RunFixture } from "./types";
 
 const RUN = runJson as unknown as RunFixture;
 const REFUSAL = refusalJson as unknown as RunFixture;
@@ -46,3 +49,9 @@ export function replayDelay(prev: RunEvent | undefined, next: RunEvent): number 
   const gap = Date.parse(next.at) - Date.parse(prev.at);
   return Math.min(Math.max(gap * 0.1, 40), 420);
 }
+
+/** Whole recorded runs, for the screens that show an outcome rather than replay it. */
+export const MARCH_EVENTS: RunEvent[] = RUN.events;
+export const APRIL_EVENTS: RunEvent[] = (aprilJson as unknown as RunFixture).events;
+export const FIXTURE_AUDIT = auditJson as unknown as AuditEntry[];
+export const FIXTURE_COACH = coachJson as unknown as CoachResponse;

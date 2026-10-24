@@ -132,7 +132,7 @@ export const DATA_SOURCE: DataSource = process.env.NEXT_PUBLIC_DATA_SOURCE === "
  * only startPayment() ("Northmart pays") starts a run. The actions POST to the API
  * and the result comes back as events, so the screen never claims something happened before the API says so.
  */
-export function useRunEvents(runId: string, source: DataSource = DATA_SOURCE) {
+export function useRunEvents(runId: string, source: DataSource = DATA_SOURCE, staticEvents?: RunEvent[]) {
   const [state, dispatch] = useReducer(reduce, initial);
   const [epoch, setEpoch] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -172,6 +172,15 @@ export function useRunEvents(runId: string, source: DataSource = DATA_SOURCE) {
     last.current = undefined;
     busy.current = false;
 
+    if (source === "fixture" && staticEvents) {
+      // An outcome screen (Results, April): the whole recording at once, no waiting on people.
+      const timer = window.setTimeout(() => staticEvents.forEach((event) => dispatch({ kind: "event", event })), 0);
+      return () => {
+        window.clearTimeout(clear);
+        window.clearTimeout(timer);
+      };
+    }
+
     if (source === "fixture") {
       play(eventsAfter(0));
       const pending = timers.current;
@@ -186,7 +195,7 @@ export function useRunEvents(runId: string, source: DataSource = DATA_SOURCE) {
     return () => {
       window.clearTimeout(clear);
     };
-  }, [runId, source, epoch, play]);
+  }, [runId, source, epoch, play, staticEvents]);
 
   // Live: find the run to follow. "demo" and "latest" mean whatever run is newest; any other id is that run.
   // Nothing here starts a run: only startPayment() does, so a refresh re-attaches instead of repeating the work.

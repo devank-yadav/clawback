@@ -120,7 +120,7 @@ export default function ClawbackApp() {
         <header className="topbar"><span>Workspace <span className="slash">/</span> <strong>{page}</strong></span><span className="topbar-note"><span className="tiny-dot" /> Fictional scenario</span></header>
         <main className={`main-content ${selected ? 'with-panel' : ''}`}>
           <div className="page-heading">
-            <div><div className="eyebrow">{CAST.brand}</div><h1>{page === 'Overview' ? 'A clearer picture of your payments.' : page}</h1><p>{page === 'Overview' ? overviewLine(view.stage) : page === 'Payments' ? `${remittance?.counterparty ?? 'Northmart'} · March payment · ${remittance?.invoice_id ?? 'INV-3102'}` : page === 'Approvals' ? 'Accounting remains separate from owner policy decisions.' : 'Reusable owner policies, with a clear audit trail.'}</p></div>
+            <div><div className="eyebrow">{CAST.brand}</div><h1>{page === 'Overview' ? 'A clearer picture of your payments.' : page}</h1><p>{page === 'Overview' ? overviewLine(view.stage, awaitingPayment) : page === 'Payments' ? `${remittance?.counterparty ?? 'Northmart'} · March payment · ${remittance?.invoice_id ?? 'INV-3102'}` : page === 'Approvals' ? 'Accounting remains separate from owner policy decisions.' : 'Reusable owner policies, with a clear audit trail.'}</p></div>
             {page === 'Overview' && (awaitingPayment || starting ? <button className="primary" disabled={starting} onClick={() => void startPayment()}>{starting ? 'Starting…' : 'Northmart pays'} <ArrowRight /></button> : <button className="primary" onClick={() => review()}>Review payment <ArrowRight /></button>)}
           </div>
 
@@ -148,7 +148,7 @@ export default function ClawbackApp() {
                   <div className="card-bottom"><span><FileCheck2 /> {view.reviewed ? `All ${view.charges.length} charges checked against fictional evidence` : 'Checking each charge against fictional evidence…'}</span><button className="text-button" onClick={() => review()}>View payment <ArrowRight /></button></div>
                 </section>
 
-                <AttentionCard view={view} onReviewCharge={() => review(askedCharge)} onReviewAccounting={() => navigate('Approvals')} onViewPayment={() => review()} />
+                <AttentionCard waitingForPayment={awaitingPayment} view={view} onReviewCharge={() => review(askedCharge)} onReviewAccounting={() => navigate('Approvals')} onViewPayment={() => review()} />
               </div>
               <Summary view={view} />
               <section className="surface preview-section"><div className="list-heading"><div><h2>Behind the deduction</h2><p>Every charge has a factual status and readable source.</p></div><button className="text-button" onClick={() => review()}>View all charges <ArrowRight /></button></div><ChargeList charges={view.charges} onSelect={review} preview /></section>
@@ -176,7 +176,8 @@ export default function ClawbackApp() {
   )
 }
 
-function overviewLine(stage: Stage) {
+function overviewLine(stage: Stage, awaitingPayment: boolean) {
+  if (awaitingPayment) return 'Waiting for Northmart’s payment. Nothing is checked until it arrives.'
   if (stage === 'checking') return 'Your March payment is being checked against the deal.'
   if (stage === 'owner') return 'Your March payment is reviewed. One policy decision needs your perspective.'
   return 'Your March payment is reviewed.'
@@ -194,12 +195,14 @@ function stageFeedback(view: WorkspaceView) {
   return ''
 }
 
-function AttentionCard({ view, onReviewCharge, onReviewAccounting, onViewPayment }: { view: WorkspaceView; onReviewCharge: () => void; onReviewAccounting: () => void; onViewPayment: () => void }) {
+function AttentionCard({ waitingForPayment, view, onReviewCharge, onReviewAccounting, onViewPayment }: { waitingForPayment: boolean; view: WorkspaceView; onReviewCharge: () => void; onReviewAccounting: () => void; onViewPayment: () => void }) {
   const { stage, approval, question } = view
   const open = stage === 'owner' || stage === 'controller'
   const controller = stage !== 'checking' && stage !== 'owner'
-  const heading = stage === 'checking' ? 'Checking your charges' : stage === 'owner' ? 'What counts as enough notice?' : stage === 'controller' ? 'Ready for accounting review?' : stage === 'posted' ? 'All reviewed. All clear.' : 'Proposal left unposted.'
-  const body = stage === 'checking'
+  const heading = waitingForPayment ? 'Waiting for the payment' : stage === 'checking' ? 'Checking your charges' : stage === 'owner' ? 'What counts as enough notice?' : stage === 'controller' ? 'Ready for accounting review?' : stage === 'posted' ? 'All reviewed. All clear.' : 'Proposal left unposted.'
+  const body = waitingForPayment
+    ? 'Press “Northmart pays” to start. Clawback checks each charge once the money arrives.'
+    : stage === 'checking'
     ? 'Clawback is reading the deal and the sales records for each charge.'
     : stage === 'owner'
       ? question?.text ?? ''

@@ -54,3 +54,4 @@ One line per decision, written the moment it's made: `date time · decision · w
 - 2026-10-24 04:00 · web/Dockerfile builds with NEXT_PUBLIC_DATA_SOURCE=live, so clawback.biz follows the API's event stream (DEMO_MODE replays on the API side); a fixture-only build stays one --build-arg away · cloud session for Devank
 2026-10-24 04:20 Web live mode attaches to /runs/latest and only 'Northmart pays' starts a run; board follows its run id; failed ledger posts shown; clause leads evidence (Rishi)
 2026-10-24 05:04 Web: /portal on Northmart theme (own root layout) and clickable math sources in the evidence panel; live runs' math parts carry no evidence_id yet, asked Devank (Rishi)
+2026-10-24 05:09 Web: /results /april /coach /scenario /audit screens and waiting-for-payment copy (Rishi)
