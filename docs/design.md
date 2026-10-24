@@ -496,7 +496,7 @@ We code in Claude Code; this section gives the exact files that make every teamm
 # Clawback
 
 Finance agent for Cal Hacks 13 (main prize: Hyphenate). Full plan: @docs/design.md
-Start by reading "Instructions for Claude" in that file, then ask which role I am (A, B or C).
+Start by reading "Instructions for Claude" in that file, then ask who I am (Devank, Rishi or Manasv).
 
 ## Rules
 - Build features in Feature-spec order (P0 first); each needs its acceptance test passing.
@@ -592,7 +592,7 @@ We show a real score on 30 planted charges, test every number the demo shows, an
 
 Three roles, five checkpoints, one rule: the ugly full loop must run by Saturday noon, features freeze at 10 PM Saturday, and Devpost is submitted by 8:30 AM Sunday (it locks at 9).
 
-**Roles (assign a name to each tonight):**
+**Roles:**
 
 | Person | Role | Owns |
 | --- | --- | --- |
@@ -732,7 +732,7 @@ Every hard question has an answer that points at something on screen; the bigges
 
 **The next 2 hours (Fri 11 PM–1 AM):**
 
-- [ ] Everyone: assign roles A, B and C in this doc; create the repo and the group chat
+- [ ] Everyone: clone devank-yadav/clawback and join the group chat
 - [ ] A: Pydantic term schema; Claude Reader on `spring-promo.md`; quote check passing on all 6 terms
 - [ ] A: get the Gemini key working with one test call
 - [ ] B: FastAPI skeleton; Tiger Data service + first migration; `store_sales` hypertable
