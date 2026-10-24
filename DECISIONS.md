@@ -56,3 +56,4 @@ One line per decision, written the moment it's made: `date time · decision · w
 - 2026-10-24 04:17 · Each run numbers its own disputes: March from D-0417, April from D-0427, and the portal answers on the newest run that filed the id (threads are kept per run) · Devank
 - 2026-10-24 04:17 · A new run of the same payment replaces the older ones: their open questions close (Question.closed_at), a question they'd still ask is born closed and texts nobody, and answering a closed one returns 409 (UNDO still works) · Devank
 - 2026-10-24 04:17 · GET /charges/{id} lists the deal's sentences first and the charge row last; rule decisions read "Applied Rule #1." (the label), not the id · Devank
+- 2026-10-24 04:20 · Web live mode attaches to /runs/latest and only 'Northmart pays' starts a run; the board follows its run id; failed ledger posts show; the clause leads the evidence · Rishi

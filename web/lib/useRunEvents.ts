@@ -128,7 +128,8 @@ export const DATA_SOURCE: DataSource = process.env.NEXT_PUBLIC_DATA_SOURCE === "
 /**
  * Folds the run's event stream into screen state.
  * fixture: replays web/fixtures/ and pauses wherever a person has to act; the two actions continue the recording.
- * live: POST /runs, then GET /runs/{id}/events (EventSource reconnects with Last-Event-ID); the actions POST to the API
+ * live: attaches to GET /runs/latest (or the run id in the URL) and follows GET /runs/{id}/events, resuming from the last event id;
+ * only startPayment() ("Northmart pays") starts a run. The actions POST to the API
  * and the result comes back as events, so the screen never claims something happened before the API says so.
  */
 export function useRunEvents(runId: string, source: DataSource = DATA_SOURCE) {
@@ -138,7 +139,9 @@ export function useRunEvents(runId: string, source: DataSource = DATA_SOURCE) {
   const timers = useRef<number[]>([]);
   const busy = useRef(false);
   const last = useRef<RunEvent | undefined>(undefined);
-  const started = useRef<{ epoch: number; run: Promise<api.StartedRun> } | null>(null);
+  const lastSeen = useRef(0);
+  const [target, setTarget] = useState<{ epoch: number; run: api.StartedRun | null } | null>(null);
+  const [starting, setStarting] = useState(false);
 
   /** Plays events until the next point where a person must act (or the end). */
   const play = useCallback((events: RunEvent[], resume = false) => {
@@ -180,32 +183,64 @@ export function useRunEvents(runId: string, source: DataSource = DATA_SOURCE) {
       };
     }
 
-    // One POST /runs per epoch, even though React StrictMode mounts this effect twice in dev.
-    if (started.current?.epoch !== epoch) started.current = { epoch, run: api.startRun() };
-    let stream: EventSource | null = null;
-    let cancelled = false;
-    started.current.run
-      .then((run) => {
-        if (cancelled) return;
-        stream = new EventSource(api.apiUrl(run.events_url));
-        stream.onmessage = (m) => {
-          try {
-            dispatch({ kind: "event", event: JSON.parse(m.data) as RunEvent });
-          } catch {
-            /* a malformed frame must not wipe the board */
-          }
-        };
-        stream.onopen = () => setError(null);
-        stream.onerror = () => setError("Lost the connection to the Clawback API. Reconnecting…");
-        dispatch({ kind: "playing", on: true });
-      })
-      .catch((e: Error) => !cancelled && setError(`Can't reach the Clawback API (${e.message}). Check NEXT_PUBLIC_API_BASE.`));
     return () => {
-      cancelled = true;
       window.clearTimeout(clear);
-      stream?.close();
     };
   }, [runId, source, epoch, play]);
+
+  // Live: find the run to follow. "demo" and "latest" mean whatever run is newest; any other id is that run.
+  // Nothing here starts a run: only startPayment() does, so a refresh re-attaches instead of repeating the work.
+  useEffect(() => {
+    if (source !== "live") return;
+    let cancelled = false;
+    const resolve = runId === "demo" || runId === "latest" ? api.latestRun() : Promise.resolve(api.runRef(runId));
+    resolve.then(
+      (run) => !cancelled && setTarget({ epoch, run }),
+      (e: Error) => !cancelled && setError(`Can't reach the Clawback API (${e.message}). Check NEXT_PUBLIC_API_BASE.`),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [runId, source, epoch]);
+
+  const followed = target?.epoch === epoch ? target.run : undefined;
+  const followedId = followed?.run_id;
+  const eventsUrl = followed?.events_url;
+  useEffect(() => {
+    if (source !== "live" || !eventsUrl) return;
+    let stream: EventSource | null = null;
+    let retry: number | undefined;
+    let cancelled = false;
+    const connect = () => {
+      // The browser resends Last-Event-ID by itself when it reconnects. If it gives up, or on a fresh page, ask from the last id we hold.
+      const url = `${eventsUrl}${eventsUrl.includes("?") ? "&" : "?"}after=${lastSeen.current}`;
+      const es = new EventSource(api.apiUrl(url));
+      stream = es;
+      es.onmessage = (m) => {
+        try {
+          const event = JSON.parse(m.data) as RunEvent;
+          lastSeen.current = Math.max(lastSeen.current, event.id);
+          dispatch({ kind: "event", event });
+        } catch {
+          /* a malformed frame must not wipe the board */
+        }
+      };
+      es.onopen = () => setError(null);
+      es.onerror = () => {
+        setError("Lost the connection to the Clawback API. Reconnecting…");
+        if (es.readyState === EventSource.CLOSED && !cancelled) retry = window.setTimeout(connect, 2000);
+      };
+    };
+    lastSeen.current = 0;
+    dispatch({ kind: "reset" });
+    connect();
+    dispatch({ kind: "playing", on: true });
+    return () => {
+      cancelled = true;
+      window.clearTimeout(retry);
+      stream?.close();
+    };
+  }, [source, eventsUrl, followedId]);
 
   const fail = (e: Error) => setError(`The API didn't accept that action (${e.message}).`);
 
@@ -236,11 +271,39 @@ export function useRunEvents(runId: string, source: DataSource = DATA_SOURCE) {
     [play, source, state.approval, state.lastEventId],
   );
 
-  /** Back to the start of the demo (live: POST /demo/reset first, then a fresh run). */
+  /** "Northmart pays" (live only): POST /payments/northmart, then follow the run it started. */
+  const startPayment = useCallback(async () => {
+    if (source !== "live" || starting) return;
+    setStarting(true);
+    try {
+      const paid = await api.northmartPays();
+      let run: api.StartedRun | null = paid.run_id ? api.runRef(paid.run_id) : null;
+      // With Nessie the poller starts the run within about 5 seconds of the deposit.
+      for (let i = 0; !run && i < 20; i++) {
+        await new Promise((r) => setTimeout(r, 1000));
+        run = await api.latestRun();
+      }
+      if (!run) throw new Error("the deposit was posted but no run has started yet");
+      setTarget({ epoch, run });
+    } catch (e) {
+      fail(e as Error);
+    } finally {
+      setStarting(false);
+    }
+  }, [source, starting, epoch]);
+
+  /** Back to the start of the demo (live: POST /demo/reset, then wait for the next "Northmart pays"). */
   const reset = useCallback(() => {
-    if (source === "live") api.resetDemo().then(() => setEpoch((n) => n + 1), fail);
-    else setEpoch((n) => n + 1);
+    if (source === "live") {
+      api.resetDemo().then(() => {
+        dispatch({ kind: "reset" });
+        setEpoch((n) => n + 1);
+      }, fail);
+    } else setEpoch((n) => n + 1);
   }, [source]);
 
-  return { state, answerQuestion, controllerDecides, reset, source, error };
+  /** Live and no run exists yet: the page shows the "Northmart pays" button. */
+  const awaitingPayment = source === "live" && followed === null && !error;
+
+  return { state, answerQuestion, controllerDecides, startPayment, starting, awaitingPayment, reset, source, error };
 }
