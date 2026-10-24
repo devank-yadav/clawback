@@ -22,7 +22,8 @@ acceptance:
 	$(PYTHON) -m pytest -q api/tests/test_acceptance_p0.py api/tests/test_pipeline.py api/tests/test_reader.py \
 		api/engine/tests/test_quote_check.py api/engine/tests/test_allowed.py api/engine/tests/test_gate.py \
 		api/engine/tests/test_eval_harness.py api/tests/test_replay.py api/tests/test_routes.py api/tests/test_disputes.py \
-		api/tests/test_books.py api/tests/test_coach_scenario.py
+		api/tests/test_books.py api/tests/test_coach_scenario.py \
+		api/tests/test_readers.py
 	$(PYTHON) eval/run.py
 
 seed:

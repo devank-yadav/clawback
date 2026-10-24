@@ -152,7 +152,7 @@ class Term(ReaderTerm):
     """A stored term: one row per reader, plus the merged row once both readers agree and the quote is found."""
 
     id: str
-    reader: Literal["claude", "gemini", "merged"]
+    reader: Literal["claude", "gemini", "claude-b", "merged"]
     status: TermStatus = "pending"
     source_approved: bool = True  # False: the sender can't change the deal, so the term is a claim, never applied
     reasons: list[str] = []  # why the code check rejected or disputed it

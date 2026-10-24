@@ -65,6 +65,7 @@ class ReaderResult:
     source: Literal["live", "fixture"]
     attempts: int
     errors: list[str] = field(default_factory=list)
+    model: str = "claude"  # who read it: "claude" (Reader A), "gemini" or "claude-b" (Reader B)
 
 
 def _user_message(doc: Document, text: str) -> str:

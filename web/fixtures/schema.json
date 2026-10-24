@@ -4387,6 +4387,7 @@
             "enum": [
               "claude",
               "gemini",
+              "claude-b",
               "merged"
             ],
             "title": "Reader",

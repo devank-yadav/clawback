@@ -14,7 +14,7 @@ from decimal import Decimal
 import anthropic
 
 from api import adapters, evidence as evidence_mod, pipeline, rows
-from api.agents import investigator, negotiator, reader
+from api.agents import investigator, negotiator, readers
 from api.contracts import (
     Charge, Finding, MathPart, Rehearsal, ScenarioCharge, ScenarioExample, ScenarioRequest, ScenarioResponse,
 )
@@ -54,14 +54,14 @@ def _charge(c: ScenarioCharge) -> Charge:
 
 def run(req: ScenarioRequest, client: anthropic.Anthropic | None = None) -> ScenarioResponse:
     policy = load_policy()
-    pasted = reader.read_text(req.clause, client)
+    pasted = readers.read_text_both(req.clause, client)
     if not pasted.terms:
         return ScenarioResponse(decision=None, finding=None, evidence=[], unclear=pasted.unclear,
                                 message="The clause didn't state a term Clawback reads (rate, products, dates, cap, a "
                                         "fee or an extension), so nothing was decided.")
     # The rest of the Spring deal (and the broker's approved extension) still applies.
-    deal = reader.read_document(pipeline.DEAL_DOCS[0], client=client)
-    broker = reader.read_document(pipeline.DEAL_DOCS[1], base_terms=deal.terms, client=client)
+    deal = readers.read_both(pipeline.DEAL_DOCS[0], client=client)
+    broker = readers.read_both(pipeline.DEAL_DOCS[1], base_terms=deal.terms, client=client)
     replaced = {t.type for t in pasted.terms}
     terms = pasted.terms + [t for t in deal.terms + broker.terms if t.status == "verified" and t.type not in replaced]
     charge = _charge(req.charge)

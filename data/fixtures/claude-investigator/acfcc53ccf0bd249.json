@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-24T09:12:35+00:00",
+  "recorded_at": "2026-10-24T09:35:34+00:00",
   "request": {
     "charge_id": "S1",
     "model": "claude-opus-5-5",
@@ -8,19 +8,17 @@
   },
   "request_hash": "acfcc53ccf0bd249",
   "response": {
-    "confidence": 0.92,
+    "confidence": 0.93,
     "evidence_ids": [
       "ev-pasted-079cd4698f",
       "ev-spring-promo-3.1",
-      "ev-charge-S1",
       "ev-sales-2026-03-01",
       "ev-sales-2026-03-08",
       "ev-sales-2026-03-15",
       "ev-sales-2026-03-22",
-      "ev-payment-NM-2178",
-      "ev-payment-NM-2201"
+      "ev-charge-S1"
     ],
-    "finding": "The deal caps the promotion at 6,500 units. Only 1,500 of these 1,540 units fit under it, so $40.00 was taken past the cap.",
+    "finding": "Only 1,500 of the 1,540 bars fit under the deal's 6,500-unit limit, so $40.00 was taken beyond what the deal allows.",
     "open_questions": [],
     "type": "over_cap"
   },

@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-24T09:13:19+00:00",
+  "recorded_at": "2026-10-24T09:36:29+00:00",
   "request": {
     "charge_id": "S1",
     "model": "claude-opus-5-5",
@@ -8,17 +8,17 @@
   },
   "request_hash": "233b1e28a8f1279a",
   "response": {
-    "confidence": 0.7,
+    "confidence": 0.75,
     "evidence_ids": [
       "ev-pasted-daf91a9344",
       "ev-charge-S1",
       "ev-display-fee-2026-03-11"
     ],
-    "finding": "Display fee of $900 is within the deal's $900 monthly limit, but the deal leaves this fee to Northmart's discretion with written notice.",
+    "finding": "The $900 display fee is within the deal's $900 monthly limit, but the deal leaves charging it to Northmart's discretion with written notice.",
     "open_questions": [
-      "The deal leaves this fee to Northmart's discretion. Do you accept the $900 display fee for March?",
-      "A Mar 11 notice also announced a $1,200 display fee (NM-2238). Did Northmart take that fee for March too? If so, March fees would go past the $900 monthly limit.",
-      "The deal asks for written notice but sets no lead time. Is notice 6 days ahead enough?"
+      "Should Peak Bar accept this fee, since the deal lets Northmart decide whether to charge it?",
+      "No Mar 25 notice appears in the evidence. Did Northmart actually send written notice for this charge?",
+      "A Mar 11 notice (NM-2238) announced a $1,200 display fee. Was that also charged for March, which would put March fees past the $900 monthly limit?"
     ],
     "type": "discretionary_fee"
   },

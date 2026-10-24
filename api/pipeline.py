@@ -18,7 +18,7 @@ from typing import Any
 import anthropic
 
 from api import adapters, evidence as evidence_mod, replies, rows
-from api.agents import investigator, negotiator, reader, rule_writer
+from api.agents import investigator, negotiator, reader, readers, rule_writer
 from api.contracts import (
     Answer, Approval, ApprovalLine, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, Dispute, DisputeLine, Event, EventAdapter,
     Evidence, Finding, LogLine, MathPart, Question, Rehearsal, Remittance, Rule, RunInfo, Term, Totals,
@@ -64,6 +64,8 @@ class Run:
     shown: dict[str, Decision] = field(default_factory=dict)
     questions: dict[str, Question] = field(default_factory=dict)
     coach: Any = None  # the Deal Coach's redlines for this run, once asked for (POST /coach)
+    reader_models: tuple[str, str] = ("claude", "claude-b")  # who read the deal; Devpost claims two models only if "gemini"
+    disagreements: dict[str, str] = field(default_factory=dict)  # term type -> what each reader read
     texts: list[tuple[str, str]] = field(default_factory=list)  # (role, SMS body) sent back; the webhook replies with them
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -130,19 +132,29 @@ def _meters(run: Run) -> Totals:
                   undecided=m["undecided"], questions=sum(1 for q in run.questions.values()), skipped=m["skipped"])
 
 
+READER_NAMES = {"claude": "Claude", "gemini": "Gemini", "claude-b": "a second Claude read (Gemini isn't set up)"}
+
+
 def _read_terms(run: Run, client) -> list[Term]:
+    """Both readers on every deal document; a term counts only when they agree and its quote is found."""
     terms: list[Term] = []
     for doc_id in DEAL_DOCS:
-        r = reader.read_document(doc_id, base_terms=[t for t in terms if t.source_doc_id == DEAL_DOCS[0]], client=client)
+        r = readers.read_both(doc_id, base_terms=[t for t in terms if t.source_doc_id == DEAL_DOCS[0]], client=client)
+        run.reader_models = r.models
         verified = [t for t in r.terms if t.status == "verified"]
         rejected = [t for t in r.terms if t.status == "rejected"]
+        disputed = [t for t in r.terms if t.status == "disputed"]
         if not reader.documents.can_change_deal(r.doc) and verified:
             run.log(f"{r.doc.sender} says: {verified[0].exact_quote} That sender can't change the deal: shown as a claim, "
                     "not applied.", "warn", "reader")
         else:
-            run.log(f"Read {doc_id}: {len(verified)} terms, every quote found word for word."
+            run.log(f"Read {doc_id} with {READER_NAMES[r.models[0]]} and {READER_NAMES[r.models[1]]}: "
+                    f"{len(verified)} terms agreed, every quote found word for word."
                     + (f" {len(rejected)} rejected: quote not found." if rejected else ""),
-                    "good" if verified and not rejected else "warn", "reader")
+                    "good" if verified and not rejected and not disputed else "warn", "reader")
+        for note in r.disagreements:
+            run.disagreements[note.split(":", 1)[0]] = note.split(":", 1)[1].strip()
+            run.log(f"The readers disagree on {note}. Charges that depend on it go to a person.", "warn", "reader")
         for line in r.unclear:
             run.log(f"Reader left this for a person to review: {line}", "warn", "reader")
         terms += r.terms
@@ -255,10 +267,16 @@ def _ask_owner(run: Run, charge_id: str) -> None:
     c, a = run.charges[charge_id], run.allowances[charge_id]
     term = next((t for t in a.terms if t.discretion or t.type == eng.TermType.FEE_DISCRETION), a.terms[0] if a.terms else None)
     days = a.facts.get("notice_days")
-    text = (f"{COUNTERPARTY} took ${c.amount:,.0f}: {c.description}. "
-            + (f"The deal says: \"{term.exact_quote}\" " if term else "")
-            + (f"Notice came {days} days ahead. " if days is not None else "")
-            + "Accept or dispute? Tell me your rule and I'll remember it.")
+    split = next((t for t in a.terms if t.status == eng.TermStatus.DISPUTED and t.type.value in run.disagreements), None)
+    if split:  # gate row 2: the two readers read the deal differently, so a person settles this charge
+        text = (f"{COUNTERPARTY} took ${c.amount:,.0f}: {c.description}. Clawback's two readers disagree on the deal's "
+                f"{split.type.value.replace('_', ' ')}: {run.disagreements[split.type.value]}. Reply ACCEPT or DISPUTE "
+                "for this charge.")
+    else:
+        text = (f"{COUNTERPARTY} took ${c.amount:,.0f}: {c.description}. "
+                + (f"The deal says: \"{term.exact_quote}\" " if term else "")
+                + (f"Notice came {days} days ahead. " if days is not None else "")
+                + "Accept or dispute? Tell me your rule and I'll remember it.")
     with _state:
         _counter["question"] += 1
         qid = f"Q-{_counter['question']}"

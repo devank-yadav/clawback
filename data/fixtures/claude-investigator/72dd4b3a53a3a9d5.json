@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-24T09:12:53+00:00",
+  "recorded_at": "2026-10-24T09:36:02+00:00",
   "request": {
     "charge_id": "S1",
     "model": "claude-opus-5-5",
@@ -10,12 +10,12 @@
   "response": {
     "confidence": 0.95,
     "evidence_ids": [
+      "ev-charge-S1",
       "ev-pasted-70ee300763",
       "ev-spring-promo-3.2",
-      "ev-sales-2026-03-01",
-      "ev-charge-S1"
+      "ev-sales-2026-03-01"
     ],
-    "finding": "Northmart charged $1.0 per bar on 1,200 bars; the deal pays $0.75, so $900.00 was allowed and $300.00 too much was taken.",
+    "finding": "Northmart charged $1.0 per bar on 1,200 bars; the deal pays $0.75, so $900.00 was allowed and $300.00 was overcharged.",
     "open_questions": [],
     "type": "rate_over"
   },

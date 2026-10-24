@@ -15,7 +15,7 @@ from decimal import Decimal
 import anthropic
 
 from api import documents, evidence as evidence_mod, pipeline, adapters, rows
-from api.agents import investigator, negotiator, reader
+from api.agents import investigator, negotiator, readers
 from api.contracts import Dispute, DisputeLine, Finding, MathPart, PortalMessage, PortalPreset
 from api.engine import gate, outbound_filter, totals
 from api.engine.allowed import compute_allowed
@@ -98,14 +98,15 @@ def _new_document(run: pipeline.Run, dispute: Dispute, doc_id: str, client) -> P
         run.log(f"Northmart attached a document Clawback doesn't have ({doc_id}): held for {owner}.", "warn", "negotiator")
         return None
     deal = [t for t in run.terms if t.source_doc_id == pipeline.DEAL_DOCS[0]]
-    r = reader.read_document(doc_id, base_terms=deal, client=client)
+    r = readers.read_both(doc_id, base_terms=deal, client=client)
     if not documents.can_change_deal(r.doc):
         msg = (f"Thanks. The attached document isn't signed by both parties or sent by Peak Bar Co.'s approved "
                f"representatives, so under §6.1 it doesn't change the deal. {dispute.id} stands.")
         return _send(run, dispute, msg, [], [])
     new_terms = [t for t in r.terms if t.status == "verified"]
     if not new_terms:
-        run.log(f"No term in {doc_id} could be verified word for word: held for {owner}.", "warn", "reader")
+        why = "; ".join(r.disagreements) or "no quote was found word for word"
+        run.log(f"No term in {doc_id} was verified by both readers ({why}): held for {owner}.", "warn", "reader")
         return None
     run.log(f"Read {doc_id}: signed by both parties, {len(new_terms)} term(s) verified. Recomputing {dispute.id}.",
             "good", "reader")
