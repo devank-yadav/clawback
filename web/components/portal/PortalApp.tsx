@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
 import { inkOn, useCurrentAccount } from "@/lib/accounts";
-import { dollars } from "@/lib/format";
+import { anyDay, daysLeftLabel, dollars, URGENT_DAYS } from "@/lib/format";
 import * as api from "@/lib/api";
 import { limitMessage } from "@/lib/session";
 import { setAdminToken } from "@/lib/tokens";
@@ -22,6 +22,14 @@ async function findDispute(account: string, given: string | null): Promise<strin
   const events = await api.runEventsOnce(run.run_id);
   const last = [...events].reverse().find((e) => e.type === "dispute");
   return last && last.type === "dispute" ? last.data.id : null;
+}
+
+/** "File by Apr 27 · 12 days left" under a line; urgent under two weeks. */
+function FileByLine({ fileBy, daysLeft }: { fileBy?: string | null; daysLeft?: number | null }) {
+  const hasDays = daysLeft !== null && daysLeft !== undefined;
+  if (!fileBy && !hasDays) return null;
+  const text = [fileBy ? `File by ${anyDay(fileBy)}` : null, hasDays ? daysLeftLabel(daysLeft) : null].filter(Boolean).join(" · ");
+  return <p className={`p-fileby ${hasDays && daysLeft < URGENT_DAYS ? "urgent" : ""}`}>{text}</p>;
 }
 
 export default function PortalApp() {
@@ -156,6 +164,7 @@ function Portal({ account, given }: { account: Account; given: string | null }) 
                   </div>
                   {l.quote && <blockquote>{l.clause_ref && <b>{l.clause_ref}</b>} “{l.quote}”</blockquote>}
                   <p className="p-math">{l.math}</p>
+                  <FileByLine fileBy={l.file_by} daysLeft={l.days_left} />
                 </li>
               ))}
             </ul>
@@ -164,7 +173,10 @@ function Portal({ account, given }: { account: Account; given: string | null }) 
 
         {disputeId && (
           <section className="p-card" aria-labelledby="thread-h">
-            <h2 id="thread-h">Messages</h2>
+            <div className="p-thread-head">
+              <h2 id="thread-h">Messages</h2>
+              <a className="p-packet" href={api.disputePacketUrl(disputeId)} target="_blank" rel="noreferrer" download={`${disputeId}.pdf`}>Download dispute packet</a>
+            </div>
             <ol className="p-thread" aria-live="polite">
               {thread.map((m) => (
                 <li key={m.id} className={m.from_party === "clawback" ? "theirs" : "mine"}>

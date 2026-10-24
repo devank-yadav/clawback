@@ -162,6 +162,9 @@ export type DisputeLine = {
   quote: string | null;
   math: string;
   evidence_ids: string[];
+  /** Last day to file this line with the distributor (YYYY-MM-DD), and days from today; null when the API doesn't know. */
+  file_by?: string | null;
+  days_left?: number | null;
 };
 
 export type Dispute = {
@@ -209,6 +212,21 @@ export type Totals = {
   undecided: Money;
   questions: number;
   skipped: number;
+  /** Only on the run's final totals event, once every charge is decided. */
+  value?: RunValue | null;
+};
+
+/** What one run was worth: the money in play, how long it took, what the AI cost, and the hand-work estimate. */
+export type RunValue = {
+  disputed: Money;
+  accepted: Money;
+  questions: number;
+  charges: number;
+  seconds_to_decided: number;
+  ai_calls: number;
+  ai_cost_usd: number | null;
+  manual_minutes: number | null;
+  manual_minutes_per_charge: number | null;
 };
 
 export type RunInfo = {
@@ -352,11 +370,40 @@ export type Overview = {
     /** A count of open disputes. */
     open_disputes: number;
     open_balance: Money;
+    /** From the lookback, when the API has it. */
+    wrongly_taken_6m?: Money;
+    lost_past_window?: Money;
+    claimable_now?: Money;
   };
   months: { month: string; invoiced: Money; paid: Money; deducted: Money; recovered: Money }[];
   deductions_by_type: { code: string; label: string; count: number; amount: Money }[];
   recent_remittances: { date: string; invoice: string; paid: Money; deducted: Money }[];
-  current: { invoice: string; expected: Money; received: Money; deducted: Money; run_id: string | null; status: string };
+  current: { invoice: string; expected: Money; received: Money; deducted: Money; run_id: string | null; status: string; value?: RunValue | null };
+};
+
+export type LookbackStatus = "claimable" | "past_window" | "settled" | "fair" | "not_checked";
+
+/** GET /accounts/{id}/lookback: the last six months' charges checked after the fact, and what can still be claimed. */
+export type Lookback = {
+  account_id: string;
+  as_of: string;
+  dispute_window_days: number;
+  rows: {
+    ref: string;
+    month: string;
+    code: string;
+    description: string;
+    taken: Money;
+    allowed: Money | null;
+    wrongly_taken: Money;
+    outcome: string;
+    recovered: Money;
+    deducted_on: string;
+    file_by: string | null;
+    days_left: number | null;
+    status: LookbackStatus;
+  }[];
+  totals: { wrongly_taken: Money; lost_past_window: Money; claimable_now: Money; checked: number; not_checked: number };
 };
 
 /** One AI call in a run, as GET /runs/{id}/trace returns it. */

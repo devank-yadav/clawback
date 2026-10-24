@@ -8,7 +8,7 @@
 import http from "node:http";
 import crypto from "node:crypto";
 import { readFileSync } from "node:fs";
-import { ACCOUNTS, accountOf, overviewOf } from "./data.mjs";
+import { ACCOUNTS, accountOf, lookbackOf, overviewOf, withFileBy } from "./data.mjs";
 
 const PORT = Number(process.env.MOCK_PORT ?? 8010);
 const SPEED = Number(process.env.MOCK_SPEED ?? 1);
@@ -56,6 +56,8 @@ class Run {
   }
 
   emit(type, data) {
+    if (type === "dispute") data = withFileBy(data);
+    if (type === "totals" && !data.value && data.undecided === 0 && data.waiting === 0) data = { ...data, value: this.valueOf(data) };
     const e = { id: this.events.length + 1, run_id: this.id, at: now(), type, data };
     this.events.push(e);
     const s = this.state;
@@ -70,6 +72,18 @@ class Run {
     if (type === "question") this.question = data;
     if (type === "approval") this.approval = data;
     for (const l of this.listeners) l(e);
+  }
+
+  /** RunValue on the final totals: real elapsed time and AI calls; a priced estimate per call; 8 minutes a charge by hand. */
+  valueOf(t) {
+    const charges = Object.keys(this.state.charges).length;
+    const calls = this.trace.length;
+    // Fernway has no hand-work estimate, so the strip's "by hand" part can be seen hidden.
+    const manual = this.account.id === "fernway" ? null : charges * 8;
+    return {
+      disputed: t.disputed, accepted: t.accepted, questions: t.questions, charges, seconds_to_decided: Math.max(1, Math.round((Date.now() - this.started) / 1000)),
+      ai_calls: calls, ai_cost_usd: Math.round(calls * 3.1) / 100, manual_minutes: manual, manual_minutes_per_charge: manual === null ? null : 8,
+    };
   }
 
   /** Steps: { type, data, delay } events, { fn, delay } side effects, or { pause } to wait for a person. */
@@ -407,6 +421,18 @@ function auditOf(accountId) {
 
 // ---------------------------------------------------------------- HTTP
 
+/** A one-page text PDF, enough to stand in for the API's dispute packet. */
+function packetPdf(lines) {
+  const esc = (t) => t.replace(/[^\x20-\x7e]/g, (c) => ({ "·": "-", "“": '"', "”": '"', "’": "'", "→": "->", "×": "x", "§": "S." })[c] ?? "?").replace(/[\\()]/g, (c) => `\\${c}`);
+  const text = lines.slice(0, 60).map((l, i) => `BT /F1 10 Tf 48 ${780 - i * 13} Td (${esc(l).slice(0, 110)}) Tj ET`).join("\n");
+  const objs = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>", "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>", `<< /Length ${Buffer.byteLength(text)} >>\nstream\n${text}\nendstream`, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"];
+  let out = "%PDF-1.4\n";
+  const offsets = objs.map((o, i) => { const at = Buffer.byteLength(out); out += `${i + 1} 0 obj\n${o}\nendobj\n`; return at; });
+  const xref = Buffer.byteLength(out);
+  out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, "0")} 00000 n \n`).join("")}trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return Buffer.from(out, "latin1");
+}
+
 function send(res, status, body) {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(body));
@@ -446,6 +472,13 @@ const server = http.createServer(async (req, res) => {
       if (!a) return fail(res, 404, "unknown account");
       const run = latestRun(a.id);
       return send(res, 200, overviewOf(a, run && { id: run.id, status: run.status, dispute: run.dispute, totals: run.totals }));
+    }
+
+    if (req.method === "GET" && parts[0] === "accounts" && parts[2] === "lookback") {
+      const a = account(parts[1]);
+      if (!a) return fail(res, 404, "unknown account");
+      if (process.env.MOCK_NO_LOOKBACK) return fail(res, 404, "Not Found");
+      return send(res, 200, lookbackOf(a));
     }
 
     if (req.method === "POST" && parts[0] === "payments" && parts.length === 2) {
@@ -538,6 +571,12 @@ const server = http.createServer(async (req, res) => {
       const thread = threads.get(parts[2]) ?? [];
       threads.set(parts[2], thread);
       if (req.method === "GET" && parts.length === 3) return send(res, 200, run.dispute);
+      if (req.method === "GET" && parts[3] === "packet.pdf") {
+        const d = run.dispute;
+        const pdf = packetPdf([`Dispute ${d.id} · ${run.account.brand.name} to ${d.counterparty}`, `Disputed total: ${money(d.total)}`, "", ...d.lines.flatMap((l) => [`${l.ref} · ${money(l.amount)} · ${l.reason}`, l.quote ? `${l.clause_ref ?? ""} "${l.quote}"` : "", l.math, l.file_by ? `File by ${l.file_by}` : "", ""])]);
+        res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${d.id}.pdf"` });
+        return res.end(pdf);
+      }
       if (req.method === "GET" && parts[3] === "messages") return send(res, 200, thread);
       if (req.method === "POST" && parts[3] === "messages") {
         if (RUN_LIMIT && !isAdmin(req) && thread.length >= RUN_LIMIT * 2) return fail(res, 429, "That's the limit for now: each reply runs live AI. Try again in a few minutes.");

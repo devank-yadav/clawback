@@ -113,7 +113,8 @@ function reduce(state: RunState, action: Action): RunState {
     case "ledger_post":
       return { ...s, ledger: [...s.ledger.filter((p) => p.id !== e.data.id), e.data] };
     case "totals":
-      return { ...s, totals: e.data };
+      // The run's value comes once, on the final totals; a later totals event without it keeps it.
+      return { ...s, totals: { ...e.data, value: e.data.value ?? s.totals?.value ?? null } };
     default:
       // A type this screen doesn't know yet must never wipe the board.
       return s;

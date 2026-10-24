@@ -58,3 +58,18 @@ export const clock = (iso: string) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" });
 };
+
+/** "71 s" under two minutes, "3 min" after. */
+export const duration = (seconds: number) => (seconds < 120 ? `${Math.round(seconds)} s` : `${Math.round(seconds / 60)} min`);
+
+/** "$0.38" for the AI cost of a run; under a cent shows as "under $0.01". */
+export const aiCost = (usd: number) => (usd > 0 && usd < 0.01 ? "under $0.01" : cents.format(usd));
+
+/** "45 min" or "2.5 h" for the hand-work estimate. */
+export const minutesLabel = (m: number) => (m < 90 ? `${Math.round(m)} min` : `${Math.round((m / 60) * 10) / 10} h`);
+
+/** "12 days left", "1 day left", "Last day", "Window closed". */
+export const daysLeftLabel = (d: number) => (d > 1 ? `${d} days left` : d === 1 ? "1 day left" : d === 0 ? "Last day" : "Window closed");
+
+/** Under this many days a file-by date shows as urgent. */
+export const URGENT_DAYS = 14;
