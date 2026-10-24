@@ -178,3 +178,84 @@ def test_committed_recordings_replay_the_whole_demo_offline(monkeypatch):
     assert (t.disputed, t.accepted, t.questions, march.done) == (D(4120), D(2730), 1, True)
     april = pipeline.start("april", Offline(), background=False)
     assert final(april) == {"A1": ("accept", D(0), D(1200)), "A2": ("dispute", D(800), D(0))} and not april.questions
+
+
+def _march_waiting():
+    fake = ScenarioClaude()
+    run = pipeline.start("march", fake, background=False)
+    (qid,) = run.questions
+    return fake, run, qid
+
+
+def logs(run):
+    return [e.data.text for e in run.events if e.type == "log"]
+
+
+def test_parser_saves_rule_1_without_claude():
+    fake, run, qid = _march_waiting()
+    _, rule = pipeline.answer(qid, "accept if notice is at least 14 days", client=fake)
+    assert "LLMRule" not in fake.calls
+    assert rule.summary == "Accept Northmart display fees with at least 14 days' notice; otherwise dispute."
+    assert any("Saved: accept display fees with 14+ days' notice. Reply UNDO to cancel." in t for t in logs(run))
+
+
+def test_two_weeks_means_14_days():
+    fake, run, qid = _march_waiting()
+    _, rule = pipeline.answer(qid, "two weeks", client=fake)
+    assert rule.condition == "notice_days >= 14" and final(run)["C6"] == ("accept", D(0), D(1200))
+
+
+def test_one_off_accept_settles_c6_without_a_rule():
+    fake, run, qid = _march_waiting()
+    _, rule = pipeline.answer(qid, "ACCEPT", client=fake)
+    assert rule is None and not pipeline.RULES
+    assert final(run)["C6"] == ("accept", D(0), D(1200)) and run.shown["C6"].decided_by == "owner"
+    assert run.done and last_totals(run).accepted == D(2730)
+    april = pipeline.start("april", fake, background=False)
+    assert len(april.questions) == 2  # nothing was learned, so April asks
+
+
+def test_one_off_dispute_files_its_own_line():
+    fake, run, qid = _march_waiting()
+    pipeline.answer(qid, "dispute", client=fake)
+    disputes = [e.data for e in run.events if e.type == "dispute"]
+    assert [(x.id, x.total, [ln.charge_id for ln in x.lines]) for x in disputes] == [
+        ("D-0417", D(4120), ["C1", "C2", "C4", "C5"]), ("D-0418", D(1200), ["C6"])]
+    t = last_totals(run)
+    assert (t.disputed, t.accepted) == (D(5320), D(1530))
+    assert next(e.data for e in run.events if e.type == "approval").amount == D(1530)
+
+
+def test_undo_cancels_rule_1_for_next_time():
+    fake, run, qid = _march_waiting()
+    pipeline.answer(qid, "accept if notice is at least 14 days", client=fake)
+    _, undone = pipeline.answer(qid, "UNDO", client=fake)
+    assert undone.id == "rule-1" and undone.status == "undone" and pipeline.RULES[0].status == "undone"
+    assert final(run)["C6"] == ("accept", D(0), D(1200))  # this charge keeps its decision
+    assert any("Undone: Rule #1 is cancelled" in t for t in logs(run))
+    april = pipeline.start("april", fake, background=False)
+    assert len(april.questions) == 2
+
+
+def test_reply_after_settled_changes_nothing():
+    fake, run, qid = _march_waiting()
+    pipeline.answer(qid, "accept if notice is at least 14 days", client=fake)
+    _, rule = pipeline.answer(qid, "dispute", client=fake)
+    assert rule is None and final(run)["C6"] == ("accept", D(0), D(1200)) and len(pipeline.RULES) == 1
+
+
+def test_reply_the_parser_cant_read_goes_to_claude():
+    fake, run, qid = _march_waiting()
+    _, rule = pipeline.answer(qid, "fine as long as they warn us early enough", client=fake)
+    assert "LLMRule" in fake.calls and rule.condition == "notice_days >= 14"
+    assert final(run)["C6"] == ("accept", D(0), D(1200))
+
+
+def test_nobody_can_read_it_so_dana_is_asked_again():
+    fake = ScenarioClaude(owner_understood=False)
+    run = pipeline.start("march", fake, background=False)
+    (qid,) = run.questions
+    _, rule = pipeline.answer(qid, "hmm not sure", client=fake)
+    assert rule is None and final(run)["C6"][0] == "ask"
+    from api import replies
+    assert any(replies.REASK_TEXT in t for t in logs(run)) and len(run.questions) == 1
