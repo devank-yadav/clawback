@@ -1,245 +1,275 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  ArrowRight, Check, ChevronDown, ChevronUp, CircleHelp, ClipboardCheck,
-  CornerUpLeft, FileCheck2, Home, Info, Layers3, ReceiptText, RotateCcw,
-  ShieldCheck, X,
-} from 'lucide-react'
-import { CAST } from '@/lib/cast'
-import { dollars, share } from '@/lib/format'
-import { useChargeDetail } from '@/lib/useChargeDetail'
+import { useMemo, useState } from 'react'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { ArrowRight, Check, CircleHelp, ClipboardCheck, FileCheck2, Info, KeyRound, Layers3, ShieldCheck } from 'lucide-react'
+import AppShell, { DistributorMark, type View } from '@/components/shell/AppShell'
+import { firstName, useCurrentAccount, withAccount } from '@/lib/accounts'
+import { fetchOverview } from '@/lib/api'
+import { anyDay, dollars, money, monthLabel, percent, share } from '@/lib/format'
+import { askAdminToken, LIMIT_ADMIN_REASON, useSession, type Role } from '@/lib/session'
+import type { Account, Overview } from '@/lib/types'
+import { useFetched } from '@/lib/useFetched'
 import { useRunEvents } from '@/lib/useRunEvents'
-import { selectWorkspace, type ChargeView, type Stage, type WorkspaceView } from '@/lib/workspace'
+import { postingSentence, selectWorkspace, type ChargeView, type WorkspaceView } from '@/lib/workspace'
 import { ChargeList, EvidencePanel, Status, type ChargeFilter } from './charge-workspace'
+import { MonthlyChart, TypeBars } from './charts'
+import { RunProgress } from './run-progress'
 
-type Page = 'Overview' | 'Payments' | 'Approvals' | 'Rules'
+const VIEWS: View[] = ['overview', 'payments', 'approvals', 'rules']
+const CRUMB: Record<View, string> = { overview: 'Overview', payments: 'Payments', approvals: 'Approvals', rules: 'Rules' }
 
+/** The brand workspace at /?account=…&view=…: the account and the view live in the URL, so every link and reload keeps them. */
 export default function ClawbackApp() {
-  const { state, answerQuestion, controllerDecides, startPayment, starting, awaitingPayment, reset: resetRun, source, error } = useRunEvents('demo')
-  const view = useMemo(() => selectWorkspace(state, source), [state, source])
-  const [page, setPage] = useState<Page>('Overview')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [role, setRole] = useState('Owner')
+  const { account, accounts, error } = useCurrentAccount()
+  const param = useSearchParams().get('view')
+  const view: View = VIEWS.includes(param as View) ? (param as View) : 'overview'
+  if (!account) {
+    return (
+      <AppShell account={null} accounts={accounts} active={view} crumb={CRUMB[view]}>
+        <main className="main-content">
+          {error ? <div className="feedback error" role="alert"><Info />{error}</div> : <p className="muted" role="status">Loading your accounts…</p>}
+        </main>
+      </AppShell>
+    )
+  }
+  return <Workspace key={account.id} account={account} accounts={accounts} view={view} />
+}
+
+function Workspace({ account, accounts, view }: { account: Account; accounts: Account[] | null; view: View }) {
+  const run = useRunEvents(account.id)
+  const { state, runId, answerQuestion, controllerDecides, startPayment, starting, limited, awaitingPayment, refresh, error } = run
+  const ws = useMemo(() => selectWorkspace(state, account), [state, account])
+  const { role } = useSession()
+  const router = useRouter()
+  // ?charge= opens a charge from a link; a click on the list overrides it.
+  const chargeParam = useSearchParams().get('charge')
+  const [picked, setPicked] = useState<{ id: string | null } | null>(null)
+  const selectedId = picked ? picked.id : chargeParam
+  const setSelectedId = (id: string | null) => setPicked({ id })
   const [note, setNote] = useState('')
-  const [notice, setNotice] = useState('')
-  const [dismissedFor, setDismissedFor] = useState<Stage | ''>('')
-  const [workspaceOpen, setWorkspaceOpen] = useState(false)
-  const [brandOpen, setBrandOpen] = useState(false)
-  const [breakdownOpen, setBreakdownOpen] = useState(false)
   const [filter, setFilter] = useState<ChargeFilter>('All')
-  const workspaceRef = useRef<HTMLDivElement>(null)
+  const distributor = account.distributor.name
 
-  useEffect(() => {
-    const close = (event: MouseEvent) => {
-      if (workspaceRef.current && !workspaceRef.current.contains(event.target as Node)) setWorkspaceOpen(false)
-    }
-    document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
-  }, [])
+  // The overview's numbers move as the run does (a dispute filed, a memo posted), so it is read again at each step.
+  const overviewKey = `${runId}:${state.run?.status}:${state.dispute?.status}:${state.approval?.status}:${state.ledger.length}:${ws.reviewed}`
+  const loadOverview = useMemo(() => () => fetchOverview(account.id), [account.id])
+  const overview = useFetched<Overview>(loadOverview, overviewKey)
 
-  const selected = view.charges.find((charge) => charge.id === selectedId) ?? null
-  const detail = useChargeDetail(selected?.id ?? '', state.run?.run_id, source)
-  const askedCharge = view.charges.find((charge) => charge.id === view.question?.charge_id)
+  const selected = view === 'payments' ? (ws.charges.find((charge) => charge.id === selectedId) ?? null) : null
+  const askedCharge = ws.charges.find((charge) => charge.id === ws.question?.charge_id)
+  const feedback = stageFeedback(ws, account)
+  const payLabel = `${distributor} pays`
+  const pendingCharges = ws.remittance ? ws.remittance.charge_count - ws.charges.length : 0
 
-  const stageMessage = stageFeedback(view)
-  const feedback = notice || (dismissedFor !== view.stage ? stageMessage : '')
-
-  function navigate(next: Page) {
-    setPage(next)
-    setSelectedId(null)
-    setNotice('')
-    setDismissedFor(view.stage)
-  }
-  function review(charge?: ChargeView) {
-    setPage('Payments')
-    setSelectedId(charge?.id ?? null)
-  }
-  function confirmRule() {
-    if (role !== 'Owner' || !view.question) return
-    answerQuestion(view.question.id)
-  }
-  function reset() {
-    resetRun()
-    setPage('Overview')
+  function onReset() {
     setSelectedId(null)
     setNote('')
-    setRole('Owner')
     setFilter('All')
-    setBreakdownOpen(false)
-    setDismissedFor('')
-    setNotice('Fictional demo reset to its starting state.')
+    refresh()
+    overview.reload()
   }
 
-  const remittance = view.remittance
-  const totals = view.totals
-  const taken = totals?.taken ?? remittance?.taken ?? 0
-  const waiting = totals?.waiting ?? 0
-  const splitCharge = view.charges.find((charge) => charge.status === 'Split decision')
+  const heading = view === 'overview'
+    ? { title: 'Overview', line: `Deductions from ${distributor}, last six months.` }
+    : view === 'payments'
+      ? { title: `${monthLabel(account.invoice.month)} payment`, line: `${distributor} · Invoice ${ws.remittance?.invoice_id ?? account.invoice.id}` }
+      : view === 'approvals'
+        ? { title: 'Approvals', line: `Accounting entries wait for ${account.brand.controller.name}. Policy answers don’t post anything.` }
+        : { title: 'Rules', line: `Answers ${account.brand.owner.name} gave once, applied every time after.` }
+
+  const payButton = <button className="primary" disabled={starting} onClick={() => void startPayment()}>{starting ? 'Waiting for the deposit…' : payLabel} <ArrowRight /></button>
+  const reviewHref = withAccount('/', account.id, { view: 'payments' })
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <button className="wordmark" onClick={() => navigate('Overview')} aria-label="Clawback overview">
-          <span className="brand-mark"><CornerUpLeft /></span>clawback<span className="wordmark-dot">.</span>
-        </button>
+    <AppShell account={account} accounts={accounts} active={view} crumb={CRUMB[view]} approvalsWaiting={ws.stage === 'controller' && ws.approval?.status === 'pending'} onReset={onReset}>
+      <main className={`main-content ${selected ? 'with-panel' : ''}`}>
+        <div className="page-heading">
+          <div><div className="eyebrow">{account.brand.name}</div><h1>{heading.title}</h1><p>{heading.line}</p></div>
+          {(view === 'overview' || view === 'payments') && (awaitingPayment || starting ? payButton : view === 'overview' && <Link className="primary" href={reviewHref}>Open analysis <ArrowRight /></Link>)}
+        </div>
 
-        <div className="workspace-wrap" ref={workspaceRef}>
-          <button className="workspace" aria-expanded={workspaceOpen} aria-haspopup="menu" onClick={() => setWorkspaceOpen((open) => !open)}>
-            <span className="workspace-avatar">P</span>
-            <span>{CAST.brand}<small>Brand workspace</small></span>
-            <ChevronDown />
-          </button>
-          {workspaceOpen && (
-            <div className="workspace-menu" role="menu">
-              <div className="workspace-menu-brand"><span className="workspace-avatar">P</span><span><strong>{CAST.brand}</strong><small>Fictional snack brand · Portland, OR</small></span></div>
-              <button role="menuitem" onClick={() => { setBrandOpen(true); setWorkspaceOpen(false) }}><Info /> View brand details</button>
-              <div className="menu-separator" />
-              <label htmlFor="menu-role">Demo role<select id="menu-role" value={role} onChange={(event) => { setRole(event.target.value); setWorkspaceOpen(false) }}><option>Owner</option><option>Controller</option></select></label>
-              <button role="menuitem" onClick={() => { reset(); setWorkspaceOpen(false) }}><RotateCcw /> Reset fictional demo</button>
+        {error && <div className="feedback error" role="alert"><Info />{error}</div>}
+        {limited && <div className="feedback notice" role="status"><Info /><span>{limited}</span><button className="text-button" onClick={() => askAdminToken(LIMIT_ADMIN_REASON, () => void startPayment())}><KeyRound /> Use admin token</button></div>}
+        {feedback && view !== 'overview' && <div className={`feedback ${ws.stage === 'refused' ? 'notice' : ''}`} role="status">{ws.stage === 'refused' ? <Info /> : <Check />}{feedback}</div>}
+
+        {view === 'overview' && state.run?.status === 'started' && <RunProgress account={account} state={state} ws={ws} />}
+        {view === 'overview' && <OverviewPage account={account} overview={overview.data} overviewError={overview.error} ws={ws} awaitingPayment={awaitingPayment} reviewHref={reviewHref} feedback={feedback} onOpenCharge={(id) => router.push(withAccount('/', account.id, { view: 'payments', charge: id }))} />}
+
+        {view === 'payments' && (
+          <>
+            <PaymentStrip account={account} ws={ws} awaitingPayment={awaitingPayment} />
+            <Summary ws={ws} compact />
+            <RunProgress account={account} state={state} ws={ws} />
+            <div className="payment-workspace">
+              <section className="surface charge-main"><div className="list-heading"><div><h2>Charges</h2><p>{awaitingPayment ? `Waiting for ${distributor}’s payment.` : 'Select a charge to see its evidence and how it was decided.'}</p></div></div><ChargeList charges={ws.charges} selected={selected?.id} onSelect={(charge) => setSelectedId(charge.id)} filter={filter} onFilterChange={setFilter} waiting={awaitingPayment} pending={pendingCharges} /><div className="table-footer"><ShieldCheck /> {ws.disputeId ? <>{ws.disputeLabel} · <a href={withAccount('/portal', account.id, { dispute: ws.disputeId })} target="_blank" rel="noreferrer">Open on {account.distributor.portal_name}</a></> : ws.disputeLabel}</div></section>
+              {selected && <EvidencePanel key={selected.id} account={account} state={state} runId={runId} charge={selected} question={ws.question} rule={ws.rule} stage={ws.stage} role={role} onClose={() => setSelectedId(null)} onAnswer={answerQuestion} />}
             </div>
-          )}
-        </div>
+          </>
+        )}
 
-        <span className="nav-label">Workspace</span>
-        <nav aria-label="Primary navigation">
-          {([{ title: 'Overview', icon: Home }, { title: 'Payments', icon: ReceiptText }, { title: 'Approvals', icon: ClipboardCheck }, { title: 'Rules', icon: Layers3 }] as const).map(({ title, icon: Icon }) => (
-            <button key={title} className={`nav-item ${page === title ? 'active' : ''}`} onClick={() => navigate(title)} aria-current={page === title ? 'page' : undefined}>
-              <Icon />{title}{title === 'Approvals' && view.stage === 'controller' && <span className="nav-count">1</span>}
-            </button>
-          ))}
-        </nav>
-
-        <div className="sidebar-bottom">
-          <div className="quiet-note"><ShieldCheck /><p>A little clarity.<br />A lot more confidence.</p></div>
-          <div className="demo-settings"><span className="demo-label"><i /> Fictional demo</span><span>{role === 'Owner' ? `${CAST.ownerFull} · Owner` : `${CAST.controllerFull} · Controller`}</span><span data-source={source}>{source === 'live' ? 'Live API data' : 'Fixture data · no backend'}</span></div>
-        </div>
-      </aside>
-
-      <div className="main-shell">
-        <header className="topbar"><span>Workspace <span className="slash">/</span> <strong>{page}</strong></span><span className="topbar-note"><span className="tiny-dot" /> Fictional scenario</span></header>
-        <main className={`main-content ${selected ? 'with-panel' : ''}`}>
-          <div className="page-heading">
-            <div><div className="eyebrow">{CAST.brand}</div><h1>{page === 'Overview' ? 'A clearer picture of your payments.' : page}</h1><p>{page === 'Overview' ? overviewLine(view.stage, awaitingPayment) : page === 'Payments' ? `${remittance?.counterparty ?? 'Northmart'} · March payment · ${remittance?.invoice_id ?? 'INV-3102'}` : page === 'Approvals' ? 'Accounting remains separate from owner policy decisions.' : 'Reusable owner policies, with a clear audit trail.'}</p></div>
-            {page === 'Overview' && (awaitingPayment || starting ? <button className="primary" disabled={starting} onClick={() => void startPayment()}>{starting ? 'Starting…' : 'Northmart pays'} <ArrowRight /></button> : <button className="primary" onClick={() => review()}>Review payment <ArrowRight /></button>)}
-          </div>
-
-          {error && <div className="feedback error" role="alert"><Info />{error}</div>}
-          {feedback && <div className="feedback" role="status"><Check />{feedback}</div>}
-
-          {page === 'Overview' && (
-            <>
-              <div className="overview-grid">
-                <section className="payment-card surface">
-                  <div className="card-top"><div className="company"><span className="northmart">N</span><div><h2>{remittance?.counterparty ?? 'Northmart'}</h2><p>March payment · {remittance?.invoice_id ?? 'INV-3102'}</p></div></div><span className="neutral-tag">{view.reviewed ? 'Reviewed' : 'Reviewing'}</span></div>
-                  <div className="payment-story" aria-label="Payment summary">
-                    <div><span>Invoiced</span><strong>{remittance ? dollars(remittance.expected) : '—'}</strong></div>
-                    <div><span>Received</span><strong>{remittance ? dollars(remittance.received) : '—'}</strong></div>
-                    <div className="deduction-gap"><span>Deducted · {remittance?.charge_count ?? 6} charges</span><strong>{remittance ? dollars(remittance.taken) : '—'}</strong><small>The gap between the invoice and payment.</small></div>
-                  </div>
-                  {remittance && <div className="payment-bar" role="img" aria-label={`${dollars(remittance.received)} received and ${dollars(remittance.taken)} deducted from ${dollars(remittance.expected)} invoiced`}><span style={{ width: `${share(remittance.received, remittance.expected)}%` }} /><span style={{ width: `${share(remittance.taken, remittance.expected)}%` }} /></div>}
-                  {remittance && <div className="bar-legend"><span><i className="received-dot" /> Received <strong>{dollars(remittance.received)}</strong></span><span><i className="deducted-dot" /> Deducted <strong>{dollars(remittance.taken)}</strong></span></div>}
-                  <button className="breakdown-toggle" aria-expanded={breakdownOpen} onClick={() => setBreakdownOpen((open) => !open)}>{breakdownOpen ? 'Hide breakdown' : 'Show breakdown'} {breakdownOpen ? <ChevronUp /> : <ChevronDown />}</button>
-                  <div className={`breakdown-region ${breakdownOpen ? 'open' : ''}`} aria-hidden={!breakdownOpen}>
-                    <div className="allocation-bar" role="img" aria-label={`${dollars(totals?.disputed ?? 0)} disputed, ${dollars(totals?.accepted ?? 0)} accepted, ${dollars(waiting)} pending`}><span className="disputed-allocation" style={{ width: `${share(totals?.disputed ?? 0, taken)}%` }} /><span className="accepted-allocation" style={{ width: `${share(totals?.accepted ?? 0, taken)}%` }} />{waiting > 0 && <span className="pending-allocation" style={{ width: `${share(waiting, taken)}%` }} />}</div>
-                    <div className="allocation-legend"><span><i className="disputed-dot" />Disputed <strong>{dollars(totals?.disputed ?? 0)}</strong></span><span><i className="accepted-dot" />Accepted <strong>{dollars(totals?.accepted ?? 0)}</strong></span><span><i className="pending-dot" />Pending <strong>{dollars(waiting)}</strong></span></div>
-                    {splitCharge && splitCharge.accepted !== null && splitCharge.disputed !== null && <p>{splitCharge.id} is one {dollars(splitCharge.amount)} charge: {dollars(splitCharge.accepted)} accepted and {dollars(splitCharge.disputed)} disputed.</p>}
-                  </div>
-                  <div className="card-bottom"><span><FileCheck2 /> {view.reviewed ? `All ${view.charges.length} charges checked against fictional evidence` : 'Checking each charge against fictional evidence…'}</span><button className="text-button" onClick={() => review()}>View payment <ArrowRight /></button></div>
-                </section>
-
-                <AttentionCard waitingForPayment={awaitingPayment} view={view} onReviewCharge={() => review(askedCharge)} onReviewAccounting={() => navigate('Approvals')} onViewPayment={() => review()} />
-              </div>
-              <Summary view={view} />
-              <section className="surface preview-section"><div className="list-heading"><div><h2>Behind the deduction</h2><p>Every charge has a factual status and readable source.</p></div><button className="text-button" onClick={() => review()}>View all charges <ArrowRight /></button></div><ChargeList charges={view.charges} onSelect={review} preview /></section>
-            </>
-          )}
-
-          {page === 'Payments' && (
-            <>
-              <section className="payment-strip" aria-label="Payment totals"><div><small>Invoiced</small><strong>{remittance ? dollars(remittance.expected) : '—'}</strong></div><div><small>Received</small><strong>{remittance ? dollars(remittance.received) : '—'}</strong></div><div className="strip-deduction"><small>Deducted · {remittance?.charge_count ?? 6} charges</small><strong>{remittance ? dollars(remittance.taken) : '—'}</strong><span>Invoice-to-payment gap</span></div></section>
-              <Summary view={view} compact />
-              <div className="payment-workspace">
-                <section className="surface charge-main"><div className="list-heading"><div><h2>Payment charges</h2><p>Select a charge to see evidence and allocations.</p></div></div><ChargeList charges={view.charges} selected={selected?.id} onSelect={(charge) => setSelectedId(charge.id)} filter={filter} onFilterChange={setFilter} /><div className="table-footer"><ShieldCheck /> {view.disputeLabel}</div></section>
-                {selected && <EvidencePanel key={selected.id} runId={state.run?.run_id} live={source === 'live'} charge={selected} detail={detail} question={view.question} rule={view.rule} stage={view.stage} onClose={() => setSelectedId(null)} onConfirm={confirmRule} role={role} />}
-              </div>
-            </>
-          )}
-
-          {page === 'Rules' && <RulesView view={view} review={review} askedCharge={askedCharge} />}
-          {page === 'Approvals' && <ApprovalsView view={view} source={source} role={role} note={note} setNote={setNote} review={review} askedCharge={askedCharge} onDecide={controllerDecides} />}
-        </main>
-      </div>
-
-      {brandOpen && <div className="dialog-backdrop" role="presentation" onMouseDown={() => setBrandOpen(false)}><section className="brand-dialog" role="dialog" aria-modal="true" aria-labelledby="brand-title" onMouseDown={(event) => event.stopPropagation()}><button autoFocus className="icon-button dialog-close" onClick={() => setBrandOpen(false)} aria-label="Close brand details"><X /></button><span className="workspace-avatar large">P</span><div><div className="eyebrow">Fictional brand</div><h2 id="brand-title">{CAST.brand}</h2><p>Illustrative consumer snack brand based in Portland, Oregon. This demo uses no connected accounting system or live documents.</p></div><dl><div><dt>Owner</dt><dd>{CAST.ownerFull}</dd></div><div><dt>Controller</dt><dd>{CAST.controllerFull}</dd></div><div><dt>Customer</dt><dd>Northmart</dd></div></dl><button className="secondary" onClick={() => setBrandOpen(false)}>Done</button></section></div>}
-    </div>
+        {view === 'rules' && <RulesView account={account} ws={ws} askedCharge={askedCharge} reviewHref={reviewHref} />}
+        {view === 'approvals' && <ApprovalsView account={account} ws={ws} role={role} note={note} setNote={setNote} reviewHref={reviewHref} onDecide={controllerDecides} />}
+      </main>
+    </AppShell>
   )
 }
 
-function overviewLine(stage: Stage, awaitingPayment: boolean) {
-  if (awaitingPayment) return 'Waiting for Northmart’s payment. Nothing is checked until it arrives.'
-  if (stage === 'checking') return 'Your March payment is being checked against the deal.'
-  if (stage === 'owner') return 'Your March payment is reviewed. One policy decision needs your perspective.'
-  return 'Your March payment is reviewed.'
-}
-
 /** What the stream says just happened. Never worded as done until the matching event has arrived. */
-function stageFeedback(view: WorkspaceView) {
-  if (view.stage === 'controller' && view.rule) return `Rule saved by ${CAST.ownerFull}. The accounting proposal is ready for ${CAST.controllerFull}.`
-  if (view.stage === 'refused') return `${CAST.controllerFull} refused the proposal. It remains unposted.`
-  if (view.stage === 'posted') {
-    if (view.postingLabel === 'Simulated posted') return `${CAST.controllerFull} recorded the simulated accounting approval. No real entry was posted.`
-    if (view.postingLabel.startsWith('Posted')) return `${CAST.controllerFull} approved. The credit memo posted to the QuickBooks sandbox.`
-    return `${CAST.controllerFull} approved. Waiting for the posting to be confirmed.`
-  }
+function stageFeedback(ws: WorkspaceView, account: Account) {
+  const controller = account.brand.controller.name
+  if (ws.stage === 'controller' && ws.rule) return `Rule saved by ${account.brand.owner.name}. The accounting entry is ready for ${controller}.`
+  if (ws.stage === 'refused') return `${controller} refused the entry. Nothing was posted.`
+  if (ws.stage === 'posted') return `${controller} approved. ${postingSentence(ws)}`
   return ''
 }
 
-function AttentionCard({ waitingForPayment, view, onReviewCharge, onReviewAccounting, onViewPayment }: { waitingForPayment: boolean; view: WorkspaceView; onReviewCharge: () => void; onReviewAccounting: () => void; onViewPayment: () => void }) {
-  const { stage, approval, question } = view
-  const open = stage === 'owner' || stage === 'controller'
-  const controller = stage !== 'checking' && stage !== 'owner'
-  const heading = waitingForPayment ? 'Waiting for the payment' : stage === 'checking' ? 'Checking your charges' : stage === 'owner' ? 'What counts as enough notice?' : stage === 'controller' ? 'Ready for accounting review?' : stage === 'posted' ? 'All reviewed. All clear.' : 'Proposal left unposted.'
-  const body = waitingForPayment
-    ? 'Press “Northmart pays” to start. Clawback checks each charge once the money arrives.'
-    : stage === 'checking'
-    ? 'Clawback is reading the deal and the sales records for each charge.'
-    : stage === 'owner'
-      ? question?.text ?? ''
-      : stage === 'controller'
-        ? approval ? `${dollars(approval.amount)} in accepted charges awaits ${CAST.controllerFull}’s separate approval.` : 'The accounting proposal is being prepared.'
-        : stage === 'posted'
-          ? view.postingLabel === 'Simulated posted' ? `${CAST.controllerFull} recorded a simulated approval. No real entry was created.` : `${CAST.controllerFull} approved. ${view.postingLabel}.`
-          : `${CAST.controllerFull} recorded a refusal. No entry was posted.`
+function statusWord(ws: WorkspaceView, awaitingPayment: boolean, overview: Overview | null): string {
+  if (awaitingPayment) return 'Waiting for payment'
+  if (!ws.remittance) return overview ? overview.current.status.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Loading'
+  if (!ws.reviewed) return 'Analyzing'
+  if (ws.stage === 'owner') return 'Needs the owner'
+  if (ws.stage === 'controller') return 'Needs the controller'
+  if (ws.stage === 'refused') return 'Entry refused'
+  if (ws.stage === 'posted') return 'Complete'
+  return 'Reviewed'
+}
+
+function OverviewPage({ account, overview, overviewError, ws, awaitingPayment, reviewHref, feedback, onOpenCharge }: { account: Account; overview: Overview | null; overviewError: string | null; ws: WorkspaceView; awaitingPayment: boolean; reviewHref: string; feedback: string; onOpenCharge: (id: string) => void }) {
+  const k = overview?.kpis
+  const tiles: { label: string; value: string; note?: string; tone?: string }[] = k ? [
+    { label: 'Invoiced', value: money(k.invoiced_6m), note: 'Last 6 months' },
+    { label: 'Collected', value: money(k.collected_6m) },
+    { label: 'Deducted', value: money(k.deducted_6m), tone: 'deducted' },
+    { label: 'Recovered', value: money(k.recovered_6m), tone: 'good' },
+    { label: 'Recovery rate', value: percent(k.recovery_rate), note: 'Of disputed money won back' },
+    { label: 'Open disputes', value: String(k.open_disputes) },
+    { label: 'Open balance', value: money(k.open_balance), note: 'Still owed by the distributor' },
+  ] : []
+
   return (
-    <section className="attention-card surface">
-      <div className="attention-heading"><h2>Needs your attention</h2><span className="count-badge">{open ? '1' : '0'}</span></div>
-      <div className="attention-icon">{controller ? <ClipboardCheck /> : <CircleHelp />}</div>
-      <div className="eyebrow">{controller ? 'Controller approval' : stage === 'owner' ? 'Owner policy decision' : 'In progress'}</div>
-      <h3>{heading}</h3>
-      <p>{body}</p>
-      <button className="secondary full" onClick={stage === 'owner' ? onReviewCharge : controller ? onReviewAccounting : onViewPayment}>{stage === 'owner' ? 'Review proposed rule' : controller ? 'Review accounting proposal' : 'View payment'} <ArrowRight /></button>
+    <>
+      {overviewError && <div className="feedback error" role="alert"><Info />{overviewError}</div>}
+      {feedback && <div className={`feedback ${ws.stage === 'refused' ? 'notice' : ''}`} role="status">{ws.stage === 'refused' ? <Info /> : <Check />}{feedback}</div>}
+      <section className="kpi-grid" aria-label="Last six months">
+        {k ? tiles.map((t) => <div key={t.label} className={`kpi surface ${t.tone ?? ''}`}><span>{t.label}</span><strong>{t.value}</strong>{t.note && <small>{t.note}</small>}</div>) : Array.from({ length: 7 }, (_, i) => <div key={i} className="kpi surface skeleton" aria-hidden><span /><strong /></div>)}
+      </section>
+
+      <div className="overview-grid">
+        <CurrentPayment account={account} overview={overview} ws={ws} awaitingPayment={awaitingPayment} reviewHref={reviewHref} />
+        <AttentionCard account={account} ws={ws} awaitingPayment={awaitingPayment} reviewHref={reviewHref} />
+      </div>
+
+      <div className="insight-grid">
+        <section className="surface chart-card" aria-labelledby="months-h">
+          <div className="card-heading"><h2 id="months-h">Invoiced, paid and deducted</h2><p>By month</p></div>
+          {overview ? <MonthlyChart months={overview.months} /> : <div className="chart-skeleton" aria-hidden />}
+        </section>
+        <section className="surface chart-card" aria-labelledby="types-h">
+          <div className="card-heading"><h2 id="types-h">Deductions by type</h2><p>Last six months</p></div>
+          {overview ? <TypeBars rows={overview.deductions_by_type} /> : <div className="chart-skeleton short" aria-hidden />}
+        </section>
+      </div>
+
+      <section className="surface preview-section" aria-labelledby="rem-h">
+        <div className="list-heading"><div><h2 id="rem-h">Recent remittances</h2><p>Payments from {account.distributor.name} and what was taken out of each.</p></div></div>
+        {overview ? (
+          <div className="row-table-wrap">
+            <table className="row-table remittance-table">
+              <thead><tr><th scope="col">Date</th><th scope="col">Invoice</th><th scope="col" className="num">Paid</th><th scope="col" className="num">Deducted</th></tr></thead>
+              <tbody>{overview.recent_remittances.map((r, i) => <tr key={`${r.invoice}-${i}`}><td>{anyDay(r.date)}</td><td>{r.invoice}</td><td className="num">{dollars(r.paid)}</td><td className="num deducted">{dollars(r.deducted)}</td></tr>)}</tbody>
+            </table>
+            {overview.recent_remittances.length === 0 && <p className="muted small table-empty">No payments yet.</p>}
+          </div>
+        ) : <p className="muted small table-empty">Loading…</p>}
+      </section>
+
+      {ws.charges.length > 0 && <section className="surface preview-section"><div className="list-heading"><div><h2>This payment’s charges</h2><p>Each one checked against the deal, with its source.</p></div><Link className="text-button" href={reviewHref}>All charges <ArrowRight /></Link></div><ChargeList charges={ws.charges} onSelect={(c) => onOpenCharge(c.id)} preview /></section>}
+    </>
+  )
+}
+
+function CurrentPayment({ account, overview, ws, awaitingPayment, reviewHref }: { account: Account; overview: Overview | null; ws: WorkspaceView; awaitingPayment: boolean; reviewHref: string }) {
+  const r = ws.remittance
+  const totals = ws.totals
+  const taken = totals?.taken ?? r?.taken ?? 0
+  const waiting = totals?.waiting ?? 0
+  const invoiceId = r?.invoice_id ?? overview?.current.invoice ?? account.invoice.id
+  const expected = r?.expected ?? overview?.current.expected ?? account.invoice.expected
+  return (
+    <section className="payment-card surface">
+      <div className="card-top"><div className="company"><DistributorMark account={account} /><div><h2>{account.distributor.name}</h2><p>{monthLabel(account.invoice.month)} · {invoiceId}</p></div></div><span className="neutral-tag">{statusWord(ws, awaitingPayment, overview)}</span></div>
+      <div className="payment-story" aria-label="Payment summary">
+        <div><span>Invoiced</span><strong>{dollars(expected)}</strong></div>
+        <div><span>Received</span><strong>{r ? dollars(r.received) : '—'}</strong>{!r && <small>Not paid yet</small>}</div>
+        <div className="deduction-gap"><span>Deducted{r ? ` · ${r.charge_count} charges` : ''}</span><strong>{r ? dollars(r.taken) : '—'}</strong><small>{r ? 'The gap between the invoice and the payment.' : 'Known once the payment arrives.'}</small></div>
+      </div>
+      {r && <div className="payment-bar" role="img" aria-label={`${dollars(r.received)} received and ${dollars(r.taken)} deducted from ${dollars(r.expected)} invoiced`}><span style={{ width: `${share(r.received, r.expected)}%` }} /><span style={{ width: `${share(r.taken, r.expected)}%` }} /></div>}
+      {r && totals && <>
+        <div className="allocation-bar" role="img" aria-label={`${dollars(totals.disputed)} disputed, ${dollars(totals.accepted)} accepted, ${dollars(waiting)} waiting`}><span className="disputed-allocation" style={{ width: `${share(totals.disputed, taken)}%` }} /><span className="accepted-allocation" style={{ width: `${share(totals.accepted, taken)}%` }} />{waiting > 0 && <span className="pending-allocation" style={{ width: `${share(waiting, taken)}%` }} />}</div>
+        <div className="allocation-legend"><span><i className="disputed-dot" />Disputing <strong>{dollars(totals.disputed)}</strong></span><span><i className="accepted-dot" />Accepted <strong>{dollars(totals.accepted)}</strong></span><span><i className="pending-dot" />Waiting on you <strong>{dollars(waiting)}</strong></span></div>
+      </>}
+      <div className="card-bottom"><span><FileCheck2 /> {awaitingPayment ? `Each charge is checked against the deal when ${account.distributor.name} pays.` : ws.reviewed ? `All ${ws.charges.length} charges checked against the deal` : 'Checking each charge against the deal…'}</span>{!awaitingPayment && <Link className="text-button" href={reviewHref}>Open analysis <ArrowRight /></Link>}</div>
     </section>
   )
 }
 
-function Summary({ view, compact = false }: { view: WorkspaceView; compact?: boolean }) {
-  const waiting = view.totals?.waiting ?? 0
-  const undecided = view.totals?.undecided ?? 0
-  return <section className={`summary-grid ${compact ? 'compact' : ''}`} aria-label="Deduction decisions"><div><span>Disputed</span><strong>{dollars(view.totals?.disputed ?? 0)}</strong><small>Being challenged · Not recovered</small></div><div><span>Accepted</span><strong>{dollars(view.totals?.accepted ?? 0)}</strong><small>Supported by agreement or owner policy</small></div><div><span>{waiting > 0 ? 'Needs input' : 'Pending'}</span><strong>{dollars(waiting)}</strong><small>{waiting > 0 ? 'Owner policy decision required' : undecided > 0 ? 'Still checking charges' : 'All charges classified'}</small></div></section>
+function AttentionCard({ account, ws, awaitingPayment, reviewHref }: { account: Account; ws: WorkspaceView; awaitingPayment: boolean; reviewHref: string }) {
+  const { stage, approval, question } = ws
+  const controllerName = account.brand.controller.name
+  const open = (stage === 'owner' && !!question && !question.answer) || (stage === 'controller' && approval?.status === 'pending')
+  const controller = stage !== 'checking' && stage !== 'owner'
+  const heading = awaitingPayment ? 'Nothing yet' : stage === 'checking' ? 'Checking your charges' : stage === 'owner' ? 'One question for you' : stage === 'controller' ? 'Ready for accounting' : stage === 'posted' ? 'All done' : 'Entry refused'
+  const body = awaitingPayment
+    ? `When ${account.distributor.name} pays, Clawback checks every deduction against the deal.`
+    : stage === 'checking'
+      ? 'Reading the deal, the emails and the records for each charge.'
+      : stage === 'owner'
+        ? question?.text ?? ''
+        : stage === 'controller'
+          ? approval ? `${dollars(approval.amount)} in accepted charges waits for ${controllerName}’s approval.` : 'The accounting entry is being prepared.'
+          : stage === 'posted'
+            ? `${controllerName} approved. ${postingSentence(ws)}`
+            : `${controllerName} refused. Nothing was posted.${approval?.note ? ` “${approval.note}”` : ''}`
+  const href = stage === 'owner' ? withAccount('/', account.id, { view: 'payments' }) : controller ? withAccount('/', account.id, { view: 'approvals' }) : reviewHref
+  return (
+    <section className="attention-card surface">
+      <div className="attention-heading"><h2>Needs your attention</h2><span className="count-badge">{open ? '1' : '0'}</span></div>
+      <div className="attention-icon">{controller ? <ClipboardCheck /> : <CircleHelp />}</div>
+      <div className="eyebrow">{controller ? `For ${firstName(controllerName)} · Controller` : stage === 'owner' ? `For ${firstName(account.brand.owner.name)} · Owner` : 'Status'}</div>
+      <h3>{heading}</h3>
+      <p>{body}</p>
+      {!awaitingPayment && <Link className="secondary full" href={href}>{stage === 'owner' ? 'Answer the question' : controller ? 'Review the entry' : 'Open analysis'} <ArrowRight /></Link>}
+    </section>
+  )
 }
 
-function RulesView({ view, review, askedCharge }: { view: WorkspaceView; review: (charge?: ChargeView) => void; askedCharge?: ChargeView }) {
-  const { rule, ruleCharges } = view
-  if (!rule) return <section className="surface simple-view"><div className="list-heading"><div><h2>Owner-approved rules</h2><p>Policy decisions do not authorize accounting entries.</p></div></div><div className="empty-state"><Layers3 /><h2>No active owner policies</h2><p>{view.stage === 'owner' ? `${CAST.ownerFull} must answer the open display-fee question.` : 'No charge has needed an owner policy yet.'}</p>{askedCharge && <button className="primary" onClick={() => review(askedCharge)}>Review proposed rule <ArrowRight /></button>}</div></section>
-  return <section className="surface simple-view"><div className="list-heading"><div><h2>Owner-approved rules</h2><p>Policy decisions do not authorize accounting entries.</p></div></div><div className="rule-content"><Status value="Accepted" /><h2>{rule.label} · Display fees</h2><p>{rule.summary}</p><div className="rule-meta"><span>Distributor<strong>{rule.counterparty}</strong></span><span>Approved by<strong>{rule.approver_role === 'owner' ? `${CAST.ownerFull} · Owner` : rule.approver}</strong></span><span>Applied to<strong>{ruleCharges.length ? ruleCharges.map((c) => `${c.id} · ${c.accepted !== null ? dollars(c.accepted) : ''} accepted`).join(', ') : 'No charge yet'}</strong></span></div>{ruleCharges[0] && <button className="secondary" onClick={() => review(ruleCharges[0])}>View supporting evidence</button>}</div></section>
+function PaymentStrip({ account, ws, awaitingPayment }: { account: Account; ws: WorkspaceView; awaitingPayment: boolean }) {
+  const r = ws.remittance
+  return <section className="payment-strip" aria-label="Payment totals"><div><small>Invoiced</small><strong>{dollars(r?.expected ?? account.invoice.expected)}</strong></div><div><small>Received</small><strong>{r ? dollars(r.received) : '—'}</strong>{awaitingPayment && <span>Not paid yet</span>}</div><div className="strip-deduction"><small>Deducted{r ? ` · ${r.charge_count} charges` : ''}</small><strong>{r ? dollars(r.taken) : '—'}</strong><span>Invoice-to-payment gap</span></div></section>
 }
 
-function ApprovalsView({ view, source, role, note, setNote, review, askedCharge, onDecide }: { view: WorkspaceView; source: 'fixture' | 'live'; role: string; note: string; setNote: (value: string) => void; review: (charge?: ChargeView) => void; askedCharge?: ChargeView; onDecide: (approve: boolean, note: string | null) => void }) {
-  const { approval, stage, postingProblem: problem } = view
-  if (stage === 'checking' || stage === 'owner') return <section className="surface simple-view"><div className="empty-state"><ClipboardCheck /><h2>An owner policy decision comes first</h2><p>{CAST.ownerFull} must resolve the display fee before {CAST.controllerFull} can review accounting.</p>{askedCharge && <button className="primary" onClick={() => review(askedCharge)}>Review owner question <ArrowRight /></button>}</div></section>
-  if (!approval) return <section className="surface simple-view"><div className="empty-state"><ClipboardCheck /><h2>Preparing the accounting proposal</h2><p>The accepted charges are being gathered for {CAST.controllerFull}.</p></div></section>
+function Summary({ ws, compact = false }: { ws: WorkspaceView; compact?: boolean }) {
+  const waiting = ws.totals?.waiting ?? 0
+  const undecided = ws.totals?.undecided ?? 0
+  return <section className={`summary-grid ${compact ? 'compact' : ''}`} aria-label="Deduction decisions"><div><span>Disputing</span><strong>{dollars(ws.totals?.disputed ?? 0)}</strong><small>Being challenged · not recovered yet</small></div><div><span>Accepted</span><strong>{dollars(ws.totals?.accepted ?? 0)}</strong><small>Backed by the deal or your rule</small></div><div><span>{waiting > 0 ? 'Waiting on you' : 'Pending'}</span><strong>{dollars(waiting)}</strong><small>{waiting > 0 ? 'One answer from the owner' : undecided > 0 ? 'Still checking charges' : 'Every charge decided'}</small></div></section>
+}
+
+function RulesView({ account, ws, askedCharge, reviewHref }: { account: Account; ws: WorkspaceView; askedCharge?: ChargeView; reviewHref: string }) {
+  const { rule, ruleCharges } = ws
+  const owner = account.brand.owner.name
+  if (!rule) return <section className="surface simple-view"><div className="list-heading"><div><h2>Saved rules</h2><p>A rule decides; it never posts an accounting entry.</p></div></div><div className="empty-state"><Layers3 /><h2>No rules yet</h2><p>{ws.stage === 'owner' ? `${owner} has one question to answer. The answer is saved as a rule.` : `When the deal leaves a charge to judgment, ${owner} answers once and it becomes a rule.`}</p>{askedCharge && <Link className="primary" href={reviewHref}>Answer the question <ArrowRight /></Link>}</div></section>
+  return <section className="surface simple-view"><div className="list-heading"><div><h2>Saved rules</h2><p>A rule decides; it never posts an accounting entry.</p></div></div><div className="rule-content"><Status value="Accepted" /><h2>{rule.label}</h2><p>{rule.summary}</p><div className="rule-meta"><span>Distributor<strong>{rule.counterparty}</strong></span><span>Set by<strong>{rule.approver_role === 'owner' ? `${owner} · Owner` : rule.approver}</strong></span><span>Applied to<strong>{ruleCharges.length ? ruleCharges.map((c) => `${c.ref} · ${c.accepted !== null ? dollars(c.accepted) : ''} accepted`).join(', ') : 'No charge yet'}</strong></span></div>{ruleCharges[0] && <Link className="secondary" href={reviewHref}>See the evidence</Link>}</div></section>
+}
+
+function ApprovalsView({ account, ws, role, note, setNote, reviewHref, onDecide }: { account: Account; ws: WorkspaceView; role: Role | null; note: string; setNote: (value: string) => void; reviewHref: string; onDecide: (approve: boolean, note: string | null) => void }) {
+  const { approval, stage } = ws
+  const owner = account.brand.owner.name
+  const controller = account.brand.controller.name
+  if (stage === 'checking' || stage === 'owner') return <section className="surface simple-view"><div className="empty-state"><ClipboardCheck /><h2>{stage === 'owner' ? 'The owner’s answer comes first' : 'Nothing to approve yet'}</h2><p>{stage === 'owner' ? `${owner} answers the open question, then ${controller} reviews the accounting entry.` : `When every charge is decided, the accepted ones go to ${controller} as one credit memo.`}</p>{stage === 'owner' && <Link className="primary" href={reviewHref}>Go to the question <ArrowRight /></Link>}</div></section>
+  if (!approval) return <section className="surface simple-view"><div className="empty-state"><ClipboardCheck /><h2>Preparing the entry</h2><p>The accepted charges are being gathered for {controller}.</p></div></section>
   // What the API recorded wins once the approval event has arrived; the textarea is only a fallback.
   const shownNote = approval.note || note.trim()
-  return <section className="surface simple-view"><div className="list-heading"><div><h2>Accounting proposal</h2><p>{view.remittance?.counterparty ?? 'Northmart'} · March payment · {view.remittance?.invoice_id ?? 'INV-3102'}</p></div></div><div className="rule-content"><Status value={view.postingLabel} /><div className="proposal-amount">{dollars(approval.amount)}</div><h2>Recognize accepted deductions</h2><p>Agreement- or owner-policy-supported charges only. The disputed {dollars(view.totals?.disputed ?? 0)} remains unresolved.</p><div className="proposal-lines">{view.proposalLines.map((line) => <span key={line.chargeId}>{line.label}<strong>{dollars(line.amount)}</strong></span>)}</div>{approval.status === 'pending' ? <><div className="approval-notice"><ShieldCheck /><span><strong>Separate controller approval required</strong><small>{CAST.ownerFull} approved the policy, not this entry. Nothing is posted.</small></span></div><label className="note-label" htmlFor="controller-note">Controller note <span>(required to refuse)</span></label><textarea id="controller-note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Add context for the accounting decision" /><div className="approval-actions"><button className="primary" disabled={role !== 'Controller'} onClick={() => onDecide(true, note.trim() || null)}>{source === 'live' ? 'Approve credit memo' : 'Approve & simulate posting'}</button><button className="secondary" disabled={role !== 'Controller' || !note.trim()} onClick={() => onDecide(false, note.trim())}>Refuse · Leave unposted</button></div>{role !== 'Controller' && <p className="role-hint">Switch to Controller in the Peak Bar Co. menu to record this decision.</p>}</> : <div className="feedback inline" role="status"><Check />{approval.status === 'approved' ? (view.postingLabel === 'Simulated posted' ? `Simulated approval recorded by ${CAST.controllerFull}. No real entry was posted.` : `Approval recorded by ${CAST.controllerFull}. ${view.postingLabel}.${problem ? ` ${problem}` : ''}`) : `Refusal recorded by ${CAST.controllerFull}. The proposal remains unposted.${shownNote ? ` Note: “${shownNote}”` : ''}`}</div>}</div></section>
+  return <section className="surface simple-view"><div className="list-heading"><div><h2>Credit memo</h2><p>{account.distributor.name} · {monthLabel(account.invoice.month)} · {ws.remittance?.invoice_id ?? account.invoice.id}</p></div></div><div className="rule-content"><Status value={ws.postingLabel} /><div className="proposal-amount">{dollars(approval.amount)}</div><h2>Book the accepted deductions</h2><p>Only charges the deal or {firstName(owner)}’s rule supports. The disputed {dollars(ws.totals?.disputed ?? 0)} stays open on the invoice.</p><div className="proposal-lines">{ws.proposalLines.map((line) => <span key={line.chargeId}>{line.label}<strong>{dollars(line.amount)}</strong></span>)}</div>{approval.status === 'pending' ? <><div className="approval-notice"><ShieldCheck /><span><strong>Needs {controller}’s approval</strong><small>{owner} set the policy, not this entry. Nothing posts until the controller says yes.</small></span></div><label className="note-label" htmlFor="controller-note">Note <span>(required to refuse)</span></label><textarea id="controller-note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Why you’re approving or refusing" /><div className="approval-actions"><button className="primary" onClick={() => onDecide(true, note.trim() || null)}>Approve credit memo</button><button className="secondary" disabled={!note.trim()} onClick={() => onDecide(false, note.trim())}>Refuse · don’t post</button></div>{role !== 'controller' && <p className="role-hint">Only {firstName(controller)} can approve. You’ll be asked to sign in as the controller.</p>}</> : <div className="feedback inline" role="status"><Check />{approval.status === 'approved' ? `Approved by ${controller}. ${postingSentence(ws)}` : `Refused by ${controller}. Nothing was posted.${shownNote ? ` Note: “${shownNote}”` : ''}`}</div>}</div></section>
 }

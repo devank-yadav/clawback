@@ -5,8 +5,8 @@ import "./portal.css";
 const plex = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-plex", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Northmart Supplier Portal (fictional demo)",
-  description: "Mock distributor portal for the Clawback demo. Northmart is a fictional company.",
+  title: "Supplier portal · Deductions",
+  description: "The distributor's side of a deduction dispute: the disputed lines, the thread and the reply box.",
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };

@@ -1,9 +1,9 @@
-// The remittance routes (api/routes/remittance.py). Only used when NEXT_PUBLIC_DATA_SOURCE=live; nothing here computes money.
+// The remittance routes (api/routes/remittance.py). Nothing here computes money.
 
-import { apiUrl, type StartedRun } from "@/lib/live";
+import { apiUrl, type StartedRun } from "@/lib/api";
 import type { RemittanceRead } from "./types";
 
-/** Peak Bar Co. is the only account until the multi-account backend lands. */
+/** The account whose sample remittance ships with the app (data/samples/remittances). */
 export const ACCOUNT = "peak-bar";
 export const SAMPLE_PDF = "northmart-march-2026.pdf";
 

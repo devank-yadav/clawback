@@ -1,12 +1,13 @@
-import ToolShell from "@/components/tools/ToolShell";
+import { Suspense } from "react";
+import ShellFallback from "@/components/shell/ShellFallback";
 import ResultsApp from "@/components/tools/ResultsApp";
 
 export const metadata = { title: "Results · Clawback" };
 
 export default function Page() {
   return (
-    <ToolShell title="Results" lead="The final numbers, what went to QuickBooks, and the accuracy check." current="/results">
+    <Suspense fallback={<ShellFallback />}>
       <ResultsApp />
-    </ToolShell>
+    </Suspense>
   );
 }

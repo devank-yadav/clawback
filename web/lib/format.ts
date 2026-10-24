@@ -1,4 +1,4 @@
-// Formatting only. Amounts arrive from the API or the fixture; nothing here does arithmetic on them.
+// Formatting only. Amounts arrive from the API; nothing here does arithmetic on them.
 
 const whole = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const cents = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
@@ -25,3 +25,36 @@ export const dollars = (n: number) => cents.format(n);
 
 /** Percent of `whole`, for bar widths only. Layout, not accounting: amounts and decisions come from the API. */
 export const share = (part: number, whole: number) => (whole > 0 ? Math.min(100, Math.max(0, (part / whole) * 100)) : 0);
+
+const compactFmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 });
+const monthShort = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
+const monthLong = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+
+/** $48K, $1.2M: chart ticks and tight tiles. */
+export const compactMoney = (n: number) => compactFmt.format(n);
+
+/** 42% from 0.42 (or from 42, if the API sends a percent). */
+export const percent = (n: number) => `${Math.round((n > 1 ? n : n * 100) * 10) / 10}%`;
+
+const asMonth = (m: string) => (/^\d{4}-\d{2}/.test(m) ? new Date(`${m.slice(0, 7)}-01T00:00:00Z`) : null);
+
+/** "Mar" from "2026-03" or "2026-03-01"; anything else is shown as sent. */
+export const monthShortLabel = (m: string) => {
+  const d = asMonth(m);
+  return d ? monthShort.format(d) : m;
+};
+
+/** "March 2026" from "2026-03"; anything else is shown as sent. */
+export const monthLabel = (m: string) => {
+  const d = asMonth(m);
+  return d ? monthLong.format(d) : m;
+};
+
+/** "Mar 11" from a date or a datetime. */
+export const anyDay = (s: string) => (/^\d{4}-\d{2}-\d{2}$/.test(s) ? shortDay(s) : Number.isNaN(Date.parse(s)) ? s : shortDate(s));
+
+/** "10:30:16 AM" from a datetime, for the trace. */
+export const clock = (iso: string) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" });
+};

@@ -4,9 +4,11 @@ Next.js + Tailwind + Framer Motion. Every screen displays events; it never compu
 Visual reference: the clickable prototype https://claude.ai/artifact/LQm2ZyZ8d8oQ5fRbh2VmFR
 
 ## Data source
-- Until Devank's live stream is ready, replay `web/fixtures/run-events.json` (Devank writes it) with short delays.
-- Later: `GET /runs/{id}/events` (server-sent events, reconnect with Last-Event-ID). Keep the fixture as the
-  fallback when DEMO_MODE is on.
+- The app always uses the API (`NEXT_PUBLIC_API_BASE`): `GET /accounts`, `/accounts/{id}/overview`, and per account
+  `GET /runs/latest?account=` then `GET /runs/{id}/events` (server-sent events, reconnect with Last-Event-ID).
+  DEMO_MODE replays happen on the API side. The account is always in the URL (`?account=`); never hardcode a brand.
+- Without the backend: `npm run dev:mock` (web/mock/, dev-only, same shapes). `web/fixtures/` stays because the API's
+  tests and its Dockerfile read it; the web app doesn't.
 - `api/contracts.py` is the source of truth for event and object shapes. If it differs from the sketch below,
   follow contracts.py and tell Devank if a screen needs a field that's missing.
 
@@ -18,16 +20,15 @@ log {text, level} · finding {charge_id, expected, taken, delta, type, finding, 
 · portal_message {dispute_id, from_party, text, attachment_doc_id} · ledger_post {entity, amount, status}
 · totals {disputed, accepted, waiting}
 
-## Screens (see docs/team/rishi.md cards R1 to R8)
-/ payment · /board (meters, live feed, Dispute/Accept/Ask columns, evidence drawer) · /portal (Northmart theme)
-· /results · /april · /coach · /scenario · /audit · /inbox (fallback for SMS questions)
+## Screens
+`/?account=…&view=overview|payments|approvals|rules` (the workspace) · `/results` `/april` `/coach` `/scenario`
+`/audit` (same shell) · `/portal?account=…` (the distributor's own look, from the account's colors).
 
 ## Workspace screens (current visual baseline)
-`/` is the v0 workspace (Overview, Payments, Approvals, Rules) in `app/(workspace)/` and `components/workspace/`.
-Rishi chose it over the older tokens below; keep its styles as they are and read web/README.md before changing data
-flow. The tokens below still apply to `/board/demo`, which keeps its own root layout.
+`/` is the v0 workspace in `app/(workspace)/` and `components/workspace/`. Keep `workspace.css` as exported; the
+multi-account additions live in `app.css`. Read web/README.md before changing data flow.
 
-## Design tokens for the earlier board (from the prototype; define as CSS variables with light and dark values)
+## Design tokens from the first prototype (the earlier board is gone; kept for reference)
 - Fonts: Archivo (headings, 600/800), Source Sans 3 (text), JetBrains Mono (every number, tabular figures).
 - Light: bg #eef1f4, panel #ffffff, ink #15202b, muted #5b6876, line #d5dbe2, accent #1f4fd1,
   dispute red #c2372f (soft #fbe7e5), accept gray #6b7480 (soft #eceff2), ask amber #b7791f (soft #fcf1dc),

@@ -1,14 +1,18 @@
 // Turns the folded event state (useRunEvents) into what the workspace screens show.
 // Pure reads and wording: every amount and every decision below arrived in an event, none is computed here.
 
-import type { Approval, Charge, ChargeDetail, Decision, Evidence, LedgerPost, Question, Remittance, Rule, Totals } from "./types";
-import type { DataSource, RunState } from "./useRunEvents";
+import { codeLabel } from "./accounts";
+import type { Account, Approval, Charge, ChargeDetail, Decision, Evidence, LedgerPost, Question, Remittance, Rule, Totals } from "./types";
+import type { RunState } from "./useRunEvents";
 
 export type ChargeStatus = "Reviewing" | "Split decision" | "Disputed" | "Accepted" | "Needs your input" | "Can’t verify";
 
 export type ChargeView = {
   id: string;
   ref: string;
+  code: string;
+  /** "Shortage claim", "Promo allowance": the code in words. */
+  kind: string;
   title: string;
   amount: number;
   status: ChargeStatus;
@@ -22,7 +26,7 @@ export type ChargeView = {
   ruleId: string | null;
 };
 
-/** owner: waiting on Dana's policy answer. controller: waiting on Sam. posted / refused: Sam has answered. */
+/** owner: waiting on the owner's policy answer. controller: waiting on the controller. posted / refused: the controller answered. */
 export type Stage = "checking" | "owner" | "controller" | "posted" | "refused";
 
 export type ProposalLine = { chargeId: string; label: string; amount: number };
@@ -44,6 +48,7 @@ export type WorkspaceView = {
   postingLabel: string;
   postingProblem: string | null;
   disputeLabel: string;
+  disputeId: string | null;
 };
 
 const STATUS: Record<Decision["decision"], ChargeStatus> = {
@@ -54,18 +59,22 @@ const STATUS: Record<Decision["decision"], ChargeStatus> = {
   skip: "Can’t verify",
 };
 
+const CHECKING = "Checking this charge against the deal…";
+
 function chargeView(c: Charge, state: RunState): ChargeView {
   const d = state.decisions[c.id];
   const f = state.findings[c.id];
   return {
     id: c.id,
     ref: c.ref,
+    code: c.code,
+    kind: codeLabel(c.code),
     title: c.description,
     amount: c.amount,
     status: d ? STATUS[d.decision] : "Reviewing",
-    reason: d?.reason ?? "Checking this charge against the deal…",
+    reason: d?.reason ?? CHECKING,
     // A rule-decided charge is explained by the rule, not by the earlier "needs a person" finding.
-    finding: (d?.rule_id ? d.reason : f?.finding) ?? d?.reason ?? "Checking this charge against the deal…",
+    finding: (d?.rule_id ? d.reason : f?.finding) ?? d?.reason ?? CHECKING,
     accepted: d ? d.accepted : null,
     disputed: d ? d.disputed : null,
     waiting: d ? d.waiting : null,
@@ -77,16 +86,27 @@ function memoPost(ledger: LedgerPost[]) {
   return ledger.find((p) => p.qbo_entity === "credit_memo");
 }
 
-function postingLabel(approval: Approval | null, ledger: LedgerPost[], source: DataSource) {
-  if (approval?.status === "refused") return "Refused · Unposted";
+/** A ledger post with a "sim-" id was recorded by Clawback but never reached QuickBooks (no connection). */
+export const reachedQuickBooks = (p: LedgerPost) => p.status === "posted" && !!p.qbo_id && !p.qbo_id.startsWith("sim-");
+
+function postingLabel(approval: Approval | null, ledger: LedgerPost[]) {
+  if (approval?.status === "refused") return "Refused · Not posted";
   if (approval?.status !== "approved") return "Awaiting approval";
   const post = memoPost(ledger);
-  if (post?.status === "posted" && source === "live" && post.qbo_id && !post.qbo_id.startsWith("sim-")) return "Posted · QuickBooks sandbox";
-  if (post?.status === "posted") return "Simulated posted";
+  if (post && reachedQuickBooks(post)) return "Posted to QuickBooks";
+  if (post?.status === "posted") return "Approved · QuickBooks not connected";
   if (post?.status === "failed") return "Posting failed";
   if (post?.status === "held") return "Posting held";
   if (post?.status === "voided") return "Posting voided";
   return "Approved · posting pending";
+}
+
+/** One sentence on where the approved entry stands, never claiming more than the ledger post says. */
+export function postingSentence(ws: Pick<WorkspaceView, "postingLabel" | "postingProblem">): string {
+  if (ws.postingLabel === "Posted to QuickBooks") return "The credit memo is in QuickBooks.";
+  if (ws.postingLabel.includes("not connected")) return "QuickBooks isn’t connected on this server, so the entry was recorded here only.";
+  if (ws.postingProblem) return `${ws.postingLabel}: ${ws.postingProblem}`;
+  return "Waiting for QuickBooks to confirm the entry.";
 }
 
 /** Why the API did not post the credit memo (its note), when it failed or is held. */
@@ -95,12 +115,13 @@ export function postingProblem(ledger: LedgerPost[]): string | null {
   return post && (post.status === "failed" || post.status === "held") ? (post.note ?? "QuickBooks did not take the entry.") : null;
 }
 
-export function selectWorkspace(state: RunState, source: DataSource): WorkspaceView {
+export function selectWorkspace(state: RunState, account: Account | null): WorkspaceView {
   const charges = state.order.map((id) => chargeView(state.charges[id], state));
   const question = Object.values(state.questions)[0] ?? null;
   const rule = Object.values(state.rules).find((r) => r.status === "active") ?? null;
   const approval = state.approval;
   const remittance = state.run?.remittance ?? null;
+  const distributor = account?.distributor.name ?? remittance?.counterparty ?? "the distributor";
 
   let stage: Stage = "checking";
   if (approval?.status === "approved") stage = "posted";
@@ -123,28 +144,24 @@ export function selectWorkspace(state: RunState, source: DataSource): WorkspaceV
     approval,
     proposalLines: (approval?.lines ?? []).map((l) => {
       const c = byId[l.charge_id];
-      const suffix = c?.ruleId ? " · owner-approved policy" : split(l.charge_id) ? " · accepted allocation" : "";
+      const suffix = c?.ruleId ? " · owner policy" : split(l.charge_id) ? " · accepted part" : "";
       return { chargeId: l.charge_id, label: `${c?.title ?? l.charge_id}${suffix}`, amount: l.amount };
     }),
-    postingLabel: postingLabel(approval, state.ledger, source),
+    postingLabel: postingLabel(approval, state.ledger),
     postingProblem: postingProblem(state.ledger),
-    // Filing is the Negotiator's job and happens on the API; a fixture replay never files anything.
     disputeLabel:
-      source === "live" && dispute?.status === "filed"
-        ? `Dispute ${dispute.id} filed on the mock Northmart portal`
-        : "Disputes proposed · Not filed",
+      dispute?.status === "filed" || dispute?.status === "answered"
+        ? `Dispute ${dispute.id} filed on ${distributor}’s portal`
+        : dispute
+          ? `Dispute ${dispute.id} · ${dispute.status}`
+          : "Disputes are filed once every charge is checked",
+    disputeId: dispute?.id ?? null,
   };
 }
 
-/** The evidence rows behind a charge, the deal clause first (it is the sentence the drawer quotes). */
-export function evidenceRows(detail: ChargeDetail | null): { id: string; label: string; summary: string; text: string; kind: Evidence["kind"] }[] {
+/** The evidence behind a charge, the deal's own words first (they are what the panel quotes). */
+export function orderedEvidence(detail: ChargeDetail | null): Evidence[] {
   const all = detail?.evidence ?? [];
-  const ordered = [...all.filter((e) => e.kind === "clause"), ...all.filter((e) => e.kind !== "clause")];
-  return ordered.map((e) => ({
-    id: e.id,
-    label: e.label,
-    summary: e.summary,
-    text: e.quote?.text ?? e.summary,
-    kind: e.kind,
-  }));
+  const lead = (e: Evidence) => (e.kind === "clause" || e.kind === "policy" ? 0 : e.quote ? 1 : 2);
+  return [...all].sort((a, b) => lead(a) - lead(b));
 }

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { dollars, rate as perUnit, shortDay, units as count } from "@/lib/format";
-import { DATA_SOURCE } from "@/lib/useRunEvents";
+import { withAccount } from "@/lib/accounts";
 import * as api from "./api";
 import RemittanceText from "./RemittanceText";
 import type { RemittanceLine, RemittanceRead, RemittanceTotals } from "./types";
@@ -89,8 +89,8 @@ function Result({ r, onReset }: { r: RemittanceRead; onReset: () => void }) {
     setStarting(true);
     setError(null);
     try {
-      const run = await api.runRemittance(r.read_id, r.account);
-      router.push(`/board/${encodeURIComponent(run.run_id)}`);
+      await api.runRemittance(r.read_id, r.account);
+      router.push(withAccount("/", api.ACCOUNT));
     } catch (e) {
       setError((e as Error).message);
       setStarting(false);
@@ -201,7 +201,6 @@ export default function UploadApp() {
     if (file) void read({ file }, file.name);
   }
 
-  if (DATA_SOURCE !== "live") return <p className="feedback" role="status">This screen sends the remittance to the API, so it only works in live mode (NEXT_PUBLIC_DATA_SOURCE=live).</p>;
   if (result) return <Result r={result} onReset={() => { setResult(null); setText(""); }} />;
 
   return (
