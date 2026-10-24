@@ -2,8 +2,9 @@
 
 Clawback wins back what distributors wrongly take from a small brand's payment, and never fights a fair charge.
 Built at Cal Hacks 13.0 for Hyphenate's "Autonomous Systems for Finance" prize. Every company and person in the demo
-is fictional.
+is fictional (the app itself shows them without labels, styled like real businesses).
 
+- Live: https://clawback.biz (a Vultr VM; each visitor's live runs are limited)
 - Devpost draft and proof checklist per track: [docs/submission/devpost.md](docs/submission/devpost.md)
 - Full plan: [docs/design.md](docs/design.md) · Decisions log: [DECISIONS.md](DECISIONS.md) ·
   Deploy runbook: [docs/deploy.md](docs/deploy.md) · Team guides: [docs/team/](docs/team/README.md)
@@ -24,6 +25,19 @@ nobody has. Clawback does that check. It:
 5. **Asks the owner only when the deal is unclear**, once, and saves the answer as a rule so it never asks twice.
 6. **Records the result in QuickBooks**, but only after the controller approves.
 7. **Suggests edits to next month's deal**, each showing what the weak clause cost.
+
+It also:
+
+- **Runs four accounts** (each a fictional brand and its distributor): Peak Bar Co. ← Northmart below; a drinks brand
+  with a shortage the delivery records disprove, a partial price mismatch, spoilage above the allowance and an
+  overcharge above $5,000 that waits for the owner; a clean month where every charge is accepted; and a tough
+  distributor with an emailed rate claim, a repeat charge, an out-of-date charge and a vague clause it asks about.
+- **Reads a remittance PDF.** A brand drops the distributor's payment slip; Claude reads it into charges and code
+  checks every line and the totals.
+- **Shows how it decided.** "How Clawback decided" lists every AI call behind each charge and the model that
+  answered it.
+- **Keeps roles real.** Only the controller's sign-in approves money and only the owner's answers the owner's
+  question.
 
 ## The demo numbers (fictional)
 
@@ -79,13 +93,16 @@ To replay the agent-mode eval offline from its recordings: `DEMO_MODE=true pytho
 ## What's real and what's simulated
 
 - **Real:** the AI reading (Claude and Gemini), the math, the decision rules, the QuickBooks sandbox writes (checked
-  live: credit memo applied, INV-3102 down to $4,120 open), the Nessie sandbox deposit that starts a run, texts
-  through Twilio when its keys are set (SMS or Twilio's WhatsApp Sandbox), and the eval score.
-- **Simulated:** Peak Bar Co., Northmart, Dana Okafor (owner), Sam Reyes (controller) and Jordan Lee (broker) are
-  fictional; we wrote the deal, emails, notices, charges and sales. The Northmart portal is our own mock. In
-  `DEMO_MODE`, AI answers are replayed and QuickBooks writes go to a stand-in labeled "Simulated".
-- **Not yet:** a run reads the data files directly and keeps runs, rules and the audit log in memory; the database
-  is seeded but not read at run time.
+  live: credit memo applied, INV-3102 down to $4,120 open), the Nessie sandbox deposit that starts a run, texts to
+  real phones through Twilio (WhatsApp Sandbox or SMS), Moss rule matching, Postgres on Tiger Data (the live app
+  reads its rows from it and saves every event), and the eval score.
+- **Simulated:** every brand and distributor in the four accounts, Dana Okafor (owner), Sam Reyes (controller) and
+  Jordan Lee (broker) are fictional; we wrote the deals, emails, notices, charges, sales and delivery data. The
+  Northmart portal is our own mock. In `DEMO_MODE` (the offline backup, not the live site), AI answers are replayed
+  and QuickBooks writes go to a stand-in labeled "Simulated".
+- **Not yet:** saved rules and the audit chain are still held in the app's memory. The recorded agent-mode eval
+  used Claude for both readers (Gemini re-read 2 of the 30 cases), and the 30 cases cover promotional allowances and
+  fees, not the new charge types.
 
 ## Architecture
 
@@ -96,10 +113,10 @@ Nessie deposit ─▶ Readers: Claude + Gemini ─▶ sentence + agreement check
    ─▶ QuickBooks sandbox (code, after approval) · every step streamed to the board and the hash-chained audit log
 ```
 
-- **AI reads; code decides.** Claude runs Reader A, the Investigator, the Negotiator, the Deal Coach and the rule
-  writer; Gemini runs Reader B, with a second Claude read if Gemini fails. Every answer is strict JSON checked by a
-  Pydantic schema and then by code; one retry, then a person decides. No agent computes an amount or writes to the
-  books.
+- **AI reads; code decides.** Claude runs Reader A, the Investigator, the Negotiator, the Deal Coach, the rule
+  writer and the remittance reader; Gemini runs Reader B, with a second Claude read if Gemini fails. Every answer
+  is strict JSON checked by a Pydantic schema and then by code; one retry, then a person decides. No agent computes
+  an amount or writes to the books.
 - **One fixed gate.** Each charge goes through the same nine ordered rules from `config/policy.yaml`: unverifiable
   term → skip; readers disagree → ask; discretion with a saved rule → apply it; discretion without one → ask; within
   $1 → accept; charged less than allowed → accept; well-supported overcharge up to $5,000 → dispute (or split); over
