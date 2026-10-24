@@ -157,6 +157,7 @@ def check_notices():
     check("March notice dated March 11, 2026", "March 11, 2026" in march)
     check("March notice is $1,200.00 for month ending March 31", "$1,200.00" in march and "March 31, 2026" in march)
     check("March notice gives 20 days", days_to_month_end(date(2026, 3, 11)) == 20 and "20 days" in march)
+    check("March notice names charge ref NM-2238 (C6)", "**Charge ref:** NM-2238" in march)
 
 
 def check_sales():
