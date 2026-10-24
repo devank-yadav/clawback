@@ -1,0 +1,39 @@
+# Fizzwick Toys Co. <- Five Below. The deal is Five Below's real Vendor Agreement: the 2025 version for purchase
+# orders issued from March 1, 2026, the August 2023 version before that. Both are verbatim excerpts of the SEC filings
+# (data/contracts/*-excerpt.txt, line ranges in fees/fees.yaml and data/contracts/README.md); everything else here is
+# written by our side, or is Five Below's own backup. This file has exactly the AccountConfig shape.
+id: fizzwick
+brand:
+  name: Fizzwick Toys Co.
+  kind: toy and novelty brand
+  city: Providence, RI
+  initials: FT
+  colors: {primary: "#e4572e", accent: "#29335c"}
+  owner: {name: Priya Raman, email: priya@fizzwicktoys.example}
+  controller: {name: Carla Mendes}
+distributor:
+  name: Five Below
+  desk_email: vendorcompliance@fivebelow.example
+  portal_name: Five Below Vendor Portal
+  colors: {primary: "#0047bb", accent: "#ffd100"}
+invoice:
+  id: FT-2603
+  expected: 444850.00
+  received: 439710.75
+  month: march
+  period_start: 2026-03-01
+  period_end: 2026-03-31
+# Five Below's Vendor Agreement (data/contracts/, see fees/fees.yaml) is read first; then our signed acceptance that
+# says which version governs which purchase orders, and the DC's appointment email.
+deal_docs: [fizzwick-vendor-agreement-acceptance-2026, fizzwick-forsyth-reschedule-2026-03-11]
+approved_senders: [priya@fizzwicktoys.example]
+dispute_start: 920
+qbo:
+  customer: Five Below
+  invoice_no: FT-2603
+  lines:
+    - {item: Fizzwick Squish Pals 4-Pack, qty: 122000, unit_price: 2.10}
+    - {item: Fizzwick Glow Slime Kit, qty: 77000, unit_price: 1.85}
+    - {item: Fizzwick Pocket Fidget Cube, qty: 33000, unit_price: 1.40}
+  payment_date: 2026-04-10
+nessie_description: Five Below remittance FT-2603

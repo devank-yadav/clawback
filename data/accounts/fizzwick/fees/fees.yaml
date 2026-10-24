@@ -1,0 +1,34 @@
+# Fee-schedule wiring for this account (the layout of api/fee_accounts.py). account.yaml keeps the AccountConfig shape.
+# The governing deal is Five Below's Vendor Agreement in two versions; deals/fizzwick-vendor-agreement-acceptance-2026
+# says which governs a purchase order, by the date the PO was issued. Each excerpt is the filing's own lines, cut at
+# section boundaries and joined by a "[...]" line, nothing reworded (scripts/check_accounts.py rebuilds it from them).
+contract:
+  id: five-below-vendor-agreement-2025-excerpt
+  path: contracts/five-below-vendor-agreement-2025-excerpt.txt
+  date: 2026-03-01
+  governs_from: 2026-03-01  # POs issued on or after
+  excerpt_of: {source: contracts/five-below-vendor-agreement-2025.txt, lines: [[1, 4], [653, 664], [5367, 5626], [6190, 6246]]}
+# The version that still governs POs issued before governs_from. api/fee_accounts.py reads `contract` only today;
+# reading these too is the one loader change this account needs.
+earlier_contracts:
+  - id: five-below-vendor-agreement-2023-excerpt
+    path: contracts/five-below-vendor-agreement-2023-excerpt.txt
+    date: 2023-08-01
+    governs_until: 2026-02-28  # POs issued on or before
+    excerpt_of: {source: contracts/five-below-vendor-agreement-2023.txt, lines: [[1, 13], [584, 591], [4926, 5142], [5734, 5794]]}
+# Charge code -> the violation as the agreement's Violation Summary names it.
+codes:
+  OV: Overage quantity received
+  CM: Incorrect carton marking
+  MA: Missed/Late/Unappointed Appointments w/o communication
+  LS: Late Shipment (arrive after the cancel date because of late booking)
+  DU: Documents not uploaded
+  AP: Appointment not made 48 hours in advance of requested appt date
+  BO: Receipt of backorder (shortship)
+  IP: Incorrect inner pack or master pack
+policy_changes: []
+# The day the remittance arrived and any dispute would be filed; the invoice date.
+as_of: 2026-04-10
+invoice_date: 2026-03-31
+# Older chargebacks reviewed with this payment (taken from earlier payments, so not in its total).
+older_charges: charges/older.csv

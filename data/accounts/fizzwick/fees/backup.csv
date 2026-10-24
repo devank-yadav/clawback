@@ -1,0 +1,10 @@
+deduction_ref,on,group,description,base_amount,pass_through,units,cartons,days,proof_doc
+CB0418822,2026-03-02,4500912,"12,000 units over at $2.10: 5% of $25,200.00, plus the $100 admin fee",25200.00,0,12000,0,,
+CB0418830,2026-02-16,4500815,"700 units over at $1.85: 5% of $1,295.00, plus the $100 admin fee",1295.00,0,700,0,,
+CB0418847,2026-03-04,4500877,"Carton marking: 3% of PO cost $36,400.00, plus the $100 admin fee",36400.00,0,0,0,,
+CB0418851,2026-03-05,4500893,"Missed appointment Mar 19: 5% of PO cost $9,800.00, plus the $100 admin fee",9800.00,0,0,0,,
+CB0418866,2026-02-24,4500861,"Arrived Mar 19, after the Mar 16 cancel date: 5% of $14,800.00, plus the $100 admin fee",14800.00,0,0,0,,
+CB0418870,2026-01-26,4500788,"3 documents 1 day late at $100, plus the $100 admin fee",0,0,3,0,1,
+CB0418885,2026-03-06,4500902,"Appointment made under 48 hours ahead: $300, plus the $100 admin fee",0,0,0,0,,
+CB0418893,2026-03-09,4500920,"1,000 units short at $1.85: 5% of $1,850.00, plus the $100 admin fee",1850.00,0,1000,0,,
+CB0402217,2025-10-20,4500655,"Inner pack: 3% of PO cost $31,500.00, plus the $100 admin fee",31500.00,0,0,0,,

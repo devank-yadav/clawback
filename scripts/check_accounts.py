@@ -15,6 +15,13 @@ For every account:
   and the current invoice and prior payments appear in it;
 - document stems are unique across accounts (and start with the account id, except Peak Bar's original ones).
 
+An account with fees/fees.yaml and terms/fee-terms.csv (a real contract priced by fee schedules: Copperline <- Walmart,
+Fizzwick <- Five Below) gets its own checks instead of the promo, delivery and history ones: every contract file exists
+and an excerpt is exactly its source's line ranges; every fee-term quote appears in its source (whitespace aside), its
+numbers are written in the quote and its discretion flag matches its wording; POs, backup and charges add up to the
+invoice and the remittance; the backup's bases match our records; every expected row cites known clauses and source
+documents, and its decision, amounts and gate row follow from the files.
+
 A folder with only history/ (Peak Bar until its other files move in) gets the history checks, read against
 Peak Bar's files where they are now.
 """
@@ -25,7 +32,7 @@ import email.utils
 import re
 import sys
 from collections import Counter, defaultdict
-from datetime import date
+from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
@@ -614,6 +621,303 @@ def check_history(acct, charges, prior):
     return set(inv)
 
 
+# ---------------------------------------------------------------- fee-schedule accounts (fees/fees.yaml)
+# A real contract (data/contracts/) priced by fee schedules: Walmart's Supplier Agreement, Five Below's Vendor Agreement.
+# terms/fee-terms.csv is the hand-made key of the clauses the charges use (what both readers should return), each
+# with its quote; the checks below rebuild every expected decision from it and from our side's records.
+
+FEE_TERM_COLS = ["key", "version", "fee_code", "basis", "rate", "max", "per", "condition", "discretion", "source_doc",
+                 "quote"]
+FEE_CHARGE_COLS = CHARGE_COLS + ["deducted_on"]
+FEE_EXPECTED_COLS = ["charge_id", "decision", "disputed", "accepted", "gate_row", "asked", "why", "clause", "sources"]
+MONEY_BASES = {"percent", "flat", "annual_percent", "per_document_day"}
+NOT_SUPPLIERS_FAULT = {"carrier", "retailer"}  # the appointment log's cause when the other side or its carrier caused it
+
+
+def norm(text):
+    return " ".join(text.split())
+
+
+def fee_numbers_in(value, quote):
+    """Every number of value (a rate, a cap, '30', 'issued_on>=2026-03-01') is written in the quote."""
+    for d in re.findall(r"\d{4}-\d{2}-\d{2}", value):
+        if not (words(day(d)) in quote and str(day(d).year) in quote):
+            return False
+    rest = re.sub(r"\d{4}-\d{2}-\d{2}", "", value)
+    found = {Decimal(n.replace(",", "")) for n in re.findall(r"\d[\d,]*(?:\.\d+)?", quote) if n.strip(",")}
+    return all(Decimal(n) in found for n in re.findall(r"\d+(?:\.\d+)?", rest))
+
+
+def check_fee_contracts(acct, fees):
+    """The contract files exist under data/, and an excerpt is exactly its source's lines joined by '[...]'."""
+    print(f"{acct.label}: contracts")
+    out = {}
+    for c in [fees.get("contract")] + list(fees.get("earlier_contracts") or []):
+        if not c:
+            check(f"{acct.label}: fees.yaml names a contract", False)
+            continue
+        path = DATA / c["path"]
+        if not check(f"{acct.label}: contract {c['id']} exists at data/{c['path']}", path.is_file()):
+            continue
+        text = path.read_text(encoding="utf-8")
+        out[c["id"]] = text
+        ex = c.get("excerpt_of")
+        if ex:
+            lines = (DATA / ex["source"]).read_text(encoding="utf-8").split("\n")
+            parts = ["\n".join(lines[a - 1:b]) for a, b in ex["lines"]]
+            check(f"{acct.label}: {c['id']} is {ex['source']} lines {ex['lines']} word for word",
+                  text == "\n\n[...]\n\n".join(parts) + "\n")
+    return out
+
+
+def check_fee_terms(acct, terms, texts):
+    print(f"{acct.label}: fee terms")
+    keys = Counter(t["key"] for t in terms)
+    check(f"{acct.label}: fee-term keys are unique", all(n == 1 for n in keys.values()),
+          [k for k, n in keys.items() if n > 1])
+    for t in terms:
+        k = t["key"]
+        text = texts.get(t["source_doc"], "")
+        check(f"{acct.label}: {k} source {t['source_doc']} exists", bool(text))
+        check(f"{acct.label}: {k} quote appears word for word", norm(t["quote"]) in norm(text), t["quote"][:60])
+        for col in ("rate", "max", "condition"):
+            if t[col]:
+                check(f"{acct.label}: {k} {col} {t[col]} is written in its quote", fee_numbers_in(t[col], t["quote"]))
+        check(f"{acct.label}: {k} discretion={t['discretion']} matches its wording",
+              (t["discretion"] == "yes") == bool(has_discretion(t["quote"])), has_discretion(t["quote"]))
+
+
+def fee_version(terms, on):
+    """The contract version that governs a purchase issued on `on` (the version rows' issued_on conditions)."""
+    for t in terms:
+        if t["basis"] != "version":
+            continue
+        op, d = re.fullmatch(r"issued_on(>=|<)(\S+)", t["condition"]).groups()
+        if (on >= day(d)) if op == ">=" else (on < day(d)):
+            return t["version"]
+    return "all"
+
+
+def fee_allowed(c, f):
+    """(allowed, ask_reason, gate_row_if_ask, past_window) for one fee charge, from the files."""
+    lines = f["backup"].get(c["ref"], [])
+    if not lines:
+        return None, "no backup", 9, False
+    on = day(lines[0]["on"])
+    ver = fee_version(f["terms"], on)
+    fee_code = f["codes"][c["code"]]
+    mine = [t for t in f["terms"] if t["version"] in ("all", ver)
+            and fee_code in [x.strip() for x in t["fee_code"].split(";")]]
+    window = [t for t in f["terms"] if t["basis"] == "dispute_window" and t["version"] in ("all", ver)]
+    past = False
+    if window and c["deducted_on"]:
+        closes = day(c["deducted_on"]) + timedelta(days=int(window[0]["rate"]))
+        past = closes < f["as_of"]
+    po = lines[0]["group"]
+    purchase = f["purchases"].get(po)
+    appt = f["appointments"].get(po, {})
+    ask = None
+    for t in mine:
+        cond = t["condition"]
+        if not cond or t["basis"] in MONEY_BASES and cond.startswith("working_days"):
+            continue
+        if cond.startswith("po_type="):
+            ok = purchase is not None and purchase["po_type"] == cond.split("=", 1)[1]
+        elif cond == "supplier_fault":
+            ok = appt.get("cause", "") not in NOT_SUPPLIERS_FAULT
+        elif cond.startswith("grace_days="):
+            debit = f["debits"].get(po)
+            late = (day(debit["paid_on"]) - day(debit["due_on"])).days if debit else 0
+            ok = late > int(cond.split("=", 1)[1])
+        elif cond == "year_end_claim":
+            ok = day(c["period_end"]).month == 1 and day(c["period_end"]).day == 31
+        elif cond.startswith("variance_pct="):
+            ok = True
+            if purchase is not None:
+                over = abs(int(purchase["received_units"]) - int(purchase["units"])) * 100 / int(purchase["units"])
+                if over <= float(cond.split("=", 1)[1]) and t["discretion"] == "yes":
+                    ask = ask or ("within the variance the buyer may permit at its sole discretion", 4)
+        else:
+            return None, f"unknown condition {cond}", 9, past
+        if not ok:
+            return Decimal("0.00"), None, None, past  # no violation: neither the fee nor the admin fee is owed
+    money_rows = [t for t in mine if t["basis"] in MONEY_BASES]
+    if len(money_rows) > 1:
+        return None, f"the agreement states {len(money_rows)} rules for {fee_code}", 9, past
+    if any(t["basis"] == "discretion" for t in mine):
+        return None, "the amount is set at the other side's discretion", 4, past
+    if ask:
+        return None, ask[0], ask[1], past
+    if not money_rows:
+        return None, f"no fee schedule for {fee_code}", 9, past
+    t = money_rows[0]
+    rate = Decimal(t["rate"])
+    base = sum((Decimal(ln["base_amount"]) for ln in lines), Decimal(0))
+    if t["basis"] == "percent":
+        fee = base * rate / 100
+    elif t["basis"] == "annual_percent":
+        fee = base * rate / 100 * int(lines[0]["days"] or 0) / 365
+    elif t["basis"] == "per_document_day":
+        fee = rate * int(lines[0]["units"]) * int(lines[0]["days"] or 0)
+    else:
+        fee = rate
+    fee = money(fee)
+    if t["max"]:
+        fee = min(fee, money(t["max"]))
+    admin = [a for a in f["terms"] if a["fee_code"] == "*" and a["basis"] == "flat" and a["version"] in ("all", ver)]
+    fee += sum((money(a["rate"]) for a in admin), Decimal(0))
+    fee += sum((money(ln["pass_through"]) for ln in lines), Decimal(0))
+    return money(fee), None, None, past
+
+
+def fee_gate(taken, allowed, ask_reason, ask_row, past):
+    zero = Decimal("0.00")
+    if past and (ask_reason or abs(taken - allowed) > TOLERANCE):
+        return "accept", zero, taken, 10
+    if ask_reason:
+        return "ask", zero, zero, ask_row
+    decision, disputed, accepted = gate(taken, allowed, None)
+    row = {"accept": 5, "split": 7, "dispute": 7, "ask": 8}[decision]
+    return decision, disputed, accepted, row
+
+
+def check_fee_facts(acct, f, charges):
+    """The backup's bases match our records: PO costs, overage and short units, the invoice, rejected units."""
+    print(f"{acct.label}: backup against our records")
+    inv = acct.yaml["invoice"]
+    for c in charges:
+        lines = f["backup"].get(c["ref"], [])
+        if not check(f"{acct.label}: {c['charge_id']} has backup lines", bool(lines)):
+            continue
+        for ln in lines:
+            if ln["proof_doc"]:
+                check(f"{acct.label}: {c['charge_id']} proof {ln['proof_doc']} exists", ln["proof_doc"] in f["texts"])
+        p = f["purchases"].get(lines[0]["group"])
+        base = sum((money(ln["base_amount"]) for ln in lines), Decimal(0))
+        if p is None:
+            continue
+        check(f"{acct.label}: {c['charge_id']} backup date is PO {p['po']}'s issue date", lines[0]["on"] == p["issued_on"]
+              or c["code"] in ("RJ", "FN"))
+        cost = Decimal(p["unit_cost"])
+        if c["code"] == "OV":
+            want = money((int(p["received_units"]) - int(p["units"])) * cost)
+        elif c["code"] == "BO":
+            want = money((int(p["units"]) - int(p["received_units"])) * cost)
+        elif c["code"] == "RJ":
+            want = money(int(lines[0]["units"]) * cost)
+            check(f"{acct.label}: {c['charge_id']} rejected goods pass through at price", money(lines[0]["pass_through"]) == want)
+        elif base:
+            want = money(p["po_cost"])
+        else:
+            continue
+        check(f"{acct.label}: {c['charge_id']} backup base ${base:,} matches PO {p['po']} (${want:,})", base == want)
+    for c in charges:
+        if c["code"] == "DM":
+            base = sum((money(ln["base_amount"]) for ln in f["backup"].get(c["ref"], [])), Decimal(0))
+            check(f"{acct.label}: {c['charge_id']} allowance base is the invoice", base == money(inv["expected"]))
+
+
+def check_fee_account(acct, docs, fees):
+    """An account priced by fee schedules (fees/fees.yaml + terms/fee-terms.csv)."""
+    y = acct.yaml
+    texts = {stem: p.read_text(encoding="utf-8") for stem, (_, p) in docs.items()}
+    texts.update(check_fee_contracts(acct, fees))
+    terms = acct.rows("terms/fee-terms.csv", FEE_TERM_COLS) or []
+    check_fee_terms(acct, terms, texts)
+
+    print(f"{acct.label}: purchases and charges")
+    purchases = {r["po"]: r for r in acct.rows("purchases/purchase-orders.csv", required=True) or []}
+    for p in purchases.values():
+        check(f"{acct.label}: PO {p['po']} units x cost = PO cost",
+              money(int(p["units"]) * Decimal(p["unit_cost"])) == money(p["po_cost"]))
+        if "invoiced_amount" in p:
+            check(f"{acct.label}: PO {p['po']} invoiced units x cost = invoiced amount",
+                  money(int(p["invoiced_units"]) * Decimal(p["unit_cost"])) == money(p["invoiced_amount"]))
+    start, end = day(y["invoice"]["period_start"]), day(y["invoice"]["period_end"])
+    billed = sum((money(p.get("invoiced_amount") or p["po_cost"]) for p in purchases.values()
+                  if start <= day(p["received_on"]) <= end), Decimal(0))
+    check(f"{acct.label}: invoice = the period's POs as invoiced", billed == money(y["invoice"]["expected"]), billed)
+    if y.get("qbo", {}).get("lines"):
+        qbo = sum((money(ln["qty"] * Decimal(str(ln["unit_price"]))) for ln in y["qbo"]["lines"]), Decimal(0))
+        check(f"{acct.label}: QuickBooks lines sum to the invoice", qbo == money(y["invoice"]["expected"]), qbo)
+
+    charges = acct.rows(f"charges/{y['invoice']['month']}.csv", FEE_CHARGE_COLS) or []
+    older = acct.rows(fees["older_charges"], FEE_CHARGE_COLS) if fees.get("older_charges") else []
+    every_charge = charges + (older or [])
+    ids, refs = Counter(c["charge_id"] for c in every_charge), Counter(c["ref"] for c in every_charge)
+    check(f"{acct.label}: charge ids and refs are unique",
+          all(n == 1 for n in ids.values()) and all(n == 1 for n in refs.values()))
+    codes = fees.get("codes") or {}
+    for c in every_charge:
+        cid = c["charge_id"]
+        check(f"{acct.label}: {cid} code {c['code']} is in fees.yaml codes", c["code"] in codes)
+        check(f"{acct.label}: {cid} units x rate = amount",
+              money(Decimal(c["units"]) * Decimal(c["rate"])) == money(c["amount"]), c["amount"])
+        check(f"{acct.label}: {cid} dates are valid", is_date(c["period_start"]) and is_date(c["period_end"])
+              and c["period_start"] <= c["period_end"] and is_date(c["deducted_on"]))
+    total = sum((money(c["amount"]) for c in charges), Decimal(0))
+    want = money(y["invoice"]["expected"]) - money(y["invoice"]["received"])
+    check(f"{acct.label}: the month's charges sum to expected - received (${want:,})", total == want, total)
+
+    backup = defaultdict(list)
+    for r in acct.rows("fees/backup.csv") or []:
+        backup[r["deduction_ref"]].append(r)
+    check(f"{acct.label}: every backup line belongs to a charge", set(backup) <= set(refs), sorted(set(backup) - set(refs)))
+    f = {
+        "terms": terms, "codes": codes, "backup": backup, "purchases": purchases, "texts": texts,
+        "appointments": {r["po"]: r for r in acct.rows("deliveries/appointments.csv", required=False) or []},
+        "debits": {r["debit_ref"]: r for r in acct.rows("payments/debit-balances.csv", required=False) or []},
+        "as_of": day(fees["as_of"]),
+    }
+    check_fee_facts(acct, f, every_charge)
+
+    print(f"{acct.label}: expected decisions")
+    expected = acct.rows("expected.csv", FEE_EXPECTED_COLS) or []
+    by_id = {c["charge_id"]: c for c in every_charge}
+    got = Counter(e["charge_id"] for e in expected)
+    check(f"{acct.label}: expected.csv covers every charge once",
+          set(got) == set(by_id) and all(n == 1 for n in got.values()), sorted(set(by_id) ^ set(got)))
+    term_keys = {t["key"] for t in terms}
+    tables = {"purchases/purchase-orders.csv": purchases, "fees/backup.csv": backup,
+              "deliveries/appointments.csv": f["appointments"], "payments/debit-balances.csv": f["debits"],
+              "shipments/documents.csv": {r["po"]: r for r in acct.rows("shipments/documents.csv", required=False) or []}}
+    totals = {"disputed": Decimal(0), "accepted": Decimal(0), "asked": Decimal(0)}
+    for e in expected:
+        c = by_id.get(e["charge_id"])
+        if c is None:
+            continue
+        cid, taken = e["charge_id"], money(c["amount"])
+        clauses = [k.strip() for k in e["clause"].split(";") if k.strip()]
+        check(f"{acct.label}: {cid} cites clauses in fee-terms.csv", bool(clauses) and set(clauses) <= term_keys,
+              set(clauses) - term_keys)
+        for s in (x.strip() for x in e["sources"].split(";") if x.strip()):
+            if "#" in s:
+                rel, key = s.split("#", 1)
+                ok = key in tables.get(rel, {})
+            else:
+                ok = s in texts
+            check(f"{acct.label}: {cid} source {s} exists", ok)
+        check(f"{acct.label}: {cid} has a why", bool(e["why"].strip()))
+        check(f"{acct.label}: {cid} asked={e['asked']} matches decision {e['decision']}",
+              (e["asked"] == "yes") == (e["decision"] == "ask"))
+        allowed, reason, ask_row, past = fee_allowed(c, f)
+        want = fee_gate(taken, allowed, reason, ask_row, past)
+        have = (e["decision"], money(e["disputed"]), money(e["accepted"]), int(e["gate_row"]))
+        why = reason or (f"allowed ${allowed:,}" if allowed is not None else "")
+        check(f"{acct.label}: {cid} {have[0]} {have[1]} / {have[2]} (row {have[3]}) follows from the files ({why})",
+              have == want, f"files give {want}")
+        if c in charges:
+            if e["decision"] == "ask":
+                totals["asked"] += taken
+            else:
+                totals["disputed"] += have[1]
+                totals["accepted"] += have[2]
+    check(f"{acct.label}: disputed + accepted + asked = the month's charges",
+          totals["disputed"] + totals["accepted"] + totals["asked"] == total)
+    print(f"  ..   {acct.label}: disputed ${totals['disputed']:,} · accepted ${totals['accepted']:,} · "
+          f"asked ${totals['asked']:,}")
+
+
 # ---------------------------------------------------------------- one account
 
 def check_account(acct):
@@ -626,6 +930,11 @@ def check_account(acct):
         check_docs(acct, docs)
     elif acct.id != PEAK_BAR:
         check(f"{acct.label}: account.yaml exists", False)
+        return docs, set()
+
+    fees_path = acct.dir / "fees" / "fees.yaml"
+    if acct.yaml and fees_path.exists() and (acct.dir / "terms" / "fee-terms.csv").exists():
+        check_fee_account(acct, docs, yaml.safe_load(fees_path.read_text(encoding="utf-8")) or {})
         return docs, set()
 
     month = acct.yaml["invoice"]["month"] if acct.yaml else "march"
