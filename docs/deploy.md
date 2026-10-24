@@ -322,3 +322,36 @@ The demo laptop keeps `make demo` (DEMO_MODE) as the offline backup either way.
 
 Destroy the VM in the Vultr dashboard (stopped servers still bill). Remove the `vultr` deploy key on GitHub. Leave the
 domain.
+
+## Fetch.ai agent on the VM
+
+The Clawback Assistant (`fetch_agent/`, setup in its README) runs on the VM as a systemd service, so it survives a
+reboot and restarts if it crashes. Its port (8001) stays closed in the firewall: it talks to Agentverse through its
+mailbox. Address: `agent1qtqhltj3d3u46j3nelxphsn8ezgzwhgrpx54r7m6m0x7l3mg08h757x2pa2` (fixed by `CLAWBACK_AGENT_SEED` in the VM's `.env`; never change it).
+
+On the VM, once: `python3 -m venv fetch_agent/.venv && fetch_agent/.venv/bin/pip install -r fetch_agent/requirements.txt`,
+then save this as `/etc/systemd/system/clawback-agent.service`:
+
+```ini
+[Unit]
+Description=Clawback Assistant (Fetch.ai agent for ASI:One)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/clawback
+ExecStart=/opt/clawback/fetch_agent/.venv/bin/python -m fetch_agent
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+systemctl daemon-reload && systemctl enable --now clawback-agent
+make fetch-agent-connect          # once: registers the mailbox with AGENTVERSE_API_KEY
+journalctl -u clawback-agent -f   # its log
+```
+
+After an rsync that changes `fetch_agent/`: `systemctl restart clawback-agent`.

@@ -505,7 +505,7 @@ checked against commit f55757a. Tag a track on Devpost only when every row says 
 | --- | --- |
 | The agent registered on Agentverse, with the Agent Chat Protocol, usable in ASI:One | Code yes: `fetch_agent/` (uAgents mailbox agent, Chat Protocol, 81 tests). TODO (needs Devank): run it against the live API and connect it to Agentverse (`fetch_agent/README.md`) |
 | The API it would call | Yes: `GET /summary` (read-only, needs `CLAWBACK_READONLY_TOKEN`) and `POST /questions/{id}/answer` |
-| The agent address | TODO (needs Devank) |
+| The agent address | Yes: `agent1qtqhltj3d3u46j3nelxphsn8ezgzwhgrpx54r7m6m0x7l3mg08h757x2pa2` (mailbox agent, registered on Agentverse; chat protocol and README checked with `av agent`; runs on the VM as the `clawback-agent` service) |
 | An ASI:One chat clip | TODO (needs Devank). Cut rule: not live in ASI:One by Sat 8 PM |
 
 ### Not entered unless confirmed by Sat 4 PM
