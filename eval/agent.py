@@ -131,8 +131,8 @@ def decide(c: AgentCase, policy, client=None):
     if charge.notice_date:
         days = (charge.period_end - charge.notice_date).days
         ev[f"ev-notice-{charge.id}"] = Evidence(
-            id=f"ev-notice-{charge.id}", kind="notice", label=f"Notice {charge.notice_date:%b %-d}",
-            summary=f"Northmart gave written notice of this fee on {charge.notice_date:%b %-d, %Y}, {days} days "
+            id=f"ev-notice-{charge.id}", kind="notice", label=f"Notice {evidence_mod.day(charge.notice_date)}",
+            summary=f"Northmart gave written notice of this fee on {evidence_mod.day(charge.notice_date, year=True)}, {days} days "
                     "before the period ends.")
     a = compute_allowed(case.charge, [adapters.to_engine_term(t) for t in terms], case.sales, case.priors)
     inv = investigator.investigate(charge, a, ev, client)
