@@ -44,7 +44,8 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - Deployed site (docs/deploy.md): the VM is the single live instance (DEMO_MODE=false). POST /demo/reset needs
   `Authorization: Bearer $CLAWBACK_ADMIN_TOKEN` when that's set; QBO_TOKEN_FILE keeps the rotated QuickBooks refresh
   token in the mounted state/ folder; GET /eval/latest falls back to eval/published/ (`make publish-score`).
-- Moss (api/integrations/moss.py, F16): with MOSS_PROJECT_ID and MOSS_API_KEY each saved rule is indexed by its clause,
+- Moss (api/integrations/moss.py, F16): with MOSS_PROJECT_ID and MOSS_PROJECT_KEY (or MOSS_API_KEY) each saved rule is
+  indexed by its clause (index model moss-mediumlm),
   and a discretion clause is searched against them; a match at or above `rule_match_similarity` (config/policy.yaml)
   with the same clause type and counterparty applies the rule, otherwise the exact match on type + counterparty does.
   `python -m api.integrations.moss` indexes Rule #1 and prints the similarity of a reworded clause (the Devpost proof).

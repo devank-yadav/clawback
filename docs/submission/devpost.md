@@ -365,9 +365,12 @@ Paste each paragraph only once Part 2 marks that track ready. Each one says what
 **Figma.** TODO (needs Devank): describe the FigJam → Design → Make → Agent → Dev Mode steps only once the
 screenshots and the file link exist. `docs/figma/` is empty today.
 
-**Moss.** Clawback's rule memory: when the owner answers once, the answer becomes a rule that decides the next
-month's fees. Saved rules are indexed in Moss, and a new discretion clause is matched by meaning: a differently
-worded display-fee clause still finds Rule #1, with the similarity shown on the card (`api/integrations/moss.py`;
+**Moss.** Moss's "Personal Agent" example (an agent that remembers you, works across your apps and handles everyday
+tasks on its own) is what Clawback is for a small brand's owner. It remembers her decisions: when she answers once,
+the answer becomes a rule held in a Moss index, and next month's fees are decided by it with no question. It works
+across her apps (QuickBooks, WhatsApp, the bank deposit that starts a run, ASI:One) and checks every deduction on
+its own. A new discretion clause is matched to the saved rules by meaning, so a differently worded display-fee clause
+still finds Rule #1, with the similarity shown on the card (`api/integrations/moss.py`, index model `moss-mediumlm`;
 the exact match on clause type and distributor stays as the fallback). TODO (needs Devank): the live before/after
 from `python -m api.integrations.moss` with the Moss keys, before this paragraph goes in.
 
@@ -451,7 +454,7 @@ checked against commit f55757a. Tag a track on Devpost only when every row says 
 
 | Devpost must show | In the repo now? |
 | --- | --- |
-| Before/after: a differently worded clause matched to Rule #1 | Code yes: `api/integrations/moss.py` (Moss SDK 1.21.0), similarity floor 0.85 in `config/policy.yaml`, tested with a fake. TODO (needs Devank): set `MOSS_PROJECT_ID` and `MOSS_API_KEY`, run `python -m api.integrations.moss` for the real scores, record one run, and screenshot the scenario box with a reworded clause |
+| Before/after: a differently worded clause matched to Rule #1 | Code yes: `api/integrations/moss.py` (Moss SDK 1.21.0), similarity floor 0.85 in `config/policy.yaml`, tested with a fake. TODO (needs Devank): redeem CALHACKS in the Moss portal, set `MOSS_PROJECT_ID` and `MOSS_PROJECT_KEY`, run `python -m api.integrations.moss` for the real scores, record one run, and screenshot the scenario box with a reworded clause |
 
 ### MLH: Best Use of Gemini API
 

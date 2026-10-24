@@ -6,14 +6,15 @@ https://pypi.org/project/moss/ and repo https://github.com/usemoss/moss (docs: h
 the package's README and docstrings (moss 1.21.0) give them:
     client = MossClient(project_id, project_key)
     await client.list_indexes()                                    # [IndexInfo] with .name
-    await client.create_index(name, [DocumentInfo(id=, text=, metadata={str: str})])  # waits for the build
+    await client.create_index(name, [DocumentInfo(id=, text=, metadata={str: str})], MODEL)  # waits for the build
     await client.add_docs(name, docs, MutationOptions(upsert=True))  # returns a MutationResult with .job_id
     await client.delete_docs(name, [doc_id])
     await client.load_index(name)       # queries run on a local copy; loading again picks up a newer version
     result = await client.query(name, text, QueryOptions(top_k=5, alpha=1.0))  # alpha 1.0: by meaning only
     result.docs[i].id, result.docs[i].score                        # score 0 to 1, from vector similarity
 
-Configured by MOSS_PROJECT_ID and MOSS_API_KEY (the project key from the Moss portal). Every call goes through
+Configured by MOSS_PROJECT_ID and the project key from the Moss portal, as MOSS_PROJECT_KEY (Moss's own name, from
+its quickstart) or MOSS_API_KEY. Every call goes through
 replay.call_outside: a timeout, one retry, recorded with RECORD_FIXTURES=1 and replayed in DEMO_MODE. No keys, or a
 failed call, means no matches, and the gate uses the exact match on term type + counterparty instead
 (api/engine/rules.find_rule). Moss only names candidate rules: the gate checks the similarity, the term type and
@@ -40,6 +41,7 @@ log = logging.getLogger("clawback.moss")
 
 SERVICE = "moss"  # fixtures in data/fixtures/moss/
 INDEX = "clawback-rules"
+MODEL = "moss-mediumlm"  # docs.moss.dev quickstart: the higher-accuracy index model (moss-minilm is the light one)
 TOP_K = 5
 TIMEOUT_S = 15.0  # queries run locally; only loading and writes reach Moss
 JOB_WAIT_S = 10.0
@@ -84,7 +86,7 @@ class SdkBackend:
             result = await self.client.add_docs(self.index, [doc], self.sdk.MutationOptions(upsert=True))
             await self._settle(getattr(result, "job_id", ""))
         else:
-            await self.client.create_index(self.index, [doc])
+            await self.client.create_index(self.index, [doc], MODEL)
         await self.client.load_index(self.index)  # the next query sees the new rule
 
     async def _settle(self, job_id: str) -> None:
@@ -172,7 +174,8 @@ _built: dict[tuple[str, str], RuleMemory] = {}
 
 
 def credentials() -> tuple[str, str]:
-    return os.getenv("MOSS_PROJECT_ID", "").strip(), os.getenv("MOSS_API_KEY", "").strip()
+    key = os.getenv("MOSS_PROJECT_KEY") or os.getenv("MOSS_API_KEY") or ""
+    return os.getenv("MOSS_PROJECT_ID", "").strip(), key.strip()
 
 
 def configured() -> bool:
@@ -186,7 +189,7 @@ def recorded() -> bool:
 
 def _sdk(creds: tuple[str, str]) -> Backend:
     if not all(creds):
-        raise RuntimeError("MOSS_PROJECT_ID and MOSS_API_KEY aren't set")
+        raise RuntimeError("MOSS_PROJECT_ID and MOSS_PROJECT_KEY (or MOSS_API_KEY) aren't set")
     return SdkBackend(*creds)
 
 
@@ -238,7 +241,7 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv()
     clauses = (argv if argv is not None else sys.argv[1:]) or CHECK_CLAUSES
     if not configured():
-        print("Set MOSS_PROJECT_ID and MOSS_API_KEY in .env first.")
+        print("Set MOSS_PROJECT_ID and MOSS_PROJECT_KEY in .env first (the Moss portal's project ID and key).")
         return 2
     m = memory()
     saved = m.index_rule("rule-1", RULE_1_CLAUSE, "fee_discretion", "Northmart", "Rule #1")

@@ -231,8 +231,8 @@ class FakeClient:
         self.calls.append(("list_indexes",))
         return [SimpleNamespace(name=n) for n in self.indexes]
 
-    async def create_index(self, name, docs):
-        self.calls.append(("create_index", name, [d.id for d in docs]))
+    async def create_index(self, name, docs, model_id=None):
+        self.calls.append(("create_index", name, [d.id for d in docs], model_id))
         self.indexes.append(name)
 
     async def add_docs(self, name, docs, options):
@@ -263,7 +263,8 @@ def fake_sdk(client):
 def test_sdk_backend_creates_the_index_for_the_first_rule():
     client = FakeClient()
     moss.SdkBackend("p", "k", sdk=fake_sdk(client)).upsert("rule-1", S54, {"term_type": "fee_discretion"})
-    assert client.calls == [("list_indexes",), ("create_index", moss.INDEX, ["rule-1"]), ("load_index", moss.INDEX)]
+    assert client.calls == [("list_indexes",), ("create_index", moss.INDEX, ["rule-1"], "moss-mediumlm"),
+                            ("load_index", moss.INDEX)]
 
 
 @pytest.mark.parametrize("job_error", [None, TimeoutError("still building")])
@@ -287,7 +288,7 @@ def test_the_installed_sdk_has_the_calls_we_make():
     """Only when `moss` is installed (api/requirements.txt): its names and parameters match SdkBackend's calls.
     Builds option objects only; no client, so nothing reaches Moss."""
     sdk = pytest.importorskip("moss")
-    for name, params in {"create_index": ["name", "docs"], "add_docs": ["name", "docs", "options"],
+    for name, params in {"create_index": ["name", "docs", "model_id"], "add_docs": ["name", "docs", "options"],
                          "delete_docs": ["name", "doc_ids"], "list_indexes": [], "load_index": ["name"],
                          "query": ["name", "query", "options"],
                          "wait_for_job": ["job_id", "poll_interval_seconds", "timeout_seconds"]}.items():
@@ -296,3 +297,12 @@ def test_the_installed_sdk_has_the_calls_we_make():
     doc = sdk.DocumentInfo(id="rule-1", text=S54, metadata={"term_type": "fee_discretion"})
     assert (doc.id, doc.metadata) == ("rule-1", {"term_type": "fee_discretion"})
     assert sdk.QueryOptions(top_k=5, alpha=1.0).top_k == 5 and sdk.MutationOptions(upsert=True).upsert is True
+
+
+def test_the_project_key_works_under_mosss_own_name(monkeypatch):
+    monkeypatch.setenv("MOSS_PROJECT_ID", "test-project")
+    monkeypatch.setenv("MOSS_PROJECT_KEY", "test-key")  # docs.moss.dev quickstart's name
+    assert moss.credentials() == ("test-project", "test-key") and moss.configured()
+    monkeypatch.delenv("MOSS_PROJECT_KEY")
+    monkeypatch.setenv("MOSS_API_KEY", "older-name")
+    assert moss.credentials() == ("test-project", "older-name")
