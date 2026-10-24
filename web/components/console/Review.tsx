@@ -111,7 +111,7 @@ export default function Review() {
   );
 }
 
-function ChargeDrawer({ charge, onClose, source, runId }: { charge: ChargeView; onClose: () => void; source: "fixture" | "live"; runId: string | undefined }) {
+export function ChargeDrawer({ charge, onClose, source, runId }: { charge: ChargeView; onClose: () => void; source: "fixture" | "live"; runId: string | undefined }) {
   const { state, view, cast: CAST, link } = useRun();
   const detail = useChargeDetail(charge.id, runId, source);
   const steps = agentSteps(charge.id, state, detail);
@@ -200,7 +200,7 @@ function choicesFor(code: string) {
     { id: "dispute", label: "Dispute this one", text: "dispute it" }];
 }
 
-function OwnerDecision({ charge }: { charge: ChargeView }) {
+export function OwnerDecision({ charge }: { charge: ChargeView }) {
   const { state, view, source, answerQuestion, cast: CAST } = useRun();
   const detail = useChargeDetail(charge.id, state.run?.run_id, source);
   const [choice, setChoice] = useState<string | null>(null);

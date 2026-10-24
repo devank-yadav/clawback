@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import threading
 import uuid
 from dataclasses import dataclass, field
@@ -28,7 +29,7 @@ from api.agents import investigator, investigator_ops, negotiator, reader, reade
 from api.contracts import (
     Answer, Approval, ApprovalLine, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, DeliveryRow, Dispute, DisputeLine, Event,
     EventAdapter, Evidence, Finding, LogLine, OpsTerm, OwnerMessage, PriceRow, Question, Rehearsal, Remittance, Rule, RunInfo,
-    RunValue, Term, Totals,
+    RunValue, StageInfo, Term, Totals,
 )
 from api.db import events as saved_events, state as saved_state
 from api.engine import gate, totals, value as value_mod
@@ -227,13 +228,50 @@ def _value(run: Run, disputed: Decimal, accepted: Decimal, questions: int) -> Ru
 
 
 READER_NAMES = {"claude": "Claude", "gemini": "Gemini", "claude-b": "a second Claude read"}
+DOC_NAMES = {"deal": "the signed deal", "amendment": "the signed amendment", "notice": "the notice",
+             "draft": "the draft deal"}
+
+
+def _doc_names(doc_ids: list[str]) -> dict[str, str]:
+    """How the board names each document while the readers work on it: "the signed deal", "the email from jordan@…".
+    When an account has several of one kind (Walmart's agreement and its item setup, five notices), each goes by its
+    own title instead: the document's heading, else its first line, else its id; a dated notice adds its date."""
+    loaded = {d: reader.documents.load(d) for d in doc_ids}
+    kinds = [doc.kind for doc, _ in loaded.values()]
+    names = {}
+    for d, (doc, text) in loaded.items():
+        if doc.kind == "email":
+            names[d] = f"the email from {doc.sender}" if doc.sender else "an email"
+        elif kinds.count(doc.kind) == 1:
+            names[d] = DOC_NAMES.get(doc.kind, d)
+        else:
+            lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+            heading = next((ln[2:].split(":")[0].strip() for ln in lines if ln.startswith("# ")), "")
+            first = lines[0] if lines and len(lines[0]) <= 80 and not re.match(r"EX-\d", lines[0]) else ""
+            title = heading or first or " ".join(w.capitalize() for w in d.split("-"))
+            dated = re.search(r"(\d{4})-(\d{2})-(\d{2})$", d)
+            names[d] = title + (f" ({date(*map(int, dated.groups())):%b} {int(dated.group(3))})" if dated else "")
+        if reader.timeout_for(text):  # the readers get a longer limit for it, so say why this one takes a while
+            names[d] += f" · a long document ({len(text) // 1000}k characters), so a longer read"
+    return names
+
+
+def _short(quote: str, n: int = 160) -> str:
+    quote = " ".join(quote.split())
+    return quote if len(quote) <= n else quote[: n - 1].rstrip() + "…"
 
 
 def _read_terms(run: Run, client) -> list[Term]:
     """Both readers on every deal document; a term counts only when they agree and its quote is found."""
     terms: list[Term] = []
     deals: list[str] = []  # the deal documents read so far: an extension is dated from their date_range
-    for doc_id in run.account.config.deal_docs:
+    docs = run.account.config.deal_docs
+    names = _doc_names(docs)
+    run.emit("stage", StageInfo(stage="read", status="started", total=len(docs),
+                                label=f"Two readers on each of {len(docs)} document{'s' if len(docs) != 1 else ''}"))
+    for i, doc_id in enumerate(docs):
+        run.emit("stage", StageInfo(stage="read", status="progress", done=i, total=len(docs),
+                                    label=f"Reading {names[doc_id]}"))
         r = readers.read_both(doc_id, base_terms=[t for t in terms if t.source_doc_id in deals], client=client)
         if r.doc.kind == "deal":
             deals.append(doc_id)
@@ -258,6 +296,18 @@ def _read_terms(run: Run, client) -> list[Term]:
         for line in r.unclear:
             run.log(f"Reader left this for a person to review: {line}", "warn", "reader")
         terms += r.terms
+        run.emit("stage", StageInfo(
+            stage="read", status="progress", done=i + 1, total=len(docs),
+            label=f"{names[doc_id].split(' · ')[0][0].upper()}{names[doc_id].split(' · ')[0][1:]}: {len(verified)} term"
+                  f"{'s' if len(verified) != 1 else ''} agreed" + (f", {len(disputed)} read differently" if disputed else "")
+                  + (f", {len(rejected)} rejected" if rejected else ""),
+            items=[_short(t.exact_quote) for t in verified]))
+    agreed = sum(t.status == "verified" for t in terms)
+    rejected_all = sum(t.status == "rejected" for t in terms)
+    run.emit("stage", StageInfo(stage="read", status="done", done=len(docs), total=len(docs),
+                                label=(f"{agreed} term{'s' if agreed != 1 else ''} agreed, every quote found word for word"
+                                       if agreed else "No term could be verified: charges that depend on the deal go to a person")
+                                      + (f"; {rejected_all} rejected" if rejected_all else "")))
     return terms
 
 
@@ -321,8 +371,13 @@ def _process(run: Run, client) -> None:
     sales = [adapters.to_engine_sales(r) for r in sales_rows]
     payments = [adapters.to_engine_prior(p) for p in prior_rows]
 
-    for c in charges + older:
+    checking = charges + older
+    run.emit("stage", StageInfo(stage="check", status="started", total=len(checking),
+                                label=f"{len(checking)} charge{'s' if len(checking) != 1 else ''} to check"))
+    for i, c in enumerate(checking):
         with trace.charge_context(c.id):  # the trace files each AI call under its charge
+            run.emit("stage", StageInfo(stage="check", status="progress", done=i, total=len(checking), charge_id=c.id,
+                                        label=f"Checking {c.id}: {c.description}"))
             run.emit("charge", c)
             run.log(f"Checking {c.id}: {c.description}, ${c.amount:,.0f} taken.", actor="investigator", charge_id=c.id)
             a = compute_allowed(eng_charges[c.id], eng_terms, sales, payments, ops=eng_ops, fees=fee_data)
@@ -359,6 +414,8 @@ def _process(run: Run, client) -> None:
                                                                      answer_evidence_ids=[], answered=False)).answered,
                 type=o.type if o else "", finding=o.finding if o else "")
             _decide(run, c.id, policy)
+    run.emit("stage", StageInfo(stage="check", status="done", done=len(checking), total=len(checking),
+                                label=f"{len(checking)} of {len(checking)} charges checked"))
     # A rule saved by an earlier run opens from this run's cards too. Added after the agents ran, so their
     # requests (and DEMO_MODE fixture keys) don't change.
     for rule in (r for r in rules_of(account) if any(d.rule_id == r.id for d in run.decisions.values())):

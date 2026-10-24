@@ -96,6 +96,42 @@ def test_march_first_pass_asks_one_question_and_files_d0417():
     assert run.events[-1].type == "run" and run.events[-1].data.status == "waiting" and not run.done
 
 
+def test_march_streams_its_stages_for_the_board():
+    """The board's progress bars: a tick per document read (with the agreed quotes), a tick per charge checked."""
+    run = pipeline.start("march", ScenarioClaude(), background=False)
+    stages = [e.data for e in run.events if e.type == "stage"]
+    read = [s for s in stages if s.stage == "read"]
+    assert [(s.status, s.done, s.total) for s in read] == [
+        ("started", 0, 3), ("progress", 0, 3), ("progress", 1, 3), ("progress", 1, 3), ("progress", 2, 3),
+        ("progress", 2, 3), ("progress", 3, 3), ("done", 3, 3)]
+    assert read[1].label == "Reading the signed deal" and read[3].label.startswith("Reading the email from ")
+    spring = [t for t in run.terms if t.source_doc_id == "spring-promo" and t.status == "verified"]
+    assert spring and read[2].items == [pipeline._short(t.exact_quote) for t in spring]
+    check = [s for s in stages if s.stage == "check"]
+    assert [(s.status, s.done, s.charge_id) for s in check] == [("started", 0, None)] + [
+        ("progress", i, f"C{i + 1}") for i in range(6)] + [("done", 6, None)]
+    # each charge's tick comes right before its charge event, and reading ends before the first one
+    types = [e.type for e in run.events]
+    assert types.index("charge") > max(i for i, e in enumerate(run.events) if e.type == "stage" and e.data.stage == "read")
+    assert run.events[0].type == "run" and run.events[-1].type == "run"
+
+
+def test_the_board_names_each_document_of_a_real_contract_account(monkeypatch):
+    """Several deals or notices go by their own titles (dated when the id is), and a long read says it's long."""
+    from api import accounts
+    monkeypatch.setattr(accounts, "ONLY", {"peak-bar", "copperline"})
+    accounts.clear()
+    try:
+        names = pipeline._doc_names(["walmart-supplier-agreement-2013", "copperline-item-setup-2026",
+                                     "copperline-walmart-fine-2026-03-26", "copperline-walmart-fine-2026-03-27"])
+        assert len(set(names.values())) == 4
+        assert names["walmart-supplier-agreement-2013"].startswith("Walmart Supplier Agreement 2013 · a long document")
+        assert names["copperline-walmart-fine-2026-03-27"] == "Walmart compliance assessment (Mar 27)"
+        assert pipeline._doc_names(["spring-promo"]) == {"spring-promo": "the signed deal"}
+    finally:
+        accounts.clear()
+
+
 def test_owner_answer_becomes_rule_1_and_finishes_march():
     fake = ScenarioClaude()
     run = pipeline.start("march", fake, background=False)

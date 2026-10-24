@@ -606,6 +606,20 @@ class RunInfo(Contract):
     demo_mode: bool = False
 
 
+class StageInfo(Contract):
+    """A step of the run the board draws as a progress bar: reading the deal (a tick per document) and checking the
+    charges (a tick per charge). The other steps have their own events (dispute, question, approval, ledger_post).
+    Board-only: no agent sees it, so recorded requests don't change."""
+
+    stage: Literal["read", "check"]
+    status: Literal["started", "progress", "done"]
+    done: int = 0  # documents read / charges decided so far
+    total: int = 0
+    label: str = ""  # what's happening now ("Reading the signed deal") or what just finished
+    charge_id: str | None = None  # check: the charge being worked on
+    items: list[str] = Field(default_factory=list)  # read: the quotes both readers agreed on, found word for word
+
+
 class LogLine(Contract):
     text: str
     level: Literal["info", "good", "warn", "error"] = "info"
@@ -702,17 +716,23 @@ class TotalsEvent(_EventBase):
     data: Totals
 
 
+class StageEvent(_EventBase):
+    type: Literal["stage"]
+    data: StageInfo
+
+
 Event = Annotated[
     Union[
         RunEvent, LogEvent, ChargeEvent, FindingEvent, RehearsalEvent, DecisionEvent, QuestionEvent,
         AnswerEvent, RuleEvent, ApprovalEvent, DisputeEvent, PortalMessageEvent, LedgerPostEvent, TotalsEvent,
+        StageEvent,
     ],
     Field(discriminator="type"),
 ]
 EventAdapter: TypeAdapter[Event] = TypeAdapter(Event)
 EVENT_TYPES = (
     "run", "log", "charge", "finding", "rehearsal", "decision", "question", "answer", "rule",
-    "approval", "dispute", "portal_message", "ledger_post", "totals",
+    "approval", "dispute", "portal_message", "ledger_post", "totals", "stage",
 )
 
 

@@ -23,7 +23,7 @@ const icon = (d: ReactNode) => (
 
 /** The workspace's other screens, so nothing the product does is out of reach from the console. */
 const MORE = [
-  { href: "/", label: "Full workspace" },
+  { href: "/workspace", label: "Full workspace" },
   { href: "/upload", label: "Upload remittance" },
   { href: "/results", label: "Results" },
   { href: "/april", label: "Next month" },
@@ -39,6 +39,7 @@ export function Shell({ crumbs, right, children }: { crumbs: string[]; right?: R
   const approving = view.approval?.status === "pending" ? 1 : 0;
   const controllerPage = path.startsWith("/approval");
   const items = [
+    { href: "/", label: "Agents at work", d: I.agents, count: 0 },
     { href: "/home", label: "Home", d: I.home, count: 0 },
     { href: "/review", label: "Payment review", d: I.review, count: asking },
     { href: "/activity", label: "Agent activity", d: I.agents, count: 0 },
@@ -47,7 +48,7 @@ export function Shell({ crumbs, right, children }: { crumbs: string[]; right?: R
   return (
     <div className="cx-shell">
       <aside className="cx-side" aria-label="Primary">
-        <Link href={link("/welcome")} className="cx-logo">
+        <Link href={link("/")} className="cx-logo">
           <Logo /> clawback
         </Link>
         <label className="cx-org">
@@ -63,7 +64,7 @@ export function Shell({ crumbs, right, children }: { crumbs: string[]; right?: R
           ) : cast.brand}
         </label>
         {items.map((it) => (
-          <Link key={it.href} href={link(it.href)} className="cx-nav" aria-current={path.startsWith(it.href) ? "page" : undefined}>
+          <Link key={it.href} href={link(it.href)} className="cx-nav" aria-current={(it.href === "/" ? path === "/" : path.startsWith(it.href)) ? "page" : undefined}>
             {icon(it.d)}
             {it.label}
             {it.count > 0 && <span className="cx-count">{it.count}</span>}

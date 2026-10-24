@@ -118,6 +118,8 @@ export type Question = {
   answer: string | null;
   answered_at: string | null;
   rule_id: string | null;
+  /** Set when a newer run of the same payment replaced this one; a closed question can't be answered. */
+  closed_at?: string | null;
 };
 
 export type Answer = { question_id: string; from_role: Role; text: string; answered_at: string; rule_id: string | null };
@@ -239,6 +241,19 @@ export type RunInfo = {
 
 export type LogLine = { text: string; level: "info" | "good" | "warn" | "error"; actor: Actor; charge_id: string | null };
 
+/** A step the board draws as a progress bar: reading the deal (a tick per document) and checking the charges (a tick
+ * per charge). The other steps have their own events (dispute, question, approval, ledger_post). */
+export type StageInfo = {
+  stage: "read" | "check";
+  status: "started" | "progress" | "done";
+  done: number;
+  total: number;
+  label: string;
+  charge_id: string | null;
+  /** read: the quotes both readers agreed on, found word for word in the document. */
+  items: string[];
+};
+
 type E<T extends string, D> = { id: number; run_id: string; at: string; type: T; data: D };
 
 export type RunEvent =
@@ -255,7 +270,8 @@ export type RunEvent =
   | E<"dispute", Dispute>
   | E<"portal_message", PortalMessage>
   | E<"ledger_post", LedgerPost>
-  | E<"totals", Totals>;
+  | E<"totals", Totals>
+  | E<"stage", StageInfo>;
 
 /** GET /charges/{id}: everything the evidence drawer shows. */
 export type ChargeDetail = {

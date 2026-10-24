@@ -2,7 +2,7 @@
 
 The pipeline doesn't enter the trace contexts yet (Devank wires them after merging), so the `wired` fixture enters
 them where api/trace.py's docstring says the pipeline will: the run's thread (_guarded), the owner's answer, the
-gate's per-charge decision, and a ContextPool for the two readers.
+gate's per-charge decision. read_both builds its pool with trace.ContextPool itself, so the readers are traced.
 """
 
 import asyncio
@@ -58,7 +58,6 @@ def wired(monkeypatch):
     monkeypatch.setattr(pipeline, "_guarded", run_thread)
     monkeypatch.setattr(pipeline, "answer", owner_answer)
     monkeypatch.setattr(pipeline, "_decide", per_charge)
-    monkeypatch.setattr(readers, "ThreadPoolExecutor", trace.ContextPool)
 
 
 def flow(entries):
@@ -442,7 +441,6 @@ def test_summary_adds_up_calls_tokens_time_and_cost(wired):
 
 
 def test_a_model_without_a_price_shows_tokens_and_no_cost(monkeypatch):
-    monkeypatch.setattr(readers, "ThreadPoolExecutor", trace.ContextPool)
     with trace.run_context("run-x"):
         readers.read_both("spring-promo", client=MeteredClaude(), gemini=MeteredGemini())
     gemini = next(e for e in trace.trace_for("run-x") if e.agent == "Deal reader (Gemini)")

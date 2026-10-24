@@ -90,7 +90,7 @@ function Result({ r, onReset }: { r: RemittanceRead; onReset: () => void }) {
     setError(null);
     try {
       await api.runRemittance(r.read_id, r.account);
-      router.push(withAccount("/", api.ACCOUNT));
+      router.push(withAccount("/", r.account));
     } catch (e) {
       setError((e as Error).message);
       setStarting(false);

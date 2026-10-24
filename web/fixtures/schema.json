@@ -2134,6 +2134,104 @@
         "title": "RunValue",
         "type": "object"
       },
+      "StageEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "const": "stage",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/$defs/StageInfo"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "at",
+          "type",
+          "data"
+        ],
+        "title": "StageEvent",
+        "type": "object"
+      },
+      "StageInfo": {
+        "additionalProperties": false,
+        "description": "A step of the run the board draws as a progress bar: reading the deal (a tick per document) and checking the\ncharges (a tick per charge). The other steps have their own events (dispute, question, approval, ledger_post).\nBoard-only: no agent sees it, so recorded requests don't change.",
+        "properties": {
+          "stage": {
+            "enum": [
+              "read",
+              "check"
+            ],
+            "title": "Stage",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "started",
+              "progress",
+              "done"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "done": {
+            "default": 0,
+            "title": "Done",
+            "type": "integer"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "label": {
+            "default": "",
+            "title": "Label",
+            "type": "string"
+          },
+          "charge_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Charge Id"
+          },
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "stage",
+          "status"
+        ],
+        "title": "StageInfo",
+        "type": "object"
+      },
       "Totals": {
         "additionalProperties": false,
         "description": "Meters. taken = disputed + accepted + waiting + undecided; a skipped charge's amount stays undecided.",
@@ -2250,6 +2348,7 @@
               "rehearsal": "#/$defs/RehearsalEvent",
               "rule": "#/$defs/RuleEvent",
               "run": "#/$defs/RunEvent",
+              "stage": "#/$defs/StageEvent",
               "totals": "#/$defs/TotalsEvent"
             },
             "propertyName": "type"
@@ -2296,6 +2395,9 @@
             },
             {
               "$ref": "#/$defs/TotalsEvent"
+            },
+            {
+              "$ref": "#/$defs/StageEvent"
             }
           ]
         },

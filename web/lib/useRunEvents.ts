@@ -18,11 +18,22 @@ import type {
   Rule,
   RunEvent,
   RunInfo,
+  StageInfo,
   Totals,
 } from "./types";
 
 /** `at` is the event's own timestamp, so screens can show when each agent acted. */
 export type FeedLine = LogLine & { id: number; at: string };
+
+/** One document the two readers finished: what the board says about it and the quotes they agreed on. */
+export type ReadDoc = { label: string; items: string[]; at: string };
+
+/** The latest stage event of each kind, with when the stage started (runs saved before stage events have none). */
+export type Stages = {
+  read: (StageInfo & { startedAt: string; at: string }) | null;
+  check: (StageInfo & { startedAt: string; at: string }) | null;
+  docs: ReadDoc[];
+};
 
 export type RunState = {
   run: RunInfo | null;
@@ -39,6 +50,7 @@ export type RunState = {
   portal: PortalMessage[];
   ledger: LedgerPost[];
   totals: Totals | null;
+  stages: Stages;
   feed: FeedLine[];
   lastEventId: number;
   /** Events are still arriving (false while the run waits on a person, and once it finishes). */
@@ -60,6 +72,7 @@ const initial: RunState = {
   portal: [],
   ledger: [],
   totals: null,
+  stages: { read: null, check: null, docs: [] },
   feed: [],
   lastEventId: 0,
   playing: false,
@@ -116,6 +129,20 @@ function reduce(state: RunState, action: Action): RunState {
     case "totals":
       // The run's value comes once, on the final totals; a later totals event without it keeps it.
       return { ...s, totals: { ...e.data, value: e.data.value ?? s.totals?.value ?? null } };
+    case "stage": {
+      const prev = s.stages[e.data.stage];
+      const next = { ...e.data, startedAt: e.data.status === "started" || !prev ? e.at : prev.startedAt, at: e.at };
+      // A document is finished when its tick moves done forward with the quotes it agreed on.
+      const finished = e.data.stage === "read" && e.data.status === "progress" && e.data.done > (prev?.done ?? 0);
+      return {
+        ...s,
+        stages: {
+          ...s.stages,
+          [e.data.stage]: next,
+          docs: finished ? [...s.stages.docs, { label: e.data.label, items: e.data.items, at: e.at }] : s.stages.docs,
+        },
+      };
+    }
     default:
       // A type this screen doesn't know yet must never wipe the board.
       return s;
@@ -246,9 +273,12 @@ export function useRunEvents(account: string | null, runId: string = "latest") {
   /** Forget the run and look again (after a reset). */
   const refresh = useCallback(() => setEpoch((n) => n + 1), []);
 
+  /** Follow a run another action started (an uploaded remittance's run). */
+  const follow = useCallback((id: string) => setTarget({ key, run: api.runRef(id) }), [key]);
+
   /** No run exists yet for this account: the page offers "<Distributor> pays". */
   const awaitingPayment = !!account && followed === null && !error;
   const runId_ = followed?.run_id ?? null;
 
-  return { state, runId: runId_, answerQuestion, controllerDecides, startPayment, starting, limited, awaitingPayment, refresh, error };
+  return { state, runId: runId_, answerQuestion, controllerDecides, startPayment, follow, starting, limited, awaitingPayment, refresh, error };
 }

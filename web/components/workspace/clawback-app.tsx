@@ -21,7 +21,7 @@ import { RunProgress } from './run-progress'
 const VIEWS: View[] = ['overview', 'payments', 'approvals', 'rules']
 const CRUMB: Record<View, string> = { overview: 'Overview', payments: 'Payments', approvals: 'Approvals', rules: 'Rules' }
 
-/** The brand workspace at /?account=…&view=…: the account and the view live in the URL, so every link and reload keeps them. */
+/** The brand workspace at /workspace?account=…&view=…: the account and the view live in the URL, so every link and reload keeps them. */
 export default function ClawbackApp() {
   const { account, accounts, error } = useCurrentAccount()
   const param = useSearchParams().get('view')
@@ -86,7 +86,7 @@ function Workspace({ account, accounts, view }: { account: Account; accounts: Ac
         : { title: 'Rules', line: `Answers ${account.brand.owner.name} gave once, applied every time after.` }
 
   const payButton = <button className="primary" disabled={starting} onClick={() => void startPayment()}>{starting ? 'Waiting for the deposit…' : payLabel} <ArrowRight /></button>
-  const reviewHref = withAccount('/', account.id, { view: 'payments' })
+  const reviewHref = withAccount('/workspace', account.id, { view: 'payments' })
 
   return (
     <AppShell account={account} accounts={accounts} active={view} crumb={CRUMB[view]} approvalsWaiting={ws.stage === 'controller' && ws.approval?.status === 'pending'} onReset={onReset}>
@@ -101,7 +101,7 @@ function Workspace({ account, accounts, view }: { account: Account; accounts: Ac
         {feedback && view !== 'overview' && <div className={`feedback ${ws.stage === 'refused' ? 'notice' : ''}`} role="status">{ws.stage === 'refused' ? <Info /> : <Check />}{feedback}</div>}
 
         {view === 'overview' && state.run?.status === 'started' && <RunProgress account={account} state={state} ws={ws} />}
-        {view === 'overview' && <OverviewPage account={account} overview={overview.data} lookback={lookback.data} value={value} overviewError={overview.error} ws={ws} awaitingPayment={awaitingPayment} reviewHref={reviewHref} feedback={feedback} onOpenCharge={(id) => router.push(withAccount('/', account.id, { view: 'payments', charge: id }))} />}
+        {view === 'overview' && <OverviewPage account={account} overview={overview.data} lookback={lookback.data} value={value} overviewError={overview.error} ws={ws} awaitingPayment={awaitingPayment} reviewHref={reviewHref} feedback={feedback} onOpenCharge={(id) => router.push(withAccount('/workspace', account.id, { view: 'payments', charge: id }))} />}
 
         {view === 'payments' && (
           <>
@@ -242,7 +242,7 @@ function AttentionCard({ account, ws, awaitingPayment, reviewHref }: { account: 
           : stage === 'posted'
             ? `${controllerName} approved. ${postingSentence(ws)}`
             : `${controllerName} refused. Nothing was posted.${approval?.note ? ` “${approval.note}”` : ''}`
-  const href = stage === 'owner' ? withAccount('/', account.id, { view: 'payments' }) : controller ? withAccount('/', account.id, { view: 'approvals' }) : reviewHref
+  const href = stage === 'owner' ? withAccount('/workspace', account.id, { view: 'payments' }) : controller ? withAccount('/workspace', account.id, { view: 'approvals' }) : reviewHref
   return (
     <section className="attention-card surface">
       <div className="attention-heading"><h2>Needs your attention</h2><span className="count-badge">{open ? '1' : '0'}</span></div>

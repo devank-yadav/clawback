@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from itertools import zip_longest
 
@@ -21,6 +20,7 @@ from api.agents import fee_terms, reader, reader_b
 from api.agents.reader import ReaderResult
 from api.contracts import Document, Term
 from api.engine import quote_check
+from api.trace import ContextPool
 
 
 @dataclass
@@ -100,7 +100,7 @@ def merge(text: str, doc: Document, a: list[Term], b: list[Term]) -> tuple[list[
 
 def read_both(doc_id: str, base_terms: Sequence[Term] = (), client: anthropic.Anthropic | None = None,
               client_b: anthropic.Anthropic | None = None, gemini=None, live_first: bool = False) -> Merged:
-    with ThreadPoolExecutor(max_workers=2) as pool:
+    with ContextPool(max_workers=2) as pool:  # keeps the run context, so both readers reach the run's trace
         fa = pool.submit(reader.read_document, doc_id, base_terms, client, live_first)
         fb = pool.submit(reader_b.read_document, doc_id, base_terms, client_b or client, gemini, live_first)
         a, b = fa.result(), fb.result()

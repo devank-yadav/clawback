@@ -1,0 +1,190 @@
+"use client";
+
+// The landing page: one input, then the agents. Three phases on one page, chosen from the run the API streams:
+//  start: nothing running here yet (the last payment, if any, opens from a card);
+//  run:   a run is working or waiting on a person (or this tab just started one);
+//  done:  this tab's run finished and nobody is waiting.
+// A run started anywhere else (the Nessie deposit, another device) switches the page to it by itself.
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import SessionDialogs from "@/components/shell/SessionDialogs";
+import { ChargeDrawer } from "@/components/console/Review";
+import { useRun } from "@/components/console/RunProvider";
+import { Logo } from "@/components/console/ui";
+import { DonePanel } from "./DonePanel";
+import { ChargeMatrix } from "./ChargeMatrix";
+import { Elapsed, Meter, ACTOR } from "./parts";
+import { ReaderCard, Spotlight } from "./Spotlight";
+import { StageRail } from "./StageRail";
+import { StartPanel } from "./StartPanel";
+import { buildStages, focusStage } from "./stages";
+import { money } from "@/lib/format";
+
+const noop = () => () => {};
+/** ?run=latest opens the account's last run instead of the start screen. */
+function useOpenLatest() {
+  return useSyncExternalStore(noop, () => new URLSearchParams(window.location.search).get("run") === "latest", () => false);
+}
+
+// The run this tab watched while it worked, kept for the session: once it finishes the page shows its result, even
+// after a reload or a remount. Browser storage is a convenience only; without it the page falls back to the start.
+const followedKey = (account: string) => `clawback:flow:${account}`;
+function readFollowed(account: string | undefined): string | null {
+  if (!account) return null;
+  try {
+    return window.sessionStorage.getItem(followedKey(account));
+  } catch {
+    return null;
+  }
+}
+function writeFollowed(account: string | undefined, runId: string | null) {
+  if (!account) return;
+  try {
+    if (runId) window.sessionStorage.setItem(followedKey(account), runId);
+    else window.sessionStorage.removeItem(followedKey(account));
+  } catch {
+    /* private window: the page still works, it just forgets */
+  }
+}
+
+export default function Flow() {
+  const { account } = useRun();
+  // A new account starts fresh: nothing "started in this tab" carries over.
+  return <FlowFor key={account?.id ?? "none"} />;
+}
+
+function FlowFor() {
+  const run = useRun();
+  const { state, view, account, accounts, cast, link, runId, starting } = run;
+  const path = usePathname();
+  const router = useRouter();
+  const openLatest = useOpenLatest();
+  // The run this tab was following when it started one; any newer run is "ours" from then on.
+  const [startedFrom, setStartedFrom] = useState<string | null | undefined>(undefined);
+  const [opened, setOpened] = useState(false);
+  const [drawer, setDrawer] = useState<string | null>(null);
+  const [, setCleared] = useState(0); // a re-render after forgetting the watched run
+
+  const mine = startedFrom !== undefined && runId !== startedFrom;
+  const status = state.run?.status;
+  const waitingOnPerson = view.approval?.status === "pending" || view.stage === "owner";
+  const live = status === "started" || status === "waiting" || waitingOnPerson;
+  const followed = useSyncExternalStore(noop, () => readFollowed(account?.id), () => null);
+  const watched = !!runId && followed === runId;
+  const phase: "start" | "run" | "done" =
+    starting || (mine && !state.run) ? "run"
+      : !state.run ? "start"
+        : live ? "run"
+          : mine || opened || openLatest || watched ? (status === "failed" ? "run" : "done")
+            : "start";
+
+  useEffect(() => {
+    if (runId && (live || mine)) writeFollowed(account?.id, runId);
+  }, [runId, live, mine, account?.id]);
+
+  /** Back to the start screen: forget the watched run for this tab. */
+  const restart = () => {
+    writeFollowed(account?.id, null);
+    setStartedFrom(undefined);
+    setOpened(false);
+    setCleared((n) => n + 1);
+  };
+
+  const stages = buildStages(state, view, { distributor: cast.distributor, owner: cast.owner, controller: cast.controller }, starting || (mine && !state.run));
+  const focus = focusStage(stages);
+  const r = view.remittance;
+  const t = view.totals;
+  const charge = drawer ? view.charges.find((c) => c.id === drawer) ?? null : null;
+
+  return (
+    <div className="fl">
+      <header className="fl-top">
+        <Link href={link("/")} className="cx-logo" onClick={restart}><Logo /> clawback</Link>
+        {accounts && accounts.length > 1 && (
+          <select aria-label="Account" value={account?.id ?? ""} onChange={(e) => router.push(`${path}?account=${encodeURIComponent(e.target.value)}`)}>
+            {accounts.map((a) => <option key={a.id} value={a.id}>{a.brand.name} ← {a.distributor.name}</option>)}
+          </select>
+        )}
+        <nav aria-label="More">
+          <Link href={link("/workspace")}>Workspace</Link>
+          <Link href={link("/home")}>Console</Link>
+          <a href={link("/portal")} target="_blank" rel="noreferrer">{cast.distributor} portal ↗</a>
+          <Link href={link("/audit")}>Audit</Link>
+        </nav>
+      </header>
+
+      {phase === "start" && (
+        <main className="fl-main" style={{ paddingTop: 0, paddingBottom: 0 }}>
+          <StartPanel onStart={() => setStartedFrom(runId ?? null)} onOpenLast={() => setOpened(true)} />
+        </main>
+      )}
+
+      {phase === "run" && (
+        <main className="fl-main">
+          <div className="fl-pay">
+            <h1>
+              {r
+                ? <>{r.counterparty} paid {money(r.received)} of {money(r.expected)} and <b>took {money(r.taken)}</b> in {r.charge_count} charges</>
+                : state.run ? `${cast.distributor}’s charges` : `Waiting for ${cast.distributor}’s payment…`}
+            </h1>
+            <Elapsed from={r?.received_at ?? state.feed[0]?.at ?? null} running={status === "started"} decidedIn={view.value?.seconds_to_decided ?? null} />
+          </div>
+          <div className="fl-meters">
+            <Meter label="Disputing, with proof" value={t?.disputed ?? 0} tone="dispute" />
+            <Meter label="Fair, accepted" value={t?.accepted ?? 0} tone="fair" />
+            <Meter label={`Waiting on ${view.stage === "controller" ? cast.controller : cast.owner}`} value={(t?.waiting ?? 0) + (view.stage === "controller" ? view.approval?.amount ?? 0 : 0)} tone="wait" />
+          </div>
+          <StageRail stages={stages} />
+          <Spotlight focus={focus} />
+          {state.order.length > 0 || state.stages.check ? (
+            <div className="fl-work">
+              <ChargeMatrix state={state} view={view} owner={cast.owner} onOpen={setDrawer} />
+              <Feed />
+            </div>
+          ) : state.stages.docs.length > 0 && focus?.key !== "read" ? <ReaderCard live={false} /> : null}
+          {status === "failed" && <div className="fl-problem" role="alert">The run stopped. {state.feed.filter((l) => l.level === "error").at(-1)?.text}</div>}
+        </main>
+      )}
+
+      {phase === "done" && (
+        <main className="fl-main">
+          <DonePanel onOpen={setDrawer} onNew={restart} rail={<StageRail stages={stages} compact />} />
+        </main>
+      )}
+
+      {charge && (
+        <div className="fl-overlay" onClick={() => setDrawer(null)} role="presentation">
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${charge.title}: how it was decided`}>
+            <ChargeDrawer charge={charge} onClose={() => setDrawer(null)} source="live" runId={state.run?.run_id} key={charge.id} />
+          </div>
+        </div>
+      )}
+      <SessionDialogs account={account} />
+    </div>
+  );
+}
+
+/** Each agent's own lines as they arrive. */
+function Feed() {
+  const { state } = useRun();
+  const [all, setAll] = useState(false);
+  const lines = all ? state.feed : state.feed.slice(-10);
+  return (
+    <aside className="fl-feed" aria-label="Activity">
+      <div className="cx-head" style={{ alignItems: "center" }}>
+        <strong style={{ fontWeight: 500, fontSize: 13 }}>Activity</strong>
+        {state.feed.length > 10 && <button className="cx-btn is-ghost" style={{ minHeight: 28, padding: "0 10px", fontSize: 11 }} onClick={() => setAll((v) => !v)}>{all ? "Recent" : `All ${state.feed.length}`}</button>}
+      </div>
+      <ol aria-live="polite">
+        {lines.map((l) => (
+          <li key={l.id} className={l.level}>
+            <b>{ACTOR[l.actor] ?? l.actor}</b>
+            {l.text}
+          </li>
+        ))}
+      </ol>
+    </aside>
+  );
+}

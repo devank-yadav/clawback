@@ -3,6 +3,7 @@ import { Suspense, type ReactNode } from "react";
 import { Inter } from "next/font/google";
 import { RunProvider } from "@/components/console/RunProvider";
 import "./console.css";
+import "./flow.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 

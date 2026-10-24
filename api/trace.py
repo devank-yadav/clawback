@@ -29,7 +29,7 @@ Where the pipeline enters the contexts (Devank wires these; until then nothing i
     api/scenario.run              (the scenario box)
 - charge_context(c.id) around each turn of the per-charge loop in api/pipeline._process.
 - api/agents/readers.read_both runs the two readers on a thread pool, and a new thread starts with no context:
-  build that pool with ContextPool (below) instead of ThreadPoolExecutor, or the readers' calls aren't recorded.
+  that pool is a ContextPool (below), not a plain ThreadPoolExecutor, so the readers' calls are recorded.
 A charge_id the request itself carries (the Investigator's and the comeback's do) is used when no charge
 context is set.
 """
