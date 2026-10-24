@@ -21,3 +21,8 @@ web/out/
 
 # claude code personal settings
 .claude/settings.local.json
+
+# eval/run.py output (served by GET /eval/latest)
+eval/latest.json
+eval/latest-agent.json
+eval/latest.tmp

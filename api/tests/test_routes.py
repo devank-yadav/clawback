@@ -5,11 +5,20 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from api import pipeline
 from api.contracts import EventAdapter
 from api.main import app
 from api.stubs import fixtures
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _no_live_runs():
+    """These tests cover the recorded fake runs; live runs are in test_pipeline.py."""
+    pipeline.reset()
+    yield
+    pipeline.reset()
 
 
 def _sse(text: str) -> list:
@@ -21,7 +30,7 @@ def test_health():
 
 
 def test_start_run_and_stream_all_events():
-    run = client.post("/runs", json={"kind": "march"}).json()
+    run = client.post("/runs", json={"kind": "march", "fixture": True}).json()
     assert run["run_id"] == fixtures.MARCH_RUN
     r = client.get(run["events_url"], params={"delay_ms": 0, "keepalive": False})
     assert r.headers["content-type"].startswith("text/event-stream")
@@ -36,7 +45,7 @@ def test_stream_resumes_after_last_event_id():
 
 
 def test_april_replay():
-    run = client.post("/replay/april").json()
+    run = client.post("/replay/april", params={"fixture": True}).json()
     events = _sse(client.get(run["events_url"], params={"delay_ms": 0, "keepalive": False}).text)
     assert events[-1].type == "run" and events[-1].data.status == "finished"
 
@@ -88,8 +97,6 @@ def test_twilio_webhook_returns_twiml():
 
 @pytest.mark.parametrize("method,path,check", [
     ("post", "/coach", lambda j: len(j["redlines"]) == 3),
-    ("post", "/eval/run", lambda j: j["status"] == "not_run" and j["correct"] is None),
-    ("get", "/eval/latest", lambda j: j["cases"] == 30),
     ("get", "/audit", lambda j: len(j) > 0 and j[0]["prev_hash"] == "0" * 64),
     ("get", "/audit/verify", lambda j: j["ok"] is True),
 ])
@@ -98,9 +105,9 @@ def test_simple_stubs(method, path, check):
     assert r.status_code == 200 and check(r.json())
 
 
-def test_scenario_stub():
-    r = client.post("/scenario", json={"clause": "x", "charge": {"description": "y", "amount": 10}}).json()
-    assert r["stub"] is True
+def test_scenario_rejects_a_bad_request():
+    """The live scenario box is covered in test_coach_scenario.py with a fake model."""
+    assert client.post("/scenario", json={"clause": "x"}).status_code == 422
 
 
 def test_portal_dispute_and_amendment_flow():

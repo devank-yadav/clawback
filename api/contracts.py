@@ -152,7 +152,7 @@ class Term(ReaderTerm):
     """A stored term: one row per reader, plus the merged row once both readers agree and the quote is found."""
 
     id: str
-    reader: Literal["claude", "gemini", "merged"]
+    reader: Literal["claude", "gemini", "claude-b", "merged"]
     status: TermStatus = "pending"
     source_approved: bool = True  # False: the sender can't change the deal, so the term is a claim, never applied
     reasons: list[str] = []  # why the code check rejected or disputed it
@@ -382,6 +382,14 @@ class ApprovalDecisionRequest(Contract):
 class ApprovalDecisionResponse(Contract):
     approval: Approval
     ledger_post: LedgerPost | None  # the credit memo that posted; None when refused (nothing posts)
+    ledger_posts: list[LedgerPost] = []  # everything that posted: the memo and the invoice's open-balance note
+
+
+class InboxResponse(Contract):
+    """GET /inbox: what waits on a person, for the in-app fallback to the texts."""
+
+    questions: list[Question]  # open owner questions
+    approvals: list[Approval]  # credit memos waiting on the controller
 
 
 # ---------------------------------------------------------------- the other side: disputes and the portal
@@ -598,6 +606,7 @@ class RunFixture(Contract):
 class StartRunRequest(Contract):
     remittance_id: str | None = None
     kind: Literal["march", "april"] = "march"
+    fixture: bool = False  # replay the recorded fake run (web/fixtures) instead of running the pipeline
 
 
 class StartRunResponse(Contract):
@@ -620,17 +629,31 @@ class PortalReplyRequest(Contract):
     attachment_doc_id: str | None = None  # "amendment-1" when the judge attaches the signed amendment
 
 
+class PortalPreset(Contract):
+    """GET /portal/presets: the replies the judge can pick on the Northmart portal."""
+
+    id: str
+    label: str  # button text
+    text: str
+    attachment_doc_id: str | None = None
+    expect: ReplyClass  # how the Negotiator should read it (the acceptance test checks this)
+    charge_ids: list[str] = []
+
+
 class ScenarioCharge(Contract):
     description: str
     amount: Money
+    code: Literal["PA", "DF"] | None = None  # promo allowance or display fee; guessed from units and rate if left out
+    product: str | None = None  # "Original+Chocolate", "Mint"; promo charges default to the deal's two products
     units: int | None = None
     rate: Rate | None = None
-    period_start: date | None = None
+    period_start: date | None = None  # defaults to the Spring promo month, Mar 1 to Mar 31, 2026
     period_end: date | None = None
+    notice_date: date | None = None  # fees: when written notice came
 
 
 class ScenarioRequest(Contract):
-    clause: str
+    clause: str  # replaces the matching part of the Spring deal for this one charge
     charge: ScenarioCharge
 
 
@@ -640,6 +663,18 @@ class ScenarioResponse(Contract):
     finding: Finding | None
     evidence: list[Evidence]
     message: str | None = None
+    terms: list[Term] = []  # what the clause said, each verified or rejected word for word
+    rehearsal: Rehearsal | None = None
+    rule: Rule | None = None  # a saved owner rule that decided it
+    unclear: list[str] = []
+
+
+class ScenarioExample(Contract):
+    """GET /scenario/examples: ready-made cases for the scenario box (recorded, so they work offline)."""
+
+    id: str
+    label: str
+    request: ScenarioRequest
 
 
 class Redline(Contract):
@@ -647,8 +682,9 @@ class Redline(Contract):
     original_quote: str
     suggested_text: str
     reason: str
-    dollars_at_stake: Money
+    dollars_at_stake: Money  # the cited findings' costs, added up by code
     finding_ids: list[str]
+    quote: Quote | None = None  # where original_quote sits in the draft, for striking it through in place
 
 
 class CoachResponse(Contract):
@@ -658,6 +694,7 @@ class CoachResponse(Contract):
 
 class EvalReport(Contract):
     status: Literal["not_run", "running", "done"]
+    mode: Literal["engine", "agent"] | None = None  # engine: math and gate alone; agent: readers and agents in the loop
     run_at: datetime | None = None
     cases: int
     correct: int | None = None

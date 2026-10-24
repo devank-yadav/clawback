@@ -1,4 +1,8 @@
-"""Runs, the live event stream, the evidence drawer, owner answers and the read-only summary."""
+"""Runs, the live event stream, the evidence drawer, owner answers and the read-only summary.
+
+Live runs come from api/pipeline.py (POST /runs). The recorded fake runs (run-march-demo, run-april-demo,
+run-march-refused) still replay for screens built against web/fixtures.
+"""
 
 import asyncio
 import os
@@ -10,6 +14,7 @@ from fastapi.responses import StreamingResponse
 from api.contracts import (
     AnswerRequest, AnswerResponse, ChargeDetail, Evidence, RunFixture, StartRunRequest, StartRunResponse, Summary,
 )
+from api import pipeline
 from api.routes import portal
 from api.stubs import fixtures
 
@@ -27,19 +32,31 @@ def _events(run: RunFixture) -> list:
     return run.events
 
 
-def _start(kind: str) -> StartRunResponse:
-    run_id = fixtures.MARCH_RUN if kind == "march" else fixtures.APRIL_RUN
+def _start(kind: str, fixture: bool) -> StartRunResponse:
+    if fixture:
+        run_id = fixtures.MARCH_RUN if kind == "march" else fixtures.APRIL_RUN
+    else:
+        run_id = pipeline.start(kind).id
     return StartRunResponse(run_id=run_id, events_url=f"/runs/{run_id}/events")
 
 
 @router.post("/runs", response_model=StartRunResponse)
 def start_run(req: StartRunRequest | None = None) -> StartRunResponse:
-    return _start((req or StartRunRequest()).kind)
+    req = req or StartRunRequest()
+    return _start(req.kind, req.fixture)
 
 
 @router.post("/replay/april", response_model=StartRunResponse)
-def replay_april() -> StartRunResponse:
-    return _start("april")
+def replay_april(fixture: bool = Query(default=False)) -> StartRunResponse:
+    return _start("april", fixture)
+
+
+def _latest_live(has: str) -> pipeline.Run | None:
+    """The newest live run that holds this charge or evidence ID."""
+    for run in reversed(list(pipeline.RUNS.values())):
+        if has in run.charges or has in run.evidence:
+            return run
+    return None
 
 
 @router.get("/runs/{run_id}/events")
@@ -51,23 +68,26 @@ async def run_events(
     delay_ms: int = Query(default=400, ge=0, le=5000),
     keepalive: bool = Query(default=True, description="Hold the stream open after the last event"),
 ) -> StreamingResponse:
-    run = _runs().get(run_id)
+    live = pipeline.RUNS.get(run_id)
+    run = live or _runs().get(run_id)
     if run is None:
         raise HTTPException(404, f"unknown run {run_id}")
     start_after = after if after is not None else (last_event_id or 0)
+    pending = (lambda sent: live.events_after(sent)) if live else (lambda sent: [e for e in _events(run) if e.id > sent])
+    pace = 0 if live else delay_ms  # a live run is paced by the work itself
 
     async def stream() -> AsyncIterator[str]:
         yield "retry: 2000\n\n"
         sent, idle = start_after, 0
         while True:
-            for ev in [e for e in _events(run) if e.id > sent]:
-                if delay_ms:
-                    await asyncio.sleep(delay_ms / 1000)
+            for ev in pending(sent):
+                if pace:
+                    await asyncio.sleep(pace / 1000)
                 yield f"id: {ev.id}\ndata: {ev.model_dump_json()}\n\n"
                 sent, idle = ev.id, 0
             if not keepalive or await request.is_disconnected():
                 return
-            await asyncio.sleep(1)  # new events arrive when the portal gets the amendment
+            await asyncio.sleep(0.25 if live else 1)  # live: the pipeline is still working; fixture: the amendment
             idle += 1
             if idle % 15 == 0:
                 yield ": keep-alive\n\n"
@@ -77,7 +97,10 @@ async def run_events(
 
 
 @router.get("/charges/{charge_id}", response_model=ChargeDetail)
-def charge_detail(charge_id: str) -> ChargeDetail:
+def charge_detail(charge_id: str, run_id: str | None = Query(default=None)) -> ChargeDetail:
+    live = pipeline.RUNS.get(run_id) if run_id else _latest_live(charge_id)
+    if live and charge_id in live.charges:
+        return live.detail(charge_id)
     if portal.amendment_attached() and charge_id in fixtures.amendment_run().charges:
         return fixtures.amendment_run().charges[charge_id]
     for run in _runs().values():
@@ -87,7 +110,10 @@ def charge_detail(charge_id: str) -> ChargeDetail:
 
 
 @router.get("/evidence/{evidence_id}", response_model=Evidence)
-def evidence(evidence_id: str) -> Evidence:
+def evidence(evidence_id: str, run_id: str | None = Query(default=None)) -> Evidence:
+    live = pipeline.RUNS.get(run_id) if run_id else _latest_live(evidence_id)
+    if live and evidence_id in live.evidence:
+        return live.evidence[evidence_id]
     ev = fixtures.EVIDENCE.get(evidence_id)
     if ev is None:
         raise HTTPException(404, f"unknown evidence {evidence_id}")
@@ -96,6 +122,9 @@ def evidence(evidence_id: str) -> Evidence:
 
 @router.post("/questions/{question_id}/answer", response_model=AnswerResponse)
 def answer_question(question_id: str, req: AnswerRequest) -> AnswerResponse:
+    if question_id in pipeline.QUESTIONS:
+        ans, rule = pipeline.answer(question_id, req.text, req.from_role)
+        return AnswerResponse(answer=ans, rule=rule)
     run = fixtures.march_run()
     answer = next((e.data for e in run.events if e.type == "answer" and e.data.question_id == question_id), None)
     if answer is None:

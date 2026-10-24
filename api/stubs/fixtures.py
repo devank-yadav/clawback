@@ -648,7 +648,8 @@ def fixture_files() -> dict[str, str]:
 
     schema_models = [c.RunFixture, c.ChargeDetail, c.Evidence, c.CoachResponse, c.EvalReport, c.AuditEntry,
                      c.AuditVerify, c.Summary, c.PortalMessage, c.ScenarioResponse, c.AnswerResponse,
-                     c.StartRunResponse, c.Dispute, c.ApprovalDecisionRequest, c.ApprovalDecisionResponse]
+                     c.StartRunResponse, c.Dispute, c.ApprovalDecisionRequest, c.ApprovalDecisionResponse,
+                     c.InboxResponse, c.PortalPreset, c.ScenarioRequest, c.ScenarioExample]
     schema = {m.__name__: m.model_json_schema(mode="serialization") for m in schema_models}
     return {
         "run-events.json": _dump(march_run()),

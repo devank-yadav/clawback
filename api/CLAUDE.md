@@ -24,5 +24,16 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - `python3.11 -m venv .venv && .venv/bin/pip install -r api/requirements.txt -r requirements-dev.txt`,
   then `source .venv/bin/activate`.
 - `make api` serves the stub API on :8000; `make test` runs every test in api/.
+- `make record` runs the whole demo live (March, Dana's answer, April) and saves every AI answer to data/fixtures/;
+  `make demo` / DEMO_MODE=true replays them with no network. `python -m api.agents.reader <doc ids>` reads documents.
+- POST /runs starts a live pipeline run (api/pipeline.py); `{"fixture": true}` replays the recorded fake run instead.
+- QuickBooks (api/integrations/qbo.py): with the QBO_* keys set it writes to the sandbox; without them a stand-in
+  answers with "sim-" ids and every ledger post says it's simulated. Texts (api/integrations/sms.py) go out only
+  with the Twilio keys and outside DEMO_MODE; otherwise they wait in GET /inbox. Inbound texts: POST
+  /webhooks/twilio/sms (signature checked when TWILIO_AUTH_TOKEN is set).
+- Every document is read twice (api/agents/readers.py): Reader A is Claude, Reader B is Gemini when GEMINI_API_KEY is
+  set and a second Claude prompt until then (the log says which). Re-record Reader B with Gemini once the key works.
+- POST /coach redlines summer-draft from the newest finished March run (api/agents/coach.py); POST /scenario runs a
+  pasted clause and charge (api/scenario.py); GET /scenario/examples has three recorded cases.
 - Stub routes serve the fixture run in api/stubs/fixtures.py. After changing it, run `python -m api.stubs.fixtures`
   to rewrite web/fixtures/*.json (a test fails if they're stale).
