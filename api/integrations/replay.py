@@ -12,6 +12,9 @@ environment it finds in either.
     result = call_outside("claude", {"model": m, "system": s, "messages": msgs}, lambda req, timeout: ...)
     result.response   # the JSON the service returned (live or saved)
     result.source     # "live" or "fixture"
+
+Inside a run (api/trace.run_context) each call is also recorded for GET /runs/{id}/trace: what was sent, what came
+back, live or recorded or failed. Recording never raises and never changes what the call returns.
 """
 
 from __future__ import annotations
@@ -23,11 +26,14 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Mapping
+from typing import Any, Awaitable, Callable, Iterator, Mapping
+
+from api import trace
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "data" / "fixtures"
@@ -56,6 +62,18 @@ class CallResult:
     attempts: int = 0
     latency_ms: int = 0
     errors: list[str] = field(default_factory=list)
+    usage: dict | None = None  # what a live call used (tokens), when its fn returned a Metered answer
+    model: str | None = None  # the model that answered, when the service says
+
+
+@dataclass(frozen=True)
+class Metered:
+    """What fn may return instead of the bare response: the response plus what the call used (tokens, the model that
+    answered), for the run's trace. call_outside unwraps it, so the response it returns and records is the same."""
+
+    response: Any
+    usage: dict | None = None
+    model: str | None = None
 
 
 def _flag(name: str) -> bool:
@@ -120,6 +138,41 @@ def save_fixture(service: str, key: str, request: Any, response: Any, fixtures_d
     return p
 
 
+@contextmanager
+def _traced(service: str, request: Any, result: CallResult, demo: bool) -> Iterator[None]:
+    """Record the call in the run's trace (api/trace.py) once it returns or raises. Every return path hands back
+    `result` itself, so its fields are the outcome. Outside a run context this does nothing."""
+    if not trace.current_run():
+        yield
+        return
+    at, started = datetime.now().astimezone(), time.monotonic()
+    try:
+        yield
+    except Exception as e:
+        _trace_call(service, request, result, at, started, e, demo)
+        raise
+    _trace_call(service, request, result, at, started, None, demo)
+
+
+def _trace_call(service: str, request: Any, result: CallResult, at: datetime, started: float,
+                failed: Exception | None, demo: bool) -> None:
+    try:
+        if failed is None:
+            trace.record(service, request, result.response, status="live" if result.source == "live" else "recorded",
+                         at=at, latency_ms=result.latency_ms, attempts=result.attempts,
+                         error="; ".join(result.errors) or None, usage=result.usage, model=result.model)
+            return
+        if isinstance(failed, OutsideCallFailed):
+            why = "DEMO_MODE is on" if demo and not result.attempts else "; ".join(result.errors)
+            error = f"{why}; no recorded answer to fall back on"
+        else:
+            error = "; ".join([*result.errors, f"{type(failed).__name__}: {failed}"])
+        trace.record(service, request, None, status="failed", at=at, attempts=result.attempts, error=error,
+                     latency_ms=int((time.monotonic() - started) * 1000))
+    except Exception:  # noqa: BLE001 - the trace never changes how a call ends
+        pass
+
+
 _pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="outside-call")
 
 
@@ -164,22 +217,25 @@ def call_outside(
         result.latency_ms = int((time.monotonic() - started) * 1000)
         return result
 
-    if demo and not live_first:
-        return from_fixture("DEMO_MODE is on")
+    with _traced(service, request, result, demo):  # GET /runs/{id}/trace
+        if demo and not live_first:
+            return from_fixture("DEMO_MODE is on")
 
-    for _ in range(1 + max(0, retries)):
-        result.attempts += 1
-        try:
-            response = _live_once(fn, request, timeout)
-        except Exception as e:  # noqa: BLE001 - any failure counts; the next step is retry, then fixture
-            result.errors.append(f"{type(e).__name__}: {e}")
-            continue
-        if record:
-            save_fixture(service, key, request, response, fixtures_dir)
-        result.response, result.source = response, "live"
-        result.latency_ms = int((time.monotonic() - started) * 1000)
-        return result
-    return from_fixture(f"live failed {result.attempts}x ({result.errors[-1]})")
+        for _ in range(1 + max(0, retries)):
+            result.attempts += 1
+            try:
+                response = _live_once(fn, request, timeout)
+            except Exception as e:  # noqa: BLE001 - any failure counts; the next step is retry, then fixture
+                result.errors.append(f"{type(e).__name__}: {e}")
+                continue
+            if isinstance(response, Metered):
+                response, result.usage, result.model = response.response, response.usage, response.model
+            if record:
+                save_fixture(service, key, request, response, fixtures_dir)
+            result.response, result.source = response, "live"
+            result.latency_ms = int((time.monotonic() - started) * 1000)
+            return result
+        return from_fixture(f"live failed {result.attempts}x ({result.errors[-1]})")
 
 
 async def acall_outside(
@@ -213,19 +269,22 @@ async def acall_outside(
         result.latency_ms = int((time.monotonic() - started) * 1000)
         return result
 
-    if demo and not live_first:
-        return await from_fixture("DEMO_MODE is on")
+    with _traced(service, request, result, demo):
+        if demo and not live_first:
+            return await from_fixture("DEMO_MODE is on")
 
-    for _ in range(1 + max(0, retries)):
-        result.attempts += 1
-        try:
-            response = await asyncio.wait_for(fn(request, timeout), timeout)
-        except Exception as e:  # noqa: BLE001
-            result.errors.append(f"{type(e).__name__}: {e or 'timed out'}")
-            continue
-        if record:
-            save_fixture(service, key, request, response, fixtures_dir)
-        result.response, result.source = response, "live"
-        result.latency_ms = int((time.monotonic() - started) * 1000)
-        return result
-    return await from_fixture(f"live failed {result.attempts}x ({result.errors[-1]})")
+        for _ in range(1 + max(0, retries)):
+            result.attempts += 1
+            try:
+                response = await asyncio.wait_for(fn(request, timeout), timeout)
+            except Exception as e:  # noqa: BLE001
+                result.errors.append(f"{type(e).__name__}: {e or 'timed out'}")
+                continue
+            if isinstance(response, Metered):
+                response, result.usage, result.model = response.response, response.usage, response.model
+            if record:
+                save_fixture(service, key, request, response, fixtures_dir)
+            result.response, result.source = response, "live"
+            result.latency_ms = int((time.monotonic() - started) * 1000)
+            return result
+        return await from_fixture(f"live failed {result.attempts}x ({result.errors[-1]})")

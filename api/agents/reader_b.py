@@ -51,7 +51,19 @@ def gemini_models() -> list[str]:
     return list(dict.fromkeys((gemini_model(), fallback)))
 
 
-def _ask_gemini(gemini, model: str, user: str, timeout: float) -> dict:
+def usage_of(response) -> dict | None:
+    """The tokens a Gemini response used, for the run's trace: the prompt, and everything generated (the answer
+    and any thinking; thinking_tokens says how much of it was thinking)."""
+    u = getattr(response, "usage_metadata", None)
+    if u is None:
+        return None
+    thinking = getattr(u, "thoughts_token_count", None) or 0
+    out = {"input_tokens": int(getattr(u, "prompt_token_count", None) or 0),
+           "output_tokens": int((getattr(u, "candidates_token_count", None) or 0) + thinking)}
+    return {**out, "thinking_tokens": int(thinking)} if thinking else out
+
+
+def _ask_gemini(gemini, model: str, user: str, timeout: float) -> replay.Metered:
     from google.genai import types
 
     if gemini is None:
@@ -62,7 +74,8 @@ def _ask_gemini(gemini, model: str, user: str, timeout: float) -> dict:
     response = gemini.models.generate_content(model=model, contents=user, config=types.GenerateContentConfig(
         system_instruction=PROMPT, response_mime_type="application/json",
         response_json_schema=LLMOutput.model_json_schema()))
-    return json.loads(response.text)
+    served = getattr(response, "model_version", None)
+    return replay.Metered(json.loads(response.text), usage_of(response), served if isinstance(served, str) else None)
 
 
 def _gemini(doc_id: str, user: str, check, gemini, live_first: bool):
