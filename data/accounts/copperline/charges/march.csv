@@ -1,0 +1,10 @@
+charge_id,ref,code,description,product,units,rate,amount,period_start,period_end,line_ref,deducted_on
+W1,8840135-SA,SA,New Store/Club Discount 10%: PO 8840135 (Store 5821),Copperline Nesting Mixing Bowls,1,340.80,340.80,2026-03-01,2026-03-31,,2026-04-10
+W2,8840151-SA,SA,New Store/Club Discount 10%: PO 8840151,Copperline Nesting Mixing Bowls,1,1278.00,1278.00,2026-03-01,2026-03-31,,2026-04-10
+W3,8840177-NW,NW,New Distribution Center discount 12%: PO 8840177 (DC 6099),Copperline Pour-Over Kettle,1,2184.00,2184.00,2026-03-01,2026-03-31,,2026-04-10
+W4,CH-2603-DM,DM,Defective/Returned Mdse. Allowance 1.5%: invoice CH-2603,none,1,1255.62,1255.62,2026-03-01,2026-03-31,,2026-04-10
+W5,RJ-26-031804,RJ,Rejection: 60 kettles on PO 8840190 at price + 15%,Copperline Pour-Over Kettle,1,1569.75,1569.75,2026-03-01,2026-03-31,,2026-04-10
+W6,FN-26-032611,FN,Late delivery assessment 3%: PO 8840204,none,1,331.20,331.20,2026-03-01,2026-03-31,,2026-04-10
+W7,FN-26-032714,FN,ASN compliance assessment: PO 8840229,none,1,250.00,250.00,2026-03-01,2026-03-31,,2026-04-10
+W8,RC-FY26-0305,RT,Return Center fiscal year-end claim FY2026,none,1,2061.72,2061.72,2025-02-01,2026-01-31,,2026-04-10
+W9,IN-26-033102,IN,Interest 12% per annum: debit balance DB-2601-0097,none,1,63.90,63.90,2026-02-14,2026-03-09,,2026-04-10

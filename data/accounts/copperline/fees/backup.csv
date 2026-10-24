@@ -1,0 +1,11 @@
+deduction_ref,on,group,description,base_amount,pass_through,units,cartons,days,proof_doc
+8840135-SA,2026-02-25,8840135,"10% of PO 8840135, New Store 5821",3408.00,0,240,0,,
+8840151-SA,2026-02-27,8840151,"10% of PO 8840151, New Store discount",12780.00,0,900,0,,
+8840177-NW,2026-03-02,8840177,"12% of PO 8840177, New DC 6099",18200.00,0,800,0,,
+CH-2603-DM,2026-03-31,CH-2603,1.5% of invoice CH-2603,83708.00,0,0,0,,
+RJ-26-031804,2026-03-18,8840190,"60 kettles rejected at $22.75, plus a 15% rejection allowance",1365.00,1365.00,60,0,,copperline-walmart-rejection-2026-03-18
+FN-26-032611,2026-03-26,8840204,"Late delivery, 3% of PO cost",11040.00,0,0,0,,copperline-walmart-fine-2026-03-26
+FN-26-032714,2026-03-27,8840229,ASN after arrival,0,0,0,0,,copperline-walmart-fine-2026-03-27
+RC-FY26-0305,2026-03-05,FY2026,"366 units returned at current cost, plus 10% handling",6522.00,6522.00,366,0,,copperline-return-center-claim-2026-03-05
+RC-FY26-0305,2026-03-05,FY2026,Less the Defective/Returned Mdse. Allowance taken in FY2026,0,-5112.48,0,0,,copperline-return-center-claim-2026-03-05
+IN-26-033102,2026-03-31,DB-2601-0097,"12% per annum on $8,450.00",8450.00,0,0,0,23,copperline-walmart-interest-2026-03-31

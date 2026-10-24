@@ -1,0 +1,9 @@
+charge_id,ref,code,description,product,units,rate,amount,period_start,period_end,line_ref,deducted_on
+F1,CB0418822,OV,"Overage: PO 4500912, 12,000 units over",Fizzwick Squish Pals 4-Pack,1,1360.00,1360.00,2026-03-01,2026-03-31,,2026-03-25
+F2,CB0418830,OV,"Overage: PO 4500815, 700 units over",Fizzwick Glow Slime Kit,1,164.75,164.75,2026-03-01,2026-03-31,,2026-03-11
+F3,CB0418847,CM,Incorrect carton marking: PO 4500877,Fizzwick Pocket Fidget Cube,1,1192.00,1192.00,2026-03-01,2026-03-31,,2026-03-21
+F4,CB0418851,MA,Missed appointment w/o communication: PO 4500893,Fizzwick Pocket Fidget Cube,1,590.00,590.00,2026-03-01,2026-03-31,,2026-03-24
+F5,CB0418866,LS,Late shipment (after cancel date): PO 4500861,Fizzwick Glow Slime Kit,1,840.00,840.00,2026-03-01,2026-03-31,,2026-03-20
+F6,CB0418870,DU,"Import documents late: PO 4500788, 3 documents",Fizzwick Glow Slime Kit,1,400.00,400.00,2026-03-01,2026-03-31,,2026-03-06
+F7,CB0418885,AP,Appointment not made 48 hours ahead: PO 4500902,Fizzwick Squish Pals 4-Pack,1,400.00,400.00,2026-03-01,2026-03-31,,2026-03-19
+F8,CB0418893,BO,"Backorder (short ship): PO 4500920, 1,000 units",Fizzwick Glow Slime Kit,1,192.50,192.50,2026-03-01,2026-03-31,,2026-03-26
