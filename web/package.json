@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:mock": "node mock/dev.mjs",
+    "mock": "node mock/server.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

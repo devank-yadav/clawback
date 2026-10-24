@@ -1,89 +1,96 @@
 # Clawback web
 
-Next.js 16 front end for Clawback. The workspace screens (Overview, Payments, Approvals, Rules) come from the v0 export Rishi approved; they display events from `api/contracts.py` and never compute money or call an AI model.
+Next.js 16 front end for Clawback. Every brand account gets its own workspace: a business overview, the live analysis
+of the current payment, approvals, rules, and the tools beside them. Screens display what the API sends; they never
+compute money or call an AI model.
 
 ## Run it
 
 - Runtime: Node.js 22 (the same as `web/Dockerfile`).
-- Package manager: **npm** (`package-lock.json` is the only lockfile; the v0 export's pnpm files were not carried over).
+- Package manager: **npm** (`package-lock.json` is the only lockfile).
 
 ```bash
 cd web
-npm ci            # or npm install
-npm run dev       # http://localhost:3000, fixture mode, no keys and no backend needed
+npm ci
+npm run dev        # http://localhost:3000 against the API at NEXT_PUBLIC_API_BASE (default http://localhost:8000, `make api`)
+npm run dev:mock   # no backend needed: a mock API on :8010 (web/mock/) plus next dev pointed at it
 npm run lint
 npm run build && npm start
 ```
 
-| Route | What it is |
-| --- | --- |
-| `/` | The workspace: Overview, Payments (filters, evidence panel), Approvals, Rules. Navigation is in-page state, not URLs. |
-| `/portal` | Northmart's own look (separate layout); the judge replies to dispute D-0417 here. Needs the API. |
-| `/results` `/april` `/coach` `/scenario` `/audit` | Totals and QuickBooks posts, the April replay, Deal Coach redlines, the judge's own clause, and the audit log. |
-| `/board/demo` | The earlier review board (before the v0 screens), kept working on the recorded run. It has its own root layout and styles. |
+`npm run dev:mock` is for working on screens without the backend. It serves the same contract shapes for four
+accounts (Peak Bar Co. replays the recorded run in `web/fixtures/`; three more brands get generated runs with
+shortage, pricing and spoilage charges). Optional env for it: `MOCK_SPEED` (1 = live-like pacing, 0.2 = fast),
+`MOCK_ADMIN_TOKEN`, `MOCK_OWNER_TOKEN` / `MOCK_CONTROLLER_TOKEN` (to try the sign-in and the reset prompt), and
+`MOCK_RUNS_PER_VISITOR` (to try the per-visitor limit). The app itself never imports the mock.
 
 ## Environment variables
 
-Names only; real values never go in the repo (`.env*` is ignored). Both are read at **build time** (`NEXT_PUBLIC_*`), so restart `npm run dev` after changing them.
+Names only; real values never go in the repo (`.env*` is ignored). Read at **build time** (`NEXT_PUBLIC_*`).
 
 | Name | Example | Meaning |
 | --- | --- | --- |
-| `NEXT_PUBLIC_DATA_SOURCE` | `fixture` (default) or `live` | `fixture` replays `web/fixtures/`. `live` starts a run on the API and follows its event stream. |
-| `NEXT_PUBLIC_API_BASE` | `http://localhost:8000` (default) | Where the API is. `web/Dockerfile` sets `/api` for the deployed domain behind Caddy. Only used when `live`. |
+| `NEXT_PUBLIC_API_BASE` | `http://localhost:8000` (default) | Where the API is. `web/Dockerfile` sets `/api` for the deployed domain behind Caddy. |
 
-Put them in `web/.env.local`, for example:
+## Routes
 
-```
-NEXT_PUBLIC_DATA_SOURCE=live
-NEXT_PUBLIC_API_BASE=http://localhost:8000
-```
+Every route takes `?account=<id>` (the brand menu, top left, switches it; links keep it). Without one, the first
+account from `GET /accounts` is used.
 
-## Fixtures versus live
+| Route | What it is |
+| --- | --- |
+| `/?view=overview` | Business overview: 6-month KPIs, invoiced vs paid vs deducted by month, deductions by type, recent remittances, the current payment and “<Distributor> pays” |
+| `/?view=payments` | The current payment's analysis: live progress, every charge, the evidence panel and **How Clawback decided** (`&charge=C1` opens one) |
+| `/?view=approvals` · `/?view=rules` | The controller's credit memo · the owner's saved rules |
+| `/results` `/april` `/coach` `/scenario` `/audit` | Results and the accuracy check, next month under saved rules, Deal coach, a pasted clause, the audit log |
+| `/portal` | The distributor's own portal (its name and colors from the account), opened in a new tab; `&dispute=` picks the dispute |
+| `/board/*` | Redirects to Payments (the earlier fixture board was folded in) |
 
-**Fixture mode (default).** `lib/useRunEvents.ts` replays `fixtures/run-events.json` and stops where a person has to act: the owner's answer, then the controller's reply. "Confirm rule as Dana Okafor" plays the recorded answer; Approve plays `run-events.json` to the end; Refuse plays `refusal-events.json`. The sidebar says "Fixture data · no backend". Nothing leaves the browser: no dispute is filed, no message is sent, and the approval says "Simulated posted".
-
-**Live mode.** The same screens, fed by the API:
+## Calls
 
 | Screen action | Call |
 | --- | --- |
-| Open or refresh the app | `GET /runs/latest` (404 = no run yet), then `GET /runs/{id}/events` (SSE; resumes with `Last-Event-ID` / `?after=`). Never starts a run. |
-| "Northmart pays" | `POST /payments/northmart`, then follow the run it started (the only thing that starts a run) |
-| Evidence panel | `GET /charges/{id}?run_id=` |
-| Confirm rule | `POST /questions/{id}/answer` with the text "accept if notice is at least 14 days" |
-| Approve or refuse | `POST /approvals/{id}` with `{approve, note}` |
-| Reset fictional demo | `POST /demo/reset`, then wait for "Northmart pays" |
+| Brand menu, every page | `GET /accounts` (cached for the page) |
+| Overview | `GET /accounts/{id}/overview`, read again as the run moves (dispute filed, entry posted) |
+| Open or reload | `GET /runs/latest?account=` (404 = no payment yet), then `GET /runs/{id}/events` (SSE, resumes with `Last-Event-ID` / `?after=`). Never starts a run. |
+| “<Distributor> pays” | `POST /payments/{account}`, once per click; with Nessie the run id may be null, then `GET /runs/latest?account=` is polled |
+| Evidence panel | `GET /charges/{id}?run_id=`; a clicked number not in its list: `GET /evidence/{id}?run_id=` |
+| How Clawback decided | `GET /runs/{id}/trace?charge_id=` and `GET /runs/{id}/trace/summary` |
+| Owner's answer | `POST /questions/{id}/answer` with `X-Clawback-Role-Token` (the owner's access code) |
+| Controller's yes or no | `POST /approvals/{id}` `{approve, note}` with `X-Clawback-Role-Token` (the controller's access code) |
+| Reset workspace | `POST /demo/reset`; a 401 asks for the admin token and retries with `Authorization: Bearer` |
+| Portal | `GET /portal/disputes/{id}`, `/messages`, `/portal/presets?account=&dispute_id=`; `POST …/messages` |
+| Next month · Coach · Try a clause | `POST /replay/april?account=` · `POST /coach?account=` · `GET /scenario/examples`, `POST /scenario` |
+| Results · Audit | `GET /eval/latest` · `GET /audit?account=`, `GET /audit/verify` |
 
-In live mode a step shows as done only when its event arrives from the stream, never because a button was clicked. Local API: `make api` (port 8000). The API's CORS list allows only `http://localhost:3000` and `PUBLIC_BASE_URL`, so run live mode locally on port 3000.
+**Sign-in.** “Sign in as owner / controller” (brand menu) asks for that role's access code once and keeps it for the
+browser tab (sessionStorage). A local API has no codes, so it can be left empty. Answering or approving as the wrong
+role opens the right sign-in first; a 401 asks again (“Only the controller can approve this”).
 
-Always labelled as demo data, in both modes: the people (Dana Okafor, Sam Reyes), the brand, the deal text and the evidence excerpts. The "Demo role" switch in the Peak Bar Co. menu is a presentation control only (no authentication); it just decides which of the two buttons is enabled.
+**Limits.** A 429 from a payment, a next-month run, the coach, a pasted clause or a portal reply shows the API's own
+words (“That's the limit for now…”), not an error, with “Use admin token”. Once the presenter enters the admin token
+it is sent as `Authorization: Bearer` on those calls and on resets for the rest of the tab.
 
-## What the screens show, and where it comes from
-
-- Invoiced, received, deducted: the `run` event's remittance.
-- Disputed, accepted, waiting: the latest `totals` event. C1 stays one split charge ($1,800 charged, $1,200 accepted, $600 disputed) from its `decision` event.
-- Before the owner answers: $4,120 / $1,530 / $1,200. After: $4,120 / $2,730 / $0.
-- Disputed money is shown as "Being challenged · Not recovered". "Disputes proposed · Not filed" is shown unless the stream carries a filed dispute in live mode.
-- The owner's policy (Rules) and the controller's accounting approval (Approvals) are separate steps with separate buttons.
-- The only arithmetic in the front end is `share()` in `lib/format.ts`, for bar widths.
+A step shows as done only when its event arrives from the stream, never because a button was clicked.
 
 ## Layout
 
 ```
-app/(workspace)/   layout (Manrope), base.css (Tailwind + v0 tokens), workspace.css (the v0 styles, unchanged)
-app/(board)/       the earlier board, with its own root layout and globals.css
-components/workspace/   clawback-app.tsx (screens), charge-workspace.tsx (charge list, evidence panel)
-lib/useRunEvents.ts     event reducer + fixture replay + live stream
-lib/workspace.ts        turns events into what the screens show (wording only, no money math)
-lib/live.ts             the API calls above
-lib/fixture.ts, fixtures/   recorded runs (written by `python -m api.stubs.fixtures`; do not hand-edit)
+app/(workspace)/   layout, base.css (Tailwind + v0 tokens), workspace.css (the v0 styles), app.css (multi-account additions)
+app/(portal)/      the distributor portal, its own layout and portal.css (colors from the account)
+components/shell/  AppShell (brand menu, navigation, sign-in, reset), SessionDialogs, ShellFallback
+components/workspace/  clawback-app (views), charge-workspace (charges, evidence panel), decision-trace,
+                   run-progress, charts (SVG, no library), evidence-parts
+components/tools/  ToolFrame + Results, Next month, Deal coach, Try a clause, Audit log
+lib/api.ts         every API call; lib/accounts.ts (account from the URL, code labels); lib/session.ts (roles, prompts)
+lib/useRunEvents.ts  event reducer + live stream per account; lib/workspace.ts (wording only, no money math)
+mock/              dev-only mock API (npm run dev:mock)
 ```
 
-## Known limitations and backend needs
+`web/fixtures/` holds recorded runs the API's tests and Dockerfile read (written by `python -m api.stubs.fixtures`;
+do not hand-edit). The web app doesn't import them; the mock replays them.
 
-- Fixture mode replays one recording. The owner's reply is the recorded one, and a refusal shows the recorded note from `refusal-events.json`, not what you typed (nothing is sent). Live mode sends your note to `POST /approvals/{id}` and shows what the API recorded.
-- A failed or held QuickBooks post is shown with the API's note.
-- `/results`, `/april`, `/coach`, `/scenario`, `/audit` and `/portal` are separate routes (header links on each). Results, April, Coach and Audit also show the recordings in fixture mode; the scenario box, the eval score and the chain check need the API (live mode).
-- Live runs' math lines currently carry no `evidence_id`, so the numbers on the live evidence panel are not clickable yet (they are in fixture mode). Needs Devank.
-- `/board/<run id>` follows that run in live mode; `/board/demo` follows the latest one.
-- On Windows the API's live pipeline fails at `api/evidence.py` (`%-d` in `strftime` works on Linux and macOS only). Needs Devank; use WSL, Docker, or fixture mode until then.
-- Evidence text is the recorded excerpt. Ledger posts from the fixture have no QuickBooks id, so they are labelled "Simulated posted".
+## Phone
+
+Every screen works at 375 px with no horizontal scroll; tap targets are at least 44 px there. Wide tables (deliveries,
+price lists, remittances) scroll inside their own box.

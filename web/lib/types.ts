@@ -4,12 +4,14 @@
 export type Money = number;
 export type Actor =
   | "system" | "reader" | "investigator" | "gate" | "negotiator" | "bookkeeper" | "coach"
-  | "owner" | "controller" | "northmart" | "policy";
+  | "owner" | "controller" | "northmart" | "distributor" | "policy";
 export type Role = "owner" | "controller";
 export type DecisionKind = "dispute" | "accept" | "split" | "ask" | "skip";
+// The engine adds finding types as charge types grow (shortages, pricing, spoilage); unknown ones still render.
 export type FindingType =
   | "rate_over" | "duplicate" | "outside_dates" | "amended_by_email" | "over_cap"
-  | "product_not_covered" | "discretionary_fee" | "matches_deal";
+  | "product_not_covered" | "discretionary_fee" | "matches_deal"
+  | (string & {});
 export type TermType = "promo_rate" | "product_scope" | "unit_cap" | "date_range" | "fee_discretion" | "amendment";
 
 export type Remittance = {
@@ -39,7 +41,10 @@ export type Charge = {
   notice_date: string | null;
 };
 
-export type EvidenceKind = "clause" | "email" | "claim" | "notice" | "sales" | "charge" | "prior_payment" | "rule" | "person" | "approval";
+/** delivery: proof-of-delivery rows; price: the agreed price list; policy: a quote from a deal document's policy section. */
+export type EvidenceKind =
+  | "clause" | "email" | "claim" | "notice" | "sales" | "charge" | "prior_payment" | "rule" | "person" | "approval"
+  | "delivery" | "price" | "policy";
 
 export type Quote = {
   doc_id: string;
@@ -173,7 +178,8 @@ export type Dispute = {
 export type PortalMessage = {
   id: string;
   dispute_id: string;
-  from_party: "northmart" | "clawback";
+  /** "clawback" is the brand's side; anything else is the distributor's desk. */
+  from_party: "northmart" | "distributor" | "clawback" | (string & {});
   text: string;
   attachment_doc_id: string | null;
   classification: "new_document" | "claim_without_document" | "agrees" | "other" | null;
@@ -243,14 +249,6 @@ export type ChargeDetail = {
   evidence: Evidence[];
 };
 
-/** web/fixtures/run-events.json and friends. */
-export type RunFixture = {
-  run_id: string;
-  events: RunEvent[];
-  charges: Record<string, ChargeDetail>;
-  evidence: Record<string, Evidence>;
-};
-
 // ---- Coach, scenario box, eval, audit (api/contracts.py)
 export type Redline = {
   clause_ref: string;
@@ -278,7 +276,7 @@ export type EvalReport = {
 export type ScenarioCharge = {
   description: string;
   amount: Money;
-  code?: "PA" | "DF" | null;
+  code?: string | null;
   product?: string | null;
   units?: number | null;
   rate?: number | null;
@@ -322,3 +320,64 @@ export type AuditEntry = {
   hash: string;
 };
 export type AuditVerify = { ok: boolean; checked: number; broken_at: number | null; reason: string };
+
+// ---- Accounts, overview and the decision trace (GET /accounts, /accounts/{id}/overview, /runs/{id}/trace)
+export type Colors = { primary: string; accent: string };
+
+export type Account = {
+  id: string;
+  brand: {
+    name: string;
+    kind: string;
+    city: string;
+    initials: string;
+    colors: Colors;
+    owner: { name: string; email: string };
+    controller: { name: string };
+  };
+  distributor: { name: string; desk_email: string; portal_name: string; colors: Colors };
+  invoice: { id: string; expected: Money; received: Money; month: string; period_start: string; period_end: string };
+  latest_run_id: string | null;
+};
+
+export type Overview = {
+  account: Account;
+  kpis: {
+    invoiced_6m: Money;
+    collected_6m: Money;
+    deducted_6m: Money;
+    recovered_6m: Money;
+    /** A fraction (0.42); a value above 1 is read as a percent. */
+    recovery_rate: number;
+    /** A count of open disputes. */
+    open_disputes: number;
+    open_balance: Money;
+  };
+  months: { month: string; invoiced: Money; paid: Money; deducted: Money; recovered: Money }[];
+  deductions_by_type: { code: string; label: string; count: number; amount: Money }[];
+  recent_remittances: { date: string; invoice: string; paid: Money; deducted: Money }[];
+  current: { invoice: string; expected: Money; received: Money; deducted: Money; run_id: string | null; status: string };
+};
+
+/** One AI call in a run, as GET /runs/{id}/trace returns it. */
+export type TraceStep = {
+  seq: number;
+  at: string;
+  agent: string;
+  service: string;
+  run_id: string;
+  charge_id: string | null;
+  model: string | null;
+  prompt: string | null;
+  input: unknown;
+  output: unknown;
+  latency_ms: number | null;
+  status: "live" | "recorded" | "failed";
+  attempts: number;
+  error: string | null;
+  /** Tokens the call used, when the API reports them ({input_tokens, output_tokens} or similar). */
+  usage?: Record<string, number | null> | null;
+};
+
+/** GET /runs/{id}/trace/summary: totals for a whole run. Field names are read loosely (see lib/trace.ts). */
+export type TraceSummary = Record<string, unknown>;

@@ -1,12 +1,13 @@
-import ToolShell from "@/components/tools/ToolShell";
+import { Suspense } from "react";
+import ShellFallback from "@/components/shell/ShellFallback";
 import CoachApp from "@/components/tools/CoachApp";
 
-export const metadata = { title: "Deal Coach · Clawback" };
+export const metadata = { title: "Deal coach · Clawback" };
 
 export default function Page() {
   return (
-    <ToolShell title="Deal Coach" lead="Redlines for next month&apos;s draft, each tied to what a clause cost." current="/coach">
+    <Suspense fallback={<ShellFallback />}>
       <CoachApp />
-    </ToolShell>
+    </Suspense>
   );
 }

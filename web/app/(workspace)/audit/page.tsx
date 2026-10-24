@@ -1,12 +1,13 @@
-import ToolShell from "@/components/tools/ToolShell";
+import { Suspense } from "react";
+import ShellFallback from "@/components/shell/ShellFallback";
 import AuditApp from "@/components/tools/AuditApp";
 
 export const metadata = { title: "Audit log · Clawback" };
 
 export default function Page() {
   return (
-    <ToolShell title="Audit log" lead="Every action, who did it, and the hash chain that proves nothing was edited." current="/audit">
+    <Suspense fallback={<ShellFallback />}>
       <AuditApp />
-    </ToolShell>
+    </Suspense>
   );
 }

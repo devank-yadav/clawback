@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { eventsAfter, replayDelay, waitsForPerson } from "./fixture";
-import { OWNER_RULE_REPLY } from "./cast";
-import * as api from "./live";
+import * as api from "./api";
+import { asRole, limitMessage } from "./session";
 import type {
   Answer,
   Approval,
@@ -121,102 +120,48 @@ function reduce(state: RunState, action: Action): RunState {
   }
 }
 
-/** "fixture" replays web/fixtures/ (no backend, no keys); "live" follows the FastAPI event stream. */
-export type DataSource = "fixture" | "live";
-export const DATA_SOURCE: DataSource = process.env.NEXT_PUBLIC_DATA_SOURCE === "live" ? "live" : "fixture";
-
 /**
- * Folds the run's event stream into screen state.
- * fixture: replays web/fixtures/ and pauses wherever a person has to act; the two actions continue the recording.
- * live: attaches to GET /runs/latest (or the run id in the URL) and follows GET /runs/{id}/events, resuming from the last event id;
- * only startPayment() ("Northmart pays") starts a run. The actions POST to the API
- * and the result comes back as events, so the screen never claims something happened before the API says so.
+ * Folds one account's run into screen state. Attaches to GET /runs/latest?account= (or the run id given) and follows
+ * GET /runs/{id}/events, resuming from the last event id. Only startPayment() ("<Distributor> pays") starts a run, so a
+ * reload re-attaches instead of repeating the work. The actions POST to the API and their results come back as
+ * events, so the screen never claims something happened before the API says so.
  */
-export function useRunEvents(runId: string, source: DataSource = DATA_SOURCE, staticEvents?: RunEvent[]) {
+export function useRunEvents(account: string | null, runId: string = "latest") {
   const [state, dispatch] = useReducer(reduce, initial);
   const [epoch, setEpoch] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const timers = useRef<number[]>([]);
-  const busy = useRef(false);
-  const last = useRef<RunEvent | undefined>(undefined);
   const lastSeen = useRef(0);
-  const [target, setTarget] = useState<{ epoch: number; run: api.StartedRun | null } | null>(null);
+  const [target, setTarget] = useState<{ key: string; run: api.StartedRun | null } | null>(null);
   const [starting, setStarting] = useState(false);
+  /** The site's per-visitor limit refused the payment (a 429): friendly words, not an error. */
+  const [limited, setLimited] = useState<string | null>(null);
+  const paying = useRef(false);
+  const key = `${account}:${runId}:${epoch}`;
 
-  /** Plays events until the next point where a person must act (or the end). */
-  const play = useCallback((events: RunEvent[], resume = false) => {
-    let wait = 0;
-    let i = 0;
-    busy.current = true;
-    dispatch({ kind: "playing", on: true });
-    for (; i < events.length; i++) {
-      const e = events[i];
-      if (i > 0 && waitsForPerson(e)) break;
-      if (i === 0 && waitsForPerson(e) && !resume) break;
-      wait += replayDelay(last.current, e);
-      last.current = e;
-      timers.current.push(window.setTimeout(() => dispatch({ kind: "event", event: e }), wait));
-    }
-    timers.current.push(
-      window.setTimeout(() => {
-        busy.current = false;
-        dispatch({ kind: "playing", on: false });
-      }, wait),
-    );
-  }, []);
-
+  // Find the run to follow. "latest" means the account's newest run; any other id is that run.
   useEffect(() => {
-    dispatch({ kind: "reset" });
-    // Deferred so every setState here happens outside the effect body.
-    const clear = window.setTimeout(() => setError(null), 0);
-    last.current = undefined;
-    busy.current = false;
-
-    if (source === "fixture" && staticEvents) {
-      // An outcome screen (Results, April): the whole recording at once, no waiting on people.
-      const timer = window.setTimeout(() => staticEvents.forEach((event) => dispatch({ kind: "event", event })), 0);
-      return () => {
-        window.clearTimeout(clear);
-        window.clearTimeout(timer);
-      };
-    }
-
-    if (source === "fixture") {
-      play(eventsAfter(0));
-      const pending = timers.current;
-      return () => {
-        window.clearTimeout(clear);
-        pending.forEach((t) => window.clearTimeout(t));
-        timers.current = [];
-        busy.current = false;
-      };
-    }
-
-    return () => {
-      window.clearTimeout(clear);
-    };
-  }, [runId, source, epoch, play, staticEvents]);
-
-  // Live: find the run to follow. "demo" and "latest" mean whatever run is newest; any other id is that run.
-  // Nothing here starts a run: only startPayment() does, so a refresh re-attaches instead of repeating the work.
-  useEffect(() => {
-    if (source !== "live") return;
+    if (!account) return;
     let cancelled = false;
-    const resolve = runId === "demo" || runId === "latest" ? api.latestRun() : Promise.resolve(api.runRef(runId));
+    const resolve = runId === "latest" ? api.latestRun(account) : Promise.resolve(api.runRef(runId));
     resolve.then(
-      (run) => !cancelled && setTarget({ epoch, run }),
-      (e: Error) => !cancelled && setError(`Can't reach the Clawback API (${e.message}). Check NEXT_PUBLIC_API_BASE.`),
+      (run) => {
+        if (cancelled) return;
+        setTarget({ key, run });
+        setError(null);
+      },
+      (e: Error) => !cancelled && setError(api.unreachable(e)),
     );
     return () => {
       cancelled = true;
     };
-  }, [runId, source, epoch]);
+  }, [account, runId, key]);
 
-  const followed = target?.epoch === epoch ? target.run : undefined;
-  const followedId = followed?.run_id;
+  const followed = target?.key === key ? target.run : undefined;
   const eventsUrl = followed?.events_url;
   useEffect(() => {
-    if (source !== "live" || !eventsUrl) return;
+    dispatch({ kind: "reset" });
+    lastSeen.current = 0;
+    if (!eventsUrl) return;
     let stream: EventSource | null = null;
     let retry: number | undefined;
     let cancelled = false;
@@ -236,12 +181,10 @@ export function useRunEvents(runId: string, source: DataSource = DATA_SOURCE, st
       };
       es.onopen = () => setError(null);
       es.onerror = () => {
-        setError("Lost the connection to the Clawback API. Reconnecting…");
+        setError("Lost the connection to Clawback. Reconnecting…");
         if (es.readyState === EventSource.CLOSED && !cancelled) retry = window.setTimeout(connect, 2000);
       };
     };
-    lastSeen.current = 0;
-    dispatch({ kind: "reset" });
     connect();
     dispatch({ kind: "playing", on: true });
     return () => {
@@ -249,70 +192,61 @@ export function useRunEvents(runId: string, source: DataSource = DATA_SOURCE, st
       window.clearTimeout(retry);
       stream?.close();
     };
-  }, [source, eventsUrl, followedId]);
+  }, [eventsUrl, key]);
 
-  const fail = (e: Error) => setError(`The API didn't accept that action (${e.message}).`);
+  const fail = useCallback((e: Error) => setError(`Clawback didn't accept that action (${e.message}).`), []);
 
+  /** The owner's answer. Only the signed-in owner may send it; the API checks the owner's access code. */
   const answerQuestion = useCallback(
-    (questionId: string, text: string = OWNER_RULE_REPLY) => {
-      if (state.questions[questionId]?.answer) return;
-      if (source === "live") {
-        api.answerQuestion(questionId, text).catch(fail);
-        return;
-      }
-      if (busy.current) return;
-      play(eventsAfter(state.lastEventId), true);
+    (questionId: string, text: string) => {
+      if (state.questions[questionId]?.answer || !text.trim()) return;
+      asRole("owner", (code) => api.answerQuestion(questionId, text.trim(), code), fail);
     },
-    [play, source, state.questions, state.lastEventId],
+    [state.questions, fail],
   );
 
+  /** The controller's yes or no. Only the signed-in controller may send it; the API checks the controller's access code. */
   const controllerDecides = useCallback(
     (approve: boolean, note: string | null = null) => {
       const approval = state.approval;
       if (approval?.status !== "pending") return;
-      if (source === "live") {
-        api.decideApproval(approval.id, approve, note).catch(fail);
-        return;
-      }
-      if (busy.current) return;
-      play(eventsAfter(state.lastEventId, approve ? "approved" : "refused"), true);
+      asRole("controller", (code) => api.decideApproval(approval.id, approve, note, code), fail);
     },
-    [play, source, state.approval, state.lastEventId],
+    [state.approval, fail],
   );
 
-  /** "Northmart pays" (live only): POST /payments/northmart, then follow the run it started. */
+  /** "<Distributor> pays": one POST /payments/{account} per click, then follow the run it started. */
   const startPayment = useCallback(async () => {
-    if (source !== "live" || starting) return;
+    if (!account || paying.current) return;
+    paying.current = true;
     setStarting(true);
+    setLimited(null);
     try {
-      const paid = await api.northmartPays();
+      const paid = await api.accountPays(account);
       let run: api.StartedRun | null = paid.run_id ? api.runRef(paid.run_id) : null;
       // With Nessie the poller starts the run within about 5 seconds of the deposit.
       for (let i = 0; !run && i < 20; i++) {
         await new Promise((r) => setTimeout(r, 1000));
-        run = await api.latestRun();
+        run = await api.latestRun(account);
       }
       if (!run) throw new Error("the deposit was posted but no run has started yet");
-      setTarget({ epoch, run });
+      setTarget({ key, run });
     } catch (e) {
-      fail(e as Error);
+      const limit = limitMessage(e);
+      if (limit) setLimited(limit);
+      else fail(e as Error);
     } finally {
+      paying.current = false;
       setStarting(false);
     }
-  }, [source, starting, epoch]);
+  }, [account, key, fail]);
 
-  /** Back to the start of the demo (live: POST /demo/reset, then wait for the next "Northmart pays"). */
-  const reset = useCallback(() => {
-    if (source === "live") {
-      api.resetDemo().then(() => {
-        dispatch({ kind: "reset" });
-        setEpoch((n) => n + 1);
-      }, fail);
-    } else setEpoch((n) => n + 1);
-  }, [source]);
+  /** Forget the run and look again (after a reset). */
+  const refresh = useCallback(() => setEpoch((n) => n + 1), []);
 
-  /** Live and no run exists yet: the page shows the "Northmart pays" button. */
-  const awaitingPayment = source === "live" && followed === null && !error;
+  /** No run exists yet for this account: the page offers "<Distributor> pays". */
+  const awaitingPayment = !!account && followed === null && !error;
+  const runId_ = followed?.run_id ?? null;
 
-  return { state, answerQuestion, controllerDecides, startPayment, starting, awaitingPayment, reset, source, error };
+  return { state, runId: runId_, answerQuestion, controllerDecides, startPayment, starting, limited, awaitingPayment, refresh, error };
 }

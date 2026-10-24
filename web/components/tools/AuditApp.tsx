@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FIXTURE_AUDIT } from "@/lib/fixture";
-import * as api from "@/lib/live";
-import type { AuditVerify } from "@/lib/types";
+import ToolFrame from "./ToolFrame";
+import * as api from "@/lib/api";
+import type { Account, AuditVerify } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
-import { DATA_SOURCE } from "@/lib/useRunEvents";
 
 const short = (h: string) => (h.length > 12 ? `${h.slice(0, 8)}…${h.slice(-4)}` : h);
 const stamp = (at: string) => {
@@ -13,9 +12,9 @@ const stamp = (at: string) => {
   return Number.isNaN(d.getTime()) ? at : d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit" });
 };
 
-export default function AuditApp() {
-  const log = useFetched(useMemo(() => (DATA_SOURCE === "live" ? api.fetchAudit : null), []));
-  const entries = DATA_SOURCE === "live" ? log.data : FIXTURE_AUDIT;
+function Audit({ account }: { account: Account }) {
+  const log = useFetched(useMemo(() => () => api.fetchAudit(account.id), [account.id]));
+  const entries = log.data;
   const [check, setCheck] = useState<AuditVerify | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,8 +23,7 @@ export default function AuditApp() {
     setBusy(true);
     setError(null);
     try {
-      if (DATA_SOURCE === "live") setCheck(await api.verifyAudit());
-      else setError("The chain check runs on the API; it isn't part of the recorded fixtures.");
+      setCheck(await api.verifyAudit());
     } catch (e) {
       setError(`The check didn't run (${(e as Error).message}).`);
     } finally {
@@ -36,10 +34,10 @@ export default function AuditApp() {
   return (
     <>
       <div className="tool-actions">
-        <button className="primary" onClick={verify} disabled={busy}>{busy ? "Checking…" : "Verify chain"}</button>
+        <button className="primary" onClick={verify} disabled={busy}>{busy ? "Checking…" : "Verify the chain"}</button>
         {check && (
           <span className={`status ${check.ok ? "accepted" : "disputed"}`} role="status">
-            <i />{check.ok ? `Chain intact · ${check.checked} rows checked` : `Broken at row ${check.broken_at ?? "?"}${check.reason ? ` · ${check.reason}` : ""}`}
+            <i />{check.ok ? `Chain intact · ${check.checked} entries checked` : `Broken at entry ${check.broken_at ?? "?"}${check.reason ? ` · ${check.reason}` : ""}`}
           </span>
         )}
       </div>
@@ -63,5 +61,13 @@ export default function AuditApp() {
         {!entries && !log.error && <p className="muted">Loading the log…</p>}
       </section>
     </>
+  );
+}
+
+export default function AuditApp() {
+  return (
+    <ToolFrame href="/audit" title="Audit log" lead={() => "Every action, who or what took it, its evidence, and a hash chain that shows if anything was edited."}>
+      {(account) => <Audit account={account} />}
+    </ToolFrame>
   );
 }

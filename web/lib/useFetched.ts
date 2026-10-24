@@ -1,11 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { unreachable } from "./api";
 
 export type Fetched<T> = { data: T | null; error: string | null; loading: boolean; reload: () => void };
 
-/** Runs `load` on mount (and on reload()). Pass null to skip, for example in fixture mode. State changes only happen in promise callbacks. */
-export function useFetched<T>(load: (() => Promise<T>) | null): Fetched<T> {
+/**
+ * Runs `load` on mount, on reload(), and whenever `key` changes (a run moved on, so its numbers may have too).
+ * Pass null to skip until its inputs are known. The previous data stays on screen while a reload runs.
+ * State changes only happen in promise callbacks.
+ */
+export function useFetched<T>(load: (() => Promise<T>) | null, key = ""): Fetched<T> {
   const [result, setResult] = useState<{ n: number; data: T | null; error: string | null } | null>(null);
   const [n, setN] = useState(0);
 
@@ -14,12 +19,12 @@ export function useFetched<T>(load: (() => Promise<T>) | null): Fetched<T> {
     let cancelled = false;
     load().then(
       (data) => !cancelled && setResult({ n, data, error: null }),
-      (e: Error) => !cancelled && setResult({ n, data: null, error: `Can't reach the Clawback API (${e.message}). Start it with make api, or check NEXT_PUBLIC_API_BASE.` }),
+      (e: Error) => !cancelled && setResult({ n, data: null, error: unreachable(e) }),
     );
     return () => {
       cancelled = true;
     };
-  }, [load, n]);
+  }, [load, n, key]);
 
   const reload = useCallback(() => setN((v) => v + 1), []);
   const current = result?.n === n ? result : null;

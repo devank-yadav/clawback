@@ -1,18 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { APRIL_EVENTS } from "@/lib/fixture";
+import { KeyRound } from "lucide-react";
+import ToolFrame from "./ToolFrame";
 import { dollars } from "@/lib/format";
-import * as api from "@/lib/live";
-import { DATA_SOURCE, useRunEvents } from "@/lib/useRunEvents";
+import * as api from "@/lib/api";
+import { askAdminToken, LIMIT_ADMIN_REASON, limitMessage } from "@/lib/session";
+import type { Account } from "@/lib/types";
+import { useRunEvents } from "@/lib/useRunEvents";
 import { selectWorkspace } from "@/lib/workspace";
 import { ChargeList } from "@/components/workspace/charge-workspace";
 
-/** Follows one April run. Mounted with a run id from POST /replay/april (live) or on its own from the recording (fixture). */
-function AprilRun({ runId }: { runId: string }) {
-  const { state, source, error } = useRunEvents(runId, DATA_SOURCE, DATA_SOURCE === "fixture" ? APRIL_EVENTS : undefined);
-  const view = useMemo(() => selectWorkspace(state, source), [state, source]);
-  const rule = Object.values(state.rules).find((r) => r.status === "active");
+/** Follows one next-month run, started by POST /replay/april. */
+function NextMonthRun({ account, runId }: { account: Account; runId: string }) {
+  const { state, error } = useRunEvents(account.id, runId);
+  const view = useMemo(() => selectWorkspace(state, account), [state, account]);
+  const rules = Object.values(state.rules).filter((r) => r.status === "active");
   const asked = state.totals?.questions ?? Object.keys(state.questions).length;
   const open = Object.values(state.questions).find((q) => !q.answer);
 
@@ -21,53 +24,66 @@ function AprilRun({ runId }: { runId: string }) {
       {error && <p className="feedback error" role="alert">{error}</p>}
       {open && (
         <section className="surface tool-card" aria-label="Question for the owner">
-          <h2>Rule #1 isn&apos;t saved yet</h2>
+          <h2>No saved rule covers this yet</h2>
           <p>{open.text}</p>
-          <p className="muted">Answer it on the workspace first (March), then replay April.</p>
+          <p className="muted">{account.brand.owner.name} answers it once on this month’s payment; next month uses the answer.</p>
         </section>
       )}
-      <section className="surface tool-card" aria-label="April totals">
+      <section className="surface tool-card" aria-label="Next month totals">
         <div className="tool-stats big">
           <div><span>Accepted</span><strong>{dollars(view.totals?.accepted ?? 0)}</strong></div>
-          <div><span>Disputed</span><strong>{dollars(view.totals?.disputed ?? 0)}</strong></div>
+          <div><span>Disputing</span><strong>{dollars(view.totals?.disputed ?? 0)}</strong></div>
           <div><span>Questions asked</span><strong>{asked}</strong></div>
         </div>
-        {rule && <p className="muted">{rule.label} applied: {rule.summary}</p>}
+        {rules.map((r) => <p key={r.id} className="muted">{r.label} applied: {r.summary}</p>)}
       </section>
       <section className="surface preview-section">
-        <div className="list-heading"><div><h2>April fees</h2><p>Decided by the owner&apos;s saved rule, not by asking again.</p></div></div>
-        <ChargeList charges={view.charges} onSelect={() => undefined} preview />
+        <div className="list-heading"><div><h2>Next month’s charges</h2><p>Decided by the rules {account.brand.owner.name} already set, without asking again.</p></div></div>
+        <ChargeList charges={view.charges} onSelect={() => undefined} preview pending={view.remittance ? view.remittance.charge_count - view.charges.length : 0} />
       </section>
-      {view.reviewed && !open && <p className="tool-closing">{asked === 0 ? "0 questions asked." : `${asked} ${asked === 1 ? "question" : "questions"} asked.`}</p>}
+      {view.reviewed && !open && <p className="tool-closing">{asked === 0 ? "No questions asked." : `${asked} ${asked === 1 ? "question" : "questions"} asked.`}</p>}
     </>
   );
 }
 
-export default function AprilApp() {
+function NextMonth({ account }: { account: Account }) {
   const [runId, setRunId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limited, setLimited] = useState<string | null>(null);
 
   async function start() {
     setBusy(true);
     setError(null);
+    setLimited(null);
     try {
-      setRunId((await api.replayApril()).run_id);
+      setRunId((await api.replayNextMonth(account.id)).run_id);
     } catch (e) {
-      setError(`Couldn't start April (${(e as Error).message}).`);
+      const limit = limitMessage(e);
+      if (limit) setLimited(limit);
+      else setError(`Couldn't start next month (${(e as Error).message}).`);
     } finally {
       setBusy(false);
     }
   }
 
-  if (DATA_SOURCE === "fixture") return <AprilRun runId="april" />;
   return (
     <>
       <div className="tool-actions">
-        <button className="primary" onClick={start} disabled={busy}>{busy ? "Starting…" : runId ? "Replay April again" : "Replay April"}</button>
+        <button className="primary" onClick={start} disabled={busy}>{busy ? "Starting…" : runId ? "Run next month again" : "Run next month"}</button>
       </div>
+      {limited && <div className="feedback notice" role="status"><span>{limited}</span><button className="text-button" onClick={() => askAdminToken(LIMIT_ADMIN_REASON, () => void start())}><KeyRound /> Use admin token</button></div>}
       {error && <p className="feedback error" role="alert">{error}</p>}
-      {runId && <AprilRun key={runId} runId={runId} />}
+      {!runId && !busy && <p className="muted">Next month’s charges from {account.distributor.name}, checked with the rules saved so far.</p>}
+      {runId && <NextMonthRun key={runId} account={account} runId={runId} />}
     </>
+  );
+}
+
+export default function AprilApp() {
+  return (
+    <ToolFrame href="/april" title="Next month" lead={(a) => `${a.distributor.name}’s next charges, decided by the rules ${a.brand.owner.name} saved.`}>
+      {(account) => <NextMonth account={account} />}
+    </ToolFrame>
   );
 }

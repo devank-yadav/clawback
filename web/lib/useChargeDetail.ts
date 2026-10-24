@@ -1,18 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { chargeDetail } from "./fixture";
-import { fetchChargeDetail } from "./live";
+import { fetchChargeDetail } from "./api";
 import type { ChargeDetail } from "./types";
-import type { DataSource } from "./useRunEvents";
 
-/** The evidence behind one charge: GET /charges/{id} when live, the recorded fixture otherwise. */
-export function useChargeDetail(chargeId: string, runId: string | undefined, source: DataSource): ChargeDetail | null {
+/** The evidence behind one charge: GET /charges/{id}?run_id=. Refetched when the charge's decision changes. */
+export function useChargeDetail(chargeId: string, runId: string | null | undefined, version = ""): ChargeDetail | null {
   const [fetched, setFetched] = useState<{ key: string; detail: ChargeDetail } | null>(null);
-  const key = `${runId}:${chargeId}`;
+  const key = `${runId}:${chargeId}:${version}`;
 
   useEffect(() => {
-    if (source !== "live" || !runId || !chargeId) return;
+    if (!runId || !chargeId) return;
     let cancelled = false;
     fetchChargeDetail(chargeId, runId).then(
       (detail) => !cancelled && setFetched({ key, detail }),
@@ -21,8 +19,8 @@ export function useChargeDetail(chargeId: string, runId: string | undefined, sou
     return () => {
       cancelled = true;
     };
-  }, [chargeId, runId, source, key]);
+  }, [chargeId, runId, key]);
 
-  if (source === "fixture") return chargeDetail(chargeId);
-  return fetched?.key === key ? fetched.detail : null;
+  // Keep showing the previous answer for the same charge while a newer one loads.
+  return fetched && fetched.key.startsWith(`${runId}:${chargeId}:`) ? fetched.detail : null;
 }
