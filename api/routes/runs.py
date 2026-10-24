@@ -10,13 +10,21 @@ from fastapi.responses import StreamingResponse
 from api.contracts import (
     AnswerRequest, AnswerResponse, ChargeDetail, Evidence, RunFixture, StartRunRequest, StartRunResponse, Summary,
 )
+from api.routes import portal
 from api.stubs import fixtures
 
 router = APIRouter(tags=["runs"])
 
 
 def _runs() -> dict[str, RunFixture]:
-    return {f.run_id: f for f in (fixtures.march_run(), fixtures.april_run())}
+    return {f.run_id: f for f in (fixtures.march_run(), fixtures.refused_run(), fixtures.april_run())}
+
+
+def _events(run: RunFixture) -> list:
+    """The run's events so far; the March run grows once the judge attaches amendment-1 on the portal."""
+    if run.run_id == fixtures.MARCH_RUN and portal.amendment_attached():
+        return run.events + fixtures.amendment_run().events
+    return run.events
 
 
 def _start(kind: str) -> StartRunResponse:
@@ -50,15 +58,19 @@ async def run_events(
 
     async def stream() -> AsyncIterator[str]:
         yield "retry: 2000\n\n"
-        for ev in run.events:
-            if ev.id <= start_after:
-                continue
-            if delay_ms:
-                await asyncio.sleep(delay_ms / 1000)
-            yield f"id: {ev.id}\ndata: {ev.model_dump_json()}\n\n"
-        while keepalive and not await request.is_disconnected():
-            await asyncio.sleep(15)
-            yield ": keep-alive\n\n"
+        sent, idle = start_after, 0
+        while True:
+            for ev in [e for e in _events(run) if e.id > sent]:
+                if delay_ms:
+                    await asyncio.sleep(delay_ms / 1000)
+                yield f"id: {ev.id}\ndata: {ev.model_dump_json()}\n\n"
+                sent, idle = ev.id, 0
+            if not keepalive or await request.is_disconnected():
+                return
+            await asyncio.sleep(1)  # new events arrive when the portal gets the amendment
+            idle += 1
+            if idle % 15 == 0:
+                yield ": keep-alive\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
@@ -66,6 +78,8 @@ async def run_events(
 
 @router.get("/charges/{charge_id}", response_model=ChargeDetail)
 def charge_detail(charge_id: str) -> ChargeDetail:
+    if portal.amendment_attached() and charge_id in fixtures.amendment_run().charges:
+        return fixtures.amendment_run().charges[charge_id]
     for run in _runs().values():
         if charge_id in run.charges:
             return run.charges[charge_id]

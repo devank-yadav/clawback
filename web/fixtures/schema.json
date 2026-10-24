@@ -1557,6 +1557,7 @@
       },
       "Quote": {
         "additionalProperties": false,
+        "description": "The drawer shows context_before + text (highlighted) + context_after: the sentence inside its paragraph.",
         "properties": {
           "doc_id": {
             "title": "Doc Id",
@@ -1573,6 +1574,16 @@
           "char_end": {
             "title": "Char End",
             "type": "integer"
+          },
+          "context_before": {
+            "default": "",
+            "title": "Context Before",
+            "type": "string"
+          },
+          "context_after": {
+            "default": "",
+            "title": "Context After",
+            "type": "string"
           }
         },
         "required": [
@@ -2604,6 +2615,7 @@
       },
       "Quote": {
         "additionalProperties": false,
+        "description": "The drawer shows context_before + text (highlighted) + context_after: the sentence inside its paragraph.",
         "properties": {
           "doc_id": {
             "title": "Doc Id",
@@ -2620,6 +2632,16 @@
           "char_end": {
             "title": "Char End",
             "type": "integer"
+          },
+          "context_before": {
+            "default": "",
+            "title": "Context Before",
+            "type": "string"
+          },
+          "context_after": {
+            "default": "",
+            "title": "Context After",
+            "type": "string"
           }
         },
         "required": [
@@ -2853,6 +2875,7 @@
     "$defs": {
       "Quote": {
         "additionalProperties": false,
+        "description": "The drawer shows context_before + text (highlighted) + context_after: the sentence inside its paragraph.",
         "properties": {
           "doc_id": {
             "title": "Doc Id",
@@ -2869,6 +2892,16 @@
           "char_end": {
             "title": "Char End",
             "type": "integer"
+          },
+          "context_before": {
+            "default": "",
+            "title": "Context Before",
+            "type": "string"
+          },
+          "context_after": {
+            "default": "",
+            "title": "Context After",
+            "type": "string"
           }
         },
         "required": [
@@ -4035,6 +4068,7 @@
       },
       "Quote": {
         "additionalProperties": false,
+        "description": "The drawer shows context_before + text (highlighted) + context_after: the sentence inside its paragraph.",
         "properties": {
           "doc_id": {
             "title": "Doc Id",
@@ -4051,6 +4085,16 @@
           "char_end": {
             "title": "Char End",
             "type": "integer"
+          },
+          "context_before": {
+            "default": "",
+            "title": "Context Before",
+            "type": "string"
+          },
+          "context_after": {
+            "default": "",
+            "title": "Context After",
+            "type": "string"
           }
         },
         "required": [
@@ -4321,6 +4365,471 @@
       "events_url"
     ],
     "title": "StartRunResponse",
+    "type": "object"
+  },
+  "Dispute": {
+    "$defs": {
+      "DisputeLine": {
+        "additionalProperties": false,
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "clause_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clause Ref"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote"
+          },
+          "math": {
+            "title": "Math",
+            "type": "string"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "charge_id",
+          "ref",
+          "amount",
+          "reason",
+          "clause_ref",
+          "quote",
+          "math",
+          "evidence_ids"
+        ],
+        "title": "DisputeLine",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "remittance_id": {
+        "title": "Remittance Id",
+        "type": "string"
+      },
+      "counterparty": {
+        "title": "Counterparty",
+        "type": "string"
+      },
+      "lines": {
+        "items": {
+          "$ref": "#/$defs/DisputeLine"
+        },
+        "title": "Lines",
+        "type": "array"
+      },
+      "total": {
+        "title": "Total",
+        "type": "number"
+      },
+      "status": {
+        "enum": [
+          "draft",
+          "filed",
+          "answered",
+          "resolved",
+          "withdrawn"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "approved_by": {
+        "enum": [
+          "policy",
+          "owner"
+        ],
+        "title": "Approved By",
+        "type": "string"
+      },
+      "filed_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Filed At"
+      }
+    },
+    "required": [
+      "id",
+      "remittance_id",
+      "counterparty",
+      "lines",
+      "total",
+      "status",
+      "approved_by",
+      "filed_at"
+    ],
+    "title": "Dispute",
+    "type": "object"
+  },
+  "ApprovalDecisionRequest": {
+    "additionalProperties": false,
+    "description": "POST /approvals/{id}: the controller's in-app Yes / No (the fallback for the SMS reply).",
+    "properties": {
+      "approve": {
+        "title": "Approve",
+        "type": "boolean"
+      },
+      "note": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Note"
+      }
+    },
+    "required": [
+      "approve"
+    ],
+    "title": "ApprovalDecisionRequest",
+    "type": "object"
+  },
+  "ApprovalDecisionResponse": {
+    "$defs": {
+      "Approval": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "credit_memo",
+              "dispute_over_limit",
+              "closed_period"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "lines": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/ApprovalLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "proposed_by": {
+            "enum": [
+              "system",
+              "reader",
+              "investigator",
+              "gate",
+              "negotiator",
+              "bookkeeper",
+              "coach",
+              "owner",
+              "controller",
+              "northmart",
+              "policy"
+            ],
+            "title": "Proposed By",
+            "type": "string"
+          },
+          "approver_role": {
+            "enum": [
+              "owner",
+              "controller"
+            ],
+            "title": "Approver Role",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "approved",
+              "refused"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Note"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Decided At"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "amount",
+          "proposed_by",
+          "approver_role",
+          "status",
+          "text",
+          "requested_at"
+        ],
+        "title": "Approval",
+        "type": "object"
+      },
+      "ApprovalLine": {
+        "additionalProperties": false,
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          }
+        },
+        "required": [
+          "charge_id",
+          "amount"
+        ],
+        "title": "ApprovalLine",
+        "type": "object"
+      },
+      "LedgerLine": {
+        "additionalProperties": false,
+        "properties": {
+          "charge_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Charge Id"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          }
+        },
+        "required": [
+          "charge_id",
+          "description",
+          "amount"
+        ],
+        "title": "LedgerLine",
+        "type": "object"
+      },
+      "LedgerPost": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "qbo_entity": {
+            "enum": [
+              "customer",
+              "item",
+              "invoice",
+              "payment",
+              "credit_memo",
+              "invoice_note"
+            ],
+            "title": "Qbo Entity",
+            "type": "string"
+          },
+          "qbo_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qbo Id"
+          },
+          "qbo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Qbo Url"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "lines": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/LedgerLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "posted",
+              "held",
+              "failed",
+              "voided"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "approval_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Approval Id"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Note"
+          },
+          "posted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Posted At"
+          }
+        },
+        "required": [
+          "id",
+          "qbo_entity",
+          "qbo_id",
+          "amount",
+          "status"
+        ],
+        "title": "LedgerPost",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "approval": {
+        "$ref": "#/$defs/Approval"
+      },
+      "ledger_post": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/LedgerPost"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "approval",
+      "ledger_post"
+    ],
+    "title": "ApprovalDecisionResponse",
     "type": "object"
   }
 }

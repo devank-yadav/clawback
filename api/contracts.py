@@ -224,10 +224,14 @@ EvidenceKind = Literal["clause", "email", "claim", "notice", "sales", "charge", 
 
 
 class Quote(Contract):
+    """The drawer shows context_before + text (highlighted) + context_after: the sentence inside its paragraph."""
+
     doc_id: str
     text: str  # the exact sentence; whitespace in the source may differ (the quote check normalizes it)
     char_start: int
     char_end: int
+    context_before: str = ""  # source text from the paragraph's start up to char_start, as written (line breaks kept)
+    context_after: str = ""  # source text from char_end to the paragraph's end
 
 
 class Evidence(Contract):
@@ -364,6 +368,18 @@ class Approval(Contract):
     note: str | None = None  # the approver's note, shown on the card when they refuse
     requested_at: datetime
     decided_at: datetime | None = None
+
+
+class ApprovalDecisionRequest(Contract):
+    """POST /approvals/{id}: the controller's in-app Yes / No (the fallback for the SMS reply)."""
+
+    approve: bool
+    note: str | None = None  # shown on the card when they refuse
+
+
+class ApprovalDecisionResponse(Contract):
+    approval: Approval
+    ledger_post: LedgerPost | None  # the credit memo that posted; None when refused (nothing posts)
 
 
 # ---------------------------------------------------------------- the other side: disputes and the portal

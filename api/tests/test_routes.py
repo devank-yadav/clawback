@@ -101,3 +101,49 @@ def test_simple_stubs(method, path, check):
 def test_scenario_stub():
     r = client.post("/scenario", json={"clause": "x", "charge": {"description": "y", "amount": 10}}).json()
     assert r["stub"] is True
+
+
+def test_portal_dispute_and_amendment_flow():
+    client.post("/demo/reset")
+    d = client.get("/portal/disputes/D-0417").json()
+    assert d["total"] == 4120.0 and len(d["lines"]) == 4 and d["status"] == "filed"
+    assert client.get("/portal/disputes/D-9999").status_code == 404
+    march_ids = [e.id for e in fixtures.march_run().events]
+    stream = {"delay_ms": 0, "keepalive": False}
+    assert [e.id for e in _sse(client.get(f"/runs/{fixtures.MARCH_RUN}/events", params=stream).text)] == march_ids
+
+    client.post("/portal/disputes/D-0417/messages", json={"text": "Amendment attached.", "attachment_doc_id": "amendment-1"})
+    d = client.get("/portal/disputes/D-0417").json()
+    assert d["total"] == 3120.0 and {ln["charge_id"]: ln["amount"] for ln in d["lines"]}["C4"] == 540.0
+    events = _sse(client.get(f"/runs/{fixtures.MARCH_RUN}/events", params=stream,
+                             headers={"Last-Event-ID": str(march_ids[-1])}).text)
+    assert [e.id for e in events] == [e.id for e in fixtures.amendment_run().events]
+    c4 = client.get("/charges/C4").json()
+    assert (c4["decision"]["disputed"], c4["decision"]["accepted"]) == (540.0, 1000.0)
+
+    client.post("/demo/reset")
+    assert client.get("/portal/disputes/D-0417").json()["total"] == 4120.0
+    assert client.get("/charges/C4").json()["decision"]["disputed"] == 1540.0
+
+
+def test_refusal_run_streams():
+    events = _sse(client.get(f"/runs/{fixtures.REFUSED_RUN}/events", params={"delay_ms": 0, "keepalive": False}).text)
+    assert [e.data.status for e in events if e.type == "approval"] == ["pending", "refused"]
+
+
+def test_controller_approves_in_app():
+    client.post("/demo/reset")
+    r = client.post("/approvals/AP-1", json={"approve": True}).json()
+    assert r["approval"]["status"] == "approved" and r["ledger_post"]["amount"] == 2730.0
+    assert r["ledger_post"]["approval_id"] == "AP-1"
+    assert client.post("/approvals/AP-1", json={"approve": False}).status_code == 409
+    client.post("/demo/reset")
+
+
+def test_controller_refuses_in_app():
+    client.post("/demo/reset")
+    r = client.post("/approvals/AP-1", json={"approve": False, "note": "Not yet."}).json()
+    assert r["approval"]["status"] == "refused" and r["approval"]["note"] == "Not yet."
+    assert r["ledger_post"] is None
+    assert client.post("/approvals/AP-9", json={"approve": True}).status_code == 404
+    client.post("/demo/reset")

@@ -1,35 +1,52 @@
-"""Mock Northmart portal. Stub: the thread starts as the fixture run's exchange; replies are canned."""
+"""Mock Northmart portal. Stub: the thread starts as the fixture run's exchange; replies are canned.
+
+Attaching amendment-1 plays the fixture concession (web/fixtures/amendment-events.json): the dispute's C4 line
+drops to $540, and the run's event stream and GET /charges/C4 show the new decision.
+"""
 
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
 
-from api.contracts import PortalMessage, PortalReplyRequest
+from api.contracts import Dispute, PortalMessage, PortalReplyRequest
 from api.stubs import fixtures
 
 router = APIRouter(tags=["portal"])
 
-_threads: dict[str, list[PortalMessage]] = {}
-
-AMENDMENT_REPLY = (
-    "Thanks. The signed amendment raises the §3.2 cap to 6,000 units, so 1,000 of week 4's 1,540 bars are covered. "
-    "We withdraw $1,000 of the week 4 line (C4) and keep $540 disputed."
-)
 STUB_REPLY = "(stub) Received. Live answers arrive when the Negotiator is wired up."
+
+_threads: dict[str, list[PortalMessage]] = {}
+_disputes: dict[str, Dispute] = {}
+_amendment_attached = False
 
 
 def reset() -> None:
+    global _amendment_attached
+    _amendment_attached = False
     _threads.clear()
     _threads[fixtures.DISPUTE_ID] = [e.data for e in fixtures.march_run().events if e.type == "portal_message"]
+    _disputes.clear()
+    _disputes[fixtures.DISPUTE_ID] = fixtures.filed_dispute()
 
 
 reset()
+
+
+def amendment_attached() -> bool:
+    return _amendment_attached
 
 
 def _thread(dispute_id: str) -> list[PortalMessage]:
     if dispute_id not in _threads:
         raise HTTPException(404, f"unknown dispute {dispute_id}")
     return _threads[dispute_id]
+
+
+@router.get("/portal/disputes/{dispute_id}", response_model=Dispute)
+def get_dispute(dispute_id: str) -> Dispute:
+    if dispute_id not in _disputes:
+        raise HTTPException(404, f"unknown dispute {dispute_id}")
+    return _disputes[dispute_id]
 
 
 @router.get("/portal/disputes/{dispute_id}/messages", response_model=list[PortalMessage])
@@ -40,14 +57,19 @@ def list_messages(dispute_id: str) -> list[PortalMessage]:
 @router.post("/portal/disputes/{dispute_id}/messages", response_model=list[PortalMessage])
 def post_message(dispute_id: str, req: PortalReplyRequest) -> list[PortalMessage]:
     """Adds Northmart's message and Clawback's reply; returns both."""
+    global _amendment_attached
     thread = _thread(dispute_id)
     now = datetime.now(timezone.utc)
-    amendment = req.attachment_doc_id == "amendment-1"
-    theirs = PortalMessage(id=f"PM-{len(thread) + 1}", dispute_id=dispute_id, from_party="northmart", text=req.text,
-                           attachment_doc_id=req.attachment_doc_id, created_at=now,
-                           classification="new_document" if amendment else None, charge_ids=["C4"] if amendment else [])
-    ours = PortalMessage(id=f"PM-{len(thread) + 2}", dispute_id=dispute_id, from_party="clawback",
-                         text=AMENDMENT_REPLY if amendment else STUB_REPLY, created_at=now,
-                         charge_ids=["C4"] if amendment else [])
+    ids = {"id": f"PM-{len(thread) + 1}"}, {"id": f"PM-{len(thread) + 2}"}
+    if req.attachment_doc_id == "amendment-1" and not _amendment_attached:
+        _amendment_attached = True
+        _disputes[dispute_id] = fixtures.amended_dispute()
+        canned = [e.data for e in fixtures.amendment_run().events if e.type == "portal_message"]
+        theirs = canned[0].model_copy(update={**ids[0], "text": req.text, "created_at": now})
+        ours = canned[1].model_copy(update={**ids[1], "created_at": now})
+    else:
+        theirs = PortalMessage(**ids[0], dispute_id=dispute_id, from_party="northmart", text=req.text,
+                               attachment_doc_id=req.attachment_doc_id, created_at=now)
+        ours = PortalMessage(**ids[1], dispute_id=dispute_id, from_party="clawback", text=STUB_REPLY, created_at=now)
     thread += [theirs, ours]
     return [theirs, ours]

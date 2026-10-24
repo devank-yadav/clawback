@@ -25,9 +25,11 @@ from api.contracts import (
 
 PDT = timezone(timedelta(hours=-7))
 REPO = Path(__file__).resolve().parents[2]
+DATA = REPO / "data"
 WEB_FIXTURES = REPO / "web" / "fixtures"
 
 MARCH_RUN = "run-march-demo"
+REFUSED_RUN = "run-march-refused"  # same run, but Sam refuses the credit memo
 APRIL_RUN = "run-april-demo"
 REMITTANCE_ID = "REM-3102"
 DISPUTE_ID = "D-0417"
@@ -38,10 +40,21 @@ def _m(v: str | int) -> Decimal:
 
 
 # ---------------------------------------------------------------- evidence
-# Quote offsets are into the files under data/ (api/tests check them when the files exist).
+# Quote offsets are into the files under data/ (api/tests check them); the context comes from the same files.
+
+def _paragraph_context(doc_id: str, start: int, end: int) -> tuple[str, str]:
+    """The rest of the paragraph (blank-line block) around source[start:end], as written in the file."""
+    text = (DATA / QUOTE_SOURCES[doc_id]).read_text()
+    para_start = text.rfind("\n\n", 0, start)
+    para_start = 0 if para_start == -1 else para_start + 2
+    para_end = text.find("\n\n", end)
+    para_end = len(text.rstrip("\n")) if para_end == -1 else para_end
+    return text[para_start:start], text[end:para_end]
+
 
 def _q(doc_id: str, text: str, start: int, end: int) -> Quote:
-    return Quote(doc_id=doc_id, text=text, char_start=start, char_end=end)
+    before, after = _paragraph_context(doc_id, start, end)
+    return Quote(doc_id=doc_id, text=text, char_start=start, char_end=end, context_before=before, context_after=after)
 
 
 S31 = "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026."
@@ -51,9 +64,11 @@ S54 = "Northmart may charge a display fee of up to $1,500 per month at its discr
 S61 = "This Agreement may be changed only in writing: by an amendment signed by both parties, or by a written approval sent by one of Supplier's approved representatives named in Section 6.2."
 BROKER = "Northmart asked to extend Spring Promo through April 7, same terms, up to 500 additional units. Approved."
 CLAIM = "Per our call, the Spring Promo rate is $1.50 per unit."
+A32 = "The promotional allowance applies to a maximum of 6,000 units in total."  # amendment-1, replacing §3.2
 
 QUOTE_SOURCES = {  # doc_id -> path under data/
     "spring-promo": "deals/spring-promo.md",
+    "amendment-1": "deals/amendment-1.md",
     "summer-draft": "deals/summer-draft.md",
     "broker-2026-03-28": "emails/broker-2026-03-28.eml",
     "northmart-2026-03-30": "emails/northmart-2026-03-30.eml",
@@ -123,6 +138,9 @@ EVIDENCE: dict[str, Evidence] = {e.id: e for e in [
     Evidence(id="ev-deal-6.1", kind="clause", label="§6.1 changes in writing",
              summary="The deal changes only by an amendment both sides sign, or written approval from Dana or the broker.",
              quote=_q("spring-promo", S61, 2119, 2303)),
+    Evidence(id="ev-amendment-1", kind="clause", label="Amendment No. 1 (signed)",
+             summary="Signed by Peak Bar and Northmart on Mar 20: raises the §3.2 cap to 6,000 bars.",
+             quote=_q("amendment-1", A32, 544, 615)),
     Evidence(id="ev-email-broker-0328", kind="email", label="Broker email Mar 28",
              summary="Jordan Lee, Peak Bar's approved broker, extended the promo through Apr 7, up to 500 more bars.",
              quote=_q("broker-2026-03-28", BROKER, 417, 522), sender="jordan@peakbar-broker.example",
@@ -275,8 +293,9 @@ REMITTANCE = Remittance(id=REMITTANCE_ID, counterparty="Northmart", invoice_id="
 # ---------------------------------------------------------------- event builder
 
 class _Run:
-    def __init__(self, run_id: str, start: datetime, step_s: float = 1.0):
+    def __init__(self, run_id: str, start: datetime, step_s: float = 1.0, first_id: int = 1):
         self.run_id, self.t, self.step = run_id, start, timedelta(seconds=step_s)
+        self.first_id = first_id  # > 1 when the events continue an earlier fixture's run
         self.events: list[Any] = []
 
     def now(self) -> datetime:
@@ -286,7 +305,7 @@ class _Run:
         self.t += self.step * gap
         payload = data.model_dump(mode="json") if hasattr(data, "model_dump") else data
         self.events.append(EventAdapter.validate_python(
-            {"id": len(self.events) + 1, "run_id": self.run_id, "at": self.t, "type": type_, "data": payload}))
+            {"id": self.first_id + len(self.events), "run_id": self.run_id, "at": self.t, "type": type_, "data": payload}))
 
     def log(self, text: str, level: str = "info", actor: str = "system", charge_id: str | None = None, gap: float = 1.0) -> None:
         self.add("log", LogLine(text=text, level=level, actor=actor, charge_id=charge_id), gap)
@@ -323,11 +342,24 @@ def _detail(c: Charge, decision: Decision | None, rule: Rule | None = None) -> C
     return ChargeDetail(charge=c, finding=f, decision=decision, rehearsal=r, rule=rule, evidence=[EVIDENCE[i] for i in ids])
 
 
+REFUSAL_NOTE = "Hold this until I've seen the broker's Mar 28 email for the April 1 to 7 bars."
+
+
 @cache
 def march_run() -> RunFixture:
-    run = _Run(MARCH_RUN, datetime(2026, 10, 24, 10, 30, 0, tzinfo=PDT))
+    return _march(MARCH_RUN, controller_approves=True)
+
+
+@cache
+def refused_run() -> RunFixture:
+    """The same March run, but Sam refuses the credit memo: nothing posts and the totals don't move."""
+    return _march(REFUSED_RUN, controller_approves=False)
+
+
+def _march(run_id: str, controller_approves: bool) -> RunFixture:
+    run = _Run(run_id, datetime(2026, 10, 24, 10, 30, 0, tzinfo=PDT))
     remittance = REMITTANCE.model_copy(update={"received_at": run.now()})  # the deposit is what starts the run
-    run.add("run", RunInfo(run_id=MARCH_RUN, kind="march", status="started", remittance=remittance, demo_mode=True))
+    run.add("run", RunInfo(run_id=run_id, kind="march", status="started", remittance=remittance, demo_mode=True))
     run.log("Northmart paid $41,350 on invoice INV-3102 for $48,200. $6,850 was taken out in 6 charges.")
     run.totals(0, 0, 0, 6850, 0)
     run.log("Reading the Spring Promo deal with two readers, Claude and Gemini.", actor="reader")
@@ -356,11 +388,10 @@ def march_run() -> RunFixture:
     run.add("question", q)
     run.log("Texted Dana one question about C6.", actor="gate", charge_id="C6")
 
-    run.add("dispute", Dispute(id=DISPUTE_ID, remittance_id=REMITTANCE_ID, counterparty="Northmart", lines=DISPUTE_LINES,
-                               total=_m(4120), status="filed", approved_by="policy", filed_at=run.now() + run.step), gap=2)
+    run.add("dispute", _dispute("filed", run.now() + run.step, DISPUTE_LINES), gap=2)
     run.log("Filed dispute D-0417 on Northmart's portal: 4 lines, $4,120. Within the $5,000 limit Dana set.",
             "good", "negotiator")
-    run.add("run", RunInfo(run_id=MARCH_RUN, kind="march", status="waiting"))
+    run.add("run", RunInfo(run_id=run_id, kind="march", status="waiting"))
 
     answered_at = run.now() + run.step * 10  # Dana takes a few seconds to text back
     run.add("answer", Answer(question_id="Q-1", from_role="owner", text="accept if notice is at least 14 days",
@@ -380,20 +411,21 @@ def march_run() -> RunFixture:
                         requested_at=run.now() + run.step)
     run.add("approval", approval, gap=2)
     run.log("Texted Sam (controller): approve a $2,730 credit memo? Nothing posts until Sam says yes.", actor="bookkeeper")
-    run.add("approval", approval.model_copy(update={"status": "approved", "decided_at": run.now() + run.step * 6}), gap=6)
-    run.log("Sam approved. Posting to QuickBooks.", "good", "controller")
-    run.add("ledger_post", LedgerPost(
-        id="LP-1", qbo_entity="credit_memo", qbo_id=None, amount=_m(2730), status="posted", approval_id="AP-1",
-        note="Credit memo applied to INV-3102.", posted_at=run.now() + run.step,
-        lines=[LedgerLine(charge_id="C1", description="Spring promo week 1, fair part", amount=_m(1200)),
-               LedgerLine(charge_id="C3", description="Spring promo Apr 1 to 7 (broker extension)", amount=_m(330)),
-               LedgerLine(charge_id="C6", description="Display fee March (Rule #1)", amount=_m(1200))]), gap=2)
-    run.add("ledger_post", LedgerPost(
-        id="LP-2", qbo_entity="invoice_note", qbo_id=None, amount=_m(4120), status="posted",
-        note="$4,120 left open on INV-3102, disputed under D-0417.", posted_at=run.now() + run.step,
-        lines=[LedgerLine(charge_id=ln.charge_id, description=f"{ln.ref}: {ln.reason}", amount=ln.amount)
-               for ln in DISPUTE_LINES]))
-    run.log("QuickBooks: $2,730 credit memo posted; $4,120 stays open on INV-3102, tagged D-0417.", "good", "bookkeeper")
+    if controller_approves:
+        run.add("approval", approval.model_copy(update={"status": "approved", "decided_at": run.now() + run.step * 6}), gap=6)
+        run.log("Sam approved. Posting to QuickBooks.", "good", "controller")
+        run.add("ledger_post", credit_memo(posted_at=run.now() + run.step), gap=2)
+        run.add("ledger_post", LedgerPost(
+            id="LP-2", qbo_entity="invoice_note", qbo_id=None, amount=_m(4120), status="posted",
+            note="$4,120 left open on INV-3102, disputed under D-0417.", posted_at=run.now() + run.step,
+            lines=[LedgerLine(charge_id=ln.charge_id, description=f"{ln.ref}: {ln.reason}", amount=ln.amount)
+                   for ln in DISPUTE_LINES]))
+        run.log("QuickBooks: $2,730 credit memo posted; $4,120 stays open on INV-3102, tagged D-0417.", "good", "bookkeeper")
+    else:
+        run.add("approval", approval.model_copy(update={"status": "refused", "note": REFUSAL_NOTE,
+                                                        "decided_at": run.now() + run.step * 6}), gap=6)
+        run.log("Sam refused the $2,730 credit memo. Nothing posts to QuickBooks; Sam's note is on the card and the "
+                "memo goes back to Dana.", "warn", "controller")
 
     run.add("portal_message", PortalMessage(
         id="PM-1", dispute_id=DISPUTE_ID, from_party="northmart", classification="claim_without_document",
@@ -408,14 +440,103 @@ def march_run() -> RunFixture:
         charge_ids=["C4"], evidence_ids=["ev-deal-3.2", "ev-sales-w1", "ev-sales-w2", "ev-sales-w3", "ev-sales-w4"],
         created_at=run.now() + run.step * 3), gap=3)
     run.log("Answered with §3.2 and weeks 1 to 3 sales, and asked for the signed amendment.", "good", "negotiator", "C4")
-    run.add("run", RunInfo(run_id=MARCH_RUN, kind="march", status="finished"))
+    run.add("run", RunInfo(run_id=run_id, kind="march", status="finished"))
 
     details = {c.id: _detail(c, decisions[c.id], rule) for c in MARCH_CHARGES}
     used = {e.id for d in details.values() for e in d.evidence}
     used |= {i for ln in DISPUTE_LINES for i in ln.evidence_ids}
     used |= {i for e in run.events if e.type == "portal_message" for i in e.data.evidence_ids}
-    used |= {"ev-approval-AP-1"}
-    return RunFixture(run_id=MARCH_RUN, events=run.events, charges=details,
+    if controller_approves:
+        used |= {"ev-approval-AP-1"}
+    return RunFixture(run_id=run_id, events=run.events, charges=details,
+                      evidence={i: EVIDENCE[i] for i in sorted(used)})
+
+
+def credit_memo(posted_at: datetime) -> LedgerPost:
+    """LP-1: what posts once Sam approves AP-1 (also returned by the stub POST /approvals/AP-1)."""
+    return LedgerPost(
+        id="LP-1", qbo_entity="credit_memo", qbo_id=None, amount=_m(2730), status="posted", approval_id="AP-1",
+        note="Credit memo applied to INV-3102.", posted_at=posted_at,
+        lines=[LedgerLine(charge_id="C1", description="Spring promo week 1, fair part", amount=_m(1200)),
+               LedgerLine(charge_id="C3", description="Spring promo Apr 1 to 7 (broker extension)", amount=_m(330)),
+               LedgerLine(charge_id="C6", description="Display fee March (Rule #1)", amount=_m(1200))])
+
+
+# ---------------------------------------------------------------- the judge attaches amendment-1 (beat 3)
+# Numbers from data/CLAUDE.md: the cap goes to 6,000, so 1,000 of week 4's 1,540 bars are covered.
+# api/tests checks them against api/engine/allowed.py with the amendment term added.
+
+AMENDMENT_ATTACHED = "Attached: Amendment No. 1, signed by both parties on Mar 20. It raises the cap to 6,000 units."
+AMENDMENT_REPLY = (
+    "Thanks. The signed amendment raises the §3.2 cap to 6,000 units, so 1,000 of week 4's 1,540 bars are covered. "
+    "We withdraw $1,000 of the week 4 line (C4) and keep $540 disputed."
+)
+
+FINDING_C4_AMENDED = Finding(
+    id="F-C4", charge_id="C4", type="over_cap", expected=_m(1000), taken=_m(1540), delta=_m(540),
+    finding="Amendment No. 1 raises the cap to 6,000. Weeks 1 to 3 used 5,000, so 1,000 of week 4's 1,540 bars "
+            "are covered; 540 aren't.",
+    evidence_ids=["ev-amendment-1", "ev-deal-3.1", "ev-sales-w1", "ev-sales-w2", "ev-sales-w3", "ev-sales-w4",
+                  "ev-charge-C4"],
+    confidence=0.97,
+    math=[_p("6,000 cap", "ev-amendment-1"), _p(" − 5,000 sold by Mar 21 = 1,000 bars × "), _p("$1.00", "ev-deal-3.1"),
+          _p(" = $1,000 allowed · took "), _p("$1,540", "ev-charge-C4"), _p(" → $540 too much")])
+
+DISPUTE_LINE_C4_AMENDED = DisputeLine(
+    charge_id="C4", ref="NM-2236", amount=_m(540), reason="Over the 6,000-unit cap set by Amendment No. 1.",
+    clause_ref="§3.2 (Amendment No. 1)", quote=A32,
+    math="1,200 + 980 + 2,820 = 5,000 by Mar 21; 1,000 more bars reach the 6,000 cap; 540 bars after it",
+    evidence_ids=["ev-amendment-1", "ev-sales-w1", "ev-sales-w2", "ev-sales-w3", "ev-sales-w4", "ev-charge-C4"])
+
+
+def _dispute(status: str, filed_at: datetime | None, lines: list[DisputeLine]) -> Dispute:
+    return Dispute(id=DISPUTE_ID, remittance_id=REMITTANCE_ID, counterparty="Northmart", lines=lines,
+                   total=sum((ln.amount for ln in lines), _m(0)), status=status, approved_by="policy", filed_at=filed_at)
+
+
+def filed_dispute() -> Dispute:
+    return next(e.data for e in march_run().events if e.type == "dispute")
+
+
+def amended_dispute() -> Dispute:
+    filed = filed_dispute()
+    lines = [DISPUTE_LINE_C4_AMENDED if ln.charge_id == "C4" else ln for ln in filed.lines]
+    return _dispute("answered", filed.filed_at, lines)
+
+
+@cache
+def amendment_run() -> RunFixture:
+    """Continues the March run (same run_id, ids after its last event): what streams after the judge attaches
+    amendment-1 on the portal. Only C4 changes, so `charges` holds C4 alone."""
+    march = march_run()
+    last = march.events[-1]
+    run = _Run(MARCH_RUN, last.at + timedelta(seconds=20), first_id=last.id + 1)
+    run.add("portal_message", PortalMessage(
+        id="PM-3", dispute_id=DISPUTE_ID, from_party="northmart", text=AMENDMENT_ATTACHED,
+        attachment_doc_id="amendment-1", classification="new_document", charge_ids=["C4"], created_at=run.now()), gap=0)
+    run.log("Northmart attached Amendment No. 1. It's signed by both parties, so it counts: the §3.2 cap is now "
+            "6,000 bars.", "good", "reader", "C4")
+    run.log("Both readers agree on the new cap. The quote was found word for word in the amendment.", "good", "reader", "C4")
+    run.add("finding", FINDING_C4_AMENDED, gap=3)
+    decision = run.decide("C4", "split", 7, "Signed Amendment No. 1 raises the cap to 6,000: accept $1,000, keep $540 "
+                                            "disputed.", disputed=540, accepted=1000)
+    run.totals(3120, 3730, 0, 0, 1)
+    run.add("dispute", amended_dispute(), gap=2)
+    run.add("portal_message", PortalMessage(
+        id="PM-4", dispute_id=DISPUTE_ID, from_party="clawback", text=AMENDMENT_REPLY, charge_ids=["C4"],
+        evidence_ids=["ev-amendment-1", "ev-sales-w1", "ev-sales-w2", "ev-sales-w3", "ev-sales-w4"],
+        created_at=run.now() + run.step))
+    run.log("Conceded $1,000 of C4 and kept $540 disputed. D-0417 now totals $3,120.", "good", "negotiator", "C4")
+    run.add("run", RunInfo(run_id=MARCH_RUN, kind="march", status="finished"))
+
+    c4 = next(c for c in MARCH_CHARGES if c.id == "C4")
+    detail = _detail(c4, decision).model_copy(
+        update={"finding": FINDING_C4_AMENDED,
+                "evidence": [EVIDENCE[i] for i in dict.fromkeys(FINDING_C4_AMENDED.evidence_ids
+                                                                 + REHEARSALS["C4"].answer_evidence_ids)]})
+    used = {e.id for e in detail.evidence} | {i for ln in amended_dispute().lines for i in ln.evidence_ids}
+    used |= {i for e in run.events if e.type == "portal_message" for i in e.data.evidence_ids}
+    return RunFixture(run_id=MARCH_RUN, events=run.events, charges={"C4": detail},
                       evidence={i: EVIDENCE[i] for i in sorted(used)})
 
 
@@ -527,10 +648,12 @@ def fixture_files() -> dict[str, str]:
 
     schema_models = [c.RunFixture, c.ChargeDetail, c.Evidence, c.CoachResponse, c.EvalReport, c.AuditEntry,
                      c.AuditVerify, c.Summary, c.PortalMessage, c.ScenarioResponse, c.AnswerResponse,
-                     c.StartRunResponse]
+                     c.StartRunResponse, c.Dispute, c.ApprovalDecisionRequest, c.ApprovalDecisionResponse]
     schema = {m.__name__: m.model_json_schema(mode="serialization") for m in schema_models}
     return {
         "run-events.json": _dump(march_run()),
+        "refusal-events.json": _dump(refused_run()),
+        "amendment-events.json": _dump(amendment_run()),
         "april-events.json": _dump(april_run()),
         "coach.json": _dump(coach()),
         "audit.json": _dump(audit()),

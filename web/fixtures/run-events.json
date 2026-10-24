@@ -1486,7 +1486,9 @@
             "doc_id": "spring-promo",
             "text": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
             "char_start": 934,
-            "char_end": 1079
+            "char_end": 1079,
+            "context_before": "3.1 ",
+            "context_after": ""
           },
           "rows": [],
           "sender": null,
@@ -1563,7 +1565,9 @@
             "doc_id": "northmart-2026-03-30",
             "text": "Per our call, the Spring Promo rate is $1.50 per unit.",
             "char_start": 369,
-            "char_end": 423
+            "char_end": 423,
+            "context_before": "",
+            "context_after": ""
           },
           "rows": [],
           "sender": "deductions@northmart.example",
@@ -1582,7 +1586,9 @@
             "doc_id": "spring-promo",
             "text": "This Agreement may be changed only in writing: by an amendment signed by both parties, or by a written approval sent by one of Supplier's approved representatives named in Section 6.2.",
             "char_start": 2119,
-            "char_end": 2303
+            "char_end": 2303,
+            "context_before": "6.1 ",
+            "context_after": "\n6.2 Supplier's approved representatives for changes are Dana Okafor (Owner) and Jordan Lee, Supplier's broker\n(jordan@peakbar-broker.example)."
           },
           "rows": [],
           "sender": null,
@@ -1765,7 +1771,9 @@
             "doc_id": "spring-promo",
             "text": "A unit may be claimed only once.",
             "char_start": 1451,
-            "char_end": 1483
+            "char_end": 1483,
+            "context_before": "4.1 Each deduction must be supported by store sales data for the period claimed.\n4.2 ",
+            "context_after": " Deductions already paid or credited may not be taken again.\n4.3 Supplier may dispute any deduction within 60 days of the remittance date by written notice to\ndeductions@northmart.example."
           },
           "rows": [],
           "sender": null,
@@ -1868,7 +1876,9 @@
             "doc_id": "broker-2026-03-28",
             "text": "Northmart asked to extend Spring Promo through April 7, same terms, up to 500 additional units. Approved.",
             "char_start": 417,
-            "char_end": 522
+            "char_end": 522,
+            "context_before": "",
+            "context_after": ""
           },
           "rows": [],
           "sender": "jordan@peakbar-broker.example",
@@ -1916,7 +1926,9 @@
             "doc_id": "spring-promo",
             "text": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
             "char_start": 934,
-            "char_end": 1079
+            "char_end": 1079,
+            "context_before": "3.1 ",
+            "context_after": ""
           },
           "rows": [],
           "sender": null,
@@ -2073,7 +2085,9 @@
             "doc_id": "spring-promo",
             "text": "The promotional allowance applies to a maximum of 5,000 units in total.",
             "char_start": 1085,
-            "char_end": 1156
+            "char_end": 1156,
+            "context_before": "3.2 ",
+            "context_after": ""
           },
           "rows": [],
           "sender": null,
@@ -2317,7 +2331,9 @@
             "doc_id": "spring-promo",
             "text": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
             "char_start": 934,
-            "char_end": 1079
+            "char_end": 1079,
+            "context_before": "3.1 ",
+            "context_after": ""
           },
           "rows": [],
           "sender": null,
@@ -2500,7 +2516,9 @@
             "doc_id": "spring-promo",
             "text": "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.",
             "char_start": 1968,
-            "char_end": 2080
+            "char_end": 2080,
+            "context_before": "5.4 ",
+            "context_after": ""
           },
           "rows": [],
           "sender": null,
@@ -2519,7 +2537,9 @@
             "doc_id": "display-fee-2026-03-11",
             "text": "Northmart will charge a display fee of $1,200.00 for the month ending March 31, 2026, for secondary display placement of Peak Bar products.",
             "char_start": 312,
-            "char_end": 451
+            "char_end": 451,
+            "context_before": "",
+            "context_after": " This notice is given 20 days before the end of the month."
           },
           "rows": [
             {
@@ -2807,7 +2827,9 @@
         "doc_id": "northmart-2026-03-30",
         "text": "Per our call, the Spring Promo rate is $1.50 per unit.",
         "char_start": 369,
-        "char_end": 423
+        "char_end": 423,
+        "context_before": "",
+        "context_after": ""
       },
       "rows": [],
       "sender": "deductions@northmart.example",
@@ -2826,7 +2848,9 @@
         "doc_id": "spring-promo",
         "text": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
         "char_start": 934,
-        "char_end": 1079
+        "char_end": 1079,
+        "context_before": "3.1 ",
+        "context_after": ""
       },
       "rows": [],
       "sender": null,
@@ -2845,7 +2869,9 @@
         "doc_id": "spring-promo",
         "text": "The promotional allowance applies to a maximum of 5,000 units in total.",
         "char_start": 1085,
-        "char_end": 1156
+        "char_end": 1156,
+        "context_before": "3.2 ",
+        "context_after": ""
       },
       "rows": [],
       "sender": null,
@@ -2864,7 +2890,9 @@
         "doc_id": "spring-promo",
         "text": "A unit may be claimed only once.",
         "char_start": 1451,
-        "char_end": 1483
+        "char_end": 1483,
+        "context_before": "4.1 Each deduction must be supported by store sales data for the period claimed.\n4.2 ",
+        "context_after": " Deductions already paid or credited may not be taken again.\n4.3 Supplier may dispute any deduction within 60 days of the remittance date by written notice to\ndeductions@northmart.example."
       },
       "rows": [],
       "sender": null,
@@ -2883,7 +2911,9 @@
         "doc_id": "spring-promo",
         "text": "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.",
         "char_start": 1968,
-        "char_end": 2080
+        "char_end": 2080,
+        "context_before": "5.4 ",
+        "context_after": ""
       },
       "rows": [],
       "sender": null,
@@ -2902,7 +2932,9 @@
         "doc_id": "spring-promo",
         "text": "This Agreement may be changed only in writing: by an amendment signed by both parties, or by a written approval sent by one of Supplier's approved representatives named in Section 6.2.",
         "char_start": 2119,
-        "char_end": 2303
+        "char_end": 2303,
+        "context_before": "6.1 ",
+        "context_after": "\n6.2 Supplier's approved representatives for changes are Dana Okafor (Owner) and Jordan Lee, Supplier's broker\n(jordan@peakbar-broker.example)."
       },
       "rows": [],
       "sender": null,
@@ -2921,7 +2953,9 @@
         "doc_id": "broker-2026-03-28",
         "text": "Northmart asked to extend Spring Promo through April 7, same terms, up to 500 additional units. Approved.",
         "char_start": 417,
-        "char_end": 522
+        "char_end": 522,
+        "context_before": "",
+        "context_after": ""
       },
       "rows": [],
       "sender": "jordan@peakbar-broker.example",
@@ -2940,7 +2974,9 @@
         "doc_id": "display-fee-2026-03-11",
         "text": "Northmart will charge a display fee of $1,200.00 for the month ending March 31, 2026, for secondary display placement of Peak Bar products.",
         "char_start": 312,
-        "char_end": 451
+        "char_end": 451,
+        "context_before": "",
+        "context_after": " This notice is given 20 days before the end of the month."
       },
       "rows": [
         {
