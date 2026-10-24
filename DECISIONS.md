@@ -28,3 +28,4 @@ One line per decision, written the moment it's made: `date time · decision · w
 - 2026-10-24 01:51 · Five preset portal replies live in the API (GET /portal/presets) so the portal and the acceptance test share them · Devank
 - 2026-10-24 01:51 · The $1,000 conceded on C4 gets its own credit memo; at exactly $1,000 it posts on policy (the controller signs off only above $1,000) · Devank
 - 2026-10-24 02:30 · Review board uses a charge list with an evidence panel beside it (mobile: full-screen detail) instead of three pile columns; piles become groups in the list · Rishi
+- 2026-10-24 03:20 · Board replays web/fixtures/run-events.json and pauses where a person acts (owner answer, controller reply); Refuse continues from refusal-events.json. web/lib/prototype removed · Rishi

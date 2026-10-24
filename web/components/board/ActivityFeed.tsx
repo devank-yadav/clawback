@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import type { FeedLine } from "@/lib/useRunEvents";
 
-const DOT = { info: "bg-muted", ok: "bg-good", warn: "bg-ask" } as const;
+const DOT = { info: "bg-muted", good: "bg-good", warn: "bg-ask", error: "bg-dispute" } as const;
 
 /** Secondary: every step of the run, collapsed under the charges. */
 export function ActivityFeed({ feed }: { feed: FeedLine[] }) {

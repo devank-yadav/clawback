@@ -1,31 +1,31 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { CAST } from "@/lib/cast";
 import { money } from "@/lib/format";
-import { REMITTANCE } from "@/lib/prototype/run";
-import type { ApprovalData, LedgerPostData, TotalsData } from "@/lib/types";
+import type { Approval, LedgerPost, Remittance, Totals } from "@/lib/types";
 import type { FeedLine } from "@/lib/useRunEvents";
 import { CountUp } from "./parts";
 
 type Props = {
-  totals: TotalsData | null;
-  approval: ApprovalData | null;
-  ledger: LedgerPostData[];
+  remittance: Remittance | null;
+  totals: Totals | null;
+  approval: Approval | null;
+  ledger: LedgerPost[];
   latest: FeedLine | undefined;
-  running: boolean;
+  playing: boolean;
 };
 
-function acceptedNote(approval: ApprovalData | null, ledger: LedgerPostData[]) {
-  if (ledger.some((p) => p.entity === "Credit memo" && p.status === "posted")) return "Posted to QuickBooks";
-  if (approval?.status === "refused") return `Held by ${REMITTANCE.controller}. Nothing posted`;
-  if (approval?.status === "pending") return `Waiting on ${REMITTANCE.controller} to approve`;
-  return `Goes to ${REMITTANCE.controller} after your answer`;
+function acceptedNote(approval: Approval | null, ledger: LedgerPost[]) {
+  if (ledger.some((p) => p.qbo_entity === "credit_memo" && p.status === "posted")) return "Posted to QuickBooks";
+  if (approval?.status === "refused") return `Held by ${CAST.controller}. Nothing posted`;
+  if (approval?.status === "pending") return `Waiting on ${CAST.controller} to approve`;
+  return `Goes to ${CAST.controller} once every charge is decided`;
 }
 
-export function PaymentSummary({ totals, approval, ledger, latest, running }: Props) {
-  const r = REMITTANCE;
+export function PaymentSummary({ remittance: r, totals, approval, ledger, latest, playing }: Props) {
   // Bar widths are a share of what was taken: a display ratio, not a money calculation.
-  const share = (n: number) => `${(n / r.taken) * 100}%`;
+  const share = (n: number) => (totals && totals.taken > 0 ? `${(n / totals.taken) * 100}%` : "0%");
 
   const segments = totals
     ? [
@@ -38,22 +38,29 @@ export function PaymentSummary({ totals, approval, ledger, latest, running }: Pr
   return (
     <section aria-labelledby="payment-heading" className="rounded-2xl border border-line bg-panel">
       <div className="flex flex-col gap-6 p-5 sm:p-7 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-[40rem]">
-          <p className="text-[15px] text-muted">
-            {r.month} payment for invoice {r.invoice}
-          </p>
-          <h1 id="payment-heading" className="mt-1 font-display text-[28px] leading-[1.15] font-semibold tracking-[-0.01em] sm:text-[34px]">
-            {r.counterparty} paid <span className="num font-medium tracking-[-0.04em]">{money(r.received)}</span> of{" "}
-            <span className="num font-medium tracking-[-0.04em]">{money(r.expected)}</span>
-          </h1>
-          <p className="mt-2 text-[17px] text-muted">
-            They kept <span className="num text-ink">{money(r.taken)}</span> across {r.charges} charges. Clawback checked each
-            one against your signed deal.
-          </p>
-        </div>
+        {r ? (
+          <div className="max-w-[40rem]">
+            <p className="text-[15px] text-muted">Payment for invoice {r.invoice_id}</p>
+            <h1 id="payment-heading" className="mt-1 font-display text-[28px] leading-[1.15] font-semibold tracking-[-0.01em] sm:text-[34px]">
+              {r.counterparty} paid <span className="num font-medium tracking-[-0.04em]">{money(r.received)}</span> of{" "}
+              <span className="num font-medium tracking-[-0.04em]">{money(r.expected)}</span>
+            </h1>
+            <p className="mt-2 text-[17px] text-muted">
+              They kept <span className="num text-ink">{money(r.taken)}</span> across {r.charge_count} charges. Clawback checks each one
+              against your signed deal.
+            </p>
+          </div>
+        ) : (
+          <div className="max-w-[40rem]" aria-busy="true">
+            <h1 id="payment-heading" className="font-display text-[28px] font-semibold sm:text-[34px]">
+              Waiting for the payment
+            </h1>
+            <div className="mt-3 h-5 w-80 max-w-full rounded bg-sunk" />
+          </div>
+        )}
 
-        <p className="flex min-h-6 items-center gap-2 text-[15px] text-muted lg:max-w-[22rem] lg:justify-end lg:text-right" aria-live="polite">
-          {running && <span className="size-2 shrink-0 rounded-full bg-accent motion-safe:animate-pulse" aria-hidden />}
+        <p className="flex min-h-6 items-center gap-2 text-[15px] text-muted lg:max-w-[24rem] lg:justify-end lg:text-right" aria-live="polite">
+          {playing && <span className="size-2 shrink-0 rounded-full bg-accent motion-safe:animate-pulse" aria-hidden />}
           {latest?.text}
         </p>
       </div>
@@ -64,7 +71,7 @@ export function PaymentSummary({ totals, approval, ledger, latest, running }: Pr
           role="img"
           aria-label={
             totals
-              ? `${money(totals.disputed)} disputing, ${money(totals.accepted)} accepted, ${money(totals.waiting)} waiting on you, of ${money(r.taken)} taken`
+              ? `${money(totals.disputed)} disputing, ${money(totals.accepted)} accepted, ${money(totals.waiting)} waiting on you, ${money(totals.undecided)} still being checked, of ${money(totals.taken)} taken`
               : "Checking charges"
           }
         >
@@ -80,14 +87,14 @@ export function PaymentSummary({ totals, approval, ledger, latest, running }: Pr
         </div>
 
         <dl className="mt-4 grid grid-cols-3 items-end gap-x-3 gap-y-4 sm:items-start sm:gap-x-8">
-          <Meter tone="dispute" label="Disputing" value={totals?.disputed ?? 0} note={totals?.disputed ? "Filed as dispute D-0417" : "—"} />
-          <Meter tone="accept" label="Accepted" value={totals?.accepted ?? 0} note={totals ? acceptedNote(approval, ledger) : "—"} />
+          <Meter tone="dispute" label="Disputing" value={totals?.disputed ?? 0} note={totals?.disputed ? "Filed with Northmart as one dispute" : "Nothing yet"} />
+          <Meter tone="accept" label="Accepted" value={totals?.accepted ?? 0} note={totals?.accepted ? acceptedNote(approval, ledger) : "Nothing yet"} />
           <Meter
             tone="ask"
             label="Waiting on you"
             value={totals?.waiting ?? 0}
-            note={totals?.waiting ? "1 question about the display fee" : totals ? "Nothing waiting on you" : "—"}
-            dim={!!totals && totals.waiting === 0}
+            note={totals?.waiting ? `${totals.questions} ${totals.questions === 1 ? "question" : "questions"} for you` : "Nothing waiting on you"}
+            dim={!totals?.waiting}
           />
         </dl>
       </div>

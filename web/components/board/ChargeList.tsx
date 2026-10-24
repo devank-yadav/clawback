@@ -1,11 +1,10 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import type { ReactNode } from "react";
-import { money } from "@/lib/format";
-import { CHARGES } from "@/lib/prototype/charges";
-import { OWNER_ANSWER, REMITTANCE } from "@/lib/prototype/run";
-import type { DecisionData } from "@/lib/types";
+import { CAST } from "@/lib/cast";
+import { recordedAnswer } from "@/lib/fixture";
+import { money, rate, units } from "@/lib/format";
+import type { Charge, Decision, Question } from "@/lib/types";
 import type { RunState } from "@/lib/useRunEvents";
 import { Glyph, type Status } from "./parts";
 
@@ -24,19 +23,29 @@ type Props = {
   onController: (approve: boolean) => void;
 };
 
-export function statusOf(d: DecisionData | undefined): Status {
+export function statusOf(d: Decision | undefined): Status {
   return d ? d.decision : "checking";
 }
 
+/** Second line under a charge: what Northmart says it was for. */
+export function chargeLine(c: Charge) {
+  return c.code === "DF" ? `Ref ${c.ref}` : `${units(c.units)} bars × ${rate(c.rate)}`;
+}
+
+export const sentence = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+
+export function openQuestionOf(state: RunState): Question | undefined {
+  return Object.values(state.questions).find((q) => !q.answer && q.to_role === "owner");
+}
+
 export function ChargeList({ state, selected, onSelect, onAnswer, onController }: Props) {
-  const openQuestion = Object.values(state.questions).find((q) => !q.answer);
+  const openQuestion = openQuestionOf(state);
   const ids = state.order;
   const disputing = ids.filter((id) => ["dispute", "split"].includes(state.decisions[id]?.decision));
   const fair = ids.filter((id) => state.decisions[id]?.decision === "accept");
-  const skipped = ids.filter((id) => state.decisions[id]?.decision === "skip");
+  // An open question shows as its own card; any other Ask or Skip waits here.
+  const onHold = ids.filter((id) => ["ask", "skip"].includes(state.decisions[id]?.decision) && openQuestion?.charge_id !== id);
   const checking = ids.filter((id) => !state.decisions[id]);
-  // An unanswered charge lives in its question card until the question arrives.
-  const asking = ids.filter((id) => state.decisions[id]?.decision === "ask" && openQuestion?.charge_id !== id);
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,10 +53,10 @@ export function ChargeList({ state, selected, onSelect, onAnswer, onController }
         {openQuestion && (
           <motion.div key="question" {...drop} className="overflow-hidden">
             <OwnerQuestion
-              text={openQuestion.text}
+              question={openQuestion}
               selected={selected === openQuestion.charge_id}
               onAnswer={() => onAnswer(openQuestion.id)}
-              onOpen={() => onSelect(openQuestion.charge_id)}
+              onOpen={() => openQuestion.charge_id && onSelect(openQuestion.charge_id)}
             />
           </motion.div>
         )}
@@ -58,53 +67,37 @@ export function ChargeList({ state, selected, onSelect, onAnswer, onController }
         )}
       </AnimatePresence>
 
-      <Group title="Disputing" count={disputing.length}>
-        {disputing.map((id) => (
-          <Row key={id} id={id} state={state} selected={selected === id} onSelect={onSelect} />
-        ))}
-      </Group>
-      <Group title="Accepted as fair" count={fair.length}>
-        {fair.map((id) => (
-          <Row key={id} id={id} state={state} selected={selected === id} onSelect={onSelect} />
-        ))}
-      </Group>
-      {asking.length + skipped.length > 0 && (
-        <Group title="On hold" count={asking.length + skipped.length}>
-          {[...asking, ...skipped].map((id) => (
-            <Row key={id} id={id} state={state} selected={selected === id} onSelect={onSelect} />
-          ))}
-        </Group>
-      )}
-      {checking.length > 0 && (
-        <Group title="Checking" count={checking.length}>
-          {checking.map((id) => (
-            <Row key={id} id={id} state={state} selected={selected === id} onSelect={onSelect} />
-          ))}
-        </Group>
-      )}
+      <Group title="Disputing" ids={disputing} state={state} selected={selected} onSelect={onSelect} />
+      <Group title="Accepted as fair" ids={fair} state={state} selected={selected} onSelect={onSelect} />
+      {onHold.length > 0 && <Group title="On hold" ids={onHold} state={state} selected={selected} onSelect={onSelect} />}
+      {checking.length > 0 && <Group title="Checking" ids={checking} state={state} selected={selected} onSelect={onSelect} />}
     </div>
   );
 }
 
-function Group({ title, count, children }: { title: string; count: number; children: ReactNode }) {
+function Group({ title, ids, state, selected, onSelect }: { title: string; ids: string[]; state: RunState; selected: string | null; onSelect: (id: string) => void }) {
   return (
     <section aria-label={title}>
       <h2 className="flex items-baseline gap-2 px-1 font-display text-[15px] font-semibold text-ink">
         {title}
-        <span className="num text-[13px] font-normal text-muted">{count}</span>
+        <span className="num text-[13px] font-normal text-muted">{ids.length}</span>
       </h2>
-      {count === 0 ? (
+      {ids.length === 0 ? (
         <p className="mt-2 rounded-xl border border-dashed border-line px-4 py-3 text-[15px] text-muted">None yet</p>
       ) : (
         <ul className="mt-2 overflow-hidden rounded-xl border border-line bg-panel">
-          <AnimatePresence initial={false}>{children}</AnimatePresence>
+          <AnimatePresence initial={false}>
+            {ids.map((id) => (
+              <Row key={id} id={id} state={state} selected={selected === id} onSelect={onSelect} />
+            ))}
+          </AnimatePresence>
         </ul>
       )}
     </section>
   );
 }
 
-function Outcome({ d }: { d: DecisionData | undefined }) {
+function Outcome({ d, ruleLabel }: { d: Decision | undefined; ruleLabel?: string }) {
   if (!d) return <span className="text-muted">Checking</span>;
   switch (d.decision) {
     case "split":
@@ -125,7 +118,7 @@ function Outcome({ d }: { d: DecisionData | undefined }) {
         </span>
       );
     case "accept":
-      return <span className="text-muted">{d.rule_id ? "Fair by Rule #1" : "Fair"}</span>;
+      return <span className="text-muted">{ruleLabel ? `Fair by ${ruleLabel}` : "Fair"}</span>;
     case "ask":
       return <span className="text-ask">Needs your answer</span>;
     case "skip":
@@ -134,9 +127,9 @@ function Outcome({ d }: { d: DecisionData | undefined }) {
 }
 
 function Row({ id, state, selected, onSelect }: { id: string; state: RunState; selected: boolean; onSelect: (id: string) => void }) {
-  const c = CHARGES[id];
-  const f = state.findings[id];
+  const c = state.charges[id];
   const d = state.decisions[id];
+  const rule = d?.rule_id ? state.rules[d.rule_id] : undefined;
   return (
     <motion.li layout="position" {...drop} className="border-b border-line-soft last:border-b-0">
       <button
@@ -153,14 +146,14 @@ function Row({ id, state, selected, onSelect }: { id: string; state: RunState; s
           <span className="flex items-baseline justify-between gap-3">
             <span className="flex min-w-0 items-baseline gap-2">
               <span className="num text-[13px] text-muted">{id}</span>
-              <span className="text-[17px] font-semibold">{c.title}</span>
+              <span className="text-[17px] font-semibold">{c.description}</span>
             </span>
-            <span className="num shrink-0 text-[17px]">{f ? money(f.taken) : ""}</span>
+            <span className="num shrink-0 text-[17px]">{money(c.amount)}</span>
           </span>
           <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-            <span className="text-[15px] text-muted">{c.detail}</span>
+            <span className="text-[15px] text-muted">{chargeLine(c)}</span>
             <span className="ml-auto text-[14px] whitespace-nowrap">
-              <Outcome d={d} />
+              <Outcome d={d} ruleLabel={rule?.label} />
             </span>
           </span>
         </span>
@@ -169,42 +162,49 @@ function Row({ id, state, selected, onSelect }: { id: string; state: RunState; s
   );
 }
 
-function OwnerQuestion({ text, selected, onAnswer, onOpen }: { text: string; selected: boolean; onAnswer: () => void; onOpen: () => void }) {
+function OwnerQuestion({ question, selected, onAnswer, onOpen }: { question: Question; selected: boolean; onAnswer: () => void; onOpen: () => void }) {
+  const reply = recordedAnswer(question.id);
   return (
     <section aria-labelledby="q-heading" className="rounded-xl border border-ask/45 bg-ask-soft p-4 sm:p-5">
       <h2 id="q-heading" className="flex items-center gap-2 font-display text-[15px] font-semibold text-ask">
         <Glyph status="ask" />
         One question for you
       </h2>
-      <p className="mt-2 text-[17px] leading-snug text-ink">{text}</p>
-      <p className="mt-2 text-[15px] text-muted">Clawback saves your answer as a rule, so it won&apos;t ask about this again.</p>
+      <p className="mt-2 text-[17px] leading-snug text-ink">{question.text}</p>
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={onAnswer}
-          className="rounded-lg bg-accent px-4 py-2.5 text-[16px] font-semibold text-white shadow-sm transition-[filter] hover:brightness-110 dark:text-[#0f151c]"
-        >
-          {OWNER_ANSWER}
-        </button>
-        <button
-          type="button"
-          onClick={onOpen}
-          aria-pressed={selected}
-          className="rounded-lg px-3 py-2.5 text-[16px] font-semibold text-ink underline-offset-4 hover:underline"
-        >
-          See the evidence
-        </button>
+        {reply && (
+          <button
+            type="button"
+            onClick={onAnswer}
+            className="rounded-lg bg-accent px-4 py-2.5 text-[16px] font-semibold text-white shadow-sm transition-[filter] hover:brightness-110 dark:text-[#0f151c]"
+          >
+            {sentence(reply)}
+          </button>
+        )}
+        {question.charge_id && (
+          <button
+            type="button"
+            onClick={onOpen}
+            aria-pressed={selected}
+            className="rounded-lg px-3 py-2.5 text-[16px] font-semibold text-ink underline-offset-4 hover:underline"
+          >
+            See the evidence
+          </button>
+        )}
       </div>
-      <p className="mt-3 text-[14px] text-muted">We also texted you this question. You can reply there instead.</p>
+      <p className="mt-3 text-[14px] text-muted">
+        {question.channel === "sms" ? "We also texted you this question. You can reply there instead." : "Answer here to continue."}
+      </p>
     </section>
   );
 }
 
 function ControllerApproval({ state, onDecide }: { state: RunState; onDecide: (approve: boolean) => void }) {
   const a = state.approval!;
-  const who = REMITTANCE.controller;
-  const memo = state.ledger.find((p) => p.entity === "Credit memo");
-  const open = state.ledger.find((p) => p.status === "open");
+  const who = CAST.controller;
+  const memo = state.ledger.find((p) => p.qbo_entity === "credit_memo" && p.approval_id === a.id) ?? state.ledger.find((p) => p.qbo_entity === "credit_memo");
+  const open = state.ledger.find((p) => p.qbo_entity === "invoice_note");
+  const invoice = state.run?.remittance?.invoice_id ?? "the invoice";
 
   if (a.status === "approved") {
     return (
@@ -217,18 +217,26 @@ function ControllerApproval({ state, onDecide }: { state: RunState; onDecide: (a
           {who} approved
         </h2>
         <p className="mt-2 text-[17px]">
-          {memo ? (
+          {memo?.status === "posted" ? (
             <>
               Credit memo for <span className="num">{money(memo.amount)}</span> posted to QuickBooks.
             </>
+          ) : memo?.status === "failed" ? (
+            "QuickBooks didn't take the credit memo. Clawback will retry once."
           ) : (
             "Posting the credit memo to QuickBooks…"
           )}
         </p>
         {open && (
           <p className="mt-1 text-[15px] text-muted">
-            <span className="num">{money(open.amount)}</span> stays open on {REMITTANCE.invoice} while dispute D-0417 is decided.
+            <span className="num">{money(open.amount)}</span> stays open on {invoice}
+            {state.dispute ? ` while dispute ${state.dispute.id} is decided.` : "."}
           </p>
+        )}
+        {memo?.qbo_url && (
+          <a href={memo.qbo_url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-[15px] font-semibold text-accent underline-offset-4 hover:underline">
+            Open in QuickBooks
+          </a>
         )}
       </section>
     );
@@ -254,7 +262,7 @@ function ControllerApproval({ state, onDecide }: { state: RunState; onDecide: (a
         Waiting on {who} to approve
       </h2>
       <p className="mt-2 text-[17px]">
-        Credit memo for <span className="num">{money(a.amount)}</span>, {a.lines} lines.
+        Credit memo for <span className="num">{money(a.amount)}</span>, {a.lines.length} {a.lines.length === 1 ? "line" : "lines"}.
       </p>
       <p className="mt-1 text-[15px] text-muted">{who} keeps your books. Nothing goes into QuickBooks until they say yes.</p>
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-dashed border-line pt-3">
