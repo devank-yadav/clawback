@@ -74,6 +74,25 @@ Disputed total 4,120.00 · accepted total 2,730.00 · 4,120 + 2,730 = 6,850.
 ## plan/promo-plan.csv (columns: promo_id, product, rate, starts, ends, cap)
 SPRING-26, Peak Bar Original; Peak Bar Chocolate, 1.00, 2026-03-01, 2026-03-31, 5000
 
+## Every account's history/ (checked by scripts/check_accounts.py; the no-AI lookback re-checks it)
+- deductions.csv: month, ref, code, description, amount, outcome, recovered, then deducted_on (the date of the
+  remittance for that month's invoice that took it), product, units, rate, period_start, period_end, line_ref (SH/PR
+  only). units x rate = amount; amount/outcome/recovered are the overview's numbers and never change.
+- promo-plan.csv (plan/promo-plan.csv's columns): one row per past promo the PA rows claim. A PA row claims the promo
+  whose dates overlap its period (one with its products first), else the latest promo that ended before it.
+- sales.csv (sales/store-sales.csv's columns): every week of each past promo from its start through the last week
+  claimed, so the cap counts. deliveries.csv (deliveries/pod.csv's columns): the line of every past SH/PR row.
+  Past prices are in pricing/price-list.csv (Fernwell's 2025 list: notices/fernwell-price-list-2025.md).
+- expected-lookback.csv: ref, allowed, wrongly_taken, status, why, for every deduction but the current invoice's.
+  Math as the engine: PA covered units x promo rate (product, dates, cap by sales week, minus an earlier
+  non-recovered row with the same period), SH units short on the POD x its price, PR units x (invoiced - agreed).
+  status: fair (within $1), settled (wrong and outcome recovered, recovered = wrongly_taken), past_window (wrong and
+  more than the dispute window since deducted_on), claimable (wrong, inside the window), not_checked (DF, SP, other
+  fees, or a PR with no price list; allowed and wrongly_taken blank). Window: ops term dispute_window_days, else 90
+  days. As of: qbo.payment_date, else invoice.period_end + 20 days. Peak Bar has no terms/ (its run must not change)
+  so it uses 90 days; its deal says 60, and the check proves both give the same statuses. Fee-schedule accounts
+  (fees/fees.yaml: lantern-hill, copperline, fizzwick) have no lookback detail yet: their charges are fees on POs.
+
 ## eval/ (test set, see docs/design.md "Proof, tests and responsible design")
 charges-30.csv + answer-key.csv: 12 dispute (rate over split 3, duplicate 3, over cap 2, product not covered 2,
 outside dates no amendment 1, distributor-claimed change not signed 1), 12 accept (exact match 5, approved broker

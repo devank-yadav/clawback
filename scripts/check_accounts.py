@@ -13,6 +13,13 @@ For every account:
   follows from the files (worked out again here with the math and gate in docs/design.md);
 - history: paid + deducted = invoice amount for every remittance, deductions sum per month, outcomes are valid,
   and the current invoice and prior payments appear in it;
+- history detail (the lookback re-checks past deductions with the same math): every deduction's deducted_on is the
+  date of a remittance for that month's invoice and they sum to its deducted amount; units x rate = amount; every
+  past PA row has its promo in history/promo-plan.csv and its weeks in history/sales.csv; every SH/PR row has its
+  delivery line (history/deliveries.csv, or deliveries/pod.csv for the current invoice); the dispute window
+  (ops term dispute_window_days, quoted from the deal; else 90 days) and the "as of" date (qbo.payment_date, else
+  invoice.period_end + 20 days); and each history/expected-lookback.csv row recomputes (allowed, wrongly taken,
+  claimable / past_window / settled / fair / not_checked). Fee-schedule accounts (fees/fees.yaml) skip these;
 - document stems are unique across accounts (and start with the account id, except Peak Bar's original ones).
 
 An account with fees/fees.yaml and terms/fee-terms.csv (a real contract priced by fee schedules: Copperline <- Walmart,
@@ -74,8 +81,18 @@ COLS = {
     "expected.csv": ["charge_id", "decision", "disputed", "accepted", "why"],
     "history/invoices.csv": ["invoice", "date", "amount", "status"],
     "history/remittances.csv": ["date", "invoice", "paid", "deducted"],
-    "history/deductions.csv": ["month", "ref", "code", "description", "amount", "outcome", "recovered"],
+    "history/deductions.csv": ["month", "ref", "code", "description", "amount", "outcome", "recovered", "deducted_on",
+                               "product", "units", "rate", "period_start", "period_end", "line_ref"],
+    "history/promo-plan.csv": ["promo_id", "product", "rate", "starts", "ends", "cap"],
+    "history/sales.csv": ["week_start", "week_end", "product", "promo_units", "total_units"],
+    "history/deliveries.csv": ["line_ref", "product", "shipped_units", "received_units", "unit_price", "received_by",
+                               "received_at"],
+    "history/expected-lookback.csv": ["ref", "allowed", "wrongly_taken", "status", "why"],
 }
+LOOKBACK_STATUSES = {"claimable", "past_window", "settled", "fair", "not_checked"}
+CHECKED_CODES = {"PA", "SH", "PR"}  # the lookback leaves fees and unsaleables as they are (not_checked)
+DEFAULT_WINDOW = 90  # days, for an account whose deal states no dispute window
+PAYMENT_LAG = 20  # days after the invoice period ends, when account.yaml has no qbo.payment_date
 DOC_DIRS = {"deals": ".md", "emails": ".eml", "notices": ".md"}
 
 # Peak Bar's files before they move into data/accounts/peak-bar/, and its fixed demo numbers (data/CLAUDE.md).
@@ -167,6 +184,8 @@ class Account:
                                                                  + ["deducted_on"])
             elif rel == "expected.csv" and self.fees is not None:  # may add gate_row and asked
                 ok = got[:4] == want[:4] and set(want) <= set(got)
+            elif rel == "history/deductions.csv" and self.fees is not None:  # no lookback detail yet
+                ok = got in (want, want[:7])
             else:
                 ok = got == want
             check(f"{self.label}: {rel} columns", ok, got)
@@ -935,6 +954,199 @@ def check_fee_account(acct, docs, fees):
           f"asked ${totals['asked']:,}")
 
 
+# ---------------------------------------------------------------- history detail and the lookback
+
+def plain_rows(acct, rel):
+    p = acct.path(rel)
+    if not p.exists():
+        return []
+    with p.open(newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def as_of(y):
+    """The day the lookback counts from: the account's payment date, else the invoice period's end + 20 days."""
+    paid = (y.get("qbo") or {}).get("payment_date")
+    return day(paid) if paid else day(y["invoice"]["period_end"]) + timedelta(PAYMENT_LAG)
+
+
+def dispute_window(acct, docs, terms):
+    """(days, stated): the ops term's window (its quote is checked against the deal here), else 90 days; stated is
+    a window the deal states in words when there's no ops term, so the check can show the fallback changes nothing."""
+    deal_id = acct.yaml["deal_docs"][0]
+    if "dispute_window_days" in terms:
+        row = next(t for t in plain_rows(acct, "terms/ops-terms.csv") if t["key"] == "dispute_window_days")
+        check(f"{acct.label}: dispute_window_days is quoted from the deal {deal_id}",
+              row["source_doc"] == deal_id and row["quote"] in doc_text(docs, deal_id), row["source_doc"])
+        return int(terms["dispute_window_days"]), None
+    m = re.search(r"within (\d+) days of the remittance date", doc_text(docs, deal_id))
+    return DEFAULT_WINDOW, (int(m.group(1)) if m else None)
+
+
+def promo_for(row, plan):
+    """The past promo a PA row claims: the one whose dates overlap its period (preferring one with its products),
+    else the latest one that ended before the period (a claim after the end date)."""
+    ps, pe, mine = day(row["period_start"]), day(row["period_end"]), products(row["product"])
+    hits = [p for p in plan if day(p["starts"]) <= pe and ps <= day(p["ends"])]
+    if len(hits) > 1:
+        hits = [p for p in hits if products(p["product"]) & mine] or hits
+    if not hits:
+        before = sorted((p for p in plan if day(p["ends"]) < ps), key=lambda p: p["ends"])
+        hits = before[-1:]
+    return hits[0] if len(hits) == 1 else None
+
+
+def lookback(row, earlier, plan, sales, pod, prices, outcome, days, window, tolerance=TOLERANCE):
+    """(allowed, wrongly_taken, status) for one past deduction, by the engine's math (allowed_for)."""
+    amount = money(row["amount"])
+    if row["code"] not in CHECKED_CODES or (row["code"] == "PR" and not prices):
+        return None, None, "not_checked"
+    if row["code"] == "PA":
+        p = promo_for(row, plan)
+        if p is None:
+            return None, None, "not_checked"
+        promo = {"rate": money(p["rate"]), "cap": int(p["cap"]), "starts": day(p["starts"]), "ends": day(p["ends"]),
+                 "products": products(p["product"])}
+        allowed, _ = allowed_for(row, promo, sales, earlier, pod, prices, {})
+    else:
+        allowed, _ = allowed_for(row, None, sales, earlier, pod, prices, {})
+    if allowed is None:
+        return None, None, "not_checked"
+    wrong = amount - allowed
+    if wrong <= tolerance:
+        return allowed, Decimal("0.00"), "fair"
+    if outcome == "recovered":
+        return allowed, wrong, "settled"
+    return allowed, wrong, "past_window" if days > window else "claimable"
+
+
+def check_lookback(acct, docs, terms, charges, pod, prices):
+    print(f"{acct.label}: history detail and lookback")
+    y = acct.yaml
+    deductions = acct.rows("history/deductions.csv") or []
+    plan = acct.rows("history/promo-plan.csv") or []
+    sales = acct.rows("history/sales.csv") or []
+    hist_pod = acct.rows("history/deliveries.csv") or []
+    expected = acct.rows("history/expected-lookback.csv") or []
+    remits = plain_rows(acct, "history/remittances.csv")
+    invoices = {r["invoice"]: r for r in plain_rows(acct, "history/invoices.csv")}
+    current = {c["ref"] for c in charges or []}
+    window, stated = dispute_window(acct, docs, terms)
+    today = as_of(y)
+    print(f"  ..   {acct.label}: as of {today}, dispute window {window} days")
+
+    # Every deduction is taken on a remittance for its month's invoice, and they add up to what it deducted.
+    taken_on = defaultdict(Decimal)
+    for d in deductions:
+        ok = is_date(d["deducted_on"]) and any(
+            r["date"] == d["deducted_on"] and r["invoice"] in invoices
+            and invoices[r["invoice"]]["date"][:7] == d["month"] for r in remits)
+        check(f"{acct.label}: {d['ref']} deducted_on {d['deducted_on']} is a remittance for a {d['month']} invoice", ok)
+        taken_on[d["deducted_on"]] += money(d["amount"])
+        check(f"{acct.label}: {d['ref']} units x rate = amount",
+              bool(d["units"] and d["rate"]) and money(Decimal(d["units"]) * Decimal(d["rate"])) == money(d["amount"]),
+              f"{d['units']} x {d['rate']}")
+        check(f"{acct.label}: {d['ref']} has a product and a valid period",
+              bool(d["product"]) and is_date(d["period_start"]) and is_date(d["period_end"])
+              and d["period_start"] <= d["period_end"])
+    for r in remits:
+        check(f"{acct.label}: deductions taken on {r['date']} sum to its remittance's ${money(r['deducted']):,}",
+              taken_on[r["date"]] == money(r["deducted"]), taken_on[r["date"]])
+
+    for p in plan:
+        check(f"{acct.label}: past promo {p['promo_id']} has valid dates, rate and cap",
+              is_date(p["starts"]) and is_date(p["ends"]) and p["starts"] <= p["ends"] and money(p["rate"]) > 0
+              and int(p["cap"]) > 0)
+    check(f"{acct.label}: past promo ids are unique", len({p["promo_id"] for p in plan}) == len(plan))
+    check(f"{acct.label}: history sales rows are valid", all(
+        is_date(s["week_start"]) and is_date(s["week_end"]) and s["week_start"] <= s["week_end"]
+        and int(s["total_units"]) >= int(s["promo_units"]) >= 0 for s in sales))
+    check(f"{acct.label}: history sales have one row per week and product",
+          len({(s["week_start"], s["product"]) for s in sales}) == len(sales))
+    for r in hist_pod:
+        check(f"{acct.label}: past delivery {r['line_ref']} received <= shipped and a valid date",
+              0 <= int(r["received_units"]) <= int(r["shipped_units"]) and is_date(r["received_at"]))
+    lines = {r["line_ref"]: r for r in [*(pod or []), *hist_pod]}
+    check(f"{acct.label}: past delivery line_refs are unique and not in deliveries/pod.csv",
+          len(lines) == len(pod or []) + len(hist_pod))
+
+    past = [d for d in deductions if d["ref"] not in current]
+    for d in past:
+        ref = d["ref"]
+        if d["code"] == "PA":
+            promo = promo_for(d, plan)
+            check(f"{acct.label}: {ref} claims a promo in history/promo-plan.csv", promo is not None)
+            ps, pe = day(d["period_start"]), day(d["period_end"])
+            spans = sorted({(day(s["week_start"]), day(s["week_end"])) for s in sales
+                            if ps <= day(s["week_start"]) and day(s["week_end"]) <= pe})
+            tiled = bool(spans) and spans[0][0] == ps and spans[-1][1] == pe and all(
+                b[0] == a[1] + timedelta(1) for a, b in zip(spans, spans[1:]))
+            check(f"{acct.label}: {ref} period {ps} to {pe} is covered week by week in history/sales.csv", tiled)
+            if promo is not None:
+                start = day(promo["starts"])
+                before = {day(s["week_start"]) for s in sales if start <= day(s["week_start"]) < ps}
+                need = {start + timedelta(7 * i) for i in range((ps - start).days // 7)}
+                check(f"{acct.label}: {ref} has the promo's earlier weeks for the cap", need <= before,
+                      sorted(need - before))
+        if d["code"] in ("SH", "PR"):
+            row = lines.get(d["line_ref"])
+            if check(f"{acct.label}: {ref} line_ref {d['line_ref'] or '(blank)'} is a delivery line", row is not None):
+                check(f"{acct.label}: {ref} product matches delivery {d['line_ref']}", row["product"] == d["product"])
+                check(f"{acct.label}: {ref} delivery was in {d['month']}, before the deduction",
+                      row["received_at"][:7] == d["month"] and row["received_at"] <= d["deducted_on"])
+                if d["code"] == "PR":
+                    check(f"{acct.label}: {ref} delivery has one agreed price that day",
+                          not prices or agreed_price(prices, row["product"], day(row["received_at"])) is not None)
+        elif d["code"] != "PA":
+            check(f"{acct.label}: {ref} {d['code']} row has no line_ref", not d["line_ref"])
+
+    # expected-lookback.csv: one row per past deduction, each recomputed.
+    got = Counter(e["ref"] for e in expected)
+    check(f"{acct.label}: expected-lookback.csv covers every past deduction once",
+          set(got) == {d["ref"] for d in past} and all(n == 1 for n in got.values()),
+          sorted(set(got) ^ {d["ref"] for d in past}))
+    by_ref = {d["ref"]: d for d in past}
+    order = sorted(past, key=lambda d: (d["deducted_on"], d["ref"]))
+    totals = defaultdict(Decimal)
+    counts = Counter()
+    differs = []
+    for e in expected:
+        d = by_ref.get(e["ref"])
+        if d is None:
+            continue
+        earlier = [x for x in order[:order.index(d)] if x["code"] == d["code"] and x["outcome"] != "recovered"]
+        days = (today - day(d["deducted_on"])).days
+        allowed, wrong, status = lookback(d, earlier, plan, sales, list(lines.values()), prices, d["outcome"], days,
+                                          window)
+        have = (money(e["allowed"]) if e["allowed"] else None, money(e["wrongly_taken"]) if e["wrongly_taken"] else None,
+                e["status"])
+        check(f"{acct.label}: lookback {e['ref']} status '{e['status']}' is known and has a why",
+              e["status"] in LOOKBACK_STATUSES and bool(e["why"].strip()))
+        check(f"{acct.label}: lookback {e['ref']} recomputes ({status}, allowed {allowed}, wrongly taken {wrong})",
+              have == (allowed, wrong, status), f"file has {have}")
+        if status == "settled":
+            check(f"{acct.label}: lookback {e['ref']} settled: recovered = wrongly taken",
+                  money(d["recovered"]) == wrong, d["recovered"])
+        if status == "fair":
+            check(f"{acct.label}: lookback {e['ref']} fair: nothing was recovered", d["outcome"] != "recovered")
+        if stated and stated != window and status in ("claimable", "past_window"):
+            alt = "past_window" if days > stated else "claimable"
+            if alt != status:
+                differs.append(e["ref"])
+        counts[status] += 1
+        if wrong:
+            totals[status] += wrong
+    if stated and stated != window:
+        check(f"{acct.label}: the deal's {stated}-day window gives the same statuses as the {window}-day fallback",
+              not differs, differs)
+    checked = sum(counts[s] for s in ("claimable", "past_window", "settled", "fair"))
+    wrong_n = sum(counts[s] for s in ("claimable", "past_window", "settled"))
+    print(f"  ..   {acct.label}: {len(past)} past deductions, {checked} checked, {wrong_n} not allowed "
+          f"({100 * wrong_n / max(len(past), 1):.0f}%) · claimable ${totals['claimable']:,} ({counts['claimable']}) · "
+          f"past window ${totals['past_window']:,} ({counts['past_window']}) · settled ${totals['settled']:,} "
+          f"({counts['settled']}) · fair {counts['fair']} · not checked {counts['not_checked']}")
+
+
 # ---------------------------------------------------------------- one account
 
 def check_account(acct):
@@ -993,7 +1205,10 @@ def check_account(acct):
             older = acct.rows(acct.fees["older_charges"], CHARGE_COLS) if fee_account and acct.fees.get(
                 "older_charges") else []
             check_expected(acct, charges + (older or []), expected, recompute)
-    return docs, check_history(acct, charges, prior)
+    invoices = check_history(acct, charges, prior)
+    if not fee_account:  # fee-schedule accounts' deductions are fees counted on POs: no lookback math for them yet
+        check_lookback(acct, docs, terms, charges, pod, prices)
+    return docs, invoices
 
 
 def main():

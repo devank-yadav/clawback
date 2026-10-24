@@ -1,0 +1,5 @@
+line_ref,product,shipped_units,received_units,unit_price,received_by,received_at
+PB-4410-1,Peak Bar Original,120,108,40.50,"R. Patel, Northmart DC receiving",2025-11-18
+PB-4452-2,Peak Bar Chocolate,380,380,40.50,"K. Moore, Northmart DC receiving",2025-12-09
+PB-4498-3,Peak Bar Mint,150,140,52.00,"R. Patel, Northmart DC receiving",2026-01-20
+PB-4531-2,Peak Bar Chocolate,140,140,40.50,"K. Moore, Northmart DC receiving",2026-02-10
