@@ -95,7 +95,10 @@ def test_rule_writer_sends_fee_amount_only_when_there_is_one(monkeypatch):
 
 # --- One canonical form for fee terms (api/agents/fee_terms.py) ---------------------------------------------------
 
-from api.agents import fee_terms  # noqa: E402
+from types import SimpleNamespace  # noqa: E402
+
+from api.agents import fee_terms, readers  # noqa: E402
+from api.engine.quote_check import readers_agree  # noqa: E402
 
 VOCAB = ["MCB", "Extra Performance", "Free Placements", "Spoils"]
 Q_MCB = ("KeHE will charge a bi weekly processing fee of 5% of the MCB amount (with a minimum of $65 per purchasing "
@@ -133,3 +136,43 @@ def test_priced_alike_ignores_requires_proof_and_per():
     tiered = {"fee_code": "Late", "basis": "percent", "tiers": [{"from_days": 0, "to_days": 7, "rate": "5%"}]}
     assert fee_terms.canonical(tiered, "5% if 0 to 7 days late", [])["tiers"] == [
         {"from_days": 0, "to_days": 7, "rate": "5"}]
+
+
+@pytest.mark.parametrize("written", ["new store", "each new store P.O.", "New Store PO", "every new store purchase order"])
+def test_applies_to_in_one_form(written):
+    # Walmart's schedule: "% Applied to each line item for each new store P.O."; live, Gemini wrote the whole phrase
+    p = fee_terms.canonical({"fee_code": "New Store/Club Discount", "basis": "percent", "rate": "10",
+                             "applies_to": written}, "", ["New Store/Club Discount"])
+    assert p["applies_to"].lower() == "new store"
+
+
+# Five Below's Violation Summary, as the two readers wrote it live
+ADMIN = {"fee_code": "administrative fee", "basis": "per_po", "rate": "100", "per": "incident", "add_on": True}
+LATE = {"fee_code": "Late Shipment", "basis": "percent", "rate": "5", "per": "incident", "requires_fault": True}
+MISSED = {"fee_code": "Missed", "basis": "percent", "rate": "3", "max": "750", "per": "incident"}
+
+
+def test_per_po_and_flat_are_one_price_and_agree():
+    flat = {**ADMIN, "basis": "flat"}
+    assert fee_terms.priced_alike(ADMIN, flat)
+    a, b = fee_terms.agreed(ADMIN, flat)
+    assert readers_agree({"type": "fee_schedule", "params": a}, {"type": "fee_schedule", "params": b})
+    assert not fee_terms.priced_alike(ADMIN, {**ADMIN, "basis": "per_unit"})
+
+
+def test_per_agrees_only_where_no_minimum_or_maximum_groups_it():
+    a, b = fee_terms.agreed(LATE, {**LATE, "per": "po"})
+    assert readers_agree({"type": "fee_schedule", "params": a}, {"type": "fee_schedule", "params": b})
+    a, b = fee_terms.agreed(MISSED, {**MISSED, "per": "po"})  # up to $750 per PO or per incident: a different price
+    assert not readers_agree({"type": "fee_schedule", "params": a}, {"type": "fee_schedule", "params": b})
+
+
+def test_alike_schedules_pair_first_under_one_fee_name():
+    # Reader A also named the 50% short-shipment chargeback "Receipt of backorder (shortship)"; Reader B didn't
+    t = lambda at, **p: SimpleNamespace(char_start=at, params={"fee_code": "Receipt of backorder (shortship)",  # noqa: E731
+                                                                "basis": "percent", "per": "incident", **p})
+    a = [t(100, rate="50"), t(900, rate="5")]
+    b = [t(905, rate="5")]
+    pairs = readers._pairs("fee_schedule", a, b)
+    assert [(x.params["rate"] if x else None, y.params["rate"] if y else None) for x, y in pairs] == [
+        ("50", None), ("5", "5")]
