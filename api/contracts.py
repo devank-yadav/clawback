@@ -598,6 +598,7 @@ class RunFixture(Contract):
 class StartRunRequest(Contract):
     remittance_id: str | None = None
     kind: Literal["march", "april"] = "march"
+    fixture: bool = False  # replay the recorded fake run (web/fixtures) instead of running the pipeline
 
 
 class StartRunResponse(Contract):

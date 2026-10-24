@@ -19,27 +19,21 @@ from pathlib import Path
 from typing import Any, Literal
 
 import anthropic
-from pydantic import BaseModel, ConfigDict, ValidationError
 
 from api import documents
 from api.contracts import TERM_PARAMS, Document, ReaderOutput, ReaderTerm, Term, TermType
 from api.engine import quote_check
-from api.integrations import replay
+from api.agents import claude
+from api.agents.claude import Strict
 
-MODEL = "claude-opus-5-5"
+MODEL = claude.MODEL
 SERVICE = "claude-reader"  # fixtures in data/fixtures/claude-reader/
-MAX_TOKENS = 16000
-FALLBACK_BETA = "server-side-fallback-2026-07-01"
 PROMPT = (Path(__file__).parent / "prompts" / "reader.md").read_text()
 
 
 # What the model fills in. Strict JSON schemas can't hold a free-form dict, so params is one flat object
 # with every field nullable; code keeps only the fields the term's type uses (TERM_PARAMS).
-class _Strict(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-
-class LLMParams(_Strict):
+class LLMParams(Strict):
     rate: str | None
     products: list[str] | None
     start: str | None
@@ -49,7 +43,7 @@ class LLMParams(_Strict):
     extra_units: int | None
 
 
-class LLMTerm(_Strict):
+class LLMTerm(Strict):
     type: TermType
     params: LLMParams
     effective_from: str | None
@@ -58,7 +52,7 @@ class LLMTerm(_Strict):
     discretion: bool
 
 
-class LLMOutput(_Strict):
+class LLMOutput(Strict):
     terms: list[LLMTerm]
     unclear: list[str]
 
@@ -93,50 +87,18 @@ def _to_reader_output(raw: dict, doc: Document, text: str) -> ReaderOutput:
     return ReaderOutput(terms=terms, unclear=out.unclear)
 
 
-def _ask_claude(client: anthropic.Anthropic, user: str, timeout: float) -> dict:
-    """One structured-output call. replay.call_outside owns the timeout and the one retry, so the SDK's
-    own retries are off. Server-side fallback covers a refusal."""
-    resp = client.with_options(timeout=timeout, max_retries=0).beta.messages.parse(
-        model=MODEL, max_tokens=MAX_TOKENS, system=PROMPT, messages=[{"role": "user", "content": user}],
-        output_format=LLMOutput, betas=[FALLBACK_BETA], fallbacks="default",
-    )
-    if resp.stop_reason == "refusal":
-        raise ValueError(f"model declined ({getattr(resp.stop_details, 'category', None)})")
-    if resp.stop_reason == "max_tokens" or resp.parsed_output is None:
-        raise ValueError(f"no complete JSON answer (stop_reason={resp.stop_reason})")
-    return resp.parsed_output.model_dump()
-
-
 def read_document(doc_id: str, base_terms: Sequence[Term] = (), client: anthropic.Anthropic | None = None) -> ReaderResult:
     """Read one document. `base_terms` are the deal's verified terms, used only to date an extension
     that states its end but not its start (it starts the day after the deal's date_range ends)."""
     doc, text = documents.load(doc_id)
-    first = _user_message(doc, text)
-    errors: list[str] = []
-    output: ReaderOutput | None = None
-    source = "live"
-    attempts = 0
-    for attempts in (1, 2):
-        # The retry resends the document with the validation error appended.
-        user = first if not errors else (f"{first}\n\nYour previous answer failed validation:\n{errors[-1]}\n"
-                                         "Return the complete answer again, fixed.")
-        request = {"model": MODEL, "system": PROMPT, "user": user, "doc_id": doc_id}
-        try:
-            res = replay.call_outside(SERVICE, request,
-                                      lambda req, timeout: _ask_claude(client or anthropic.Anthropic(), req["user"], timeout))
-        except replay.OutsideCallFailed as e:  # live failed twice and nothing saved
-            errors.append(str(e))
-            break
-        source = res.source
-        try:
-            output = _to_reader_output(res.response, doc, text)
-            break
-        except ValidationError as e:
-            errors.append(str(e))
-    if output is None:
+    ans = claude.ask(SERVICE, PROMPT, _user_message(doc, text), LLMOutput, lambda raw: _to_reader_output(raw, doc, text),
+                     client, doc_id=doc_id)
+    if ans.value is None:
         return ReaderResult(doc, [], [f"{doc_id}: reader output failed validation twice; needs a person"],
-                            source, attempts, errors)
-    return ReaderResult(doc, _check(output, doc, text, base_terms), output.unclear, source, attempts, errors)
+                            ans.source, ans.attempts, ans.errors)
+    output = ans.value
+    return ReaderResult(doc, _check(output, doc, text, base_terms), output.unclear, ans.source, ans.attempts,
+                        ans.errors)
 
 
 def _check(output: ReaderOutput, doc: Document, text: str, base_terms: Sequence[Term]) -> list[Term]:

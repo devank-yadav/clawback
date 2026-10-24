@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from api import pipeline
 from api.routes import approvals, portal
 
 router = APIRouter(tags=["demo"])
@@ -11,4 +12,5 @@ router = APIRouter(tags=["demo"])
 def reset() -> dict:
     portal.reset()
     approvals.reset()
+    pipeline.reset()  # live runs, open questions and saved rules
     return {"ok": True, "stub": True}

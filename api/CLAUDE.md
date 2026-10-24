@@ -24,5 +24,8 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - `python3.11 -m venv .venv && .venv/bin/pip install -r api/requirements.txt -r requirements-dev.txt`,
   then `source .venv/bin/activate`.
 - `make api` serves the stub API on :8000; `make test` runs every test in api/.
+- `make record` runs the whole demo live (March, Dana's answer, April) and saves every AI answer to data/fixtures/;
+  `make demo` / DEMO_MODE=true replays them with no network. `python -m api.agents.reader <doc ids>` reads documents.
+- POST /runs starts a live pipeline run (api/pipeline.py); `{"fixture": true}` replays the recorded fake run instead.
 - Stub routes serve the fixture run in api/stubs/fixtures.py. After changing it, run `python -m api.stubs.fixtures`
   to rewrite web/fixtures/*.json (a test fails if they're stale).

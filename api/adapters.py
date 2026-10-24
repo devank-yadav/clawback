@@ -1,6 +1,8 @@
-"""Map api/contracts.py objects onto the engine's plain dataclasses (api/engine/types.py)."""
+"""Map api/contracts.py objects onto the engine's plain dataclasses (api/engine/types.py) and back."""
 
 from __future__ import annotations
+
+from datetime import datetime
 
 from api import contracts
 from api.engine import types as eng
@@ -34,3 +36,17 @@ def to_engine_sales(r: contracts.SalesRow) -> eng.SalesWeek:
 def to_engine_prior(p: contracts.PriorPayment) -> eng.PriorPayment:
     return eng.PriorPayment(p.ref, p.paid_on, p.promo_id, _products(p.product), p.period_start, p.period_end,
                             p.units, p.amount)
+
+
+def to_engine_rule(r: contracts.Rule) -> eng.Rule:
+    return eng.Rule(id=r.id, pattern_text=r.pattern_text, term_type=eng.TermType(r.term_type),
+                    counterparty=r.counterparty, condition=r.condition, decision=eng.DecisionKind(r.decision),
+                    else_decision=eng.DecisionKind(r.else_decision), approver=r.approver_role,
+                    learned_at=r.learned_at.date() if isinstance(r.learned_at, datetime) else r.learned_at,
+                    source_question_id=r.source_question_id or "", status=r.status)
+
+
+def to_contract_decision(d: eng.Decision, waiting, decided_by: str, decided_at: datetime) -> contracts.Decision:
+    return contracts.Decision(charge_id=d.charge_id, decision=d.kind.value, disputed=d.disputed, accepted=d.accepted,
+                              waiting=waiting, gate_row=d.gate_row, rule_id=d.rule_id, decided_by=decided_by,
+                              decided_at=decided_at, reason=d.reason)

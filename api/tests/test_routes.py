@@ -5,11 +5,20 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from api import pipeline
 from api.contracts import EventAdapter
 from api.main import app
 from api.stubs import fixtures
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _no_live_runs():
+    """These tests cover the recorded fake runs; live runs are in test_pipeline.py."""
+    pipeline.reset()
+    yield
+    pipeline.reset()
 
 
 def _sse(text: str) -> list:
@@ -21,7 +30,7 @@ def test_health():
 
 
 def test_start_run_and_stream_all_events():
-    run = client.post("/runs", json={"kind": "march"}).json()
+    run = client.post("/runs", json={"kind": "march", "fixture": True}).json()
     assert run["run_id"] == fixtures.MARCH_RUN
     r = client.get(run["events_url"], params={"delay_ms": 0, "keepalive": False})
     assert r.headers["content-type"].startswith("text/event-stream")
@@ -36,7 +45,7 @@ def test_stream_resumes_after_last_event_id():
 
 
 def test_april_replay():
-    run = client.post("/replay/april").json()
+    run = client.post("/replay/april", params={"fixture": True}).json()
     events = _sse(client.get(run["events_url"], params={"delay_ms": 0, "keepalive": False}).text)
     assert events[-1].type == "run" and events[-1].data.status == "finished"
 
