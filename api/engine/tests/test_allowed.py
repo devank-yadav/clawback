@@ -53,6 +53,12 @@ def test_amendment_1_covers_1000_of_week_4():
     assert any(t.id == "T-cap-a1" for t in a.terms)
 
 
+def test_c4_says_the_extension_does_not_reach_late_march():
+    # The Investigator doubted this on its own; the engine states it, so C4's confidence doesn't sit on the floor.
+    assert "The approved extension adds units only for Apr 1–Apr 7, not these dates." in allowed_for("C4").steps
+    assert not any("extension" in step for cid in ("C1", "C2", "C3") for step in allowed_for(cid).steps)
+
+
 def test_c3_without_broker_email_is_not_covered():
     terms = [t for t in s.spring_terms() if t.type != TermType.AMENDMENT]
     assert allowed_for("C3", terms).allowed == Decimal("0.00")
