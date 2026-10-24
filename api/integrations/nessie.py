@@ -5,7 +5,8 @@ official SDK). Listing an account's deposits uses GET on the same path; Nessie's
 (its docs answer 403), so verify it once NESSIE_* keys are set. If it fails, the poller logs and keeps trying,
 and the "Northmart pays" button (POST /payments/northmart) still starts the run.
 
-The poller checks every 5 seconds. Deposits already on the account when it starts are history, not triggers.
+The poller checks every 5 seconds. Deposits already on the account when it starts are history, not triggers (so
+the test deposit Manasv posted while setting up never starts a run).
 It's off in DEMO_MODE, without keys, or with NESSIE_POLL=off; the button covers those.
 """
 
@@ -23,7 +24,7 @@ import httpx
 
 log = logging.getLogger("clawback.nessie")
 
-DEFAULT_BASE = "http://api.nessieisreal.com"
+DEFAULT_BASE = "https://api.nessieisreal.com"  # the live API is HTTPS only
 TIMEOUT_S = 10
 POLL_S = 5.0
 AMOUNT = Decimal("41350.00")  # data/CLAUDE.md: the short remittance for INV-3102
@@ -78,8 +79,9 @@ class Nessie:
                         d.get("transaction_date")) for d in rows]
 
     def post_deposit(self, amount: Decimal = AMOUNT, description: str = DESCRIPTION) -> Deposit:
-        body = {"medium": "balance", "transaction_date": date.today().isoformat(), "amount": float(amount),
-                "description": description}
+        # status is required by the live API (400 without it); "pending" as in scripts/nessie_deposit.py
+        body = {"medium": "balance", "transaction_date": date.today().isoformat(), "status": "pending",
+                "amount": float(amount), "description": description}
         made = (self._call("POST", f"/accounts/{self.account_id}/deposits", json=body) or {}).get("objectCreated") or {}
         if "_id" not in made:
             raise NessieError("Nessie didn't return the new deposit's id")
