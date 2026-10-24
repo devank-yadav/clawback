@@ -175,3 +175,50 @@ def test_verify_term_rejected_when_either_quote_fails():
     assert v.status == REJECTED
     assert v.reasons == ("reader B: quote not found in source",)
     assert verify_term(DEAL, None, None).status == REJECTED
+
+
+# --- contracts converted from SEC HTML -----------------------------------------------------------------------------
+
+# Walmart's 2013 Supplier Agreement as converted: table cells on their own lines behind "| ", and the filing's own
+# mojibake in front of curly quotes.
+FILING = ("SA\n\n| New Store/Club Discount (% Applied to each line item for each new store P.O.)\n\n| 10\n\n| X\n\n"
+          "| X\n\nOL\n\n(d) Assessment of monetary fines as determined in CompanyÂ’s reasonable discretion;\n\n"
+          "| ● | Any documents not uploaded within 5 working days of the sail date\n")
+
+
+def test_quote_across_table_cells_is_found_with_or_without_the_cell_marks():
+    with_marks = "SA | New Store/Club Discount (% Applied to each line item for each new store P.O.) | 10 | X | X"
+    without = "New Store/Club Discount (% Applied to each line item for each new store P.O.) 10"
+    for quote in (with_marks, without):
+        span = find_quote(FILING, quote)
+        assert span is not None, quote
+    s, e = find_quote(FILING, without)
+    assert FILING[s:e] == "New Store/Club Discount (% Applied to each line item for each new store P.O.)\n\n| 10"
+    assert find_quote(FILING, "Any documents not uploaded within 5 working days") is not None
+
+
+def test_mojibake_before_a_quote_mark_matches_the_plain_apostrophe():
+    for quote in ("Assessment of monetary fines as determined in Company's reasonable discretion;",
+                  "Assessment of monetary fines as determined in Company’s reasonable discretion;",
+                  "Assessment of monetary fines as determined in CompanyÂ’s reasonable discretion;"):
+        assert find_quote(FILING, quote) is not None, quote
+    assert normalize("Âme") == "Âme"  # an Â that starts a word stays
+
+
+def test_cell_marks_do_not_make_different_words_match():
+    assert find_quote(FILING, "New Store/Club Discount 10") is None
+
+
+def test_a_row_name_without_its_rate_cell_counts_when_the_other_reader_quoted_the_row():
+    nw = "NW\n\nNew Distribution Center\n\n| 10\n\n| X\n\n| X\n\nWA"
+    params = {"fee_code": "New Distribution Center", "basis": "percent", "rate": "10"}
+    a = term("fee_schedule", params, "New Distribution Center\n\n| 10")
+    b = term("fee_schedule", params, "New Distribution Center")
+    for x, y in ((a, b), (b, a)):
+        v = verify_term(nw, x, y)
+        assert v.status == VERIFIED, v.reasons
+        assert nw[v.char_start:v.char_end] == "New Distribution Center\n\n| 10"
+    # alone, or when the readers disagree, the short quote still fails its number check
+    assert verify_term(nw, b, None).status == REJECTED
+    other = term("fee_schedule", {**params, "rate": "12"}, "New Distribution Center")
+    assert verify_term(nw, a, other).status == REJECTED

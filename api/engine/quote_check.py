@@ -23,11 +23,18 @@ VERIFIED = "verified"
 REJECTED = "rejected"
 DISPUTED = "disputed"
 
-# Hyphen and dash variants all count as the same separator as a space; the soft hyphen is dropped.
+# Hyphen and dash variants (and table cell marks, below) all count as the same separator as a space; the soft hyphen
+# is dropped.
 _DASHES = "-‐‑‒–—―−﹘﹣－"
 _QUOTES = {"‘": "'", "’": "'", "‚": "'", "‛": "'",
            "“": '"', "”": '"', "„": '"', "‟": '"'}
 _SOFT_HYPHEN = "­"
+# Contracts converted from SEC HTML join table cells with " | " and keep the filing's bullets, so a quote that runs
+# across cells ("Incorrect carton marking 3% of cost up to $750") or leaves a bullet out is still the same words.
+_CELL_MARKS = "|·•●▪"
+# The filing's own mojibake: UTF-8 punctuation read as Latin-1 leaves an "Â" in front ("CompanyÂ’s", "Â“"). A reader
+# quoting "Company's" quotes the same word, so that "Â" is dropped when a quote mark, dash or space follows it.
+_MOJIBAKE = "Â"
 
 # A number as written in a contract: 5,000 / 1.00 / $1,500 / 1500. Sign is ignored.
 _NUMBER = re.compile(r"(?<![\w.])\d{1,3}(?:,\d{3})+(?:\.\d+)?(?![\w])|(?<![\w.,])\d+(?:\.\d+)?(?![\w])")
@@ -42,7 +49,10 @@ def _normalize_with_map(text: str) -> tuple[str, list[int]]:
     for i, ch in enumerate(text):
         if ch == _SOFT_HYPHEN:
             continue
-        if ch.isspace() or ch in _DASHES:
+        if ch == _MOJIBAKE and i + 1 < len(text) and (text[i + 1] in _QUOTES or text[i + 1] in _DASHES
+                                                     or text[i + 1].isspace()):
+            continue
+        if ch.isspace() or ch in _DASHES or ch in _CELL_MARKS:
             if pending_sep is None:
                 pending_sep = i
             continue
@@ -57,7 +67,8 @@ def _normalize_with_map(text: str) -> tuple[str, list[int]]:
 
 
 def normalize(text: str) -> str:
-    """Collapse runs of whitespace and hyphens/dashes into one space; straighten curly quotes; trim."""
+    """Collapse runs of whitespace, hyphens/dashes and table cell marks into one space; straighten curly quotes; drop
+    the filing's "Â" mojibake; trim."""
     return _normalize_with_map(text)[0]
 
 
@@ -169,6 +180,23 @@ class TermVerdict:
     reasons: tuple[str, ...] = field(default_factory=tuple)
 
 
+def _row_from_other_reader(source: str, a: Mapping[str, Any], b: Mapping[str, Any],
+                           checks: list[QuoteCheck]) -> list[QuoteCheck]:
+    """Two readers that agree on the params, where one quoted a fee table's row with its rate cell ("New Distribution
+    Center | 10") and the other only the row's name ("New Distribution Center"): the shorter quote is found word for
+    word inside the longer one's span, so the longer quote's numbers count for both. Nothing else is excused: the
+    shorter quote must still be found, inside the other reader's verified span."""
+    out = list(checks)
+    for me, other, t in ((0, 1, a), (1, 0, b)):
+        mine, theirs = checks[me], checks[other]
+        if mine.ok or not theirs.ok or mine.reasons[0].startswith("quote not found"):
+            continue
+        span = find_quote(source, t.get("exact_quote") or "", near=theirs.char_start)
+        if span and theirs.char_start <= span[0] and span[1] <= theirs.char_end:  # type: ignore[operator]
+            out[me] = QuoteCheck(True, theirs.char_start, theirs.char_end)
+    return out
+
+
 def verify_term(source: str, a: Mapping[str, Any] | None, b: Mapping[str, Any] | None) -> TermVerdict:
     """Merge one term from reader A (Claude) and reader B (Gemini) into a verdict.
 
@@ -178,12 +206,10 @@ def verify_term(source: str, a: Mapping[str, Any] | None, b: Mapping[str, Any] |
     present = [(name, t) for name, t in (("reader A", a), ("reader B", b)) if t is not None]
     if not present:
         return TermVerdict(REJECTED, reasons=("no reader returned the term",))
-    reasons: list[str] = []
-    checks: list[QuoteCheck] = []
-    for name, t in present:
-        qc = check_quote(source, t)
-        checks.append(qc)
-        reasons.extend(f"{name}: {r}" for r in qc.reasons)
+    checks = [check_quote(source, t) for _, t in present]
+    if len(present) == 2 and readers_agree(a, b):  # type: ignore[arg-type]
+        checks = _row_from_other_reader(source, a, b, checks)  # type: ignore[arg-type]
+    reasons = [f"{name}: {r}" for (name, _), qc in zip(present, checks) for r in qc.reasons]
     if reasons:
         return TermVerdict(REJECTED, reasons=tuple(reasons))
     span = checks[0]
