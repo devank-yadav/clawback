@@ -12,6 +12,7 @@ from api import pipeline
 from api.db import events as saved_events
 from api.integrations import nessie, replay
 from api.routes import approvals, audit, db, demo, eval, payments, portal, runs, scenario, trace, webhooks
+from api.routes import remittance as remittance_routes
 
 load_dotenv()
 log = logging.getLogger("clawback")
@@ -41,6 +42,7 @@ app.add_middleware(
 
 for r in (runs, payments, portal, approvals, webhooks, scenario, eval, audit, demo, db, trace):
     app.include_router(r.router)
+app.include_router(remittance_routes.router)  # bring in a remittance advice (api/remittance.py)
 
 
 @app.get("/health")
