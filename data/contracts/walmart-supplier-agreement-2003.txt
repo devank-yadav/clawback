@@ -1,0 +1,1144 @@
+<DOCUMENT>
+<TYPE>EX-10.57
+<SEQUENCE>6
+<FILENAME>p68961exv10w57.txt
+<DESCRIPTION>EX-10.57
+<TEXT>
+<PAGE>
+
+                                                                   Exhibit 10.57
+
+                               SUPPLIER AGREEMENT
+
+SUPPLIER NUMBER: 138122-10-0                          EFFECTIVE DATE: 01/23/2003
+
+This Supplier Agreement ("Agreement") between the party listed below
+("Supplier") and Wal-Mart Stores, Inc., Wal-Mart Stores East, LP, Wal-Mart
+Stores East, Inc., Wal-Mart Stores Texas, LP, Sam's West, Inc., Sam's East, Inc.
+and affiliates (hereinafter referred to collectively as "Company") sets forth
+Supplier's qualifications and the general terms of the business relationship
+between Company and Supplier. The parties agree that all sales and deliveries of
+all Merchandise (as defined below) by Supplier to Company and all Orders (as
+defined below) by Company will be covered by and subject to the terms of this
+Agreement, the Standards for Suppliers (which is attached and incorporated by
+reference) and any Order signed or initialed (electronically or otherwise) by an
+Authorized Buyer (as defined below) for Company. This Agreement becomes
+effective on the date shown above and remains effective for the term set forth
+herein. The execution and submission of this Agreement does not impose upon
+Company any obligation to purchase Merchandise.
+
+                          GENERAL SUPPLIER INFORMATION
+
+SUPPLIER'S BUSINESS CLASSIFICATION: (PLEASE DISREGARD THIS SECTION IF SUPPLIER
+IS NOT A FEMALE OR MINORITY-OWNED BUSINESS)
+
+Woman-Owned?           Minority Owned?
+
+BLACK  ASIAN-PACIFIC AMERICAN INDIAN  ESKIMO  HISPANIC  NATIVE AMERICAN  ALEUT
+NATIVE HAWAIIAN
+
+If Supplier falls within any of the above classes, and has been certified as
+minority-owned by a government agency or purchasing council, Supplier is
+qualified for the first step in the Wal-Mart Minority/Female Owned Business
+Development Program (the "Supplier Development Program"). Supplier agrees to
+provide to Company a copy of its certification as a prerequisite to
+qualification in the Supplier Development Program. For further information,
+please contact the Wal-Mart Supplier Development Office at 1-800-604-4555.
+
+Enter the Federal Taxpayer Identification Number (TIN) of the Supplier Named
+Below.
+If a TIN has not been issued, enter the Employer's Social Security Number.
+TIN: 860394353.
+
+Type of Payee (Check Only One): Individual/Sole Proprietorship X Corporation
+Partnership Other
+
+<TABLE>
+<S>                                                 <C>                                   <C>
+SUPPLIER INFORMATION: ROCKFORD CORPORATION          PRESIDENT: GARY SUTTLE                PHONE: 4805173084
+
+Address:              546 S. ROCKFORD DR.           ACCT EXECUTIVE OR V.P. SALES: DAN     PHONE: 4805173004
+                                                    MCLEOD
+
+Address 2:
+
+City/State/Zip:     TEMPE, AZ 85281                 ACCT. CONTACT: BILL JACKSON           PHONE: 4805173073
+
+ADDRESS TO MAIL PAYMENT:                            ADDRESS TO SEND ORDERS:
+
+Supplier Name:      ROCKFORD CORPORATION            SUPPLIER NAME:      ROCKFORD CORPORATION
+
+Address:            546 S. ROCKFORD DR.             Attention:          JIM SANDO
+
+Address 2:                                          Address:            600 S. ROCKFORD DR.
+
+City/State/Zip:     TEMPE, AZ 85281                 City/State/Zip:     TEMPE, AZ 85281
+
+Factor Name:                                        Street Address for use by delivery services
+                                                    other than the U.S. Mail, if not already
+Supplier Also Doing Business As: (Attach a          shown in the Purchase Order address above.
+list to Agreement if Space below is
+insufficient):
+
+SUPPLIER NUMBER:                                                                Room:
+
+                                                    Expedite Orders: Phone:     Extension#:
+                                                    4805173032
+
+ADDRESS TO MAIL CLAIM DOCUMENTATION:                ADDRESS TQ SEND
+                                                    PRICING TICKETS:
+ATTENTION:          JIM SANDO
+                                                    Supplier Name:      ROCKFORD CORPORATION
+Address:            600 S. ROCKFORD DR.
+                                                    Attention:          JIM SANDO
+City/State/Zip:     TEMPE, AZ 85281
+                                                    Address:            600 S. ROCKFORD DR.
+Accounting Phone Number:      Extension #:0
+4805173032                                          City/State/Zip:     TEMPE, AZ 85281
+</TABLE>
+
+Toll Free Number:   8003662349  Fax Number: 4809663983
+
+Has Supplier or any related entity previously conducted business with Company?
+Yes _ No X If so, under what name(s)?
+
+                          STANDARD TERMS AND CONDITIONS
+
+1. DEFINITIONS. As used in this Agreement or any Company issued Order, the
+following capitalized words shall have the following meanings:
+
+(a) "Account" shall mean any right to receive payments arising under this
+Agreement.
+
+(b) "Anticipation" shall mean the intentional or unintentional payment of
+obligations prior to the due date which results in a monetary adjustment in
+amounts payable to supplier.
+
+(c) "Authorized Buyer" shall mean any General Merchandise Manager, Divisional
+Merchandise Manager, Buyer 1, 2 or 3 and replenishment manager assigned to the
+Wal-Mart category/department corresponding to the purchased Merchandise.
+
+(d) "Merchandise" shall mean all products, goods, materials, equipment,
+articles, and tangible items supplied by Supplier to Company and all packaging,
+instructions, warnings, warranties, advertising and other services included
+therewith.
+
+<PAGE>
+
+(e) "Electronic Data Interchange" ("EDI") shall mean the moving of information
+regarding specific business processes (invoicing, ordering, reporting, etc.)
+electronically between two or more businesses. The information is transmitted
+electronically structured according to standards mandated by Company.
+
+(f) "End of Month Dating" shall mean payment terms beginning at the first of the
+following month rather than from the receipt of merchandise, if the merchandise
+is received on or after the 24th of the month.
+
+(g) "High Risk Supplier" shall mean a Supplier identified as such by Company in
+view of the nature of the Supplier's products, the severity of claims made
+against Supplier's products, the frequency of claims made, past litigation
+involving the Supplier's products and other factors deemed relevant by Company.
+
+(h) "Order" shall mean any written or electronic purchase order issued by
+Company.
+
+(i) "Recall" shall mean any removal of Merchandise from the stream of commerce
+initiated by Supplier, a government entity or Company.
+
+(j) "Standards" shall mean the Wal-Mart Stores, Inc. Standards for Suppliers,
+attached hereto.
+
+(k) "Vendor Master" shall mean the accounting department of Company responsible
+for control and processing of new supplier agreements and updates to existing
+agreements.
+
+2. ORDERS; CANCELLATION. Supplier may ship only after receipt of an Order.
+Acceptance of an Order may be made only by shipment of the Merchandise in
+accordance herewith. Acceptance is expressly limited to all of the terms and
+conditions of such Order, including, all shipping, routing and billing
+instructions and all attachments and supplemental instructions delivered
+therewith. Shipments made contrary to Company's routing instructions will be
+deemed F.O.B. Destination (either store, club or warehouse). Supplier's invoice,
+confirmation memorandum or other writing may not vary the terms of any Order.
+Supplier's failure to comply with one or more terms of an Order shall constitute
+an event of default and shall be grounds for the exercise by Company of any of
+the remedies provided for in this Agreement or by applicable law. Projections,
+past purchasing history and representations about quantities to be purchased are
+not binding, and Company shall not be liable for any act or expenditure
+(including but not limited to expenditures for equipment, materials, packaging
+or other capital expenditures) by Supplier in reliance on them. Company may
+cancel all or any part of an Order at any time prior to shipment.
+
+3. SUPPLIER FINANCIAL INFORMATION; SALES TO COMPANY. Supplier shall submit to
+Company with this Agreement one of the following: (1) a complete set of audited
+current financial statements, (2) a current Dun & Bradstreet financial report,
+or (3) if publicly held, Supplier's most recent annual report to shareholders
+and management proxy information. If Company's purchases from Supplier are
+anticipated by Supplier to constitute twenty percent (20%) or more of Supplier's
+gross annual sales on a calendar year basis. Supplier agrees to notify Company
+of this fact, in writing, within thirty (30) days of Supplier becoming aware of
+such possibility.
+
+4. PAYMENT TERMS; CASH DISCOUNT; ANTICIPATION. Supplier shall transmit invoices
+on the same day Merchandise is shipped, but payment terms shall date from
+Company's receipt of the Merchandise. If Supplier selects End of Month Dating on
+Appendix 1 hereto, Merchandise received after the 24th of any month shall be
+payable as if received on the first day of the following month. Any cash
+discount selected by Supplier on Appendix 1 will be calculated on the gross
+amount of Supplier's invoice. Anticipation may be taken upon the mutual consent
+of the parties.
+
+5. SET-OFF; RESERVATION OF ACCOUNT; CREDIT BALANCE. Company may set off against
+amounts payable under any Order all present and future indebtedness of Supplier
+to Company arising from this or any other transaction whether or not related
+hereto. If Company determines that Supplier's performance under an Order and/or
+this Agreement is likely to be impaired, Company may establish a reserve on
+Supplier's Account to satisfy Supplier's actual or anticipated obligations to
+Company arising from any such Order or this Agreement, by withholding payment of
+Supplier's invoices. Supplier agrees that any credit balance will be paid in
+cash to Company upon written request. Payments of monies owed to Company must be
+mailed to: Wal-Mart Stores, Inc., P.O. Box 500646, St. Louis, MO 63150-0646.
+
+6. NOTICE REGARDING ASSIGNMENT OF ACCOUNTS; ACCOUNT DISPUTES. Supplier shall
+provide Company written notice of an assignment, factoring, or other transfer of
+its Account at least 30 days prior to such assignment, factoring, or other
+transfer taking legal effect. Such written notice shall include the name and
+address of the assignee/transferee, the date the assignment is to begin, and
+terms of the assignment, and shall be considered delivered upon receipt of such
+written notice by Vendor Master. Supplier may have only one assignment,
+factoring or transfer of its Account effective at any time. The assignment of
+any Account hereunder shall not affect Company's rights set forth in Section 5
+of this Agreement. Supplier shall defend indemnify and hold Company harmless
+from any and all lawsuits, claims, demands, actions, damages (including
+reasonable attorney fees, court costs, obligations, liabilities or liens)
+arising from or related to the assignment, transfer or factoring of its Account.
+Supplier releases and waives any right, claim or action against Company for
+amounts due and owing under this Agreement where Supplier has not complied with
+the notice requirements of this provision. Notices required pursuant to this
+Section shall be mailed to: Wal-Mart Stores. Inc., Attn: Vendor Master, 1108
+S.E. 10th St. Bentonville, AR 72716-0680.
+
+Notwithstanding the foregoing, any dispute or any other circumstance, Company
+reserves the right to remit payment to Supplier.
+
+7. TAXES. The prices set forth in any Order are deemed to include all taxes. If
+any manufacturer's excise or other similar or different taxes are paid on the
+Merchandise described in any Order and if such tax, or any part thereof, is
+refunded to Supplier, then Supplier shall immediately pay Company the amount of
+such refund.
+
+8. PRICE PROTECTION; PRICE GUARANTEE AND NOTICE OF PRICE INCREASES. Supplier
+guarantees its prices against manufacturer's or Supplier's own price decline. If
+Supplier reduces its price on any Merchandise sold to Company, which Merchandise
+has not yet been delivered to Company by Supplier or, if consistent with
+Supplier's practice, which Merchandise is currently in Company's inventory
+(including Merchandise on hand, in warehouses and in transit), Supplier shall at
+Company's discretion either issue a check or give Company a credit equal to the
+price difference for such Merchandise, multiplied by the units of such
+Merchandise to be delivered by Supplier and/or currently in Company's inventory.
+For all Merchandise not yet shipped to Company, Supplier agrees to meet the
+price of any of its competitors selling comparable merchandise. If a court,
+regulatory agency or other government entity with jurisdiction finds that the
+prices on an Order are in excess of that allowed by any law or regulation of any
+governmental agency, the prices shall be automatically revised to equal a price
+which is not in violation of said law or regulation. If Company shall have made
+payment before it is determined that there has been a violation of this section,
+Supplier shall promptly refund an amount of money equal to the difference
+between the price paid for the Merchandise and the price which is not in
+violation of this section. If contemporaneously
+
+<PAGE>
+
+with Supplier's sale of Merchandise to the Company, Supplier sells or offers to
+any competitor of Company any merchandise of like grade and quality at lower
+prices and/or on terms more favorable than those stated on the Order, the prices
+and/or terms of the Order shall be deemed automatically revised to equal the
+lowest prices and most favorable terms at which Supplier shall have sold or
+shall have offered such merchandise and payment shall be made accordingly. If
+Company shall become entitled to such lower prices, but shall have made payment
+at any prices in excess thereof; Supplier shall promptly refund the difference
+in price to Company. If there is a price increase, Supplier shall give Company
+written notice of any such increase at least sixty (60) days prior to the
+effective date of the increase.
+
+9. SUPPLIER EDI RESPONSIBILITIES.
+
+(a) Supplier shall electronically receive Orders and send Company invoices via
+EDI unless otherwise agreed to by Company in writing.
+
+(b) Supplier shall assure that access by its employees to the EDI interchange is
+restricted by password to those persons authorized to contractually bind
+Supplier.
+
+(c) Supplier's use of the EDI interchange acknowledges Supplier's review and
+acceptance of the terms and requirements for using the EDI system to contract
+electronically.
+
+(d) Supplier will establish a user I.D. to identify itself, and the presence of
+this user I.D. in the EDI interchange will be sufficient to verify the source of
+the data and the authenticity of the document.
+
+(e) Documents containing the user I.D. will constitute a signed writing, and
+neither party shall contest the validity or enforceability of the document on
+the basis of lack of a signature or sufficient identification of the parties.
+
+(f) EDI documents or printouts thereof shall constitute originals.
+
+(g) EDI documents will be retained by both Company and Supplier in a form that
+is accessible and reproducible.
+
+(h) If Company agrees to waive the EDI requirements of this section of this
+Agreement, Orders may be sent via overnight mail at Supplier's expense.
+
+10. PURCHASE COSTS AND CONDITIONS. Supplier is responsible for verifying the
+accuracy of costs, discounts, allowances and all other terms of sale on all
+Orders. If incorrect information exists, Supplier shall notify Company not less
+than twenty-four (24) hours prior to shipment. If a change is necessary, no
+shipment is to commence without written confirmation of the change from an
+authorized member of Company's merchandising department. If Merchandise ships
+prior to discovery of an error on the Order, the parties shall confer within
+forty-eight (48) hours of such discovery to determine the actions to be taken
+regarding the erroneous Order.
+
+11. SHIPPER LOAD AND COUNT RESPONSIBILITIES. Supplier who is shipping a full
+truckload collect to Company will be responsible for monitoring its shipping
+process including closing the trailer and sealing it with a Supplier-provided
+seal. The seal number must be referenced and identified as the seal number on
+all copies of the Bill of Lading. If Supplier fails to seal the trailer, the
+driver will seal the trailer on Supplier's behalf. The driver will then document
+that seal number on the Bill of Lading before providing Supplier with its copy.
+If a shortage occurs, Supplier shall be liable for such shortage.
+
+12. DELIVERY TIME. THE TIME SPECIFIED IN AN ORDER FOR SHIPMENT OF MERCHANDISE IS
+OF THE ESSENCE OF THIS AGREEMENT AND IF SUCH MERCHANDISE IS NOT SHIPPED WITHIN
+THE TIME SPECIFIED, COMPANY RESERVES THE RIGHT, AT ITS OPTION AND WITHOUT
+LIMITATION, TO CANCEL THE ORDER AND/OR REJECT ANY MERCHANDISE DELIVERED AFTER
+THE TIME SPECIFIED. In addition to the aforementioned remedy, Company may
+exercise any other remedies provided for in this Agreement or provided by
+applicable law, including but not limited to those remedies provided by the
+Uniform Commercial Code. Notwithstanding Company's right to cancel shipment, or
+to reject or revoke acceptance of Merchandise, Supplier agrees to inform Company
+immediately of any actual or anticipated failure to ship all or any part of an
+Order or the exact Merchandise called for in an Order on the shipment date
+specified. Acceptance of any Merchandise shipped after the specified shipment
+date shall not be construed as a waiver of any of Company's rights or remedies
+resulting from the late shipment.
+
+13. REPRESENTATIONS, WARRANTIES AND GUARANTEES. By acceptance of an Order,
+Supplier represents, warrants and guarantees that:
+
+(a) The Merchandise will be new and not used, remanufactured, reconditioned or
+refurbished, and will comply with all specifications contained in such Order and
+will be of equal or better quality as all samples delivered to Company;
+
+(b) The Merchandise is genuine and is not counterfeit, adulterated, misbranded,
+falsely labeled or advertised or falsely invoiced within the meaning of any
+applicable local, state or federal laws or regulations;
+
+(c) The Merchandise has been labeled, advertised and invoiced in accordance with
+the requirements (if applicable) of the Wool Products Labeling Act of 1939, the
+Fur Products Labeling Act, the Textile Fiber Products Identification Act and any
+other applicable local, state or federal laws or regulations, and the sale of
+the Merchandise by Company does not and will not violate any such laws;
+
+(d) Reasonable and representative tests made in accordance with the requirements
+of the Flammable Fabrics Act (if applicable) show that the Merchandise is not so
+highly flammable as to be dangerous when worn by individuals;
+
+(e) The Merchandise is properly labeled as to content as required by applicable
+Federal Trade Commission Trade Practice Rules, the Fair Labor Standards Act, the
+Federal Food, Drug and Cosmetics Act and similar local, state or federal laws,
+rules or regulations;
+
+(f) The Merchandise shall be delivered in good and undamaged condition and
+shall, when delivered, be merchantable and fit and safe for the purposes for
+which the same are intended to be used, including but not limited to consumer
+use;
+
+(g) The Merchandise does not infringe upon or violate any patent, copyright,
+trademark, trade name, trade dress, trade secret or, without limitation, any
+other rights belonging to others, and all royalties owed by Supplier, if any,
+have been paid to the appropriate licensor;
+
+(h) All weights, measures, sizes, legends or descriptions printed, stamped,
+attached or otherwise indicated with regard to the Merchandise are true and
+correct, and conform and comply with all laws, rules, regulations, ordinances,
+codes and/or standards of Federal, state and local governments relating to said
+Merchandise;
+
+(i) The Merchandise is not in violation of any other laws, ordinances, statutes,
+rules or regulations of the United States or any state or local government or
+any subdivision or agency thereof, including but not limited to all laws and
+regulations relating to health, safety, environment, serial and identification
+numbers, labeling and country of origin designation, toxic substances, OSHA and
+EPA regulations, Federal Meat Inspection Act or Poultry Products Inspections Act
+(or any other food safety statute) and the requirements of California
+Proposition 65, and such Merchandise or the sale thereof by Company do not and
+will not violate any such laws;
+
+(j) All Merchandise shall have an accurate twelve (12) digit
+manufacturer-assigned UPC number that complies with Company's UPC requirements,
+as amended from time to time;
+
+(k) There is no other impediment or restriction, legal or otherwise that limits,
+prohibits or prevents Supplier from selling and delivering the Merchandise to
+Company or limits, prohibits or prevents Company from reselling the Merchandise
+to its customers;
+
+<PAGE>
+
+(l) The Merchandise is mined, produced, manufactured, assembled and packaged in
+compliance with the Standards; and (m) The Merchandise is not transshipped for
+the purpose of mislabeling, evading quota or country of origin restrictions or
+avoiding compliance with the Standards. Where applicable, Supplier agrees to
+provide Company with a current, complete and accurate Material Safety Data Sheet
+("MSDS") for said Merchandise.
+
+         It shall be within the sole discretion of Company to determine if
+Supplier has breached the above-mentioned representations, warranties and
+guarantees. In addition to the representations, warranties and guarantees
+contained in this paragraph, all other representations, warranties and
+guarantees provided by law, including but not limited to any warranties provided
+by the Uniform Commercial Code, are specifically incorporated herein. Nothing
+contained in this Agreement or an Order shall be deemed a waiver of any
+representations, warranties or guarantees implied by law.
+
+14. INDEMNIFICATION. Supplier shall protect, defend, hold harmless and indemnify
+Company, including its officers, directors, employees and agents, from and
+against any and all lawsuits, claims, demands, actions, liabilities, losses,
+damages, costs and expenses (including attorneys' fees and court costs),
+regardless of the cause or alleged cause thereof, and regardless of whether such
+matters are groundless, fraudulent or false, arising out of any actual or
+alleged:
+
+(a) Misappropriation or infringement of any patent, trademark, trade dress,
+trade secret, copyright or other right relating to any Merchandise;
+
+(b) Death of or injury to any person, damage to any property, or any other
+damage or loss, by whomsoever suffered, resulting or claimed to result in whole
+or in part from any actual or alleged use of or latent or patent defect in, such
+Merchandise, including but not limited to (i) any actual or alleged failure to
+provide adequate warnings, labelings or instructions, (ii) any actual or alleged
+improper construction or design of said Merchandise, or (iii) any actual or
+alleged failure of said merchandise to comply with specifications or with any
+express or implied warranties of Supplier;
+
+(c) Violation of any law, statute, ordinance, governmental administrative order,
+rule or regulation relating to the merchandise, or to any of its components or
+ingredients, or to its manufacture, shipment, labeling, use or sale, or to any
+failure to provide a Material Safety Data Sheet or certification;
+
+(d) Act, activity or omission of Supplier or any of its employees,
+representatives or agents, including but not limited to activities on Company's
+premises and the use of any vehicle, equipment, fixture or material of Supplier
+in connection with any sale to or service for the Company; and
+
+(e) Any installation by Supplier of Merchandise covered by this Agreement.
+
+Supplier shall promptly notify Company of the assertion, filing or service of
+any lawsuit, claim, demand, action, liability or other matter that is or may be
+covered by this indemnity, and shall immediately take such action as may be
+necessary or appropriate to protect the interests of Company, its officers,
+directors, employees and agents. Any and all counsel selected or provided by
+Supplier to represent or defend Company or any of its officers, directors,
+employees or agents shall accept and acknowledge receipt of Company's Indemnity
+Counsel Guidelines, and shall conduct such representation or defense strictly in
+accordance with such Guidelines. If Company in its sole discretion shall
+determine that such counsel has not done so, or appears unwilling or unable to
+do so, Company may replace such counsel with other counsel of Company's own
+choosing. In such event, any and all fees and expenses of Company's new counsel,
+together with any and all expenses or costs incurred on account of the change of
+counsel, shall be paid or reimbursed by Supplier as part of its indemnity
+obligation hereunder. Company shall at all times have the right to direct the
+defense of, and to accept or reject any offer to compromise or settle, any
+lawsuit, claim, demand or liability asserted against Company or any of its
+officers, directors, employees or agents. The duties and obligations of Supplier
+created hereby shall not be affected or limited in any way by Company's
+extension of express or implied warranties to its customers.
+
+15. RECALLS. If Merchandise is the subject of a Recall, whether initiated by
+Supplier, Company or a government entity (including the issuance of safety
+notices), Supplier shall be responsible for all matters and costs associated
+with the Recall, including but not limited to:
+
+(a) Consumer notification and contact;
+
+(b) All expenses and losses incurred by Company in connection with such Recall
+(and where applicable, any products with which the Recalled Merchandise has been
+packaged, consolidated or commingled), including but not limited to refunds to
+customers, lost profits, transportation costs and all other costs associated
+therewith; and
+
+(c) Initial contact and reporting of the Recall to any government agency having
+jurisdiction over the affected Merchandise.
+
+If a government agency initiates any inquiry or investigation relating to the
+Merchandise or similar goods manufactured or supplied by Supplier, Supplier
+shall notify Company immediately thereof and take reasonable steps to resolve
+the matter without exposing Company to any liability or risk.
+
+16. LIMITATION OF DAMAGES. In no event shall Company be liable for any punitive,
+special, incidental or consequential damages of any kind (including but not
+limited to loss of profits, business revenues, business interruption and the
+like), arising from or relating to the relationship between Supplier and
+Company, including all prior dealings and agreements, or the conduct of business
+under or breach of this Agreement or any Order, Company's cancellation of any
+Order or Orders or the termination of business relations with Supplier,
+regardless of whether the claim under which such damages are sought is based
+upon breach of warranty, breach of contract, negligence, tort, strict liability,
+statute, regulation or any other legal theory or law, even if Company has been
+advised by Supplier of the possibility of such damages.
+
+17. REMEDIES. Supplier's failure to comply with any of the terms and conditions
+of this Agreement or any Order shall be grounds for the exercise by Company of
+any one or more of the following remedies:
+
+(a) Cancellation of all or any part of any undelivered Order without notice,
+including but not limited to the balance of any remaining installments on a
+multiple-shipment Order;
+
+(b) Rejection (or revocation of acceptance) of all or any part of any delivered
+shipment. Upon rejection or revocation of acceptance of any part of or all of a
+shipment, Company may return the Merchandise or hold it at Supplier's risk and
+expense. Payment of any invoice shall not limit Company's right to reject or
+revoke acceptance. Company's right to reject and return or hold Merchandise at
+Supplier's expense and risk shall also extend to Merchandise which is returned
+by Company's customers. Company may, at its option, require Supplier to grant a
+full refund or credit to Company of the price actually paid by any customer of
+Company for any such item in lieu of replacement with respect to any item.
+Company shall be under no duty to inspect the Merchandise, and notice to
+Supplier of rejection shall be deemed given within a reasonable time if given
+within a reasonable time after notice of defects or deficiencies has been given
+
+<PAGE>
+
+to Company by its customers. In respect of any Merchandise rejected (or
+acceptance revoked) by Company, there shall be charged to Supplier all expenses
+incurred by Company in (i) unpacking, examining, repacking and storing such
+Merchandise (it being agreed that in the absence of proof of a higher expense
+that the Company shall claim an allowance for each rejection at the rate of 10%
+of the price for each rejection made by Company) and (ii) landing and reshipping
+such Merchandise. Unless Company otherwise agrees in writing, Supplier shall not
+have the right to make a conforming delivery within the contract time;
+
+(c) Termination of all current and future business relationships;
+
+(d) Assessment of monetary fines as determined in Company's reasonable
+discretion;
+
+(e) Recovery from Supplier of any damages sustained by Company as a result of
+Supplier's breach or default; and
+
+(f) Buyer's remedies under the Uniform Commercial Code and such other remedies
+as are provided under applicable law.
+
+These remedies are not exclusive and are in addition to all other remedies
+available to Company at law or in equity.
+
+18. INSURANCE REQUIREMENTS. Supplier is required to obtain and maintain the
+following insurance coverage from a carrier acceptable to Company in the amounts
+and with the conditions listed below:
+
+a) Commercial General Liability, including Contractual, Personal & Advertising
+Injury, Products and Completed Operations coverage, with certificate holder
+named as Additional Insured as evidenced by attached endorsement or blanket
+additional insured coverage provided by the policy. Policy shall be occurrence
+based with limits of no less than $5,000,000 per occurrence, without any
+aggregate limits or $50,000.000 in the aggregate. Defense costs shall not apply
+against coverage limits. High Risk Suppliers (as defined by Company) shall
+maintain policy limits of not less than $10,000,000 per occurrence without any
+aggregate limits or $100,000,000 in the aggregate.
+
+b) Statutory Workers' Compensation Coverage for a Supplier whose employees will
+be entering Company's premises, with $1,000,000 in employers' liability coverage
+and a waiver of subrogation where Permitted By Law.
+
+c) Automobile Coverage, with certificate holder named as Additional Insured as
+evidenced by attached endorsement or blanket additional insured coverage
+provided by the policy, for a Supplier whose employees or agents will be driving
+on Company's premises or making delivery to Company's premises shall be
+occurrence based with limits of no less than $5,000,000 per occurrence, without
+any aggregate limits or $50,000,000 in the aggregate. Defense costs shall not
+apply against coverage limits.
+
+d) Supplier shall provide at least thirty (30) days' written notice prior to any
+cancellation of any policy of insurance maintained hereunder, and each such
+policy shall obligate the insurer to provide at least thirty (30) days' written
+notice to Company in advance of any contemplated cancellation or termination
+thereof.
+
+e) Supplier's insurance shall be considered primary, non-contributory and not
+excess coverage.
+
+A copy of Supplier's current Certificate of Insurance with the following
+requirements must be submitted with this Agreement:
+
+-        Certificate Holder should read: WAL-MART STORES, INC., ITS SUBSIDIARIES
+         & ITS AFFILIATES, 702 SW 8th Street, Bentonville, AR 72716-0145, Attn:
+         Risk Management
+
+-        Renewals of Certificates of Insurance must be submitted prior to
+         expiration of insurance coverage
+
+-        Existing Suppliers must include Supplier Number on Certificate of
+         Insurance.
+
+-        Please direct any questions regarding your insurance to Risk Management
+         at (479) 277-1658 or (479) 277-2890.
+
+  SUPPLIER CONTACT FOR PRODUCT LIABILITY CLAIMS:
+
+<TABLE>
+<S>               <C>                           <C>
+Name:             ROCKFORD CORPORATION          Insuring Company: ATLANTIC MUTUAL
+
+Address:          600 S. ROCKFORD DR            Telephone: 6023376237    Extension #: 0
+
+City/State/Zip:   TEMPE, AZ 85281
+
+Telephone:        4805173140                    Extension #: 0
+
+Fax Number:       4809663983                    e-mail: ERIN.TUCKER@ROCKFORDCORP.COM
+</TABLE>
+
+19. FORCE MAJEURE. If any place of business or other premises of Company shall
+be affected by lockouts, strikes, riots, war, acts of terrorism, fire, civil
+insurrection, flood, earthquake or any other casualty or cause beyond Company's
+control, which might reasonably tend to impede or delay the reception, handling,
+inspecting, processing or marketing of the Merchandise covered by this
+Agreement, Company may, at its option, cancel all or any part of the undelivered
+Order hereunder by giving written notice to Supplier which notice shall be
+effective upon mailing.
+
+20. ASSIGNMENT. Except as specifically set forth in Section 6, no part of this
+Agreement or of any Order shall be assignable by Supplier without the written
+consent of Company, and Company shall not be obligated to accept a tender of
+performance by any assignee, unless Company shall have previously expressly
+consented in writing to such an assignment.
+
+21. PUBLICITY; USE OF NAME AND INTELLECTUAL PROPERTY. Supplier shall not refer
+to Company in any advertising or published communication without the prior
+written approval of Company. Supplier shall not use, or allow to be used,
+Company's name, logo, trademarks, service marks, patents, copyrights or trade
+dress without the prior written approval of Company. Company may use Supplier's
+name, logo, trademarks, service marks, patents, copyrights and trade dress in
+connection with Company's marketing of the Merchandise.
+
+22. COMPLIANCE WITH STANDARDS FOR SUPPLIER. Supplier agrees to comply with the
+obligations stated in the Standards for Suppliers. Company reserves the right to
+cancel any outstanding Order, refuse any shipments and otherwise cease to do
+business with Supplier if Supplier fails to comply with any terms of the
+Standards for Suppliers or if Company reasonably believes Supplier has failed to
+do so.
+
+23. SEVERABILITY; WAIVER. At the option of Company, no finding that a part of
+this Agreement is invalid or unenforceable shall affect the validity of any
+other part hereof. Company's failure to enforce at any time any provision of
+this Agreement will not be construed as a waiver of such provision or of any
+rights thereafter to enforce such provision. Any waiver by Company of any of the
+terms and conditions of this Agreement or any Order must be in writing signed by
+an authorized representative of Company.
+
+<PAGE>
+
+24. FORUM SELECTION; CHOICE OF LAW; STATUTE OF LIMITATIONS. This Agreement, any
+and all Orders, and any and all disputes arising hereunder or relating thereto,
+whether sounding in contract or tort, shall be governed by and construed in
+accordance with the laws of the State of Arkansas without regard to the internal
+law of Arkansas regarding conflicts of law, and the federal and/or state courts
+of Benton and Washington County, Arkansas, shall have exclusive jurisdiction
+over any actions or suits relating thereto. The parties mutually acknowledge and
+agree that they shall not raise, and hereby waive, any defenses based upon
+venue, inconvenience of forum or lack of personal jurisdiction in any action or
+suit brought in accordance with the foregoing. Any legal action brought by
+Supplier against Company with respect to this Agreement or any Orders shall be
+filed in one of the above referenced jurisdictions within two (2) years after
+the cause of action arises or it shall be deemed forever waived. The parties
+acknowledge that they have read and understand this clause and agree willingly
+to its terms.
+
+25. ATTORNEY FEES AND INTEREST OBLIGATIONS. Company reserves the right to charge
+Supplier interest at the rate of 12% per annum or such lower rate as may be
+permitted under applicable law for any obligations owed by Supplier to Company,
+including debit balances not paid within thirty (30) days after due, until such
+amounts are paid in full, and Company with be entitled to recover from Supplier
+its attorneys' fees and costs incurred in collecting any past-due obligation.
+
+26. NOTICES. Unless otherwise specifically provided for herein, any notice or
+demand which under the terms of this Agreement or under any statute must or may
+be given or made shall be in writing and shall be given or made by overnight
+express service addressed as follows: if to Company: Wal-Mart Stores, Inc.,
+Attn: General Merchandise Manager (identify department or category), 702 SW 8th
+Street, Bentonville, AR 72716. If to Supplier: to Supplier's address set forth
+above. Such notice or demand shall be deemed given on the second (2nd) business
+day after deposit of such notice or demand with the overnight express service.
+The above addresses may be changed at any time by giving prior written notice as
+provided above.
+
+27. TERM OF AGREEMENT. This Agreement ends one year after the Effective Date.
+This Agreement may only be renewed or extended by an agreement signed by an
+authorized officer of Company and Supplier. Supplier and Company are under no
+obligation to extend the term of this Agreement or to renew this Agreement.
+Neither Supplier nor Company should take any actions in reliance upon this
+Agreement being extended or renewed. Neither party shall be responsible for any
+costs incurred by the other in anticipation of the extension or renewal of this
+Agreement.
+
+28. INFORMATION SECURITY. Supplier represents that it currently follows industry
+best practices as a means to prevent any compromise of its information systems,
+computer networks, or data files ("Systems") by unauthorized users, viruses, or
+malicious computer programs which could in turn be propagated via computer
+networks, email, magnetic media or other means to Company. Supplier agrees to
+immediately give Company notice if the security of its Systems are breached or
+compromised in any way.
+
+Supplier agrees to apply appropriate internal information security practices,
+including, but not limited to, using appropriate firewall and anti-virus
+software; maintaining said countermeasures, operating systems, and other
+applications with up-to-date virus definitions and security patches; installing
+and operation security mechanisms in the manner in which they were intended; and
+permitting only authorized users access to computer systems, applications, and
+Retail Link.
+
+Supplier specifically agrees to: use up-to-date anti-virus tools to remove known
+viruses and malware from any email message or data transmitted to Company;
+prevent the transmission of attacks on Company via the network connections
+between Company and the Supplier; and prevent unauthorized access to Company
+systems via the Supplier's networks and access codes.
+
+29. SURVIVAL OF PROVISIONS. The provisions of this Agreement which by their
+nature are intended to survive termination of this Agreement (including but not
+limited to representations, warranties, guarantees, indemnifications, payment of
+obligations, remedies, forum selection and statute of limitations) shall survive
+its termination.
+
+         The parties hereto agree that this Agreement, the Standards and any
+Order constitute the full understanding of the parties, a complete allocation of
+risks between them and a complete and exclusive statement of the terms and
+conditions of their agreement. All prior agreements, negotiations, dealings and
+understandings, whether written (including any electronic record) or oral,
+regarding the subject matter hereof, are superseded by this Agreement. Any
+changes in this Agreement shall be in writing and executed by both parties.
+Furthermore, if there is a conflict of terms between this Agreement and an
+Order, this Agreement shall be the controlling document.
+
+We (Company) will never assume that you (Supplier) will be willing to extend or
+renew this Agreement or to accept any specific volume of Orders. Conversely, we
+urge you never to assume that this Agreement will be renewed or extended by us
+or that we will issue Orders for specific volume of Merchandise, even if your
+impression is based on discussions you may have had with Company
+representatives. No Company representative has authority to renew or extend this
+Agreement except in a writing signed by an authorized officer of Company, and no
+Company representative has authority to order Merchandise except an Authorized
+Buyer through an Order issued pursuant to and subject to the terms of this
+Agreement.
+
+<PAGE>
+
+SUPPLIER NO. 138122             DEPARTMENT NO. 10     EFFECTIVE DATE: 01/23/2003
+
+                              WAL-MART STORES, INC.
+
+                             STANDARDS FOR SUPPLIERS
+
+Wal-Mart Stores, Inc. ("Wal-Mart") has enjoyed success by adhering to three
+basic principles since its founding in 1962. The first principle is the concept
+of providing value and service to our customers by offering quality merchandise
+at low prices every day. Wal-Mart has built the relationship with its customers
+on this basis, and we believe it is a fundamental reason for the Company's rapid
+growth and success. The second principle is corporate dedication to a
+partnership between the Company's associates (employees), ownership and
+management. This concept is extended to Wal-Mart's Suppliers who have increased
+their business as Wal-Mart has grown. The third principle is a commitment by
+Wal-Mart to the communities in which stores and distribution centers are
+located.
+
+Wal-Mart strives to conduct Its business in a manner that reflects these three
+basic principles and the resultant fundamental values. Wal-Mart requires that
+its Suppliers, including Suppliers outside the United States, conform to
+standards of business practices, which are consistent with the three principles
+described above. More specifically, Wal-Mart expects its Suppliers to comply
+with the following standards:
+
+1. COMPLIANCE WITH APPLICABLE LAWS. All Suppliers shall comply with the legal
+requirements and standards of their industry under the national laws of the
+countries in which the Suppliers are doing business, including the labor and
+employment laws of those countries, and any applicable U.S. laws, Should the
+legal requirements and standards of the industry conflict, Suppliers must, at a
+minimum, be in compliance with the legal requirements of the country in which
+the products are manufactured. If, however, the industry standards exceed the
+country's legal requirements, Wal-Mart will favor Suppliers who meet such
+industry standards. Suppliers shall comply with all requirements of all
+applicable governmental agencies. Necessary invoices and required documentation
+must be provided in compliance with the applicable law. Suppliers shall warrant
+to Wal-Mart that no merchandise sold to Wal-Mart infringes the patents,
+trademarks or copyrights of others and shall provide to Wal-Mart all necessary
+licenses for selling merchandise sold to Wal-Mart, which is under license from a
+third party. All merchandise shall be accurately marked or labeled with its
+country of origin in compliance with applicable laws and including those of the
+country of manufacture. All shipments of merchandise will be accompanied by the
+requisite documentation issued by the proper governmental authorities, including
+but not limited to Form A's, import licenses, quota allocations and visas and
+shall comply with orderly marketing agreements, voluntary restraint agreements
+and other such agreements in accordance with applicable law. The commercial
+invoice shall, in English and in any other language deemed appropriate,
+accurately describe all the merchandise contained in the shipment, identify the
+country of origin of each article contained in the shipment, and shall list all
+payments, whether direct or indirect, to be made for the merchandise, including,
+but not limited to any assists, selling commissions or royalty payments. Backup
+documentation, and any Wal-Mart required changes to any documentation, will be
+provided by Suppliers promptly. Failure to supply complete and accurate
+information may result in cancellation or rejection of the goods.
+
+2. EMPLOYMENT. Wal-Mart is a success because of its associates and a strong
+level of teamwork has developed within the Company. Wal-Mart expects the spirit
+of its commitment to be reflected by its Suppliers with respect to their
+employees. At a minimum, Wal-Mart expects its Suppliers to meet the following
+terms and conditions of employment:
+
+a. COMPENSATION. Suppliers shall fairly compensate their employees by providing
+wages and benefits which are in compliance with the national laws of the
+countries in which the "Suppliers" are doing business or which are consistent
+with the prevailing local standards in the countries in which the "Suppliers"
+are doing business, if the prevailing local standards are higher. Suppliers
+shall fully comply with the wage and hour provisions of the Fair Labor Standards
+Act, if applicable, and shall use only subcontractors who comply with this law,
+if applicable.
+
+b.HOURS OF LABOR. "Suppliers" shall maintain reasonable employee work hours in
+compliance with local standards and applicable national laws of the countries in
+which the Suppliers are doing business. Employees shall not work more hours in
+one week than allowable under applicable law, and shall be properly compensated
+for overtime work. We expect Suppliers to comply with the statutory requirements
+for working hours for employees and we will not use suppliers who, on a
+regularly scheduled basis, require employees to work in excess of the statutory
+requirements without proper compensation as required by applicable law.
+Employees should be permitted reasonable days off, breaks, lunch periods and
+bathroom breaks.
+
+c.FORCED LABOR. Forced labor will not be tolerated by Wal-Mart. Suppliers shall
+maintain employment on a voluntary basis. Wal-Mart will not accept products from
+Suppliers who utilize in any manner forced labor in the manufacture or in their
+contracting, subcontracting or other relationships for the manufacture of their
+products.
+
+d.CHILD LABOR. Wal-Mart will not tolerate the use of child labor in the
+manufacture of products it sells. Wal-Mart will not conduct business with
+Suppliers that utilize in any manner child labor in their contracting,
+subcontracting or other relationships for the manufacture of their products. No
+person shall be employed at an age younger than 15 (or 14 where the law of the
+country of manufacture allows) or younger than the age for completing compulsory
+education in the country of manufacture where such age is higher than 15.
+
+e.DISCRIMINATION/HUMAN RIGHTS. Wal-Mart recognizes that cultural differences
+exist and different standards apply in various countries, however, we believe
+that all terms and conditions of employment should be based on an individual's
+ability to do the job, not on the basis of personal characteristics or beliefs.
+Wal-Mart expects Suppliers to have a social and political commitment to basic
+principles of human rights and not to discriminate against their employees in
+hiring practices or any other term or condition of work, on the basis of race,
+color, national origin, gender, religion, disability, or other similar factors.
+
+3. WORKPLACE ENVIRONMENT. Wal-Mart maintains a safe, clean, healthy and
+productive environment for its associates and expects the same from its
+Suppliers. Suppliers shall furnish employees with safe and healthy working
+conditions. Factories working on Wal-Mart merchandise shall provide adequate
+medical facilities, fire exits and safety equipment, well-lighted and
+comfortable workstations, clean restrooms, and adequate living quarters where
+necessary. Workers should be adequately trained to perform their
+
+<PAGE>
+
+jobs safely. Wal-Mart will not do business with any Supplier that provides an
+unhealthy or hazardous work environment or which utilizes physically or
+psychologically abusive disciplinary practices.
+
+4. CONCERN FOR THE ENVIRONMENT. We believe it is our role to be a leader in
+protecting our environment. We encourage our customers and associates to always
+Reduce, Reuse, and Recycle. We also encourage our Suppliers to reduce excess
+packaging and to use recycled and non-toxic materials whenever possible. We will
+favor Suppliers who share our commitment to the environment.
+
+5. REGULAR INSPECTION AND CERTIFICATION BY SUPPLIER. Supplier shall designate,
+on a copy of the Wal-Mart Supplier Inspection and Certification Form, one or
+more of its officers to inspect each of its facilities which produces
+merchandise sold to Wal-Mart. Such inspections shall be done on at least a
+quarterly basis to insure compliance with the standards, terms and conditions
+set forth herein. The Supplier Officer designated to perform such inspections
+shall certify to Wal-Mart following each inspection (I) that he or she performed
+such inspection, and (ii) that the results reflected on such compliance
+inspection form are true and correct. All charges related to the inspection and
+certification of such facilities shall be paid fully by the Supplier. Supplier
+shall maintain the completed inspection and Certification Forms on file at each
+facility and shall make the forms readily accessible to Wal-Mart, its agents or
+employees when requested. Any Supplier which fails or refuses to comply with
+these standards is subject to immediate cancellation of any and all outstanding
+orders, refusal or return of any shipment, and termination of its business
+relationship with Wal-Mart.
+
+6. RIGHT OF INSPECTION. To further assure proper implementation of and
+compliance with the standards set forth herein, Wal-Mart or a third party
+designated by Wal-Mart reserves the right to undertake affirmative measures,
+such as on-site inspection of production facilities, to implement and monitor
+said standards. Any Supplier who fails or refuses to comply with these standards
+is subject to immediate cancellation of any and all outstanding orders, refusal
+or return of any shipment, and termination of its business relationship with
+Wal-Mart.
+
+7. WAL-MART GIFT AND GRATUITY POLICY. Wal-Mart has a very strict policy which
+forbids and prohibits the solicitation, offering or acceptance of any gifts,
+gratuities or any form of "pay off" or facilitation fee as a condition of doing
+business with Wal-Mart, as a form of gratitude, or as an attempt to gain favor
+or accept merchandise or services at a lesser degree than what was agreed.
+Wal-Mart believes in delivering and receiving only the total quantity agreed.
+Any Supplier, factory or manufacturer who violates such policy by offering or
+accepting any form of gift or gratuity to any associate, employee, agent or
+affiliate of Wal-Mart Stores, Inc. will be subject to all loss of existing and
+future business, regardless of whether the gift or gratuity was accepted. In
+addition, a Supplier, factory or manufacturer who violates such policy will be
+reported to the appropriate governmental authorities of the Supplier's
+respective and affiliated countries. Failure to report such information will
+result in severe action being taken by Wal-Mart against such Supplier, trading
+company or factory including but not limited to termination of all existing and
+future business relationships and monetary damages.
+
+8. CONFIDENTIALITY. Supplier shall not at any time during or after the term of
+this Agreement disclose to others and will not take or use for its own purposes
+or the purpose of others any trade secrets, confidential information, knowledge,
+designs, data, know-how, or any other information considered logically as
+"confidential." Supplier recognizes that this obligation applies not only to
+technical information, designs and marketing, but also to any business
+information, including information related to purchases and sales, that Wal-Mart
+treats as confidential. Any information that is not readily available to the
+public shall be considered to be a trade secret and confidential. Upon
+termination of this Agreement for any cause. Supplier shall return all items
+belonging to Wal-Mart and all copies of documents containing Wal-Mart's trade
+secrets, confidential information, knowledge, data or know-how in Supplier's
+possession or under Supplier's control.
+
+9. ACKNOWLEDGMENT OF STANDARDS. As an officer or duly authorized representative
+of my company, a Supplier of Wal-Mart, I have read the principles and terms
+described in this document and understand my company's business relationship
+with Wal-Mart is based upon said company being in full compliance with these
+principles and terms. I further understand that failure by a Supplier to abide
+by any of the terms and conditions stated herein may result in the immediate
+cancellation by Wal-Mart of all outstanding orders with that Supplier and
+refusal by Wal-Mart to continue to do business in any manner with said Supplier.
+I am signing this statement as a corporate representative of my company, to
+acknowledge, accept and agree to abide by the standards, terms and conditions
+set forth herein between my company and Wal-Mart. I hereby affirm that all
+actions, legal and corporate, to make this Standards for Suppliers binding and
+enforceable against my company have been completed.
+
+STANDARDS FOR SUPPLIERS A COPY OF THESE STANDARDS FOR SUPPLIERS SHALL BE POSTED
+IN A LOCATION VISIBLE TO ALL EMPLOYEES AT ALL FACILITIES THAT MANUFACTURE
+PRODUCT* FOR WAL-MART STORES. INC. AND ITS AFFILIATES. ANY PERSON WITH KNOWLEDGE
+OF A VIOLATION OF ANY OF THESE STANDARDS BY A SUPPLIER OR A WAL-MART ASSOCIATE
+SHOULD CALL 1-800-WM-ETHIC (1-800-963-8442) (IN COUNTRIES OTHER THAN THE UNITED
+STATES, DIAL AT&T'S U.S.A. DIRECT NUMBER FIRST) OR WRITE TO: WAL-MART STORES,
+INC.. BUSINESS ETHICS COMMITTEE. 702 SW 8TH ST., BENTONVILLE, AR 72716-8095.
+
+<PAGE>
+
+SUPPLIER NO. 138122              DEPARTMENT NO. 10    EFFECTIVE DATE: 01/23/2003
+                        STANDARD PURCHASE ORDER ALLOWANCE
+
+     THESE ALLOWANCES APPLY TO EACH PURCHASE ORDER ISSUED, UNLESS OTHERWISE
+                           AGREED TO BY THE PARTIES.
+
+<TABLE>
+<CAPTION>
+                                 DISC                                 HOW PAID                             WHEN PAID
+---------------------------------------------------------------------------------------------------------------------------------
+CODE ALLOWANCE                    %      SPECIAL INSTRUCTIONS     OI      CM      CK      EI       M        Q        S        A
+---------------------------------------------------------------------------------------------------------------------------------
+<S>    <C>                        <C>     <C>                     <C>     <C>     <C>     <C>     <C>      <C>      <C>      <C>
+SA     New Store/Club             10                              X                       X
+       Discount (% Applied
+       to each line item
+       for each new store
+       P.O.)
+
+OL     New Store/Club
+       Discount (%
+       Represents contribution
+       of total business to
+       New Store Program.)
+
+NW     New Distribution           10                              X                       X
+       Center
+
+WA     Warehouse Allowance
+
+QD     Warehouse
+       Distribution Allow
+       (Order Type 33 Only)
+
+DM     Defective/Returned
+       Mdse. Allowance -
+       Not applicable in
+       Puerto Rico. (When
+       selected must mark
+       option 3 under
+       warranty policy.)
+
+SD     Soft Goods Defective
+       Allow
+
+PA     Promotional Allowance
+
+VD     Volume Discount
+
+FA     Freight Allowance
+
+AA     Advertising Allowance
+
+TR     TV/Radio Media
+       Allowance
+
+DA     Display/End cap
+       Allowance
+
+EB     Early Buy Allowance
+
+HA     Handling Allowance
+</TABLE>
+
+         OI-Off Invoice; CM-Credit Memo; CK-Check; EI-Each Invoice; M-Monthly;
+         Q-Quarterly; S-Semi-Annually; A-Annually;
+
+                                    APPENDIX
+
+This Appendix constitutes and is part and parcel of the Supplier Agreement. The
+terms of the Supplier Agreement are binding and enforceable as to this Appendix.
+
+                                  PAYMENT TERMS
+
+0         Cash Discount --Enter whole percents     NEW STORE/WHSE TERMS IF
+                                                   DIFFERENT THAN REGULAR TERMS:
+
+0         Cash Discount Days Available (Must be
+          filled in if a Cash Discount is used)
+
+60        Net Payment Days Available (Must be at
+          least one day more than Cash Discount
+          Days Available)
+
+          End Of Month Dating Yes [X] No [ ]
+
+                                 SHIPPING TERMS
+
+<TABLE>
+<CAPTION>
+ FREIGHT TERMS                         MINIMUM FOR PREPAID FREIGHT TERMS
+<S>                                    <C>
+Collect - F.O.B Supplier                         0   Pounds
+X Prepaid - F.O.B Company                        0   Cases/Units
+Prepaid To consolidator - F.O.B.
+Company's Consolidator                           0   Whole Dollars
+</TABLE>
+
+No freight charges are to be added to invoices. Refer to the current Routing
+Guide for detailed instructions.
+
+                                CONDITION OF SALE
+
+Guaranteed Sales         Consignment           Preticketing       Prepricing
+Stock Balancing          Shelf Labels Point
+                         of Sale (Pay from Scan)                  Other
+
+<PAGE>
+
+RETURN POLICY.(SUPPLIER MUST CHOOSE ONE OPTION BELOW AND COMPLETE THE NECESSARY
+INFORMATION.)
+
+Supplier will be charged current merchandise costs plus a 10% handling charge
+for all returned merchandise except where a Customer Satisfaction Merchandise
+Allowance is given by Supplier. Returned merchandise will be shipped with return
+freight charges billed back to Supplier. Returns are F.O.B. Purchaser.
+
+SUPPLIER OPTION #1: SUPPLIER WANTS RETURNED MERCHANDISE SENT TO THEM:
+
+         Returned merchandise will be sent to Supplier direct from each
+         store. Permanent return authorization #:----- if required for shipment.
+         If automatic return is not possible, a toll free number should be
+         provided or Supplier must accept Purchaser's collect calls to secure
+         return authorization over the phone.
+
+         Phone:___________ Extension #___________Contact:___________
+
+         X Returned merchandise will be sent from store locations to the Return
+         Center and sent to Supplier. Permanent return authorization #: WAL-RA,
+         if required for shipment. If automatic return is not possible, a toll
+         free number must be provided or Supplier must provide a fax number and
+         a contact name. Phone: 4805173032 Extension #: Contact: JIM SANDO
+         RETURN SHIPPING ADDRESS: Address: 955 N FIESTA BLVD SUITE 4 City:
+         GILBERT State: AZ Zip: 85233
+
+SUPPLIER OPTION #2: SUPPLIER DOES NOT WANT RETURNED MERCHANDISE SENT TO THEM.
+
+         Returned merchandise must be disposed of by the individual store;
+         OR
+
+         Returned merchandise will be sent from store locations to the
+         Return Center for disposal.[Choose one of the following three.]
+
+         A. Return Center may dispose of returned merchandise through salvage
+         outlets or recycling operations, without accounting for the proceeds of
+         such disposal;
+
+         B. Return Center must destroy returned merchandise. (Supplier may be
+         charged for any additional costs of destruction.);
+
+         C. Return Center may donate returned merchandise to charity.
+
+SUPPLIER OPTION #3: CUSTOMER SATISFACTION MERCHANDISE ALLOWANCE:
+
+       Supplier will allow the Customer Satisfaction Merchandise Allowance
+       stated in this agreement. The percentage must be adequate to cover all
+       returned merchandise, including but not limited to defective/returned
+       merchandise, or additional claims will be filed by the Return Center at
+       our fiscal year end.
+
+         Return Center may dispose of returned merchandise through salvage
+         outlets or recycling operations, without accounting for the proceeds of
+         such disposal;
+
+         Return Center must destroy returned merchandise. (Supplier may
+         incur additional handling charges to cover costs of destruction.);
+
+         Returned merchandise will be sent from store locations to the
+         Return Center and sent to Supplier. If Supplier requests the returned
+         merchandise be sent to them, it will be charged a 10% handling charge
+         and the merchandise will be shipped with return freight charges billed
+         back to Supplier; OR
+
+         Return Center may donate Return Merchandise to charity.
+
+         Permanent return authorization #:
+
+         RETURN SHIPPING ADDRESS: Address:     City:       State:  Zip:
+
+                              SHIPPING INSTRUCTIONS
+
+Supplier will ship all merchandise in accordance with the instructions contained
+in Company's Routing Guide. Supplier acknowledges it has received a copy of the
+Routing Guide. Each purchase order will show a routing which is determined by
+Company's Traffic Department. Supplier is liable for the excess transportation
+cost if the designated routing is not followed. If Supplier has a question
+concerning the routing selected, Supplier must call Company's Traffic Department
+before releasing the shipment at the following number (479) 273-6359
+
+                                    SHIPPING POINT SHIPPING STATE
+                                    GILBERT        AZ
+
+<TABLE>
+<CAPTION>
+Jackson Bill         saeva. Danny           Spear Michael
+------------         ------------           -------------
+<S>                  <C>                    <C>
+Supplier             Buyer                  Divisional Merchandise Manager
+</TABLE>
+
+</TEXT>
+</DOCUMENT>
