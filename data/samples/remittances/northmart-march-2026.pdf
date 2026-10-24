@@ -1,0 +1,56 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Length 2091 >>
+stream
+BT /F1 8 Tf 11 TL 36 568 Td
+(NORTHMART DISTRIBUTION, INC.                                                                                 REMITTANCE ADVICE) Tj T*
+(Accounts Payable, 2200 Harbor Industrial Pkwy, Oakland, CA 94607                                       FICTIONAL DEMO DOCUMENT) Tj T*
+() Tj T*
+(Payee:          PEAK BAR CO.                              Vendor no.:     V-40917) Tj T*
+(Payment ref:    ACH 7731-0410                             Payment date:   04/10/2026) Tj T*
+(Payment amount: 41,350.00 USD                             Remit no.:      RA-2026-0410-118) Tj T*
+() Tj T*
+(INVOICES PAID) Tj T*
+(Invoice      Inv date      Gross amount    Deductions      Net paid) Tj T*
+(INV-3102     03/31/2026       48,200.00     -6,850.00     41,350.00) Tj T*
+() Tj T*
+(DEDUCTIONS TAKEN AGAINST INV-3102) Tj T*
+(Ded no.   Code          Description                   Item                Qty      Rate      Amount  Period          Promo/ref) Tj T*
+(NM-2229   PROMO ALLOW   Spring promo week 1           PB ORIGINAL/CHOC  1,200      1.50   -1,800.00  03/01-03/07/26  SPRING-26) Tj T*
+(NM-2231   PROMO ALLOW   Spring promo week 2           PB ORIGINAL/CHOC    980      1.00     -980.00  03/08-03/14/26  SPRING-26) Tj T*
+(NM-2240   PROMO ALLOW   Spring promo Apr 1 to 7       PB ORIGINAL/CHOC    330      1.00     -330.00  04/01-04/07/26  SPRING-26) Tj T*
+(NM-2236   PROMO ALLOW   Spring promo week 4           PB ORIGINAL/CHOC  1,540      1.00   -1,540.00  03/22-03/31/26  SPRING-26) Tj T*
+(NM-2237   PROMO ALLOW   Spring promo Mint             PB MINT           1,000      1.00   -1,000.00  03/01-03/31/26  SPRING-26) Tj T*
+(NM-2238   DISPLAY FEE   Display fee \(notice Mar 11\)                         1  1,200.00   -1,200.00  03/01-03/31/26  DSP-0311) Tj T*
+(                                                                     Total deductions:    -6,850.00) Tj T*
+() Tj T*
+(Deductions are final unless disputed within 30 days through the Northmart vendor portal.) Tj T*
+(Questions: deductions@northmart.example. Please quote the deduction number on all correspondence.) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000210 00000 n 
+0000002353 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+2479
+%%EOF
