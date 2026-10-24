@@ -18,14 +18,15 @@ test:
 	$(PYTHON) -m pytest -q api
 
 # The P0 acceptance tests (docs/design.md, Feature spec), offline and in DEMO_MODE, then the eval score.
-# Not covered here yet: F1 seed (needs api/db/seed.py) and the screens in web/ (F6, F7, F12 scoreboard).
+# F1 seed: its database tests run only with TEST_DATABASE_URL set (api/tests/test_db_seed.py); `make seed` twice is
+# the real check. Not covered here yet: the screens in web/ (F6, F7, F12 scoreboard).
 acceptance:
 	$(PYTHON) -m pytest -q api/tests/test_acceptance_p0.py api/tests/test_pipeline.py api/tests/test_reader.py \
 		api/engine/tests/test_quote_check.py api/engine/tests/test_allowed.py api/engine/tests/test_gate.py \
 		api/engine/tests/test_eval_harness.py api/tests/test_replay.py api/tests/test_routes.py api/tests/test_disputes.py \
 		api/tests/test_books.py api/tests/test_coach_scenario.py \
 		api/tests/test_readers.py api/tests/test_audit.py api/tests/test_sms_channel.py \
-		api/tests/test_eval_agent.py api/tests/test_nessie.py
+		api/tests/test_eval_agent.py api/tests/test_nessie.py api/tests/test_db_seed.py
 	$(PYTHON) eval/run.py
 
 seed:
