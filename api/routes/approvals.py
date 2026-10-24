@@ -56,4 +56,4 @@ def decide(approval_id: str, req: ApprovalDecisionRequest) -> ApprovalDecisionRe
 def inbox() -> InboxResponse:
     """What waits on Dana or Sam right now (the /inbox screen, and the fallback when texts don't arrive)."""
     questions, approvals = pipeline.inbox()
-    return InboxResponse(questions=questions, approvals=approvals)
+    return InboxResponse(questions=questions, approvals=approvals, messages=pipeline.owner_messages())

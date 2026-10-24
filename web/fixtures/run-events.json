@@ -48,7 +48,8 @@
         "waiting": 0.0,
         "undecided": 6850.0,
         "questions": 0,
-        "skipped": 0
+        "skipped": 0,
+        "value": null
       }
     },
     {
@@ -240,7 +241,8 @@
         "waiting": 0.0,
         "undecided": 5050.0,
         "questions": 0,
-        "skipped": 0
+        "skipped": 0,
+        "value": null
       }
     },
     {
@@ -379,7 +381,8 @@
         "waiting": 0.0,
         "undecided": 4070.0,
         "questions": 0,
-        "skipped": 0
+        "skipped": 0,
+        "value": null
       }
     },
     {
@@ -502,7 +505,8 @@
         "waiting": 0.0,
         "undecided": 3740.0,
         "questions": 0,
-        "skipped": 0
+        "skipped": 0,
+        "value": null
       }
     },
     {
@@ -669,7 +673,8 @@
         "waiting": 0.0,
         "undecided": 2200.0,
         "questions": 0,
-        "skipped": 0
+        "skipped": 0,
+        "value": null
       }
     },
     {
@@ -807,7 +812,8 @@
         "waiting": 0.0,
         "undecided": 1200.0,
         "questions": 0,
-        "skipped": 0
+        "skipped": 0,
+        "value": null
       }
     },
     {
@@ -923,7 +929,8 @@
         "waiting": 1200.0,
         "undecided": 0.0,
         "questions": 1,
-        "skipped": 0
+        "skipped": 0,
+        "value": null
       }
     },
     {
@@ -959,6 +966,44 @@
     {
       "id": 48,
       "run_id": "run-march-demo",
+      "at": "2026-10-24T10:31:02-07:00",
+      "type": "totals",
+      "data": {
+        "taken": 6850.0,
+        "disputed": 4120.0,
+        "accepted": 1530.0,
+        "waiting": 1200.0,
+        "undecided": 0.0,
+        "questions": 1,
+        "skipped": 0,
+        "value": {
+          "disputed": 4120.0,
+          "accepted": 1530.0,
+          "questions": 1,
+          "charges": 6,
+          "seconds_to_decided": 62.0,
+          "ai_calls": 10,
+          "ai_cost_usd": 0.0,
+          "manual_minutes": null,
+          "manual_minutes_per_charge": null
+        }
+      }
+    },
+    {
+      "id": 49,
+      "run_id": "run-march-demo",
+      "at": "2026-10-24T10:31:02-07:00",
+      "type": "log",
+      "data": {
+        "text": "Texted Dana: \"Clawback checked Northmart's 6 deductions: $4,120 being recovered, $1,530 fair, 1 question for you. 6-month check: $0 still claimable.\"",
+        "level": "info",
+        "actor": "gate",
+        "charge_id": null
+      }
+    },
+    {
+      "id": 50,
+      "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:04-07:00",
       "type": "dispute",
       "data": {
@@ -978,7 +1023,9 @@
               "ev-deal-3.1",
               "ev-sales-w1",
               "ev-charge-C1"
-            ]
+            ],
+            "file_by": "2026-07-19",
+            "days_left": 90
           },
           {
             "charge_id": "C2",
@@ -993,7 +1040,9 @@
               "ev-sales-w2",
               "ev-charge-C2",
               "ev-deal-4.2"
-            ]
+            ],
+            "file_by": "2026-07-19",
+            "days_left": 90
           },
           {
             "charge_id": "C4",
@@ -1010,7 +1059,9 @@
               "ev-sales-w3",
               "ev-sales-w4",
               "ev-charge-C4"
-            ]
+            ],
+            "file_by": "2026-07-19",
+            "days_left": 90
           },
           {
             "charge_id": "C5",
@@ -1024,7 +1075,9 @@
               "ev-deal-3.1",
               "ev-sales-mint",
               "ev-charge-C5"
-            ]
+            ],
+            "file_by": "2026-07-19",
+            "days_left": 90
           }
         ],
         "total": 4120.0,
@@ -1034,7 +1087,7 @@
       }
     },
     {
-      "id": 49,
+      "id": 51,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:05-07:00",
       "type": "log",
@@ -1046,7 +1099,7 @@
       }
     },
     {
-      "id": 50,
+      "id": 52,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:06-07:00",
       "type": "run",
@@ -1059,7 +1112,7 @@
       }
     },
     {
-      "id": 51,
+      "id": 53,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:16-07:00",
       "type": "answer",
@@ -1072,7 +1125,7 @@
       }
     },
     {
-      "id": 52,
+      "id": 54,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:17-07:00",
       "type": "rule",
@@ -1094,7 +1147,7 @@
       }
     },
     {
-      "id": 53,
+      "id": 55,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:18-07:00",
       "type": "log",
@@ -1106,7 +1159,7 @@
       }
     },
     {
-      "id": 54,
+      "id": 56,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:19-07:00",
       "type": "decision",
@@ -1124,7 +1177,7 @@
       }
     },
     {
-      "id": 55,
+      "id": 57,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:19-07:00",
       "type": "totals",
@@ -1135,11 +1188,22 @@
         "waiting": 0.0,
         "undecided": 0.0,
         "questions": 1,
-        "skipped": 0
+        "skipped": 0,
+        "value": {
+          "disputed": 4120.0,
+          "accepted": 2730.0,
+          "questions": 1,
+          "charges": 6,
+          "seconds_to_decided": 62.0,
+          "ai_calls": 10,
+          "ai_cost_usd": 0.0,
+          "manual_minutes": null,
+          "manual_minutes_per_charge": null
+        }
       }
     },
     {
-      "id": 56,
+      "id": 58,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:21-07:00",
       "type": "approval",
@@ -1171,7 +1235,7 @@
       }
     },
     {
-      "id": 57,
+      "id": 59,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:22-07:00",
       "type": "log",
@@ -1183,7 +1247,7 @@
       }
     },
     {
-      "id": 58,
+      "id": 60,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:28-07:00",
       "type": "approval",
@@ -1215,7 +1279,7 @@
       }
     },
     {
-      "id": 59,
+      "id": 61,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:29-07:00",
       "type": "log",
@@ -1227,7 +1291,7 @@
       }
     },
     {
-      "id": 60,
+      "id": 62,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:31-07:00",
       "type": "ledger_post",
@@ -1261,7 +1325,7 @@
       }
     },
     {
-      "id": 61,
+      "id": 63,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:32-07:00",
       "type": "ledger_post",
@@ -1300,7 +1364,7 @@
       }
     },
     {
-      "id": 62,
+      "id": 64,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:33-07:00",
       "type": "log",
@@ -1312,7 +1376,7 @@
       }
     },
     {
-      "id": 63,
+      "id": 65,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:41-07:00",
       "type": "portal_message",
@@ -1331,7 +1395,7 @@
       }
     },
     {
-      "id": 64,
+      "id": 66,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:42-07:00",
       "type": "log",
@@ -1343,7 +1407,7 @@
       }
     },
     {
-      "id": 65,
+      "id": 67,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:45-07:00",
       "type": "portal_message",
@@ -1368,7 +1432,7 @@
       }
     },
     {
-      "id": 66,
+      "id": 68,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:46-07:00",
       "type": "log",
@@ -1380,7 +1444,7 @@
       }
     },
     {
-      "id": 67,
+      "id": 69,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:31:47-07:00",
       "type": "run",

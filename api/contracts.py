@@ -468,6 +468,19 @@ class InboxResponse(Contract):
 
     questions: list[Question]  # open owner questions
     approvals: list[Approval]  # credit memos waiting on the controller
+    messages: list[OwnerMessage] = []  # run summaries for the owner, newest first (the text's in-app copy)
+
+
+class OwnerMessage(Contract):
+    """The one text a run sends the owner once the gate has decided every charge it can."""
+
+    id: str  # "MSG-<run id>"
+    run_id: str
+    account_id: str
+    to_role: Literal["owner"] = "owner"
+    text: str
+    channel: Literal["sms", "inbox"]  # sms: the text went out; inbox: it waits here only
+    sent_at: datetime
 
 
 # ---------------------------------------------------------------- the other side: disputes and the portal
@@ -481,6 +494,10 @@ class DisputeLine(Contract):
     quote: str | None
     math: str  # plain text, from the engine
     evidence_ids: list[str]
+    # The distributor's dispute window (api/lookback.py): the last day to file this line, and days left from the
+    # account's payment date. None on a line from before these were added.
+    file_by: date | None = None
+    days_left: int | None = None
 
 
 class Dispute(Contract):
@@ -550,6 +567,22 @@ class Totals(Contract):
     undecided: Money
     questions: int  # questions asked to the owner this run
     skipped: int = 0  # charges whose deal term couldn't be verified
+    value: RunValue | None = None  # set from the end of the gate's first pass on, so the final totals event has it
+
+
+class RunValue(Contract):
+    """What the run was worth (api/engine/value.py): the money it sorted, how fast, the AI it used, and the manual
+    time it stands in for. Never computed by an AI."""
+
+    disputed: Money
+    accepted: Money
+    questions: int
+    charges: int
+    seconds_to_decided: float | None  # the run's first event to the end of the gate's first pass
+    ai_calls: int  # Claude and Gemini calls in the run's trace (a recorded answer counts too)
+    ai_cost_usd: float | None  # the live calls at config/pricing.yaml prices (0 when all were recorded); None: unpriced
+    manual_minutes: float | None  # charges x manual_minutes_per_charge; None while config/policy.yaml sets none
+    manual_minutes_per_charge: float | None
 
 
 class RunInfo(Contract):
@@ -992,6 +1025,9 @@ class AccountKpis(Contract):
     recovery_rate: float  # recovered_6m / deducted_6m, 0 to 1 (4 places); 0 when nothing was deducted
     open_disputes: int  # deductions still in dispute: history rows with an open outcome, plus this run's lines
     open_balance: Money  # still owed: open history deductions not yet recovered, plus the current invoice's balance
+    wrongly_taken_6m: Money  # the lookback (api/lookback.py): past deductions the math says were wrongly taken
+    lost_past_window: Money  # of those, still owed but the dispute window closed
+    claimable_now: Money  # of those, still owed and still claimable (in dispute, or inside the window)
 
 
 class MonthTotals(Contract):
@@ -1025,6 +1061,47 @@ class CurrentPayment(Contract):
     deducted: Money  # expected - received
     run_id: str | None
     status: Literal["waiting_for_payment", "started", "waiting", "finished", "failed"]
+    value: RunValue | None = None  # the run's value, once the gate's first pass is done
+
+
+LookbackStatus = Literal["claimable", "past_window", "settled", "fair", "not_checked"]
+
+
+class LookbackRow(Contract):
+    """One past deduction run through the engine (api/engine/lookback.py)."""
+
+    ref: str
+    month: str  # "2026-02"
+    code: str
+    description: str
+    taken: Money
+    allowed: Money | None  # None: not checked (DF needs the deal read; or the row lacks what its check needs)
+    wrongly_taken: Money  # taken - allowed when over the $1 match tolerance, else 0
+    outcome: str  # as history/deductions.csv says: accepted, written_off, recovered, open...
+    recovered: Money
+    deducted_on: date | None
+    file_by: date | None  # deducted_on (else its month's last day) + the dispute window; None unless still owed
+    days_left: int | None  # file_by - as_of; below zero once the window closed
+    status: LookbackStatus
+    note: str  # the engine's math in plain words, or why the row wasn't checked
+
+
+class LookbackTotals(Contract):
+    wrongly_taken: Money
+    lost_past_window: Money  # still owed (wrongly_taken - recovered) on past_window rows
+    claimable_now: Money  # still owed on claimable rows
+    checked: int
+    not_checked: int
+
+
+class Lookback(Contract):
+    """GET /accounts/{id}/lookback: the six-month window's past deductions checked by code, never by AI."""
+
+    account_id: str
+    as_of: date  # the account's payment date (qbo.payment_date, else invoice.period_end + 20 days)
+    dispute_window_days: int  # terms/ops-terms.csv dispute_window_days (quote checked), else policy default_dispute_days
+    rows: list[LookbackRow]  # in deduction order
+    totals: LookbackTotals
 
 
 class AccountOverview(Contract):

@@ -1,0 +1,28 @@
+# A small account for the lookback tests (fictional): api/tests/test_value_lookback.py works its numbers by hand.
+# Cove Tea Co. <- Lakeport, invoice INV-9501 for $5,000 paid $4,800 on Jul 20: $200 taken in one charge.
+id: test-look
+brand:
+  name: Cove Tea Co.
+  kind: tea brand
+  city: Eureka, CA
+  initials: CT
+  colors: {primary: "#2e5b7a", accent: "#d9e8a8"}
+  owner: {name: Pia Moss, email: pia@covetea.example}
+  controller: {name: Lu Park}
+distributor:
+  name: Lakeport
+  desk_email: deductions@lakeport.example
+  portal_name: Lakeport Vendor Portal
+  colors: {primary: "#5b2e7a", accent: "#eee6f3"}
+invoice:
+  id: INV-9501
+  expected: 5000.00
+  received: 4800.00
+  month: june
+  period_start: 2026-06-01
+  period_end: 2026-06-30
+deal_docs: [test-look-deal]
+approved_senders: [pia@covetea.example]
+dispute_start: 951
+qbo: {customer: Lakeport, invoice_no: INV-9501, payment_date: 2026-07-20}
+nessie_description: Lakeport remittance INV-9501

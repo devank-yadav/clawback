@@ -23,14 +23,15 @@ from typing import Any
 
 import anthropic
 
-from api import accounts, account_rows, adapters, audit, evidence as evidence_mod, fee_accounts, replies, rows, trace
+from api import accounts, account_rows, adapters, audit, evidence as evidence_mod, fee_accounts, lookback, replies, rows, trace
 from api.agents import investigator, investigator_ops, negotiator, reader, readers, rule_writer
 from api.contracts import (
     Answer, Approval, ApprovalLine, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, DeliveryRow, Dispute, DisputeLine, Event,
-    EventAdapter, Evidence, Finding, LogLine, OpsTerm, PriceRow, Question, Rehearsal, Remittance, Rule, RunInfo, Term, Totals,
+    EventAdapter, Evidence, Finding, LogLine, OpsTerm, OwnerMessage, PriceRow, Question, Rehearsal, Remittance, Rule, RunInfo,
+    RunValue, Term, Totals,
 )
 from api.db import events as saved_events, state as saved_state
-from api.engine import gate, totals
+from api.engine import gate, totals, value as value_mod
 from api.engine import types as eng
 from api.engine.allowed import compute_allowed
 from api.engine.policy import load_policy
@@ -75,6 +76,8 @@ class Run:
     texts: list[tuple[str, str]] = field(default_factory=list)  # (role, SMS body) sent back; the webhook replies with them
     replaced_by: str | None = None  # a newer run of the same payment; this one stops asking people
     ops: account_rows.Ops = field(default_factory=account_rows.Ops)  # deliveries, prices, ops terms (SH/PR/SP charges)
+    decided_at: datetime | None = None  # the end of the gate's first pass; totals carry the run's value from then on
+    owner_message: OwnerMessage | None = None  # the one summary text the owner gets once the gate has decided
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     def __post_init__(self) -> None:
@@ -200,8 +203,27 @@ def _guarded(run: Run, client) -> None:
 def _meters(run: Run) -> Totals:
     eng_charges = {cid: run.engine_charge(c) for cid, c in run.charges.items()}
     m = totals.meters(eng_charges, run.decisions)
+    questions = sum(1 for q in run.questions.values())
     return Totals(taken=m["taken"], disputed=m["disputed"], accepted=m["accepted"], waiting=m["waiting"],
-                  undecided=m["undecided"], questions=sum(1 for q in run.questions.values()), skipped=m["skipped"])
+                  undecided=m["undecided"], questions=questions, skipped=m["skipped"],
+                  value=_value(run, m["disputed"], m["accepted"], questions) if run.decided_at else None)
+
+
+def _value(run: Run, disputed: Decimal, accepted: Decimal, questions: int) -> RunValue:
+    """The run's value (api/engine/value.py): the meters, the time to the decided board, and the trace's AI calls."""
+    started = run.events[0].at if run.events else run.decided_at
+    calls = [e for e in trace.trace_for(run.id) if e.service.startswith(trace.AI_SERVICES)]
+    summary = trace.summarize(run.id)
+    v = value_mod.run_value(disputed, accepted, questions, len(run.charges),
+                            seconds_to_decided=(run.decided_at - started).total_seconds(), ai_calls=len(calls),
+                            ai_cost_usd=summary.cost_usd,
+                            manual_minutes_per_charge=load_policy().manual_minutes_per_charge)
+    return RunValue(disputed=v.disputed, accepted=v.accepted, questions=v.questions, charges=v.charges,
+                    seconds_to_decided=v.seconds_to_decided, ai_calls=v.ai_calls,
+                    ai_cost_usd=None if v.ai_cost_usd is None else float(v.ai_cost_usd),
+                    manual_minutes=None if v.manual_minutes is None else float(v.manual_minutes),
+                    manual_minutes_per_charge=None if v.manual_minutes_per_charge is None
+                    else float(v.manual_minutes_per_charge))
 
 
 READER_NAMES = {"claude": "Claude", "gemini": "Gemini", "claude-b": "a second Claude read"}
@@ -341,7 +363,36 @@ def _process(run: Run, client) -> None:
     # requests (and DEMO_MODE fixture keys) don't change.
     for rule in (r for r in rules_of(account) if any(d.rule_id == r.id for d in run.decisions.values())):
         run.evidence.setdefault(f"ev-{rule.id}", _rule_evidence(rule, account))
+    run.decided_at = _now()
+    meters = run.emit("totals", _meters(run)).data  # the first totals with the run's value
+    _tell_owner_summary(run, meters.value)
     _after_decisions(run, policy)
+
+
+def dollars(amount: Decimal) -> str:
+    """$4,120 for whole dollars, $43.92 otherwise."""
+    return f"${amount:,.0f}" if amount == amount.to_integral_value() else f"${amount:,.2f}"
+
+
+def _tell_owner_summary(run: Run, value: RunValue) -> None:
+    """One text to the owner once the gate has decided what it can, before anything waits on people. Numbers come
+    from the run's value and the account's lookback only; it's plain code, not an AI call."""
+    if run.owner_message or run.replaced_by:
+        return
+    try:
+        claimable = lookback.run(run.account).totals["claimable_now"]
+    except Exception as e:  # noqa: BLE001 - a bad history file mustn't stop the run; the text says less instead
+        log.warning("lookback for %s failed: %s", run.account.id, e)
+        claimable = None
+    q = value.questions
+    text = (f"Clawback checked {run.distributor}'s {value.charges} deductions: {dollars(value.disputed)} being "
+            f"recovered, {dollars(value.accepted)} fair, {q} question{'' if q == 1 else 's'} for you."
+            + (f" 6-month check: {dollars(claimable)} still claimable." if claimable is not None else ""))
+    status = sms.send("owner", text)
+    run.owner_message = OwnerMessage(id=f"MSG-{run.id}", run_id=run.id, account_id=run.account.id, text=text,
+                                     channel="sms" if status == "sent" else "inbox", sent_at=_now())
+    where = "Texted" if status == "sent" else f"In the inbox (text {status}) for"
+    run.log(f"{where} {run.name('owner')}: \"{text}\"", actor="gate")
 
 
 def rule_matches(a: eng.Allowance, policy: eng.Policy, rules: list[eng.Rule], live_first: bool = False) -> moss.Outcome:
@@ -497,6 +548,7 @@ def _line_clause(run: Run, charge_id: str, f: Finding | None) -> Evidence | None
 
 
 def _file_dispute(run: Run, charge_ids: list[str], policy: eng.Policy) -> None:
+    file_by, days_left = lookback.deadline(run.account, policy)  # this payment's charges were taken on its date
     lines = []
     for cid in charge_ids:
         c, d, f = run.charges[cid], run.decisions[cid], run.findings.get(cid)
@@ -504,7 +556,8 @@ def _file_dispute(run: Run, charge_ids: list[str], policy: eng.Policy) -> None:
         lines.append(DisputeLine(charge_id=cid, ref=c.ref, amount=d.disputed, reason=f.finding if f else d.reason,
                                  clause_ref=clause.label if clause else None,
                                  quote=clause.quote.text if clause and clause.quote else None,
-                                 math=" ".join(run.allowances[cid].steps), evidence_ids=list(f.evidence_ids) if f else []))
+                                 math=" ".join(run.allowances[cid].steps), evidence_ids=list(f.evidence_ids) if f else [],
+                                 file_by=file_by, days_left=days_left))
     total = totals.total_of(ln.amount for ln in lines)
     by_policy = total <= policy.auto_dispute_limit
     filed_before = len({e.data.id for e in run.events if e.type == "dispute"})
@@ -830,6 +883,12 @@ def inbox() -> tuple[list[Question], list[Approval]]:
                 latest[e.data.id] = e.data
         pending += [a for a in latest.values() if a.status == "pending"]
     return questions, pending
+
+
+def owner_messages() -> list[OwnerMessage]:
+    """The run summaries sent to owners, newest first: the in-app copy of the text (GET /inbox)."""
+    found = [r.owner_message for r in RUNS.values() if r.owner_message and r.replaced_by is None]
+    return sorted(found, key=lambda m: m.sent_at, reverse=True)
 
 
 def coach_costs(run: Run) -> list:

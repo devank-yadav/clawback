@@ -2,15 +2,17 @@
 
 Without a live run, the fixture thread plays: it starts as the fixture run's exchange and replies are canned.
 
+GET /portal/disputes/{id}/packet.pdf prints a dispute for the distributor's desk (api/packet.py).
+
 Attaching amendment-1 plays the fixture concession (web/fixtures/amendment-events.json): the dispute's C4 line
 drops to $540, and the run's event stream and GET /charges/C4 show the new decision.
 """
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 
-from api import disputes
+from api import accounts, disputes, lookback, packet
 from api.auth import limit
 from api.contracts import Dispute, PortalMessage, PortalPreset, PortalReplyRequest
 from api.stubs import fixtures
@@ -90,3 +92,24 @@ def post_message(dispute_id: str, req: PortalReplyRequest) -> list[PortalMessage
         ours = PortalMessage(**ids[1], dispute_id=dispute_id, from_party="clawback", text=STUB_REPLY, created_at=now)
     thread += [theirs, ours]
     return [theirs, ours]
+
+
+@router.get("/portal/disputes/{dispute_id}/packet.pdf", response_class=Response,
+            responses={200: {"content": {"application/pdf": {}}}})
+def dispute_packet(dispute_id: str) -> Response:
+    """The dispute as a PDF: each line's clause, evidence rows and math, the total and the file-by date."""
+    if live := disputes.find(dispute_id):
+        run, dispute = live
+        math = {cid: [p.text for p in f.math] for cid, f in run.findings.items() if f.math}
+        account, evidence = run.account, run.evidence
+    elif dispute_id in _disputes:  # the fixture run's dispute (Peak Bar's March)
+        dispute, account, fixture = _disputes[dispute_id], accounts.get(accounts.DEFAULT), fixtures.march_run()
+        # The fixture's math parts are pieces of one line (a live run's are one engine step each).
+        math = {cid: ["".join(p.text for p in d.finding.math)] for cid, d in fixture.charges.items()
+                if d.finding and d.finding.math}
+        evidence = fixture.evidence
+    else:
+        raise HTTPException(404, f"unknown dispute {dispute_id}")
+    body = packet.packet_pdf(dispute, account, evidence, math, file_by=lookback.deadline(account)[0])
+    return Response(body, media_type="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="{dispute_id}-packet.pdf"'})

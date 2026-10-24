@@ -38,7 +38,8 @@
         "waiting": 0.0,
         "undecided": 2000.0,
         "questions": 0,
-        "skipped": 0
+        "skipped": 0,
+        "value": null
       }
     },
     {
@@ -173,7 +174,8 @@
         "waiting": 0.0,
         "undecided": 800.0,
         "questions": 0,
-        "skipped": 0
+        "skipped": 0,
+        "value": null
       }
     },
     {
@@ -288,7 +290,8 @@
         "waiting": 0.0,
         "undecided": 0.0,
         "questions": 0,
-        "skipped": 0
+        "skipped": 0,
+        "value": null
       }
     },
     {

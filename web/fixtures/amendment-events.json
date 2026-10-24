@@ -2,7 +2,7 @@
   "run_id": "run-march-demo",
   "events": [
     {
-      "id": 68,
+      "id": 70,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:32:07-07:00",
       "type": "portal_message",
@@ -21,7 +21,7 @@
       }
     },
     {
-      "id": 69,
+      "id": 71,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:32:08-07:00",
       "type": "log",
@@ -33,7 +33,7 @@
       }
     },
     {
-      "id": 70,
+      "id": 72,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:32:09-07:00",
       "type": "log",
@@ -45,7 +45,7 @@
       }
     },
     {
-      "id": 71,
+      "id": 73,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:32:12-07:00",
       "type": "finding",
@@ -98,7 +98,7 @@
       }
     },
     {
-      "id": 72,
+      "id": 74,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:32:13-07:00",
       "type": "decision",
@@ -116,7 +116,7 @@
       }
     },
     {
-      "id": 73,
+      "id": 75,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:32:13-07:00",
       "type": "totals",
@@ -127,11 +127,12 @@
         "waiting": 0.0,
         "undecided": 0.0,
         "questions": 1,
-        "skipped": 0
+        "skipped": 0,
+        "value": null
       }
     },
     {
-      "id": 74,
+      "id": 76,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:32:15-07:00",
       "type": "dispute",
@@ -152,7 +153,9 @@
               "ev-deal-3.1",
               "ev-sales-w1",
               "ev-charge-C1"
-            ]
+            ],
+            "file_by": "2026-07-19",
+            "days_left": 90
           },
           {
             "charge_id": "C2",
@@ -167,7 +170,9 @@
               "ev-sales-w2",
               "ev-charge-C2",
               "ev-deal-4.2"
-            ]
+            ],
+            "file_by": "2026-07-19",
+            "days_left": 90
           },
           {
             "charge_id": "C4",
@@ -184,7 +189,9 @@
               "ev-sales-w3",
               "ev-sales-w4",
               "ev-charge-C4"
-            ]
+            ],
+            "file_by": "2026-07-19",
+            "days_left": 90
           },
           {
             "charge_id": "C5",
@@ -198,7 +205,9 @@
               "ev-deal-3.1",
               "ev-sales-mint",
               "ev-charge-C5"
-            ]
+            ],
+            "file_by": "2026-07-19",
+            "days_left": 90
           }
         ],
         "total": 3120.0,
@@ -208,7 +217,7 @@
       }
     },
     {
-      "id": 75,
+      "id": 77,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:32:16-07:00",
       "type": "portal_message",
@@ -233,7 +242,7 @@
       }
     },
     {
-      "id": 76,
+      "id": 78,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:32:17-07:00",
       "type": "log",
@@ -245,7 +254,7 @@
       }
     },
     {
-      "id": 77,
+      "id": 79,
       "run_id": "run-march-demo",
       "at": "2026-10-24T10:32:18-07:00",
       "type": "run",

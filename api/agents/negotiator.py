@@ -31,6 +31,10 @@ class LLMRehearsal(Strict):
     answer_evidence_ids: list[str]
 
 
+# A dispute line's file-by date is the brand's deadline, not an argument: left out of the request (and so out of the
+# recorded fixture keys).
+LINE_DEADLINE = {"file_by", "days_left"}
+
 def rehearse(charge: Charge, finding: Finding, allowance: Allowance, evidence: dict[str, Evidence],
              terms: Sequence[Term], client: anthropic.Anthropic | None = None, live_first: bool = False,
              account: accounts.Account | str | None = None) -> Rehearsal:
@@ -96,7 +100,7 @@ def answer_reply(dispute: Dispute, text: str, evidence: dict[str, Evidence], ter
     checks twice (or the call failed), so the message is held for the owner. Tries live first even in DEMO_MODE."""
     items = [e for e in evidence.values() if e.kind != "charge" or e.id.removeprefix("ev-charge-") in
              {ln.charge_id for ln in dispute.lines}]
-    user = json.dumps({"dispute": {"id": dispute.id, "lines": [ln.model_dump(mode="json") for ln in dispute.lines]},
+    user = json.dumps({"dispute": {"id": dispute.id, "lines": [ln.model_dump(mode="json", exclude=LINE_DEADLINE) for ln in dispute.lines]},
                        "northmart_reply": text, "evidence": evidence_payload(items)}, indent=1, default=str)
     ids, lines = {e.id for e in items}, {ln.charge_id for ln in dispute.lines}
     ctx = outbound_filter.OutboundContext.build(

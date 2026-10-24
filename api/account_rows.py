@@ -3,7 +3,11 @@ spoilage checks read. Plain Pydantic rows from the CSVs, files only (the seeded 
 
 - history/invoices.csv      invoice, date, amount, status
 - history/remittances.csv   date, invoice, paid, deducted
-- history/deductions.csv    month, ref, code, description, amount, outcome, recovered
+- history/deductions.csv    month, ref, code, description, amount, outcome, recovered, and optionally deducted_on,
+                            product, units, rate, period_start, period_end, line_ref (the lookback's math needs them)
+- history/promo-plan.csv    past promos, the columns of plan/promo-plan.csv
+- history/sales.csv         past weeks, the columns of sales/store-sales.csv
+- history/deliveries.csv    past delivery lines, the columns of deliveries/pod.csv
 - deliveries/pod.csv        line_ref, product, shipped_units, received_units, unit_price, received_by, received_at
 - pricing/price-list.csv    product, agreed_price, effective_from, effective_to, source_doc
 - terms/ops-terms.csv       key, value, source_doc, quote
@@ -64,6 +68,35 @@ class DeductionHistory(Row):
     amount: Money
     outcome: str | None = None  # "open" (or "disputed", "pending") is still in dispute; anything else is settled
     recovered: Money = Decimal("0.00")
+    # For the lookback (api/lookback.py): when it was taken and what it claims, as a charges/<month>.csv row would.
+    deducted_on: date | None = None
+    product: str | None = None  # "Peak Bar Original; Peak Bar Chocolate" or "Original+Chocolate"
+    units: int | None = None
+    rate: Rate | None = None
+    period_start: date | None = None
+    period_end: date | None = None
+    line_ref: str | None = None
+
+
+class PastPromo(Row):
+    """history/promo-plan.csv: a past promo, as plan/promo-plan.csv writes one. A blank cap is no cap."""
+
+    promo_id: str
+    product: str
+    rate: Rate
+    starts: date
+    ends: date
+    cap: int | None = None
+
+
+class PastSales(Row):
+    """history/sales.csv: a past week, as sales/store-sales.csv writes one."""
+
+    week_start: date
+    week_end: date
+    product: str
+    promo_units: int
+    total_units: int = 0
 
 
 # ---------------------------------------------------------------- deliveries, pricing, ops terms
@@ -76,6 +109,10 @@ class DeliveryLine(Row):
     unit_price: Rate
     received_by: str | None = None
     received_at: date | datetime | None = None
+
+
+class PastDelivery(DeliveryLine):
+    """history/deliveries.csv: a past delivery line, as deliveries/pod.csv writes one."""
 
 
 class PriceListRow(Row):
@@ -106,6 +143,9 @@ FILES: dict[type[Row], str] = {
     InvoiceHistory: "history/invoices.csv",
     RemittanceHistory: "history/remittances.csv",
     DeductionHistory: "history/deductions.csv",
+    PastPromo: "history/promo-plan.csv",
+    PastSales: "history/sales.csv",
+    PastDelivery: "history/deliveries.csv",
     DeliveryLine: "deliveries/pod.csv",
     PriceListRow: "pricing/price-list.csv",
     OpsTerm: "terms/ops-terms.csv",
@@ -131,6 +171,18 @@ def remittances(account: accounts.Account | str | None = None) -> list[Remittanc
 
 def deductions(account: accounts.Account | str | None = None) -> list[DeductionHistory]:
     return read(DeductionHistory, account)
+
+
+def past_promos(account: accounts.Account | str | None = None) -> list[PastPromo]:
+    return read(PastPromo, account)
+
+
+def past_sales(account: accounts.Account | str | None = None) -> list[PastSales]:
+    return read(PastSales, account)
+
+
+def past_deliveries(account: accounts.Account | str | None = None) -> list[PastDelivery]:
+    return read(PastDelivery, account)
 
 
 def deliveries(account: accounts.Account | str | None = None) -> list[DeliveryLine]:
