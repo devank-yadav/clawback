@@ -143,6 +143,12 @@ def _read_terms(run: Run, client) -> list[Term]:
     return terms
 
 
+def _rule_evidence(rule: Rule) -> Evidence:
+    return Evidence(id=f"ev-{rule.id}", kind="rule", label=rule.label,
+                    summary=f"{rule.summary} Learned from {OWNER.split()[0]}'s answer.", rule_id=rule.id,
+                    person=f"{OWNER} (owner)")
+
+
 def _process(run: Run, client) -> None:
     policy = load_policy()
     # Stable IDs: agent requests (and their DEMO_MODE fixture keys) must not change from run to run.
@@ -207,6 +213,10 @@ def _process(run: Run, client) -> None:
                                                                  answer_evidence_ids=[], answered=False)).answered,
             type=o.type if o else "", finding=o.finding if o else "")
         _decide(run, c.id, policy)
+    # A rule saved by an earlier run opens from this run's cards too. Added after the agents ran, so their
+    # requests (and DEMO_MODE fixture keys) don't change.
+    for rule in (r for r in RULES if any(d.rule_id == r.id for d in run.decisions.values())):
+        run.evidence.setdefault(f"ev-{rule.id}", _rule_evidence(rule))
     _after_decisions(run, policy)
 
 
@@ -372,9 +382,7 @@ def answer(question_id: str, text: str, from_role: str = "owner",
     ans = record(rule.id)
     RULES.append(rule)
     run.questions[question_id] = q.model_copy(update={"answer": text, "answered_at": now, "rule_id": rule.id})
-    run.evidence[f"ev-{rule.id}"] = Evidence(id=f"ev-{rule.id}", kind="rule", label=rule.label,
-                                             summary=f"{rule.summary} Learned from {owner}'s answer.",
-                                             rule_id=rule.id, person=f"{OWNER} (owner)")
+    run.evidence[f"ev-{rule.id}"] = _rule_evidence(rule)
     run.emit("rule", rule)
     run.log(f"Saved {rule.label} and texted {owner}: \"{echo}\"", "good", "gate")
     for cid, d in list(run.decisions.items()):
