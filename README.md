@@ -1,152 +1,135 @@
 # Clawback
 
-Clawback wins back the money distributors wrongly take from small brands' payments, and never fights a fair charge.
-Built at Cal Hacks 13.0. All company names and numbers in the demo are fictional.
+Clawback wins back what distributors wrongly take from a small brand's payment, and never fights a fair charge.
+Built at Cal Hacks 13.0 for Hyphenate's "Autonomous Systems for Finance" prize. Every company and person in the demo
+is fictional.
 
-- Full plan: [docs/design.md](docs/design.md)
-- Team brief: [docs/team/README.md](docs/team/README.md)
-- Team guides: [Devank](docs/team/devank.md) · [Rishi](docs/team/rishi.md) · [Manasv](docs/team/manasv.md)
-- Decisions log: [DECISIONS.md](DECISIONS.md)
+- Devpost draft and proof checklist per track: [docs/submission/devpost.md](docs/submission/devpost.md)
+- Full plan: [docs/design.md](docs/design.md) · Decisions log: [DECISIONS.md](DECISIONS.md) ·
+  Deploy runbook: [docs/deploy.md](docs/deploy.md) · Team guides: [docs/team/](docs/team/README.md)
 
-## What it does
+## What it is
 
-Small food brands sell through big distributors, and the distributor pays each invoice short: it takes back
-promo allowances, fees and "adjustments" in the same payment. Checking every charge against the signed deal takes
-hours nobody has. Clawback is a finance agent that does that check. It:
+When a small food brand sells through a big distributor, the distributor often pays each invoice short: it keeps
+money back for promotions, display fees and other charges. Checking each charge against the signed deal takes hours
+nobody has. Clawback does that check. It:
 
-1. **Reads the deal, the emails and the store sales** with two different AI models, and keeps a term only when
-   both agree and its exact sentence is found word for word in the document.
-2. **Works out what each charge should have been** in plain, tested code: rates, product lists, dates, unit caps
-   across weeks, duplicates of earlier payments.
-3. **Disputes the wrong charges with proof** (the clause, the data rows, the math), after predicting the
-   distributor's comeback and checking it can answer it.
+1. **Reads the deal and the emails about it** with two different AI models, Claude and Gemini. A term counts only if
+   both read it the same way and its sentence is found word for word in the document.
+2. **Works out what each charge should have been** in plain, tested code: rate, products, dates, extensions, the unit
+   cap counted week by week, and earlier payments.
+3. **Disputes the wrong charges with proof** (the clause, the sales rows, the math), after predicting the
+   distributor's comeback and checking that it can answer it.
 4. **Accepts the fair ones**, including a charge that looks wrong until the broker's email explains it.
 5. **Asks the owner only when the deal is unclear**, once, and saves the answer as a rule so it never asks twice.
 6. **Records the result in QuickBooks**, but only after the controller approves.
-7. **Rewrites next month's deal** so the same fight doesn't happen again.
+7. **Suggests edits to next month's deal**, each showing what the weak clause cost.
 
-### The demo (fictional)
+## The demo numbers (fictional)
 
-Peak Bar Co. invoices Northmart **$48,200** for March and receives **$41,350**. Northmart took **$6,850** across
-six charges:
+Peak Bar Co. (fictional brand) bills Northmart (fictional distributor) **$48,200** for March and receives
+**$41,350**. Northmart took **$6,850** back in six charges:
 
 | Charge | Taken | Decision | Disputed | Accepted | Why |
 | --- | --- | --- | --- | --- | --- |
-| C1 Week 1 promo, 1,200 × $1.50 | $1,800 | Split | $600 | $1,200 | Deal §3.1 says $1.00 a bar |
+| C1 Week 1 promo, 1,200 × $1.50 | $1,800 | Split | $600 | $1,200 | The deal (§3.1) says $1.00 a bar |
 | C2 Week 2 promo | $980 | Dispute | $980 | — | Already paid on Mar 14 (NM-2178) |
-| C3 Apr 1–7 promo | $330 | Accept | — | $330 | Broker extended the promo by email |
-| C4 Week 4 promo | $1,540 | Dispute | $1,540 | — | §3.2 cap of 5,000 bars reached in week 3 |
+| C3 Apr 1–7 promo | $330 | Accept | — | $330 | The approved broker extended the promo by email |
+| C4 Week 4 promo | $1,540 | Dispute | $1,540 | — | The 5,000-bar cap (§3.2) was used up in weeks 1–3 |
 | C5 Mint promo | $1,000 | Dispute | $1,000 | — | Mint isn't in the deal |
 | C6 Display fee | $1,200 | Ask → Rule #1 → Accept | — | $1,200 | "At its discretion": the owner decides once |
 | **Total** | **$6,850** | | **$4,120** | **$2,730** | **1 question** |
 
-If the distributor attaches the signed amendment raising the cap to 6,000, Clawback concedes $1,000 of C4 and
-keeps $540 disputed. In April, two display fees are decided by Rule #1 with no question asked.
+If Northmart attaches the signed amendment raising the cap to 6,000, Clawback concedes $1,000 of C4 and keeps $540
+disputed. In April, a $1,200 fee with 18 days' notice is accepted and an $800 fee with 5 days' notice is disputed,
+both by Rule #1, with no question asked.
 
-## Setup (each teammate)
-
-```bash
-git clone <repo URL> clawback && cd clawback
-git checkout -b <web|story|agents>
-cp .env.example .env          # fill only the keys your part needs; never commit .env
-npm install -g @anthropic-ai/claude-code   # if not installed
-claude                        # then paste the first prompt from your guide in docs/team/
-```
-
-Python 3.11+ for `api/` and `scripts/` (`python3 -m venv .venv && source .venv/bin/activate`),
-Node 20+ for `web/`. Exact dependencies are added as each part is built.
+**Eval:** 30 planted charges with an answer key written before the first run. Both modes score 30 of 30, amounts
+right to the cent, 6 asked, 0 wrong automatic actions, 0 unnecessary questions. Engine mode tests the math and the
+decision gate alone; agent mode runs the readers, the Investigator and the comeback rehearsal too. We wrote the cases
+ourselves, and the details and caveats are in [the Devpost draft](docs/submission/devpost.md#proof-the-eval).
 
 ## How to run it
+
+Python 3.11+ for `api/` and `scripts/`, Node 20+ for `web/`.
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r api/requirements.txt -r requirements-dev.txt -r scripts/requirements.txt
-make test          # every test in api/ (engine, gate, quote check, rules, audit chain, routes, data files)
-make check-data    # the demo data and the 30-case test set match the plan to the cent
-make eval          # scores the 30 planted charges against the answer key
-make api           # the API on http://localhost:8000
-make dev           # API + web together
-make demo          # same, with DEMO_MODE=true: saved AI and QuickBooks responses, no Wi-Fi needed
-make reset         # reseed between demo runs
+(cd web && npm install)
+cp .env.example .env       # fill in only the keys you need; never commit .env
 ```
 
-The one-time integration scripts read keys from `.env` and say exactly which key is missing:
-
-| Script | Does |
+| Command | Does |
 | --- | --- |
-| `scripts/seed_quickbooks.py` | Creates Northmart, the items, invoice INV-3102 ($48,200) and the $41,350 payment in the QuickBooks sandbox. Safe to run twice |
-| `scripts/nessie_deposit.py` | Posts the $41,350 Northmart deposit in Capital One Nessie, the event that starts a run |
-| `scripts/send_sms.py` | Sends one test SMS to the owner or the controller through Twilio |
+| `make dev` | The API on http://localhost:8000 and the web app on http://localhost:3000, live: real AI calls and, with keys, real QuickBooks, Twilio and Nessie |
+| `make demo` | The same with `DEMO_MODE=true`: recorded AI answers, a labeled QuickBooks stand-in, no texts, no network needed. Keep `GEMINI_API_KEY` set so Gemini's recorded reads replay |
+| `make test` | Every test in `api/`: engine, gate, sentence check, rules, outbound filter, audit chain, routes, pipeline, data files. Tests never call live services |
+| `make eval` | Scores the 30 planted charges in engine mode and saves `eval/latest.json` |
+| `make seed` | Creates the database tables and fills them from `data/` (store sales becomes a hypertable on Tiger Data), and seeds the QuickBooks sandbox when the `QBO_*` keys are set. Safe to run twice |
+| `make reset` | Between demo runs: deletes what Clawback wrote to QuickBooks (INV-3102 goes back to $6,850 open), then clears runs, questions, rules, approvals and the portal thread |
 
-## Architecture
+Also: `make check-data` (the demo data and the eval set match the plan to the cent), `make acceptance` (the P0
+acceptance tests), `make record` (the whole demo live, saving every AI answer for `DEMO_MODE`; costs API credits),
+`make eval-agent` (agent-mode eval, live; costs API credits), `make deploy-check` (offline check of the deploy files).
 
-```mermaid
-flowchart TD
-  D[Deal + emails] --> R[Two Deal Readers: Claude + Gemini]
-  R --> Q[Quote + agreement check - code]
-  N[Nessie deposit: $41,350 arrives short] -->|starts the run| M[Math engine - code]
-  S[Charges + sales: Postgres on Tiger Data] --> M
-  Q --> M
-  M --> I[Investigator - Claude]
-  I --> C[Deal Coach - Claude]
-  I --> G[Decision gate - code + owner policy + rules]
-  MO[Rule memory - Moss] --> G
-  G --> NG[Negotiator - Claude]
-  G --> B[Bookkeeper - code]
-  G -->|one question| O[Owner + controller - SMS via Twilio]
-  O -->|answers become rules| MO
-  NG <-->|files D-0417, reads replies| P[Northmart portal - mock, judge replies]
-  B -->|after controller OK: credit memo + open balance| QB[QuickBooks sandbox]
-  X[Board + audit log: every step streams live]
-```
-
-- **AI reads; code decides.** Four AI roles (Deal Reader, Investigator, Negotiator, Deal Coach) return strict JSON
-  that code checks afterwards. None of them computes an amount or writes to the books. All money math lives in
-  `api/engine/`, with unit tests that reproduce every number in the demo.
-- **A fixed decision gate.** Each charge goes through the same ordered rules: unverifiable term → skip; readers
-  disagree → ask; discretion with a saved rule → apply it; discretion without one → ask; within $1 → accept;
-  charged less than allowed → accept; clear overcharge with evidence → dispute (or split); over $5,000 → ask first.
-- **Documents are data, never instructions.** Only the owner, the approved broker or a document signed by both
-  parties can change a deal. A distributor email saying "the rate is $1.50" is shown as a claim, never applied.
-- **People approve money.** Credit memos over $1,000 need the controller; if they refuse, nothing posts.
-  Every action goes into a hash-chained audit log.
-- **Stack:** Python + FastAPI + Pydantic, Next.js + Tailwind, Postgres on Tiger Data, server-sent events to the
-  board. `DEMO_MODE` replays saved responses so the live demo never depends on Wi-Fi.
-
-```
-api/      FastAPI app: agents/, engine/ (math, gate, rules, quote check, audit chain), integrations/, routes/, db/
-web/      Next.js app: board, evidence card, Northmart portal, coach, results, scenario, audit
-data/     the fictional deal, emails, notices, charges, sales, prior payments, the 30-case test set, fixtures
-scripts/  check scripts and one-time integration scripts
-eval/     run.py, the eval harness
-config/   policy.yaml, the owner's policy
-```
+To replay the agent-mode eval offline from its recordings: `DEMO_MODE=true python eval/run.py --mode agent`
+(saves `eval/latest-agent.json`).
 
 ## What's real and what's simulated
 
-- **Real:** the AI reading, the math, the decision rules, the QuickBooks sandbox writes, the SMS to real phones,
-  the Nessie deposit and the eval score.
-- **Simulated:** Peak Bar Co. and Northmart are fictional; we wrote the deal, emails and sales data; the
-  distributor portal is our own mock.
+- **Real:** the AI reading (Claude and Gemini), the math, the decision rules, the QuickBooks sandbox writes (checked
+  live: credit memo applied, INV-3102 down to $4,120 open), the Nessie sandbox deposit that starts a run, texts
+  through Twilio when its keys are set (SMS or Twilio's WhatsApp Sandbox), and the eval score.
+- **Simulated:** Peak Bar Co., Northmart, Dana Okafor (owner), Sam Reyes (controller) and Jordan Lee (broker) are
+  fictional; we wrote the deal, emails, notices, charges and sales. The Northmart portal is our own mock. In
+  `DEMO_MODE`, AI answers are replayed and QuickBooks writes go to a stand-in labeled "Simulated".
+- **Not yet:** a run reads the data files directly and keeps runs, rules and the audit log in memory; the database
+  is seeded but not read at run time.
 
-**Test set:** 30 planted charges in `data/eval/` (12 should be disputed, 12 accepted, 6 asked about), with the
-answer key written before any run. We report correct decisions, amounts right to the cent, wrong automatic
-actions (target 0) and unnecessary questions. The score goes here once the live agents run it.
+## Architecture
 
-## Sponsor tools
+```
+Nessie deposit ─▶ Readers: Claude + Gemini ─▶ sentence + agreement check (code) ─▶ math engine (code)
+   ─▶ Investigator (Claude) ─▶ comeback rehearsal (Claude) ─▶ decision gate (code + owner policy + saved rules)
+   ─▶ dispute D-0417 to the Northmart portal · one question to the owner · credit memo to the controller
+   ─▶ QuickBooks sandbox (code, after approval) · every step streamed to the board and the hash-chained audit log
+```
 
-| Tool | What we use it for |
-| --- | --- |
-| Claude (Anthropic) | Deal Reader A, Investigator, Negotiator and Deal Coach |
-| Gemini (Google) | Deal Reader B: a second model that must agree on every term |
-| QuickBooks Online sandbox (Intuit) | Invoice, payment and the credit memo for accepted charges |
-| Tiger Data | Postgres, with store sales as a time-series table for the cap checks |
-| Twilio | The owner's question and the controller's approval by SMS |
-| Capital One Nessie | The short deposit that starts each run |
-| Moss | Matching new deal wording to saved rules, so it never asks twice |
-| Figma | Storyboard, screen design and prototype before code |
-| Vultr + GoDaddy | Hosting and the domain |
+- **AI reads; code decides.** Claude runs Reader A, the Investigator, the Negotiator, the Deal Coach and the rule
+  writer; Gemini runs Reader B, with a second Claude read if Gemini fails. Every answer is strict JSON checked by a
+  Pydantic schema and then by code; one retry, then a person decides. No agent computes an amount or writes to the
+  books.
+- **One fixed gate.** Each charge goes through the same nine ordered rules from `config/policy.yaml`: unverifiable
+  term → skip; readers disagree → ask; discretion with a saved rule → apply it; discretion without one → ask; within
+  $1 → accept; charged less than allowed → accept; well-supported overcharge up to $5,000 → dispute (or split); over
+  $5,000 → ask first; anything else → ask.
+- **Stack:** Python, FastAPI, Pydantic, psycopg 3 and Postgres (Tiger Data); Next.js, React, Tailwind CSS and Framer
+  Motion; server-sent events to the board; Docker Compose with Caddy for the deploy.
 
-## Commands
+```
+api/      FastAPI app: pipeline.py, agents/, engine/ (math, gate, rules, sentence check, outbound filter, audit chain),
+          integrations/ (QuickBooks, Twilio, Nessie, replay), routes/, db/ (schema, seed)
+web/      Next.js app: workspace (Overview, Payments, Approvals, Rules) and the board
+data/     the fictional deal, emails, notices, charges, sales, prior payments, the 30-case eval set, recordings
+scripts/  data checks and one-time integration scripts (QuickBooks seed, Nessie deposit, test SMS)
+eval/     run.py (engine mode) and agent.py (agent mode)
+config/   policy.yaml, the owner's policy
+```
 
-`make dev` · `make test` · `make seed` · `make eval` · `make record` · `make demo` · `make reset` · `make check-data`
+## Safety design
+
+- **Two readers.** Claude and Gemini read every document separately. A term they read differently is marked
+  disputed, and every charge that depends on it goes to the owner.
+- **Word-for-word quotes.** A term is used only if its sentence is found in the source (spacing and hyphens
+  normalized) and every number in it appears in that sentence. Otherwise it's rejected.
+- **Documents are data, never instructions.** Only the owner, the approved broker or a document signed by both sides
+  can change a deal. Northmart's email saying the rate is $1.50 is shown as a claim and never applied.
+- **No made-up numbers.** Amounts come only from `api/engine/`. Any number an agent writes must come from its input,
+  and an outbound filter blocks any dollar figure, quote, promise, discount or deadline that isn't in a finding or a
+  verified term.
+- **The controller approves money.** A credit memo over $1,000 needs the controller, never the owner or an agent. If
+  the controller says no, nothing posts and their note shows on the card. Disputes over $5,000 wait for the owner.
+- **The audit chain.** Every decision, question, answer, rule, approval, dispute, portal message and QuickBooks write
+  is appended to a sha256 hash chain. `GET /audit/verify` recomputes it, so an edited, missing or reordered row
+  breaks the check.
