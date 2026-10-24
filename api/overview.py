@@ -13,6 +13,8 @@ engine's total_of (api/engine/totals.py); this module only picks rows and groups
 - deductions_by_type: history deductions in the window plus the current run's charges (a history row with the same
   ref as one of them counts once), by code.
 - recent_remittances: the newest six payments, the current one included once it arrived.
+- kpis also carry the lookback's totals (api/lookback.py): wrongly_taken_6m, lost_past_window, claimable_now; and
+  current carries the run's value (api/engine/value.py) once the gate's first pass is done.
 """
 
 from __future__ import annotations
@@ -23,7 +25,7 @@ from collections.abc import Iterable
 from datetime import date
 from decimal import Decimal
 
-from api import account_rows, accounts
+from api import account_rows, accounts, lookback
 from api.contracts import (
     MONTHS, AccountKpis, AccountListItem, AccountOverview, CurrentPayment, DeductionTypeTotal, MonthTotals,
     RemittanceRow,
@@ -90,6 +92,7 @@ class Current:
         self.paid_on = remittance.received_at.date() if remittance and remittance.received_at else None
         totals = [e.data for e in events if e.type == "totals"]
         self.taken = totals[-1].taken if totals else None
+        self.value = totals[-1].value if totals else None
         self.charges = {e.data.id: e.data for e in events if e.type == "charge"}
         disputes, posts = {}, {}
         for e in events:
@@ -161,11 +164,14 @@ def overview(account: accounts.Account, item: AccountListItem, now: Current | No
     else:  # nothing paid yet, unless history already has the current invoice's payment
         balance = total_of([inv.expected, *(-r.paid for r in remittances if r.invoice == inv.id)])
     sums = {f: _sum(getattr(m, f) for m in months) for f in ("invoiced", "paid", "deducted", "recovered")}
+    checked = lookback.run(account).totals
     rate = float((sums["recovered"] / sums["deducted"]).quantize(Decimal("0.0001"))) if sums["deducted"] else 0.0
     kpis = AccountKpis(invoiced_6m=sums["invoiced"], collected_6m=sums["paid"], deducted_6m=sums["deducted"],
                        recovered_6m=sums["recovered"], recovery_rate=rate,
                        open_disputes=len(still_open) + len(now.open_lines),
-                       open_balance=total_of([*(total_of([r.amount, -r.recovered]) for r in still_open), balance]))
+                       open_balance=total_of([*(total_of([r.amount, -r.recovered]) for r in still_open), balance]),
+                       wrongly_taken_6m=checked["wrongly_taken"], lost_past_window=checked["lost_past_window"],
+                       claimable_now=checked["claimable_now"])
 
     recent = [RemittanceRow(date=r.date, invoice=r.invoice, paid=r.paid, deducted=r.deducted) for r in remittances]
     if now.paid and not current_in_history:
@@ -174,6 +180,7 @@ def overview(account: accounts.Account, item: AccountListItem, now: Current | No
     recent = sorted(recent, key=lambda r: r.date, reverse=True)[:RECENT]
 
     current = CurrentPayment(invoice=inv.id, expected=inv.expected, received=inv.received,
-                             deducted=total_of([inv.expected, -inv.received]), run_id=now.run_id, status=now.status)
+                             deducted=total_of([inv.expected, -inv.received]), run_id=now.run_id, status=now.status,
+                             value=now.value)
     return AccountOverview(account=item, kpis=kpis, months=months, deductions_by_type=types,
                            recent_remittances=recent, current=current)

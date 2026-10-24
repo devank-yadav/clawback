@@ -238,7 +238,7 @@ def test_sms_not_delivered_question_waits_in_the_inbox_and_the_run_finishes_in_t
     api = TestClient(app)
 
     run = pipeline.start("march", ScenarioClaude(), background=False)
-    assert [a["to"] for a in attempts] == [OWNER]  # it tried to text Dana
+    assert [a["to"] for a in attempts] == [OWNER, OWNER]  # it tried to text Dana: the question, then the summary
     (q,) = api.get("/inbox").json()["questions"]
     assert (q["charge_id"], q["channel"]) == ("C6", "inbox")
     assert any("in the inbox (text failed (TwilioRestException))" in t for t in logs(run))
@@ -250,12 +250,15 @@ def test_sms_not_delivered_question_waits_in_the_inbox_and_the_run_finishes_in_t
     t = last_totals(run)
     assert (t.disputed, t.accepted, t.waiting, t.questions) == (D(4120), D(2730), D(0), 1)
 
-    assert [a["to"] for a in attempts] == [OWNER, SAM]  # Sam's text failed too
+    assert [a["to"] for a in attempts] == [OWNER, OWNER, SAM]  # Sam's text failed too
     (ap,) = api.get("/inbox").json()["approvals"]
     assert any("In the inbox (text failed (TwilioRestException)) for Sam" in t for t in logs(run))
     r = api.post(f"/approvals/{ap['id']}", json={"approve": True}).json()
     assert [p["status"] for p in r["ledger_posts"]] == ["posted", "posted"]
-    assert api.get("/inbox").json() == {"questions": [], "approvals": []}
+    inbox = api.get("/inbox").json()
+    assert (inbox["questions"], inbox["approvals"]) == ([], [])
+    (summary,) = inbox["messages"]  # the owner's run summary didn't go out either: its copy waits in the app
+    assert (summary["run_id"], summary["channel"]) == (run.id, "inbox")
 
 
 # ---------------------------------------------------------------- the judge types nonsense in the portal

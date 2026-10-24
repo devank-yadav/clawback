@@ -23,4 +23,7 @@ def load_policy(path: str | Path = DEFAULT_PATH) -> Policy:
         reminder_after_minutes=int(raw["reminder_after_minutes"]),
         discretion_words=tuple(raw["discretion_words"]),
         approved_amendment_senders=tuple(s.lower() for s in raw["approved_amendment_senders"]),
+        default_dispute_days=int(raw.get("default_dispute_days", 90)),
+        manual_minutes_per_charge=None if raw.get("manual_minutes_per_charge") is None
+        else Decimal(str(raw["manual_minutes_per_charge"])),
     )

@@ -733,6 +733,31 @@
             },
             "title": "Evidence Ids",
             "type": "array"
+          },
+          "file_by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "File By"
+          },
+          "days_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Days Left"
           }
         },
         "required": [
@@ -2008,6 +2033,89 @@
         "title": "RunInfo",
         "type": "object"
       },
+      "RunValue": {
+        "additionalProperties": false,
+        "description": "What the run was worth (api/engine/value.py): the money it sorted, how fast, the AI it used, and the manual\ntime it stands in for. Never computed by an AI.",
+        "properties": {
+          "disputed": {
+            "title": "Disputed",
+            "type": "number"
+          },
+          "accepted": {
+            "title": "Accepted",
+            "type": "number"
+          },
+          "questions": {
+            "title": "Questions",
+            "type": "integer"
+          },
+          "charges": {
+            "title": "Charges",
+            "type": "integer"
+          },
+          "seconds_to_decided": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seconds To Decided"
+          },
+          "ai_calls": {
+            "title": "Ai Calls",
+            "type": "integer"
+          },
+          "ai_cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Cost Usd"
+          },
+          "manual_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Minutes"
+          },
+          "manual_minutes_per_charge": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Minutes Per Charge"
+          }
+        },
+        "required": [
+          "disputed",
+          "accepted",
+          "questions",
+          "charges",
+          "seconds_to_decided",
+          "ai_calls",
+          "ai_cost_usd",
+          "manual_minutes",
+          "manual_minutes_per_charge"
+        ],
+        "title": "RunValue",
+        "type": "object"
+      },
       "Totals": {
         "additionalProperties": false,
         "description": "Meters. taken = disputed + accepted + waiting + undecided; a skipped charge's amount stays undecided.",
@@ -2040,6 +2148,17 @@
             "default": 0,
             "title": "Skipped",
             "type": "integer"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunValue"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -3685,6 +3804,31 @@
             },
             "title": "Evidence Ids",
             "type": "array"
+          },
+          "file_by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "File By"
+          },
+          "days_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Days Left"
           }
         },
         "required": [
@@ -3805,6 +3949,89 @@
         "title": "Question",
         "type": "object"
       },
+      "RunValue": {
+        "additionalProperties": false,
+        "description": "What the run was worth (api/engine/value.py): the money it sorted, how fast, the AI it used, and the manual\ntime it stands in for. Never computed by an AI.",
+        "properties": {
+          "disputed": {
+            "title": "Disputed",
+            "type": "number"
+          },
+          "accepted": {
+            "title": "Accepted",
+            "type": "number"
+          },
+          "questions": {
+            "title": "Questions",
+            "type": "integer"
+          },
+          "charges": {
+            "title": "Charges",
+            "type": "integer"
+          },
+          "seconds_to_decided": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seconds To Decided"
+          },
+          "ai_calls": {
+            "title": "Ai Calls",
+            "type": "integer"
+          },
+          "ai_cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Cost Usd"
+          },
+          "manual_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Minutes"
+          },
+          "manual_minutes_per_charge": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Minutes Per Charge"
+          }
+        },
+        "required": [
+          "disputed",
+          "accepted",
+          "questions",
+          "charges",
+          "seconds_to_decided",
+          "ai_calls",
+          "ai_cost_usd",
+          "manual_minutes",
+          "manual_minutes_per_charge"
+        ],
+        "title": "RunValue",
+        "type": "object"
+      },
       "Totals": {
         "additionalProperties": false,
         "description": "Meters. taken = disputed + accepted + waiting + undecided; a skipped charge's amount stays undecided.",
@@ -3837,6 +4064,17 @@
             "default": 0,
             "title": "Skipped",
             "type": "integer"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunValue"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -5022,6 +5260,31 @@
             },
             "title": "Evidence Ids",
             "type": "array"
+          },
+          "file_by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "File By"
+          },
+          "days_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Days Left"
           }
         },
         "required": [
@@ -5573,6 +5836,57 @@
         "title": "ApprovalLine",
         "type": "object"
       },
+      "OwnerMessage": {
+        "additionalProperties": false,
+        "description": "The one text a run sends the owner once the gate has decided every charge it can.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "account_id": {
+            "title": "Account Id",
+            "type": "string"
+          },
+          "to_role": {
+            "const": "owner",
+            "default": "owner",
+            "title": "To Role",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "channel": {
+            "enum": [
+              "sms",
+              "inbox"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "account_id",
+          "text",
+          "channel",
+          "sent_at"
+        ],
+        "title": "OwnerMessage",
+        "type": "object"
+      },
       "Question": {
         "additionalProperties": false,
         "properties": {
@@ -5694,6 +6008,14 @@
           "$ref": "#/$defs/Approval"
         },
         "title": "Approvals",
+        "type": "array"
+      },
+      "messages": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/OwnerMessage"
+        },
+        "title": "Messages",
         "type": "array"
       }
     },
@@ -6042,6 +6364,740 @@
       "request"
     ],
     "title": "ScenarioExample",
+    "type": "object"
+  },
+  "AccountOverview": {
+    "$defs": {
+      "AccountInvoice": {
+        "additionalProperties": false,
+        "description": "The invoice the account's payment arrives for, and that payment (the remittance).",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "expected": {
+            "title": "Expected",
+            "type": "number"
+          },
+          "received": {
+            "title": "Received",
+            "type": "number"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "expected",
+          "received",
+          "month",
+          "period_start",
+          "period_end"
+        ],
+        "title": "AccountInvoice",
+        "type": "object"
+      },
+      "AccountKpis": {
+        "additionalProperties": false,
+        "properties": {
+          "invoiced_6m": {
+            "title": "Invoiced 6M",
+            "type": "number"
+          },
+          "collected_6m": {
+            "title": "Collected 6M",
+            "type": "number"
+          },
+          "deducted_6m": {
+            "title": "Deducted 6M",
+            "type": "number"
+          },
+          "recovered_6m": {
+            "title": "Recovered 6M",
+            "type": "number"
+          },
+          "recovery_rate": {
+            "title": "Recovery Rate",
+            "type": "number"
+          },
+          "open_disputes": {
+            "title": "Open Disputes",
+            "type": "integer"
+          },
+          "open_balance": {
+            "title": "Open Balance",
+            "type": "number"
+          },
+          "wrongly_taken_6m": {
+            "title": "Wrongly Taken 6M",
+            "type": "number"
+          },
+          "lost_past_window": {
+            "title": "Lost Past Window",
+            "type": "number"
+          },
+          "claimable_now": {
+            "title": "Claimable Now",
+            "type": "number"
+          }
+        },
+        "required": [
+          "invoiced_6m",
+          "collected_6m",
+          "deducted_6m",
+          "recovered_6m",
+          "recovery_rate",
+          "open_disputes",
+          "open_balance",
+          "wrongly_taken_6m",
+          "lost_past_window",
+          "claimable_now"
+        ],
+        "title": "AccountKpis",
+        "type": "object"
+      },
+      "AccountListItem": {
+        "additionalProperties": false,
+        "description": "GET /accounts: one row per account.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "brand": {
+            "$ref": "#/$defs/Brand"
+          },
+          "distributor": {
+            "$ref": "#/$defs/Distributor"
+          },
+          "invoice": {
+            "$ref": "#/$defs/AccountInvoice"
+          },
+          "latest_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Run Id"
+          }
+        },
+        "required": [
+          "id",
+          "brand",
+          "distributor",
+          "invoice",
+          "latest_run_id"
+        ],
+        "title": "AccountListItem",
+        "type": "object"
+      },
+      "Brand": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "initials": {
+            "title": "Initials",
+            "type": "string"
+          },
+          "colors": {
+            "$ref": "#/$defs/Colors"
+          },
+          "owner": {
+            "$ref": "#/$defs/Person"
+          },
+          "controller": {
+            "$ref": "#/$defs/Person"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "city",
+          "initials",
+          "colors",
+          "owner",
+          "controller"
+        ],
+        "title": "Brand",
+        "type": "object"
+      },
+      "Colors": {
+        "additionalProperties": false,
+        "properties": {
+          "primary": {
+            "title": "Primary",
+            "type": "string"
+          },
+          "accent": {
+            "title": "Accent",
+            "type": "string"
+          }
+        },
+        "required": [
+          "primary",
+          "accent"
+        ],
+        "title": "Colors",
+        "type": "object"
+      },
+      "CurrentPayment": {
+        "additionalProperties": false,
+        "description": "The account's invoice and its payment (account.yaml), and the run deciding it, if one has started.",
+        "properties": {
+          "invoice": {
+            "title": "Invoice",
+            "type": "string"
+          },
+          "expected": {
+            "title": "Expected",
+            "type": "number"
+          },
+          "received": {
+            "title": "Received",
+            "type": "number"
+          },
+          "deducted": {
+            "title": "Deducted",
+            "type": "number"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "status": {
+            "enum": [
+              "waiting_for_payment",
+              "started",
+              "waiting",
+              "finished",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunValue"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "invoice",
+          "expected",
+          "received",
+          "deducted",
+          "run_id",
+          "status"
+        ],
+        "title": "CurrentPayment",
+        "type": "object"
+      },
+      "DeductionTypeTotal": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "count",
+          "amount"
+        ],
+        "title": "DeductionTypeTotal",
+        "type": "object"
+      },
+      "Distributor": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "desk_email": {
+            "title": "Desk Email",
+            "type": "string"
+          },
+          "portal_name": {
+            "title": "Portal Name",
+            "type": "string"
+          },
+          "colors": {
+            "$ref": "#/$defs/Colors"
+          }
+        },
+        "required": [
+          "name",
+          "desk_email",
+          "portal_name",
+          "colors"
+        ],
+        "title": "Distributor",
+        "type": "object"
+      },
+      "MonthTotals": {
+        "additionalProperties": false,
+        "properties": {
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "invoiced": {
+            "title": "Invoiced",
+            "type": "number"
+          },
+          "paid": {
+            "title": "Paid",
+            "type": "number"
+          },
+          "deducted": {
+            "title": "Deducted",
+            "type": "number"
+          },
+          "recovered": {
+            "title": "Recovered",
+            "type": "number"
+          }
+        },
+        "required": [
+          "month",
+          "invoiced",
+          "paid",
+          "deducted",
+          "recovered"
+        ],
+        "title": "MonthTotals",
+        "type": "object"
+      },
+      "Person": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Email"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "Person",
+        "type": "object"
+      },
+      "RemittanceRow": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "invoice": {
+            "title": "Invoice",
+            "type": "string"
+          },
+          "paid": {
+            "title": "Paid",
+            "type": "number"
+          },
+          "deducted": {
+            "title": "Deducted",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "invoice",
+          "paid",
+          "deducted"
+        ],
+        "title": "RemittanceRow",
+        "type": "object"
+      },
+      "RunValue": {
+        "additionalProperties": false,
+        "description": "What the run was worth (api/engine/value.py): the money it sorted, how fast, the AI it used, and the manual\ntime it stands in for. Never computed by an AI.",
+        "properties": {
+          "disputed": {
+            "title": "Disputed",
+            "type": "number"
+          },
+          "accepted": {
+            "title": "Accepted",
+            "type": "number"
+          },
+          "questions": {
+            "title": "Questions",
+            "type": "integer"
+          },
+          "charges": {
+            "title": "Charges",
+            "type": "integer"
+          },
+          "seconds_to_decided": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seconds To Decided"
+          },
+          "ai_calls": {
+            "title": "Ai Calls",
+            "type": "integer"
+          },
+          "ai_cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Cost Usd"
+          },
+          "manual_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Minutes"
+          },
+          "manual_minutes_per_charge": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Minutes Per Charge"
+          }
+        },
+        "required": [
+          "disputed",
+          "accepted",
+          "questions",
+          "charges",
+          "seconds_to_decided",
+          "ai_calls",
+          "ai_cost_usd",
+          "manual_minutes",
+          "manual_minutes_per_charge"
+        ],
+        "title": "RunValue",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "description": "GET /accounts/{id}/overview, computed by code (api/overview.py) from history/ and the current run, never by AI.\n\nThe window is the six months ending with the invoice month. `months` holds each month's invoices (by invoice date),\nremittances (by the month of the invoice they pay) and deductions (by their month); the current month adds the\naccount's invoice, and once the payment arrived (a run started) its payment and the charges taken. Recovered money\ncomes only from history: a dispute this run files has recovered nothing yet.",
+    "properties": {
+      "account": {
+        "$ref": "#/$defs/AccountListItem"
+      },
+      "kpis": {
+        "$ref": "#/$defs/AccountKpis"
+      },
+      "months": {
+        "items": {
+          "$ref": "#/$defs/MonthTotals"
+        },
+        "title": "Months",
+        "type": "array"
+      },
+      "deductions_by_type": {
+        "items": {
+          "$ref": "#/$defs/DeductionTypeTotal"
+        },
+        "title": "Deductions By Type",
+        "type": "array"
+      },
+      "recent_remittances": {
+        "items": {
+          "$ref": "#/$defs/RemittanceRow"
+        },
+        "title": "Recent Remittances",
+        "type": "array"
+      },
+      "current": {
+        "$ref": "#/$defs/CurrentPayment"
+      }
+    },
+    "required": [
+      "account",
+      "kpis",
+      "months",
+      "deductions_by_type",
+      "recent_remittances",
+      "current"
+    ],
+    "title": "AccountOverview",
+    "type": "object"
+  },
+  "Lookback": {
+    "$defs": {
+      "LookbackRow": {
+        "additionalProperties": false,
+        "description": "One past deduction run through the engine (api/engine/lookback.py).",
+        "properties": {
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "taken": {
+            "title": "Taken",
+            "type": "number"
+          },
+          "allowed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed"
+          },
+          "wrongly_taken": {
+            "title": "Wrongly Taken",
+            "type": "number"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "recovered": {
+            "title": "Recovered",
+            "type": "number"
+          },
+          "deducted_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deducted On"
+          },
+          "file_by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File By"
+          },
+          "days_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Left"
+          },
+          "status": {
+            "enum": [
+              "claimable",
+              "past_window",
+              "settled",
+              "fair",
+              "not_checked"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "month",
+          "code",
+          "description",
+          "taken",
+          "allowed",
+          "wrongly_taken",
+          "outcome",
+          "recovered",
+          "deducted_on",
+          "file_by",
+          "days_left",
+          "status",
+          "note"
+        ],
+        "title": "LookbackRow",
+        "type": "object"
+      },
+      "LookbackTotals": {
+        "additionalProperties": false,
+        "properties": {
+          "wrongly_taken": {
+            "title": "Wrongly Taken",
+            "type": "number"
+          },
+          "lost_past_window": {
+            "title": "Lost Past Window",
+            "type": "number"
+          },
+          "claimable_now": {
+            "title": "Claimable Now",
+            "type": "number"
+          },
+          "checked": {
+            "title": "Checked",
+            "type": "integer"
+          },
+          "not_checked": {
+            "title": "Not Checked",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "wrongly_taken",
+          "lost_past_window",
+          "claimable_now",
+          "checked",
+          "not_checked"
+        ],
+        "title": "LookbackTotals",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "description": "GET /accounts/{id}/lookback: the six-month window's past deductions checked by code, never by AI.",
+    "properties": {
+      "account_id": {
+        "title": "Account Id",
+        "type": "string"
+      },
+      "as_of": {
+        "format": "date",
+        "title": "As Of",
+        "type": "string"
+      },
+      "dispute_window_days": {
+        "title": "Dispute Window Days",
+        "type": "integer"
+      },
+      "rows": {
+        "items": {
+          "$ref": "#/$defs/LookbackRow"
+        },
+        "title": "Rows",
+        "type": "array"
+      },
+      "totals": {
+        "$ref": "#/$defs/LookbackTotals"
+      }
+    },
+    "required": [
+      "account_id",
+      "as_of",
+      "dispute_window_days",
+      "rows",
+      "totals"
+    ],
+    "title": "Lookback",
     "type": "object"
   }
 }

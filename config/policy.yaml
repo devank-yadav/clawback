@@ -5,6 +5,8 @@ confidence_floor: 0.90              # Investigator confidence below this goes to
 match_tolerance_usd: 1.00           # a delta within this counts as a match
 rule_match_similarity: 0.85         # Moss similarity needed to apply a saved rule (tune on the eval)
 reminder_after_minutes: 15          # busy approver reminder
+default_dispute_days: 90            # dispute window when the account's terms/ops-terms.csv states no dispute_window_days
+manual_minutes_per_charge: null     # minutes a person spends checking one charge by hand; null: no comparison shown
 discretion_words:
   - "may"
   - "at its discretion"

@@ -160,7 +160,7 @@
     "action": "dispute_filed",
     "object_ref": "dispute:D-0417",
     "evidence": {
-      "event_id": 48,
+      "event_id": 50,
       "id": "D-0417",
       "remittance_id": "REM-3102",
       "counterparty": "Northmart",
@@ -177,7 +177,9 @@
             "ev-deal-3.1",
             "ev-sales-w1",
             "ev-charge-C1"
-          ]
+          ],
+          "file_by": "2026-07-19",
+          "days_left": 90
         },
         {
           "charge_id": "C2",
@@ -192,7 +194,9 @@
             "ev-sales-w2",
             "ev-charge-C2",
             "ev-deal-4.2"
-          ]
+          ],
+          "file_by": "2026-07-19",
+          "days_left": 90
         },
         {
           "charge_id": "C4",
@@ -209,7 +213,9 @@
             "ev-sales-w3",
             "ev-sales-w4",
             "ev-charge-C4"
-          ]
+          ],
+          "file_by": "2026-07-19",
+          "days_left": 90
         },
         {
           "charge_id": "C5",
@@ -223,7 +229,9 @@
             "ev-deal-3.1",
             "ev-sales-mint",
             "ev-charge-C5"
-          ]
+          ],
+          "file_by": "2026-07-19",
+          "days_left": 90
         }
       ],
       "total": "4120.00",
@@ -232,7 +240,7 @@
       "filed_at": "2026-10-24T10:31:03-07:00"
     },
     "prev_hash": "f59cf78d4d1203394fb3beec559e9a8807ccc33ffcab11d2065df416e096cd48",
-    "hash": "e6068c4b627b15404fb305bf3488b1c2d88d85057890817a618352d76c976aa4"
+    "hash": "a98c7d8875b204b19d97cfdf06c9511563b1bd97af6453b96211f2b2f51c3cf1"
   },
   {
     "id": 9,
@@ -241,15 +249,15 @@
     "action": "answer_received",
     "object_ref": "question:Q-1",
     "evidence": {
-      "event_id": 51,
+      "event_id": 53,
       "question_id": "Q-1",
       "from_role": "owner",
       "text": "accept if notice is at least 14 days",
       "answered_at": "2026-10-24T10:31:16-07:00",
       "rule_id": "rule-1"
     },
-    "prev_hash": "e6068c4b627b15404fb305bf3488b1c2d88d85057890817a618352d76c976aa4",
-    "hash": "d65d0e0145bbdd39422e883711c194158b94b58640d0b4a840b57b420cfa7823"
+    "prev_hash": "a98c7d8875b204b19d97cfdf06c9511563b1bd97af6453b96211f2b2f51c3cf1",
+    "hash": "fa781290b08509f01abb98e85718fbe0aed1a167dbed158437695ab6a086a810"
   },
   {
     "id": 10,
@@ -258,7 +266,7 @@
     "action": "rule_saved",
     "object_ref": "rule:rule-1",
     "evidence": {
-      "event_id": 52,
+      "event_id": 54,
       "id": "rule-1",
       "label": "Rule #1",
       "pattern_text": "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.",
@@ -274,8 +282,8 @@
       "source_question_id": "Q-1",
       "status": "active"
     },
-    "prev_hash": "d65d0e0145bbdd39422e883711c194158b94b58640d0b4a840b57b420cfa7823",
-    "hash": "8d71447c82b0ca28378416df2b32a030625caae0452dd0a58ff7d77cdff89bbd"
+    "prev_hash": "fa781290b08509f01abb98e85718fbe0aed1a167dbed158437695ab6a086a810",
+    "hash": "db30765380bf06326b913d4f8221824165f6db2879c90463995bf36d282ec3f5"
   },
   {
     "id": 11,
@@ -284,7 +292,7 @@
     "action": "decision",
     "object_ref": "charge:C6",
     "evidence": {
-      "event_id": 54,
+      "event_id": 56,
       "charge_id": "C6",
       "decision": "accept",
       "disputed": "0.00",
@@ -296,8 +304,8 @@
       "decided_at": "2026-10-24T10:31:19-07:00",
       "reason": "Rule #1: 20 days' notice is at least 14, so accept."
     },
-    "prev_hash": "8d71447c82b0ca28378416df2b32a030625caae0452dd0a58ff7d77cdff89bbd",
-    "hash": "64ddd628bc57beca9252dc430c08ff3608a279a3fdca37c6c44a2bade69653b1"
+    "prev_hash": "db30765380bf06326b913d4f8221824165f6db2879c90463995bf36d282ec3f5",
+    "hash": "d6fa62b34d0aa0ee99de8e056701903a61657bf556ae5920936866d26b4fb9e0"
   },
   {
     "id": 12,
@@ -306,7 +314,7 @@
     "action": "approval_requested",
     "object_ref": "approval:AP-1",
     "evidence": {
-      "event_id": 56,
+      "event_id": 58,
       "id": "AP-1",
       "kind": "credit_memo",
       "amount": "2730.00",
@@ -332,8 +340,8 @@
       "requested_at": "2026-10-24T10:31:20-07:00",
       "decided_at": null
     },
-    "prev_hash": "64ddd628bc57beca9252dc430c08ff3608a279a3fdca37c6c44a2bade69653b1",
-    "hash": "2d05f88a131b64d0539a82cfb14015c4020a92f294ca2bd1592271965f22bf72"
+    "prev_hash": "d6fa62b34d0aa0ee99de8e056701903a61657bf556ae5920936866d26b4fb9e0",
+    "hash": "3268eb4efda0dfe550ff25acf2cf0f94401a6bfaae0bf25cdfd4c0401ecc9254"
   },
   {
     "id": 13,
@@ -342,7 +350,7 @@
     "action": "credit_memo_approved",
     "object_ref": "approval:AP-1",
     "evidence": {
-      "event_id": 58,
+      "event_id": 60,
       "id": "AP-1",
       "kind": "credit_memo",
       "amount": "2730.00",
@@ -368,8 +376,8 @@
       "requested_at": "2026-10-24T10:31:20-07:00",
       "decided_at": "2026-10-24T10:31:28-07:00"
     },
-    "prev_hash": "2d05f88a131b64d0539a82cfb14015c4020a92f294ca2bd1592271965f22bf72",
-    "hash": "624518b738b489fe49430756f3011b8e1a440d8dcb09cfc2d32062adc60a7f58"
+    "prev_hash": "3268eb4efda0dfe550ff25acf2cf0f94401a6bfaae0bf25cdfd4c0401ecc9254",
+    "hash": "26e79dc4b170699967a681edc8d2aa0cd2960614ae1256f558766275dc44e589"
   },
   {
     "id": 14,
@@ -378,7 +386,7 @@
     "action": "qbo_credit_memo_posted",
     "object_ref": "ledger:LP-1",
     "evidence": {
-      "event_id": 60,
+      "event_id": 62,
       "id": "LP-1",
       "qbo_entity": "credit_memo",
       "qbo_id": null,
@@ -406,8 +414,8 @@
       "note": "Credit memo applied to INV-3102.",
       "posted_at": "2026-10-24T10:31:30-07:00"
     },
-    "prev_hash": "624518b738b489fe49430756f3011b8e1a440d8dcb09cfc2d32062adc60a7f58",
-    "hash": "ed2928ac7c9401e77151a037c540908bdef142e273a85a1f9c7228e04f34555b"
+    "prev_hash": "26e79dc4b170699967a681edc8d2aa0cd2960614ae1256f558766275dc44e589",
+    "hash": "c2ec1e50dd6ce4f5f14f8a2033385313906ab4b1d839a03f91bf173633dcc533"
   },
   {
     "id": 15,
@@ -416,7 +424,7 @@
     "action": "qbo_invoice_note_posted",
     "object_ref": "ledger:LP-2",
     "evidence": {
-      "event_id": 61,
+      "event_id": 63,
       "id": "LP-2",
       "qbo_entity": "invoice_note",
       "qbo_id": null,
@@ -449,8 +457,8 @@
       "note": "$4,120 left open on INV-3102, disputed under D-0417.",
       "posted_at": "2026-10-24T10:31:32-07:00"
     },
-    "prev_hash": "ed2928ac7c9401e77151a037c540908bdef142e273a85a1f9c7228e04f34555b",
-    "hash": "f92197a93abb45b0b3d001de8822c602d15858f222c84af09a859ec46f10c60f"
+    "prev_hash": "c2ec1e50dd6ce4f5f14f8a2033385313906ab4b1d839a03f91bf173633dcc533",
+    "hash": "17ed2ea0afb3a9ba1562490ca5ec5dc316d044c7ee4aecc63f24800a416880da"
   },
   {
     "id": 16,
@@ -459,7 +467,7 @@
     "action": "portal_message",
     "object_ref": "portal:PM-1",
     "evidence": {
-      "event_id": 63,
+      "event_id": 65,
       "id": "PM-1",
       "dispute_id": "D-0417",
       "from_party": "northmart",
@@ -472,8 +480,8 @@
       "evidence_ids": [],
       "created_at": "2026-10-24T10:31:41-07:00"
     },
-    "prev_hash": "f92197a93abb45b0b3d001de8822c602d15858f222c84af09a859ec46f10c60f",
-    "hash": "ee568104724faf29b0d2c7cecd8812d0dc0b62527dc1015ee629d10f5c5f3e13"
+    "prev_hash": "17ed2ea0afb3a9ba1562490ca5ec5dc316d044c7ee4aecc63f24800a416880da",
+    "hash": "ea80ca753f63eed3e8acf95d6819500b75a757596e7fe00176cce6bc5438cca9"
   },
   {
     "id": 17,
@@ -482,7 +490,7 @@
     "action": "portal_message",
     "object_ref": "portal:PM-2",
     "evidence": {
-      "event_id": 65,
+      "event_id": 67,
       "id": "PM-2",
       "dispute_id": "D-0417",
       "from_party": "clawback",
@@ -501,7 +509,7 @@
       ],
       "created_at": "2026-10-24T10:31:45-07:00"
     },
-    "prev_hash": "ee568104724faf29b0d2c7cecd8812d0dc0b62527dc1015ee629d10f5c5f3e13",
-    "hash": "0d57adefb7c760ab58dd6cf05e2b3a757bd8fa75a0c3dcacea490a31b679718f"
+    "prev_hash": "ea80ca753f63eed3e8acf95d6819500b75a757596e7fe00176cce6bc5438cca9",
+    "hash": "c518acfe62b3e9c2fcc5a8011e1cc7ceba1833406faaeb2dadb5ca5fad9ba684"
   }
 ]

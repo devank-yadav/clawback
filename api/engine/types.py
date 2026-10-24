@@ -181,6 +181,8 @@ class Policy:
     reminder_after_minutes: int
     discretion_words: tuple[str, ...]
     approved_amendment_senders: tuple[str, ...]
+    default_dispute_days: int = 90  # the dispute window when an account's ops terms state none
+    manual_minutes_per_charge: Decimal | None = None  # None: no manual-time comparison
 
 
 @dataclass(frozen=True)

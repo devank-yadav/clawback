@@ -323,7 +323,10 @@ def test_a_run_replaced_mid_decision_asks_nobody():
     (q_new,), (q_old,) = fake.newer.questions, old.questions
     assert old.replaced_by == fake.newer.id and old.questions[q_old].closed_at  # born closed
     assert pipeline.is_open(fake.newer.questions[q_new]) and [q.id for q in pipeline.inbox()[0]] == [q_new]
-    assert sum(role == "owner" for role, _ in sms.outbox) == 1  # only the newer run asked Dana
+    owner = [text for role, text in sms.outbox if role == "owner"]
+    summaries = [t for t in owner if t.startswith("Clawback checked")]
+    assert len(owner) - len(summaries) == 1  # only the newer run asked Dana
+    assert len(summaries) == 1 and [m.run_id for m in pipeline.owner_messages()] == [fake.newer.id]
     assert any("Didn't ask Dana about C6" in e.data.text for e in old.events if e.type == "log")
 
 

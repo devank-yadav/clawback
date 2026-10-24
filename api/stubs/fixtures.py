@@ -19,7 +19,7 @@ from api.engine import audit_chain
 from api.contracts import (
     Answer, Approval, ApprovalLine, AuditEntry, Charge, ChargeDetail, CoachResponse, Decision, Dispute,
     DisputeLine, EvalReport, EventAdapter, Evidence, Finding, LedgerLine, LedgerPost, LogLine, MathPart,
-    PortalMessage, Question, Quote, Redline, Rehearsal, Remittance, Rule, RunFixture, RunInfo,
+    PortalMessage, Question, Quote, Redline, Rehearsal, Remittance, Rule, RunFixture, RunInfo, RunValue,
     Summary, Totals,
 )
 
@@ -33,6 +33,8 @@ REFUSED_RUN = "run-march-refused"  # same run, but Sam refuses the credit memo
 APRIL_RUN = "run-april-demo"
 REMITTANCE_ID = "REM-3102"
 DISPUTE_ID = "D-0417"
+FILE_BY = {"file_by": date(2026, 7, 19), "days_left": 90}  # paid Apr 20 + the policy's 90-day window (api/lookback.py)
+AI_CALLS = 10  # the AI calls Peak Bar's recorded March makes up to the decided board (its trace, DEMO_MODE)
 
 
 def _m(v: str | int) -> Decimal:
@@ -274,16 +276,17 @@ def _rule_1(learned_at: datetime) -> Rule:
 DISPUTE_LINES = [
     DisputeLine(charge_id="C1", ref="NM-2229", amount=_m(600), reason="Rate charged $1.50 a bar; the deal says $1.00.",
                 clause_ref="§3.1", quote=S31, math="1,200 bars × ($1.50 − $1.00) = $600",
-                evidence_ids=["ev-deal-3.1", "ev-sales-w1", "ev-charge-C1"]),
+                evidence_ids=["ev-deal-3.1", "ev-sales-w1", "ev-charge-C1"], **FILE_BY),
     DisputeLine(charge_id="C2", ref="NM-2231", amount=_m(980), reason="Week 2 was already paid on Mar 14 (NM-2178).",
                 clause_ref="§4.2", quote=S42, math="980 bars for Mar 8 to 14 already paid under NM-2178",
-                evidence_ids=["ev-payment-NM-2178", "ev-sales-w2", "ev-charge-C2", "ev-deal-4.2"]),
+                evidence_ids=["ev-payment-NM-2178", "ev-sales-w2", "ev-charge-C2", "ev-deal-4.2"], **FILE_BY),
     DisputeLine(charge_id="C4", ref="NM-2236", amount=_m(1540), reason="Over the 5,000-unit cap.",
                 clause_ref="§3.2", quote=S32, math="1,200 + 980 + 2,820 = 5,000 by Mar 21; 1,540 bars after the cap",
-                evidence_ids=["ev-deal-3.2", "ev-sales-w1", "ev-sales-w2", "ev-sales-w3", "ev-sales-w4", "ev-charge-C4"]),
+                evidence_ids=["ev-deal-3.2", "ev-sales-w1", "ev-sales-w2", "ev-sales-w3", "ev-sales-w4", "ev-charge-C4"],
+                **FILE_BY),
     DisputeLine(charge_id="C5", ref="NM-2237", amount=_m(1000), reason="Mint is not a promoted product.",
                 clause_ref="§3.1", quote=S31, math="1,000 Mint bars; Mint isn't covered, so $0 allowed",
-                evidence_ids=["ev-deal-3.1", "ev-sales-mint", "ev-charge-C5"]),
+                evidence_ids=["ev-deal-3.1", "ev-sales-mint", "ev-charge-C5"], **FILE_BY),
 ]
 
 REMITTANCE = Remittance(id=REMITTANCE_ID, counterparty="Northmart", invoice_id="INV-3102", expected=_m(48200),
@@ -310,9 +313,10 @@ class _Run:
     def log(self, text: str, level: str = "info", actor: str = "system", charge_id: str | None = None, gap: float = 1.0) -> None:
         self.add("log", LogLine(text=text, level=level, actor=actor, charge_id=charge_id), gap)
 
-    def totals(self, disputed: int, accepted: int, waiting: int, undecided: int, questions: int, taken: int = 6850) -> None:
+    def totals(self, disputed: int, accepted: int, waiting: int, undecided: int, questions: int, taken: int = 6850,
+               value: RunValue | None = None) -> None:
         self.add("totals", Totals(taken=_m(taken), disputed=_m(disputed), accepted=_m(accepted), waiting=_m(waiting),
-                                  undecided=_m(undecided), questions=questions), gap=0)
+                                  undecided=_m(undecided), questions=questions, value=value), gap=0)
 
     def decide(self, charge_id: str, decision: str, gate_row: int, reason: str, disputed: int = 0, accepted: int = 0,
                waiting: int = 0, rule_id: str | None = None) -> Decision:
@@ -357,7 +361,7 @@ def refused_run() -> RunFixture:
 
 
 def _march(run_id: str, controller_approves: bool) -> RunFixture:
-    run = _Run(run_id, datetime(2026, 10, 24, 10, 30, 0, tzinfo=PDT))
+    run = _Run(run_id, start := datetime(2026, 10, 24, 10, 30, 0, tzinfo=PDT))
     remittance = REMITTANCE.model_copy(update={"received_at": run.now()})  # the deposit is what starts the run
     run.add("run", RunInfo(run_id=run_id, kind="march", status="started", remittance=remittance, demo_mode=True))
     run.log("Northmart paid $41,350 on invoice INV-3102 for $48,200. $6,850 was taken out in 6 charges.")
@@ -387,6 +391,12 @@ def _march(run_id: str, controller_approves: bool) -> RunFixture:
                       "Notice came 20 days ahead. Accept or dispute? Tell me your rule and I'll remember it.")
     run.add("question", q)
     run.log("Texted Dana one question about C6.", actor="gate", charge_id="C6")
+    value = RunValue(disputed=_m(4120), accepted=_m(1530), questions=1, charges=6,
+                     seconds_to_decided=(run.now() - start).total_seconds(), ai_calls=AI_CALLS, ai_cost_usd=0.0,
+                     manual_minutes=None, manual_minutes_per_charge=None)
+    run.totals(4120, 1530, 1200, 0, 1, value=value)
+    run.log("Texted Dana: \"Clawback checked Northmart's 6 deductions: $4,120 being recovered, $1,530 fair, 1 question "
+            "for you. 6-month check: $0 still claimable.\"", actor="gate", gap=0)
 
     run.add("dispute", _dispute("filed", run.now() + run.step, DISPUTE_LINES), gap=2)
     run.log("Filed dispute D-0417 on Northmart's portal: 4 lines, $4,120. Within the $5,000 limit Dana set.",
@@ -402,7 +412,7 @@ def _march(run_id: str, controller_approves: bool) -> RunFixture:
             "good", "gate")
     decisions["C6"] = run.decide("C6", "accept", 3, "Rule #1: 20 days' notice is at least 14, so accept.",
                                  accepted=1200, rule_id="rule-1")
-    run.totals(4120, 2730, 0, 0, 1)
+    run.totals(4120, 2730, 0, 0, 1, value=value.model_copy(update={"accepted": _m(2730)}))
 
     memo_lines = [ApprovalLine(charge_id="C1", amount=_m(1200)), ApprovalLine(charge_id="C3", amount=_m(330)),
                   ApprovalLine(charge_id="C6", amount=_m(1200))]
@@ -486,7 +496,7 @@ DISPUTE_LINE_C4_AMENDED = DisputeLine(
     charge_id="C4", ref="NM-2236", amount=_m(540), reason="Over the 6,000-unit cap set by Amendment No. 1.",
     clause_ref="§3.2 (Amendment No. 1)", quote=A32,
     math="1,200 + 980 + 2,820 = 5,000 by Mar 21; 1,000 more bars reach the 6,000 cap; 540 bars after it",
-    evidence_ids=["ev-amendment-1", "ev-sales-w1", "ev-sales-w2", "ev-sales-w3", "ev-sales-w4", "ev-charge-C4"])
+    evidence_ids=["ev-amendment-1", "ev-sales-w1", "ev-sales-w2", "ev-sales-w3", "ev-sales-w4", "ev-charge-C4"], **FILE_BY)
 
 
 def _dispute(status: str, filed_at: datetime | None, lines: list[DisputeLine]) -> Dispute:
@@ -649,7 +659,8 @@ def fixture_files() -> dict[str, str]:
     schema_models = [c.RunFixture, c.ChargeDetail, c.Evidence, c.CoachResponse, c.EvalReport, c.AuditEntry,
                      c.AuditVerify, c.Summary, c.PortalMessage, c.ScenarioResponse, c.AnswerResponse,
                      c.StartRunResponse, c.Dispute, c.ApprovalDecisionRequest, c.ApprovalDecisionResponse,
-                     c.InboxResponse, c.PortalPreset, c.ScenarioRequest, c.ScenarioExample]
+                     c.InboxResponse, c.PortalPreset, c.ScenarioRequest, c.ScenarioExample, c.AccountOverview,
+                     c.Lookback]
     schema = {m.__name__: m.model_json_schema(mode="serialization") for m in schema_models}
     return {
         "run-events.json": _dump(march_run()),

@@ -75,5 +75,15 @@ decision gate and approvals; Data model; API, live updates and integrations.
   /runs/latest replay a run after a restart, and GET /db/cap is the cap query. `make db-check` shows all of it.
   Saved rules (with their account) and the audit chain are kept there too (api/db/state.py, migration 004): startup
   restores them, so Rule #1 and /audit/verify survive a restart; POST /demo/reset clears them.
+- Value, lookback, packet, owner text: api/engine/value.py puts a run's meters beside its trace (AI calls, cost) and
+  charges x policy.yaml `manual_minutes_per_charge` (null: no comparison); the totals events from the end of the gate's
+  first pass carry it as `value`, and so does the overview's `current`. api/engine/lookback.py runs every past deduction
+  in the six-month window through compute_allowed with terms built in code from history/promo-plan.csv (PA) or the ops
+  files (SH/PR/SP); DF and other codes are not_checked. api/lookback.py reads the files (GET /accounts/{id}/lookback,
+  the overview's wrongly_taken_6m / lost_past_window / claimable_now); the dispute window is the account's
+  `dispute_window_days` ops term (quote checked) else `default_dispute_days`, counted from the payment date, which also
+  sets each dispute line's file_by / days_left. GET /portal/disputes/{id}/packet.pdf prints a dispute (api/packet.py,
+  fpdf2). Once the gate has decided, the owner gets one summary text (sms.py; its copy is GET /inbox `messages`); it is
+  plain code, so the recorded AI requests don't change. The negotiator leaves file_by / days_left out of its request.
 - Stub routes serve the fixture run in api/stubs/fixtures.py. After changing it, run `python -m api.stubs.fixtures`
   to rewrite web/fixtures/*.json (a test fails if they're stale).

@@ -1,0 +1,2 @@
+charge_id,ref,code,description,product,units,rate,amount,period_start,period_end,line_ref
+K1,LP-9001,PA,Summer promo June,Cove Green Tea,500,0.40,200.00,2026-06-01,2026-06-30,

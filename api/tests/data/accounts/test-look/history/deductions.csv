@@ -1,0 +1,7 @@
+month,ref,code,description,amount,outcome,recovered,deducted_on,product,units,rate,period_start,period_end,line_ref
+2026-05,LP-0501,PA,Spring promo weeks 1-2,280.00,accepted,0,2026-05-10,Cove Green Tea,700,0.40,2026-04-01,2026-04-14,
+2026-05,LP-0502,PA,Spring promo weeks 3-4,200.00,accepted,0,2026-05-25,Cove Green Tea,500,0.40,2026-04-15,2026-04-30,
+2026-02,LP-0201,SH,Short delivery HD-1,90.00,written_off,0,2026-02-20,Cove Green Tea,30,3.00,,,HD-1
+2026-03,LP-0301,DF,Display fee March,150.00,accepted,0,2026-03-31,,,,,,
+2025-11,LP-1101,PA,Fall promo,500.00,accepted,0,2025-11-30,Cove Green Tea,1000,0.50,2025-11-01,2025-11-30,
+2026-06,LP-9001,PA,Summer promo June,200.00,open,0,2026-07-20,Cove Green Tea,500,0.40,2026-06-01,2026-06-30,
