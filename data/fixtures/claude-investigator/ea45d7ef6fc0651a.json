@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-24T09:57:49+00:00",
+  "recorded_at": "2026-10-24T11:55:53+00:00",
   "request": {
     "charge_id": "E29",
     "model": "claude-opus-5-5",
@@ -8,16 +8,16 @@
   },
   "request_hash": "ea45d7ef6fc0651a",
   "response": {
-    "confidence": 0.82,
+    "confidence": 0.75,
     "evidence_ids": [
       "ev-charge-E29",
       "ev-pasted-b801f4b30c-3.1",
       "ev-sales-chocolate"
     ],
-    "finding": "Northmart took $1,200.00 for Peak Bar Chocolate, but the deal's allowance covers only core bars, and Chocolate isn't treated as one.",
+    "finding": "Northmart took $1,200.00 for Peak Bar Chocolate, but the deal only pays on core bars, and Chocolate isn't treated as one.",
     "open_questions": [
-      "The deal says 'core bars' but never lists which products those are. Is Peak Bar Chocolate a core bar? If it is, this charge may be allowed.",
-      "The sales record shows 1,200 promoted Chocolate bars sold but 0 total units. Which number is right?"
+      "The deal says 'core bars' but never lists which products count. Is Peak Bar Chocolate a core bar? If so, the charge fits the March dates and the $1.00 rate.",
+      "The sales record shows 1,200 promoted units but 0 total units for the week. Is this sales data reliable?"
     ],
     "type": "product_not_covered"
   },

@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-24T10:06:14+00:00",
+  "recorded_at": "2026-10-24T11:55:38+00:00",
   "request": {
     "charge_id": "E28",
     "model": "claude-opus-5-5",
@@ -8,19 +8,19 @@
   },
   "request_hash": "d810cc1ee8234936",
   "response": {
-    "confidence": 0.5,
+    "confidence": 0.45,
     "evidence_ids": [
       "ev-charge-E28",
       "ev-sales-original",
       "ev-sales-chocolate",
       "ev-pasted-e3af95fe47-3.2"
     ],
-    "finding": "Northmart took $800.00 for Original and Chocolate bars. The deal on file shows no verified products, rate or dates for this, so $0.00 is allowed.",
+    "finding": "The deal on file shows no rate, products, or dates, so none of the $800.00 can be confirmed; Original and Chocolate appear uncovered.",
     "open_questions": [
-      "The deal on file has no verified promo rate, product list or promotion dates. Is a section or signed version missing?",
-      "Do Original or Chocolate fall under any promotion Peak Bar Co. agreed to for March 1 to March 7, 2026?",
-      "The Original sales record shows 800 promoted bars but 0 total bars. Which number is right?",
-      "Only the 5,000 unit cap clause was found. Does any other document set the products or rate for this charge?"
+      "The deal on file has no verified promo rate, product list, or promotion dates. Does another part of the deal or an approved email set these?",
+      "Are Original and Chocolate truly outside the deal, or is the product list just missing from what was provided?",
+      "The Original sales row shows 800 promoted units but 0 total units. Which figure is correct?",
+      "Should the full $800.00 be disputed, or held until the deal terms are confirmed?"
     ],
     "type": "product_not_covered"
   },
