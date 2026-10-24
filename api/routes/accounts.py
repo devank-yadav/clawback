@@ -4,7 +4,7 @@ months and its current payment (api/overview.py, computed by code from history/ 
 
 from fastapi import APIRouter
 
-from api import accounts, lookback as lookback_mod, overview as overview_mod
+from api import accounts, lookback as lookback_mod, overview as overview_mod, suppliers
 from api.contracts import AccountListItem, AccountOverview, Lookback
 from api.routes.runs import account_or_404, latest_run_id
 
@@ -13,7 +13,7 @@ router = APIRouter(tags=["accounts"])
 
 def _item(a: accounts.Account) -> AccountListItem:
     return AccountListItem(id=a.id, brand=a.brand, distributor=a.distributor, invoice=a.invoice,
-                           latest_run_id=latest_run_id(a))
+                           latest_run_id=latest_run_id(a), supplier=suppliers.supplier_of(a))
 
 
 @router.get("/accounts", response_model=list[AccountListItem])
