@@ -29,11 +29,11 @@ export function ReaderCard({ live }: { live: boolean }) {
       {docs.length > 0 && (
         <ul className="fl-docs">
           {docs.map((d) => (
-            <li key={d.at} className="fl-doc">
+            <li key={`${d.at}-${d.label}`} className="fl-doc">
               <span>{d.label}</span>
               {d.items.length > 0 && (
                 <ul className="fl-quotes">
-                  {d.items.slice(0, 4).map((q) => <li key={q}><q>{q}</q></li>)}
+                  {d.items.slice(0, 4).map((q, i) => <li key={`${i}-${q}`}><q>{q}</q></li>)}
                   {d.items.length > 4 && <li>+{d.items.length - 4} more, each found word for word</li>}
                 </ul>
               )}

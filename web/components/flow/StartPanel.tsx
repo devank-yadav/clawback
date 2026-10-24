@@ -67,46 +67,49 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
     <div className="fl-hero">
       <DotWave />
       <section className="fl-start" aria-labelledby="fl-start-h">
-        <span className="cx-eyebrow">{account ? `${account.brand.name} ← ${account.distributor.name}` : "Clawback"}</span>
-        <h1 id="fl-start-h">Drop in the payment. The agents take it from there.</h1>
-        <p className="fl-lead">They read the deal, check every charge, dispute the wrong ones with proof and accept the fair ones. You’re asked only when the deal is unclear.</p>
+        <span className="cx-eyebrow">{account ? `${account.brand.name} · ${account.distributor.name}` : "Clawback"}</span>
+        <h1 id="fl-start-h">Your agents are watching {cast.distributor}’s payments.</h1>
+        <p className="fl-lead">When a payment lands, they read the deal, check every deduction, dispute the wrong ones with proof and accept the fair ones. You’re asked only when the deal is unclear.</p>
 
-        <label
-          className={`fl-drop ${over ? "is-over" : ""} ${busy ? "is-busy" : ""}`}
-          onDragOver={(e) => { e.preventDefault(); setOver(true); }}
-          onDragLeave={() => setOver(false)}
-          onDrop={drop}
-        >
-          {reading ? (
+        <div className="fl-watch" aria-label="What the agents are watching">
+          {[["Bank", "Deposits from " + cast.distributor], ["QuickBooks", "Invoices and payments"], ["Remittance inbox", "Payment advice and broker emails"]].map(([n, d]) => (
+            <span key={n} className="fl-watch-item"><i className="tb-dot is-live" /><span><strong>{n}</strong><small>{d}</small></span></span>
+          ))}
+        </div>
+
+        {reading ? (
+          <div className="fl-drop is-busy">
             <span className="fl-reading" aria-live="polite">
               <span className="cx-pill is-live">Payment reader · AI</span>
               <strong>Reading {reading}…</strong>
               <small>Listing every deduction line, then checking each one is printed word for word and that they add up.</small>
               <span className="fl-bar is-indeterminate"><i /></span>
             </span>
-          ) : (
-            <>
+          </div>
+        ) : (
+          <div className="fl-or">
+            <button className="cx-btn fl-go" onClick={pay} disabled={busy || !account}>
+              {starting ? "The payment is landing…" : `Send a test payment from ${cast.distributor}`}
+            </button>
+            <button className="cx-btn is-ghost" onClick={() => setPasting((v) => !v)} disabled={busy}>Upload a remittance instead</button>
+          </div>
+        )}
+        {pasting && !reading && (
+          <div className="fl-paste">
+            <label
+              className={`fl-drop ${over ? "is-over" : ""}`}
+              onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+              onDragLeave={() => setOver(false)}
+              onDrop={drop}
+            >
               <span className="fl-plus" aria-hidden="true">+</span>
               <strong>Drop {cast.distributor}’s payment advice</strong>
               <small>PDF, CSV or text · or click to choose a file</small>
               <input type="file" accept=".pdf,.csv,.txt,application/pdf,text/csv,text/plain" disabled={busy || !account}
                 aria-label="Choose the payment advice file"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) void read({ file: f }, f.name); e.target.value = ""; }} />
-            </>
-          )}
-        </label>
-
-        <div className="fl-or">
-          <span>No file?</span>
-          <button className="cx-btn" onClick={pay} disabled={busy || !account}>
-            {starting ? "Starting…" : account ? `${cast.distributor} pays ${money(account.invoice.received)}` : "Loading…"}
-          </button>
-          <span className="cx-tiny">watch a short payment arrive</span>
-          <button className="cx-btn is-ghost" onClick={() => setPasting((v) => !v)} disabled={busy}>Paste text</button>
-        </div>
-        {pasting && (
-          <div className="fl-paste">
-            <textarea value={text} onChange={(e) => setText(e.target.value)} aria-label="Remittance text" placeholder={`Paste the remittance ${cast.distributor} sent`} />
+            </label>
+            <textarea value={text} onChange={(e) => setText(e.target.value)} aria-label="Remittance text" placeholder={`Or paste the remittance ${cast.distributor} sent`} />
             <div><button className="cx-btn" disabled={busy || !text.trim()} onClick={() => void read({ text }, "the pasted text")}>Read it</button></div>
           </div>
         )}
@@ -117,17 +120,16 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
 
         <div className="fl-crew" aria-label="The agents">
           {CREW.map((c) => <span key={c.name} className={`fl-chip ${c.tag === "CODE" ? "is-code" : ""}`}><i>{c.tag === "CODE" ? "CODE" : "AI"}</i>{c.name}</span>)}
-          <span className="fl-chip is-person"><i>OWNER</i>{cast.owner}</span>
-          <span className="fl-chip is-person"><i>CONTROLLER</i>{cast.controller}</span>
+          <span className="fl-chip is-person"><i>YOU</i>{cast.owner}</span>
         </div>
-        <p className="cx-tiny">AI reads and writes. Tested code does every calculation. People approve money.</p>
+        <p className="cx-tiny">AI reads and writes. Tested code does every calculation. You decide only what the deal leaves open.</p>
 
         {last && state.run && (
           <div className="fl-last">
             <span>
-              Last payment: {state.run.status === "failed" ? "the run stopped" : `${money(last.disputed)} disputed · ${money(last.accepted)} fair${last.questions ? ` · ${last.questions} question${last.questions === 1 ? "" : "s"}` : ""}`}
+              Last payment: {state.run.status === "failed" ? "the agents stopped" : `${money(last.disputed)} disputed · ${money(last.accepted)} fair${last.questions ? ` · ${last.questions} question${last.questions === 1 ? "" : "s"}` : ""}`}
             </span>
-            <button className="cx-btn is-ghost" onClick={onOpenLast}>Open</button>
+            <button className="cx-btn is-ghost" onClick={onOpenLast}>See the result</button>
           </div>
         )}
       </section>

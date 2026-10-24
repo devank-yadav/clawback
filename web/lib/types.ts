@@ -372,6 +372,7 @@ export type Account = {
   distributor: { name: string; desk_email: string; portal_name: string; colors: Colors };
   invoice: { id: string; expected: Money; received: Money; month: string; period_start: string; period_end: string };
   latest_run_id: string | null;
+  supplier?: string;
 };
 
 export type Overview = {
@@ -444,3 +445,16 @@ export type TraceStep = {
 
 /** GET /runs/{id}/trace/summary: totals for a whole run. Field names are read loosely (see lib/trace.ts). */
 export type TraceSummary = Record<string, unknown>;
+
+// ---- Suppliers: one brand tracking many distributors (GET /suppliers)
+export type RelationshipStatus = "waiting_for_payment" | "checking" | "needs_you" | "settled" | "stopped";
+export type DistributorItem = {
+  account_id: string;
+  distributor: Account["distributor"];
+  tracked: boolean;
+  status: RelationshipStatus;
+  /** Plain words, never a money figure. */
+  status_label: string;
+  latest_run_id: string | null;
+};
+export type SupplierItem = { id: string; brand: Account["brand"]; distributors: DistributorItem[] };
