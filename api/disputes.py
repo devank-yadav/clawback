@@ -35,7 +35,7 @@ PRESETS = [
                  text="The cap was raised to 6,000 units. The signed amendment is attached."),
 ]
 
-THREADS: dict[str, list[PortalMessage]] = {}
+THREADS: dict[tuple[str, str], list[PortalMessage]] = {}  # (run id, dispute id): every run numbers from D-0417
 
 
 def reset() -> None:
@@ -52,7 +52,9 @@ def find(dispute_id: str) -> tuple[pipeline.Run, Dispute] | None:
 
 
 def thread(dispute_id: str) -> list[PortalMessage]:
-    return THREADS.setdefault(dispute_id, [])
+    """The thread of the newest run that filed this dispute (an older run's D-0417 keeps its own)."""
+    found = find(dispute_id)
+    return THREADS.setdefault((found[0].id if found else "", dispute_id), [])
 
 
 def _message(dispute_id: str, from_party: str, text: str, **kw) -> PortalMessage:

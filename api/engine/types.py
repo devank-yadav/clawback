@@ -114,6 +114,7 @@ class Rule:
     learned_at: date | None = None
     source_question_id: str = ""
     status: str = "active"  # active · pending · undone
+    label: str = ""  # "Rule #1", for reasons people read; id when empty
 
 
 @dataclass(frozen=True)

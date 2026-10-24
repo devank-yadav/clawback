@@ -214,3 +214,21 @@ def test_live_client_failure_shows_as_failed_not_posted(monkeypatch):
     monkeypatch.setattr(replay.time, "sleep", lambda s: None)
     _, made = pipeline.decide_approval(pending(run).id, True)
     assert [(p.status, p.qbo_id) for p in made] == [("failed", None)]
+
+
+def test_demo_mode_posts_to_the_stand_in_even_with_keys(monkeypatch):
+    """A recorded QuickBooks write never matches a new run (its request id and date change), so DEMO_MODE uses the
+    stand-in instead of failing at Sam's yes with Wi-Fi off."""
+    run = finished_march(ScenarioClaude())
+    for k in qbo.KEYS:
+        monkeypatch.setenv(k, "set")
+    monkeypatch.setenv("DEMO_MODE", "true")
+    qbo.reset()
+    books = qbo.books()
+    assert isinstance(books, qbo.StandInBooks) and "DEMO_MODE" in books.why
+    _, made = pipeline.decide_approval(pending(run).id, True)
+    assert [p.status for p in made] == ["posted", "posted"] and all(p.qbo_id.startswith("sim-") for p in made)
+    assert "Simulated: DEMO_MODE is on" in made[0].note
+    monkeypatch.delenv("DEMO_MODE")
+    qbo.reset()
+    assert isinstance(qbo.books(), qbo.LiveBooks)  # keys and no DEMO_MODE: the sandbox

@@ -326,6 +326,7 @@ class Question(Contract):
     answer: str | None = None
     answered_at: datetime | None = None
     rule_id: str | None = None
+    closed_at: datetime | None = None  # a newer run of the same payment replaced this one; answer that run's question
 
 
 class Answer(Contract):

@@ -170,3 +170,19 @@ def test_committed_recordings_replay_the_portal_offline(monkeypatch):
         assert out[0].classification == p.expect and out[-1].from_party == "clawback", p.id
     assert final(run)["C4"] == ("split", D(540), D(1000))
     assert (last_totals(run).disputed, last_totals(run).accepted) == (D(3120), D(3730))
+
+
+def test_every_run_numbers_its_own_disputes():
+    """A second run of the same payment files D-0417 again; the portal answers on the newest one and each run keeps
+    its own thread. April numbers from D-0427, so it never takes D-0417."""
+    fake = PortalClaude()
+    first = finished_march(fake)
+    second = pipeline.start("march", fake, background=False)  # Rule #1 is saved: no question this time
+    assert [[e.data.id for e in r.events if e.type == "dispute"] for r in (first, second)] == [["D-0417"], ["D-0417"]]
+    assert disputes.find("D-0417")[0] is second
+    disputes.post("D-0417", "There was no unit cap on the Spring promo.", client=fake)
+    assert [e.type for e in first.events].count("portal_message") == 0
+    assert [e.type for e in second.events].count("portal_message") == 2 and len(disputes.thread("D-0417")) == 2
+    april = pipeline.start("april", fake, background=False)
+    assert [e.data.id for e in april.events if e.type == "dispute"] == ["D-0427"]
+    assert disputes.find("D-0417")[0] is second

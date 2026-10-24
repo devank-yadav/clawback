@@ -68,7 +68,7 @@ def _open_question() -> str | None:
     """The newest unanswered owner question; else the newest one at all (so UNDO and late replies still land)."""
     qs = [(qid, pipeline.RUNS[rid].questions[qid]) for qid, (rid, _) in pipeline.QUESTIONS.items()
           if rid in pipeline.RUNS and pipeline.RUNS[rid].questions[qid].to_role == "owner"]
-    open_ = [qid for qid, q in qs if q.answer is None]
+    open_ = [qid for qid, q in qs if pipeline.is_open(q)]
     return (open_ or [qid for qid, _ in qs] or [None])[-1]
 
 
@@ -78,7 +78,10 @@ def _owner(text: str) -> list[str]:
         return [NO_QUESTION_TEXT]
     run = pipeline.RUNS[pipeline.QUESTIONS[qid][0]]
     before = len(run.texts)
-    pipeline.answer(qid, text, "owner")
+    try:
+        pipeline.answer(qid, text, "owner")
+    except pipeline.QuestionClosed:  # the newest question belongs to a replaced run, and the new one hasn't asked
+        return [NO_QUESTION_TEXT]
     return [t for role, t in run.texts[before:] if role == "owner"]
 
 

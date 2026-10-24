@@ -147,10 +147,11 @@
       "sent_at": "2026-10-24T10:31:01-07:00",
       "answer": null,
       "answered_at": null,
-      "rule_id": null
+      "rule_id": null,
+      "closed_at": null
     },
     "prev_hash": "c1aa058bbebc67c41205ba89c5cf51dab2f30ddd45fd820c74f004cd9419b38a",
-    "hash": "064dea9a9d7f284ffdf18941d05ea8b223548dd31f50021b101bb1210e768efa"
+    "hash": "f59cf78d4d1203394fb3beec559e9a8807ccc33ffcab11d2065df416e096cd48"
   },
   {
     "id": 8,
@@ -230,8 +231,8 @@
       "approved_by": "policy",
       "filed_at": "2026-10-24T10:31:03-07:00"
     },
-    "prev_hash": "064dea9a9d7f284ffdf18941d05ea8b223548dd31f50021b101bb1210e768efa",
-    "hash": "cc6fffe1dc764c92f8588133cde2c7264643747509ff5f8f13f3eda40c0b0c66"
+    "prev_hash": "f59cf78d4d1203394fb3beec559e9a8807ccc33ffcab11d2065df416e096cd48",
+    "hash": "e6068c4b627b15404fb305bf3488b1c2d88d85057890817a618352d76c976aa4"
   },
   {
     "id": 9,
@@ -247,8 +248,8 @@
       "answered_at": "2026-10-24T10:31:16-07:00",
       "rule_id": "rule-1"
     },
-    "prev_hash": "cc6fffe1dc764c92f8588133cde2c7264643747509ff5f8f13f3eda40c0b0c66",
-    "hash": "ac32aea22fe8021eb69dc04c145226d69d839896193cdb891b78681fde72cf75"
+    "prev_hash": "e6068c4b627b15404fb305bf3488b1c2d88d85057890817a618352d76c976aa4",
+    "hash": "d65d0e0145bbdd39422e883711c194158b94b58640d0b4a840b57b420cfa7823"
   },
   {
     "id": 10,
@@ -273,8 +274,8 @@
       "source_question_id": "Q-1",
       "status": "active"
     },
-    "prev_hash": "ac32aea22fe8021eb69dc04c145226d69d839896193cdb891b78681fde72cf75",
-    "hash": "0cedde23e0caa0fc4b2151917a0bd4695bfb5b46195621e37f819f2e11c58d04"
+    "prev_hash": "d65d0e0145bbdd39422e883711c194158b94b58640d0b4a840b57b420cfa7823",
+    "hash": "8d71447c82b0ca28378416df2b32a030625caae0452dd0a58ff7d77cdff89bbd"
   },
   {
     "id": 11,
@@ -295,8 +296,8 @@
       "decided_at": "2026-10-24T10:31:19-07:00",
       "reason": "Rule #1: 20 days' notice is at least 14, so accept."
     },
-    "prev_hash": "0cedde23e0caa0fc4b2151917a0bd4695bfb5b46195621e37f819f2e11c58d04",
-    "hash": "67e0668b051ca37a93b9673d94a3051d032aea028f2256243dd529785b594e58"
+    "prev_hash": "8d71447c82b0ca28378416df2b32a030625caae0452dd0a58ff7d77cdff89bbd",
+    "hash": "64ddd628bc57beca9252dc430c08ff3608a279a3fdca37c6c44a2bade69653b1"
   },
   {
     "id": 12,
@@ -331,8 +332,8 @@
       "requested_at": "2026-10-24T10:31:20-07:00",
       "decided_at": null
     },
-    "prev_hash": "67e0668b051ca37a93b9673d94a3051d032aea028f2256243dd529785b594e58",
-    "hash": "74104d8f868a07546dd10d57daef93cc8a6441352f70485c98f2283db4cb7ea3"
+    "prev_hash": "64ddd628bc57beca9252dc430c08ff3608a279a3fdca37c6c44a2bade69653b1",
+    "hash": "2d05f88a131b64d0539a82cfb14015c4020a92f294ca2bd1592271965f22bf72"
   },
   {
     "id": 13,
@@ -367,8 +368,8 @@
       "requested_at": "2026-10-24T10:31:20-07:00",
       "decided_at": "2026-10-24T10:31:28-07:00"
     },
-    "prev_hash": "74104d8f868a07546dd10d57daef93cc8a6441352f70485c98f2283db4cb7ea3",
-    "hash": "4519a92d5c492a126e0415a1b480256c14585456c253fc45422ab6ce02dfee57"
+    "prev_hash": "2d05f88a131b64d0539a82cfb14015c4020a92f294ca2bd1592271965f22bf72",
+    "hash": "624518b738b489fe49430756f3011b8e1a440d8dcb09cfc2d32062adc60a7f58"
   },
   {
     "id": 14,
@@ -405,8 +406,8 @@
       "note": "Credit memo applied to INV-3102.",
       "posted_at": "2026-10-24T10:31:30-07:00"
     },
-    "prev_hash": "4519a92d5c492a126e0415a1b480256c14585456c253fc45422ab6ce02dfee57",
-    "hash": "9655d22ff05b033b0393b1adc7fecc2febcb6a47b5e875f116736fef7f7a5012"
+    "prev_hash": "624518b738b489fe49430756f3011b8e1a440d8dcb09cfc2d32062adc60a7f58",
+    "hash": "ed2928ac7c9401e77151a037c540908bdef142e273a85a1f9c7228e04f34555b"
   },
   {
     "id": 15,
@@ -448,8 +449,8 @@
       "note": "$4,120 left open on INV-3102, disputed under D-0417.",
       "posted_at": "2026-10-24T10:31:32-07:00"
     },
-    "prev_hash": "9655d22ff05b033b0393b1adc7fecc2febcb6a47b5e875f116736fef7f7a5012",
-    "hash": "99f7fab2d05fd28b61d01bd6f47715be56ae8b004886b7a56be438113cdfc76e"
+    "prev_hash": "ed2928ac7c9401e77151a037c540908bdef142e273a85a1f9c7228e04f34555b",
+    "hash": "f92197a93abb45b0b3d001de8822c602d15858f222c84af09a859ec46f10c60f"
   },
   {
     "id": 16,
@@ -471,8 +472,8 @@
       "evidence_ids": [],
       "created_at": "2026-10-24T10:31:41-07:00"
     },
-    "prev_hash": "99f7fab2d05fd28b61d01bd6f47715be56ae8b004886b7a56be438113cdfc76e",
-    "hash": "16c5d9106743c36d894d9e5e8b03615c6afdb18d823252ab1c8293db7cd65e84"
+    "prev_hash": "f92197a93abb45b0b3d001de8822c602d15858f222c84af09a859ec46f10c60f",
+    "hash": "ee568104724faf29b0d2c7cecd8812d0dc0b62527dc1015ee629d10f5c5f3e13"
   },
   {
     "id": 17,
@@ -500,7 +501,7 @@
       ],
       "created_at": "2026-10-24T10:31:45-07:00"
     },
-    "prev_hash": "16c5d9106743c36d894d9e5e8b03615c6afdb18d823252ab1c8293db7cd65e84",
-    "hash": "1b08a63dff0df988f4690d966e6772830ebce8dce426d05d1a89baa3a767dd12"
+    "prev_hash": "ee568104724faf29b0d2c7cecd8812d0dc0b62527dc1015ee629d10f5c5f3e13",
+    "hash": "0d57adefb7c760ab58dd6cf05e2b3a757bd8fa75a0c3dcacea490a31b679718f"
   }
 ]

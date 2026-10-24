@@ -2,6 +2,7 @@
 
 import json
 import re
+import threading
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -125,6 +126,7 @@ def test_april_is_decided_by_rule_1_with_no_questions():
     april = pipeline.start("april", fake, background=False)
     assert final(april) == {"A1": ("accept", D(0), D(1200)), "A2": ("dispute", D(800), D(0))}
     assert not april.questions and all(d.rule_id == "rule-1" for d in april.shown.values())
+    assert all(d.reason == "Applied Rule #1." for d in april.shown.values())
     assert any(e.type == "log" and e.data.text.startswith("0 questions asked") for e in april.events)
 
 
@@ -133,6 +135,9 @@ def test_every_cited_evidence_id_resolves():
     for cid in run.charges:
         d = run.detail(cid)
         assert {e.id for e in d.evidence} >= set(d.finding.evidence_ids)
+        kinds = [e.kind for e in d.evidence]  # the deal's sentence leads the drawer, the charge row comes last
+        assert kinds[-1] == "charge" and kinds == sorted(kinds, key=lambda k: 0 if k == "clause" else 2 if k == "charge" else 1)
+        assert cid == "C2" or kinds[0] == "clause"  # C2 is a repeat payment: its proof is NM-2178 and week 2 sales
     for e in run.events:
         if e.type == "dispute":
             assert all(i in run.evidence for ln in e.data.lines for i in ln.evidence_ids)
@@ -259,3 +264,68 @@ def test_nobody_can_read_it_so_dana_is_asked_again():
     assert rule is None and final(run)["C6"][0] == "ask"
     from api import replies
     assert any(replies.REASK_TEXT in t for t in logs(run)) and len(run.questions) == 1
+
+
+# ---------------------------------------------------------------- a newer run replaces an older one
+
+def test_a_new_run_closes_the_old_runs_question():
+    """A reload (or a second tab) starts another March run: the old question closes, so Dana's answer, the inbox and
+    her texts all land on the run she's looking at."""
+    fake = ScenarioClaude()
+    old = pipeline.start("march", fake, background=False)
+    (q1,) = old.questions
+    new = pipeline.start("march", fake, background=False)
+    (q2,) = new.questions
+    assert old.replaced_by == new.id and old.questions[q1].closed_at and pipeline.is_open(new.questions[q2])
+    assert [e.data.closed_at is not None for e in old.events if e.type == "question"] == [False, True]
+    assert [q.id for q in pipeline.inbox()[0]] == [q2]
+    with pytest.raises(pipeline.QuestionClosed):
+        pipeline.answer(q1, "accept if notice is at least 14 days", client=fake)
+    _, rule = pipeline.answer(q2, "accept if notice is at least 14 days", client=fake)
+    assert rule.label == "Rule #1" and final(new)["C6"] == ("accept", D(0), D(1200))
+    assert final(old)["C6"] == ("ask", D(0), D(0))  # the replaced run stays as it was
+    april = pipeline.start("april", fake, background=False)
+    assert april.replaced_by is None and new.replaced_by is None  # another payment replaces nothing
+
+
+class ReloadMidRun(ScenarioClaude):
+    """The page reloads while the first run's agents are still working: a second run starts and finishes first."""
+
+    def __init__(self):
+        super().__init__()
+        self.newer, self.lock = None, threading.Lock()
+
+    def _parse(self, output_format, messages, **kw):
+        with self.lock:  # the two readers call at once
+            if self.newer is None:
+                self.newer = pipeline.start("march", ScenarioClaude(), background=False)
+        return super()._parse(output_format=output_format, messages=messages, **kw)
+
+
+def test_a_run_replaced_mid_decision_asks_nobody():
+    from api.integrations import sms
+    fake = ReloadMidRun()
+    old = pipeline.start("march", fake, background=False)
+    (q_new,), (q_old,) = fake.newer.questions, old.questions
+    assert old.replaced_by == fake.newer.id and old.questions[q_old].closed_at  # born closed
+    assert pipeline.is_open(fake.newer.questions[q_new]) and [q.id for q in pipeline.inbox()[0]] == [q_new]
+    assert sum(role == "owner" for role, _ in sms.outbox) == 1  # only the newer run asked Dana
+    assert any("Didn't ask Dana about C6" in e.data.text for e in old.events if e.type == "log")
+
+
+def test_answering_a_closed_question_is_refused_but_undo_still_works(monkeypatch):
+    fake = ScenarioClaude()
+    monkeypatch.setattr(claude_mod.anthropic, "Anthropic", lambda *a, **k: fake)
+    from api.main import app
+    client = TestClient(app)
+    first = pipeline.start("march", fake, background=False)
+    pipeline.answer(next(iter(first.questions)), "accept if notice is at least 14 days", client=fake)
+    old = pipeline.start("march", ScenarioClaude(), background=False)  # Rule #1 decides C6: no question
+    assert not old.questions
+    pipeline.RULES.clear()  # pretend Dana's rule never existed, so the next run asks again
+    asking = pipeline.start("march", fake, background=False)
+    (q,) = asking.questions
+    pipeline.start("march", fake, background=False)
+    r = client.post(f"/questions/{q}/answer", json={"text": "accept if notice is at least 14 days"})
+    assert r.status_code == 409 and "newer run" in r.json()["detail"]
+    assert client.post(f"/questions/{q}/answer", json={"text": "UNDO"}).status_code == 200

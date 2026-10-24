@@ -126,4 +126,5 @@ def rule_1(status: str = "active") -> Rule:
         learned_at=D(2026, 10, 24),
         source_question_id="Q-1",
         status=status,
+        label="Rule #1",
     )

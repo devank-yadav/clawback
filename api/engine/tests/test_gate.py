@@ -119,6 +119,7 @@ def test_row_3_rule_applies():
     a = allowance("1200", "1200", (T["T-fee"],), {"notice_days": 20})
     d = decide(C6, a, None, POLICY, [s.rule_1()])
     assert (d.kind, d.gate_row, d.rule_id, d.accepted) == (K.ACCEPT, 3, "rule-1", Decimal("1200.00"))
+    assert d.reason == "Applied Rule #1."  # the label people read, not the id
 
 
 def test_row_3_rule_accepts_fee_only_up_to_the_deal_maximum():

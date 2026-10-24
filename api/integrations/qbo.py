@@ -10,8 +10,10 @@ DEMO_MODE replays recorded responses.
   reference). Verify in the sandbox UI that the invoice's balance drops by the memo amount.
 - The open-balance note is a sparse update (Id, SyncToken, "sparse": true) of the invoice's PrivateNote.
 
-Stand-in (no QBO keys yet): answers with the same shapes and ids starting "sim-". It's never recorded as a
-fixture, and every ledger post it backs says it was simulated.
+Stand-in (no QBO keys yet, or DEMO_MODE): answers with the same shapes and ids starting "sim-". It's never
+recorded as a fixture, and every ledger post it backs says it was simulated and why. DEMO_MODE uses it even with the
+keys set: every write carries the run's approval id and today's date, so a recorded response could never match a
+new run's request, and the books would fail with Wi-Fi off.
 """
 
 from __future__ import annotations
@@ -125,11 +127,13 @@ class LiveBooks:
 
 
 class StandInBooks:
-    """No QuickBooks keys yet: the same answers, clearly fake. Keeps what it 'posted' for tests and the log."""
+    """No QuickBooks keys yet, or DEMO_MODE: the same answers, clearly fake. Keeps what it 'posted' for tests and the
+    log; `why` says which it is."""
 
     simulated = True
 
-    def __init__(self):
+    def __init__(self, why: str = "QuickBooks keys aren't set yet"):
+        self.why = why
         self.calls: list[tuple[str, str, Any]] = []
         self._seq = itertools.count(1)
         self._seen: dict[str, Posted] = {}
@@ -181,10 +185,12 @@ def _refreshing_token() -> Callable[[], str]:
 def books() -> LiveBooks | StandInBooks:
     global _books
     if _books is None:
-        if all(os.getenv(k) for k in KEYS):
-            _books = LiveBooks(os.environ["QBO_REALM_ID"], _refreshing_token())
-        else:
+        if not all(os.getenv(k) for k in KEYS):
             _books = StandInBooks()
+        elif replay.demo_mode():
+            _books = StandInBooks("DEMO_MODE is on, so nothing reaches QuickBooks")
+        else:
+            _books = LiveBooks(os.environ["QBO_REALM_ID"], _refreshing_token())
     return _books
 
 

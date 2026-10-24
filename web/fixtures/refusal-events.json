@@ -940,7 +940,8 @@
         "sent_at": "2026-10-24T10:31:01-07:00",
         "answer": null,
         "answered_at": null,
-        "rule_id": null
+        "rule_id": null,
+        "closed_at": null
       }
     },
     {

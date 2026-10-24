@@ -27,10 +27,12 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - `make record` runs the whole demo live (March, Dana's answer, April) and saves every AI answer to data/fixtures/;
   `make demo` / DEMO_MODE=true replays them with no network. `python -m api.agents.reader <doc ids>` reads documents.
 - POST /runs starts a live pipeline run (api/pipeline.py); `{"fixture": true}` replays the recorded fake run instead.
-- QuickBooks (api/integrations/qbo.py): with the QBO_* keys set it writes to the sandbox; without them a stand-in
-  answers with "sim-" ids and every ledger post says it's simulated. Texts (api/integrations/sms.py) go out only
-  with the Twilio keys and outside DEMO_MODE; otherwise they wait in GET /inbox. Inbound texts: POST
-  /webhooks/twilio/sms (signature checked when TWILIO_AUTH_TOKEN is set).
+- QuickBooks (api/integrations/qbo.py): with the QBO_* keys set it writes to the sandbox; without them, or in
+  DEMO_MODE, a stand-in answers with "sim-" ids and every ledger post says it's simulated and why. Texts
+  (api/integrations/sms.py) go out only with the Twilio keys and outside DEMO_MODE; otherwise they wait in GET
+  /inbox. Inbound texts: POST /webhooks/twilio/sms (signature checked when TWILIO_AUTH_TOKEN is set).
+- A new run of the same payment replaces older ones: their open questions close (Question.closed_at) and an answer
+  to a closed one gets 409. Each run numbers its own disputes (March D-0417, April D-0427).
 - Every document is read twice (api/agents/readers.py): Reader A is Claude, Reader B is Gemini when GEMINI_API_KEY is
   set and a second Claude prompt until then (the log says which). Re-record Reader B with Gemini once the key works.
 - Nessie (api/integrations/nessie.py): with NESSIE_API_KEY and NESSIE_ACCOUNT_ID the app polls the account every 5 s

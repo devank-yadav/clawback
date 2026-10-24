@@ -1508,6 +1508,19 @@
             ],
             "default": null,
             "title": "Rule Id"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Closed At"
           }
         },
         "required": [
@@ -3728,6 +3741,19 @@
             ],
             "default": null,
             "title": "Rule Id"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Closed At"
           }
         },
         "required": [
@@ -5579,6 +5605,19 @@
             ],
             "default": null,
             "title": "Rule Id"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Closed At"
           }
         },
         "required": [

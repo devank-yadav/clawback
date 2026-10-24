@@ -40,7 +40,9 @@ INVOICE_ID = "INV-3102"
 EXPECTED = Decimal("48200.00")
 RECEIVED = Decimal("41350.00")
 DEAL_DOCS = ["spring-promo", "broker-2026-03-28", "northmart-2026-03-30"]
-FIRST_DISPUTE = 417  # D-0417
+# Each run numbers its own disputes, so a second run of the same payment files D-0417 again and the portal finds
+# the newest one. March and April get separate blocks so April's never takes D-0417.
+FIRST_DISPUTE = {"march": 417, "april": 427}
 
 
 def _now() -> datetime:
@@ -68,6 +70,7 @@ class Run:
     disagreements: dict[str, str] = field(default_factory=dict)  # term type -> what each reader read
     deposit: Any = None  # the Nessie deposit that started this run, if one did
     texts: list[tuple[str, str]] = field(default_factory=list)  # (role, SMS body) sent back; the webhook replies with them
+    replaced_by: str | None = None  # a newer run of the same payment; this one stops asking people
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     def emit(self, type_: str, data: Any) -> Any:
@@ -90,32 +93,50 @@ class Run:
         ids = list(dict.fromkeys((f.evidence_ids if f else []) + (r.answer_evidence_ids if r else [])
                                  + [f"ev-charge-{charge_id}"] + ([f"ev-{d.rule_id}"] if d and d.rule_id else [])))
         rule = next((x for x in RULES if d and x.id == d.rule_id), None)
+        found = [self.evidence[i] for i in ids if i in self.evidence]
+        # The drawer leads with the deal's sentence and ends with the charge row; the rest keep the cited order.
+        found.sort(key=lambda e: 0 if e.kind == "clause" else 2 if e.kind == "charge" else 1)
         return ChargeDetail(charge=self.charges[charge_id], finding=f, decision=d, rehearsal=r, rule=rule,
-                            evidence=[self.evidence[i] for i in ids if i in self.evidence])
+                            evidence=found)
 
 
 RUNS: dict[str, Run] = {}
 RULES: list[Rule] = []  # saved owner rules, shared by every run
 QUESTIONS: dict[str, tuple[str, str]] = {}  # question id -> (run id, charge id)
-_counter = {"question": 0, "dispute": 0}
+_counter = {"question": 0}
 _state = threading.Lock()
 
 
 def reset() -> None:
     with _state:
         RUNS.clear(), RULES.clear(), QUESTIONS.clear()
-        _counter.update(question=0, dispute=0)
+        _counter.update(question=0)
     qbo.reset()
     sms.outbox.clear()
     audit.reset()
     _deposit_runs.clear()
 
 
+class QuestionClosed(ValueError):
+    pass
+
+
+def is_open(q: Question) -> bool:
+    return q.answer is None and q.closed_at is None
+
+
 def start(kind: str = "march", client: anthropic.Anthropic | None = None, background: bool = True,
           deposit: Any = None) -> Run:
-    """A new run. `deposit` is the Nessie deposit that triggered it (api/integrations/nessie.Deposit), if any."""
+    """A new run. `deposit` is the Nessie deposit that triggered it (api/integrations/nessie.Deposit), if any.
+    It replaces older runs of the same payment: their open questions close and they ask nobody again."""
     run = Run(id=f"run-{kind}-{uuid.uuid4().hex[:8]}", kind=kind, deposit=deposit)
-    RUNS[run.id] = run
+    with _state:
+        older = [r for r in RUNS.values() if r.kind == kind and r.replaced_by is None]
+        RUNS[run.id] = run
+        for old in older:
+            old.replaced_by = run.id
+    for old in older:
+        _close_questions(old)
     work = lambda: _guarded(run, client)  # noqa: E731
     threading.Thread(target=work, daemon=True).start() if background else work()
     return run
@@ -274,6 +295,17 @@ def _record(run: Run, charge_id: str, d: eng.Decision, decided_by: str) -> eng.D
     return d
 
 
+def _close_questions(run: Run) -> None:
+    """A newer run of the same payment replaced this one: its open questions close, so a text or an inbox answer
+    lands on the run people are looking at (a reload, or two tabs, would otherwise leave two open)."""
+    for qid, q in list(run.questions.items()):
+        if is_open(q):
+            run.questions[qid] = closed = q.model_copy(update={"closed_at": _now()})
+            run.emit("question", closed)
+            run.log(f"Closed {qid}: a newer run ({run.replaced_by}) replaced this one and asks there.", "warn", "gate",
+                    q.charge_id)
+
+
 def _ask_owner(run: Run, charge_id: str) -> None:
     c, a = run.charges[charge_id], run.allowances[charge_id]
     term = next((t for t in a.terms if t.discretion or t.type == eng.TermType.FEE_DISCRETION), a.terms[0] if a.terms else None)
@@ -291,6 +323,16 @@ def _ask_owner(run: Run, charge_id: str) -> None:
     with _state:
         _counter["question"] += 1
         qid = f"Q-{_counter['question']}"
+        replaced_by = run.replaced_by
+    if replaced_by:  # still deciding when a newer run started: the question is born closed and nobody is texted
+        q = Question(id=qid, to_role="owner", charge_id=charge_id, text=text, channel="inbox", sent_at=_now(),
+                     closed_at=_now())
+        run.questions[qid] = q
+        QUESTIONS[qid] = (run.id, charge_id)
+        run.emit("question", q)
+        run.log(f"Didn't ask {NAMES['owner']} about {charge_id}: a newer run ({replaced_by}) replaced this one.", "warn",
+                "gate", charge_id)
+        return
     status = sms.send("owner", text)
     q = Question(id=qid, to_role="owner", charge_id=charge_id, text=text, channel="sms" if status == "sent" else "inbox",
                  sent_at=_now())
@@ -299,6 +341,8 @@ def _ask_owner(run: Run, charge_id: str) -> None:
     run.emit("question", q)
     run.log(f"Asked {NAMES['owner']} one question about {charge_id}" + (" by text." if status == "sent" else
             f" in the inbox (text {status})."), actor="gate", charge_id=charge_id)
+    if run.replaced_by:  # a newer run started while the text was going out
+        _close_questions(run)
 
 
 def _tell(run: Run, role: str, text: str, level: str = "info", charge_id: str | None = None) -> None:
@@ -337,9 +381,8 @@ def _file_dispute(run: Run, charge_ids: list[str], policy: eng.Policy) -> None:
                                  math=" ".join(run.allowances[cid].steps), evidence_ids=list(f.evidence_ids) if f else []))
     total = totals.total_of(ln.amount for ln in lines)
     by_policy = total <= policy.auto_dispute_limit
-    with _state:
-        dispute_id = f"D-{FIRST_DISPUTE + _counter['dispute']:04d}"
-        _counter["dispute"] += 1
+    filed_before = len({e.data.id for e in run.events if e.type == "dispute"})
+    dispute_id = f"D-{FIRST_DISPUTE[run.kind] + filed_before:04d}"
     run.emit("dispute", Dispute(id=dispute_id, remittance_id=next(iter(run.charges.values())).remittance_id or "",
                                 counterparty=COUNTERPARTY, lines=lines, total=total,
                                 status="filed" if by_policy else "draft", approved_by="policy" if by_policy else "owner",
@@ -408,6 +451,8 @@ def answer(question_id: str, text: str, from_role: str = "owner",
         run.texts.append(("owner", replies.undo_text(undone)))
         run.log(f"Texted {owner}: \"{replies.undo_text(undone)}\"", actor="gate", charge_id=charge_id)
         return ans, undone
+    if q.closed_at is not None:  # UNDO above still works: rules belong to the owner, not to a run
+        raise QuestionClosed(f"{question_id} closed: run {run.replaced_by} replaced {run.id}")
     if q.answer is not None:
         ans = record()
         run.texts.append(("owner", f"{charge_id} is already settled. Reply UNDO to cancel the rule."))
@@ -521,7 +566,7 @@ def _post_books(run: Run, approval: Approval) -> list[LedgerPost]:
     """Write an approved credit memo to QuickBooks, apply it to the invoice and note the disputed balance.
     Request ids come from the approval id, so a retry never posts twice."""
     books = qbo.books()
-    sim = " Simulated: QuickBooks keys aren't set yet." if books.simulated else ""
+    sim = f" Simulated: {books.why}." if books.simulated else ""
     invoice_no = INVOICE_ID if run.kind == "march" else None
     lines = [LedgerLine(charge_id=ln.charge_id, amount=ln.amount,
                         description=f"{run.charges[ln.charge_id].ref}: {run.charges[ln.charge_id].description}")
@@ -559,7 +604,7 @@ def _post_books(run: Run, approval: Approval) -> list[LedgerPost]:
         run.log(f"QuickBooks: ${approval.amount:,.0f} credit memo posted"
                 + (f" and applied to {invoice_no}" if invoice_no else "")
                 + (f"; ${posts[1].amount:,.0f} stays open, noted with the dispute lines" if len(posts) > 1 else "")
-                + (" (simulated until the QuickBooks keys are set)." if books.simulated else "."), "good", "bookkeeper")
+                + (f" (simulated: {books.why})." if books.simulated else "."), "good", "bookkeeper")
     else:
         run.log(f"QuickBooks write failed for {approval.id}; nothing half-posted is shown as done.", "error", "bookkeeper")
     return posts
@@ -567,7 +612,7 @@ def _post_books(run: Run, approval: Approval) -> list[LedgerPost]:
 
 def inbox() -> tuple[list[Question], list[Approval]]:
     """Open owner questions and approvals waiting on the controller, across live runs."""
-    questions = [q for run in RUNS.values() for q in run.questions.values() if q.answer is None]
+    questions = [q for run in RUNS.values() for q in run.questions.values() if is_open(q)]
     pending = []
     for run in RUNS.values():
         latest: dict[str, Approval] = {}
@@ -626,7 +671,7 @@ def summary_of(run: Run):
             disputes[e.data.id] = e.data
         elif e.type == "approval":
             approvals[e.data.id] = e.data
-    question = next((q for q in reversed(list(run.questions.values())) if q.answer is None), None)
+    question = next((q for q in reversed(list(run.questions.values())) if is_open(q)), None)
     return Summary(totals=totals_[-1] if totals_ else _meters(run), run_id=run.id, pending_question=question,
                    open_disputes=[d for d in disputes.values() if d.status not in ("resolved", "withdrawn")],
                    pending_approvals=[a for a in approvals.values() if a.status == "pending"])

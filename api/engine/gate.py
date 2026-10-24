@@ -58,15 +58,15 @@ def decide(
         rule = find_rule(rules, discretion[0].type, charge.counterparty)
         if rule is None:
             return out(DecisionKind.ASK, 4, "The deal leaves this to discretion and no saved rule covers it.")
-        verdict = evaluate(rule, allowance.facts)
+        verdict, name = evaluate(rule, allowance.facts), rule.label or rule.id
         if verdict == DecisionKind.ACCEPT:
             if delta > policy.match_tolerance:  # e.g. a fee above the deal's maximum: accept only up to it
-                return out(DecisionKind.SPLIT, 3, f"Applied {rule.id}; the part above the deal is disputed.",
+                return out(DecisionKind.SPLIT, 3, f"Applied {name}; the part above the deal is disputed.",
                            disputed=delta, accepted=allowed, rule_id=rule.id)
-            return out(DecisionKind.ACCEPT, 3, f"Applied {rule.id}.", accepted=taken, rule_id=rule.id)
+            return out(DecisionKind.ACCEPT, 3, f"Applied {name}.", accepted=taken, rule_id=rule.id)
         if verdict == DecisionKind.DISPUTE:
-            return out(DecisionKind.DISPUTE, 3, f"Applied {rule.id}.", disputed=taken, rule_id=rule.id)
-        return out(DecisionKind.ASK, 3, f"{rule.id} says to ask.", rule_id=rule.id)
+            return out(DecisionKind.DISPUTE, 3, f"Applied {name}.", disputed=taken, rule_id=rule.id)
+        return out(DecisionKind.ASK, 3, f"{name} says to ask.", rule_id=rule.id)
 
     # Not in the design table: with a required term missing the amount means nothing, so it can only be Ask (row 9).
     if allowance.missing:

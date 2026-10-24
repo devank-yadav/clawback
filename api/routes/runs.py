@@ -123,7 +123,10 @@ def evidence(evidence_id: str, run_id: str | None = Query(default=None)) -> Evid
 @router.post("/questions/{question_id}/answer", response_model=AnswerResponse)
 def answer_question(question_id: str, req: AnswerRequest) -> AnswerResponse:
     if question_id in pipeline.QUESTIONS:
-        ans, rule = pipeline.answer(question_id, req.text, req.from_role)
+        try:
+            ans, rule = pipeline.answer(question_id, req.text, req.from_role)
+        except pipeline.QuestionClosed as e:
+            raise HTTPException(409, f"{e}; answer the newer run's question") from e
         return AnswerResponse(answer=ans, rule=rule)
     run = fixtures.march_run()
     answer = next((e.data for e in run.events if e.type == "answer" and e.data.question_id == question_id), None)

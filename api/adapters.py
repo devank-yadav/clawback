@@ -43,7 +43,7 @@ def to_engine_rule(r: contracts.Rule) -> eng.Rule:
                     counterparty=r.counterparty, condition=r.condition, decision=eng.DecisionKind(r.decision),
                     else_decision=eng.DecisionKind(r.else_decision), approver=r.approver_role,
                     learned_at=r.learned_at.date() if isinstance(r.learned_at, datetime) else r.learned_at,
-                    source_question_id=r.source_question_id or "", status=r.status)
+                    source_question_id=r.source_question_id or "", status=r.status, label=r.label)
 
 
 def to_contract_decision(d: eng.Decision, waiting, decided_by: str, decided_at: datetime) -> contracts.Decision:
