@@ -26,3 +26,5 @@ web/out/
 eval/latest.json
 eval/latest-agent.json
 eval/latest.tmp
+# the VM's saved QuickBooks refresh token (docker-compose.yml mounts it into the api container)
+state/

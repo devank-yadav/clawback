@@ -88,6 +88,7 @@ and don't touch `api/`, `data/` or `config/`. In order of demo value:
 | U5 | `/coach` | "Build /coach: POST /coach returns redlines on the summer draft. Each has clause_ref, original_quote (strike it through; quote has the offsets), suggested_text, reason and dollars_at_stake. Show 'This clause cost $X in March.' Redlines are suggestions; there's no send button." |
 | U6 | `/scenario` | "Build /scenario: three example buttons from GET /scenario/examples fill the form; POST /scenario with {clause, charge} returns decision, finding, evidence, terms (each verified or rejected word for word) and rehearsal. Show the decision card like the board's, with its evidence. Allow up to 30 s, with a spinner." |
 | U7 | `/audit` | "Build /audit: GET /audit lists every action (time, actor, action, object, evidence, hash) and a 'Verify chain' button calls GET /audit/verify and shows OK or the first broken row." |
+| U9 | Reset on the live site | "On the deployed site, POST /demo/reset answers 401 unless it gets Authorization: Bearer <admin token> (the API's CLAWBACK_ADMIN_TOKEN), so nobody with the URL can wipe the demo. Hide the 'Reset fictional demo' item when the reset answers 401, or ask for the token once and keep it in sessionStorage. On laptops (no token set) it works as now." |
 | U8 | Copy fix | "Before 'Northmart pays' is pressed, the overview says 'Your March payment is being checked against the deal.' Say it's waiting for Northmart's payment instead, until the run starts." |
 
 ## Timeline, checkpoints and rules

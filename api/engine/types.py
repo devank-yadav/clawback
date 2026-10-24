@@ -118,6 +118,14 @@ class Rule:
 
 
 @dataclass(frozen=True)
+class RuleMatch:
+    """A saved rule Moss found for a clause's wording (F16): its id and how similar the wording is, 0 to 1."""
+
+    rule_id: str
+    similarity: Decimal
+
+
+@dataclass(frozen=True)
 class Policy:
     auto_dispute_limit: Decimal
     controller_approval_over: Decimal
@@ -166,6 +174,7 @@ class Decision:
     gate_row: int
     rule_id: str | None = None
     reason: str = ""
+    rule_similarity: Decimal | None = None  # the Moss match that picked rule_id; None when the exact match did
 
 
 @dataclass(frozen=True)

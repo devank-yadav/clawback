@@ -343,3 +343,15 @@ def test_answering_a_closed_question_is_refused_but_undo_still_works(monkeypatch
     r = client.post(f"/questions/{q}/answer", json={"text": "accept if notice is at least 14 days"})
     assert r.status_code == 409 and "newer run" in r.json()["detail"]
     assert client.post(f"/questions/{q}/answer", json={"text": "UNDO"}).status_code == 200
+
+
+def test_every_number_on_a_live_card_opens_its_source():
+    """F7 on live runs: each math step links to the evidence it rests on (the board makes it clickable)."""
+    fake = ScenarioClaude()
+    run = pipeline.start("march", fake, background=False)
+    pipeline.answer(next(iter(run.questions)), "accept if notice is at least 14 days", client=fake)
+    links = {cid: [m.evidence_id for m in f.math] for cid, f in run.findings.items()}
+    assert all(i in run.evidence for ids in links.values() for i in ids)  # every step links, and every link opens
+    assert links["C1"] == ["ev-sales-2026-03-01", "ev-spring-promo-3.2", "ev-spring-promo-3.1"]
+    assert links["C2"][2] == "ev-payment-NM-2178" and links["C3"][2] == "ev-broker-2026-03-28"
+    assert links["C5"] == ["ev-spring-promo-3.1"] and links["C6"] == ["ev-spring-promo-5.4", "ev-display-fee-2026-03-11"]

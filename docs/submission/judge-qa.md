@@ -1,8 +1,8 @@
 # Judge Q&A: short answers
 
 > Two lines per answer, each pointing at something on screen. Built from docs/design.md (Judge Q&A, Risks,
-> Responsible design) and what is on `main` as of Sat Oct 24, 1:20 AM PDT. **[TODO]** marks a fact to fill in
-> before judging. Never quote a number that isn't in this file or on the scoreboard.
+> Responsible design), checked against `main` at commit f55757a (Sat Oct 24 morning) and the canonical Devpost
+> draft, docs/submission/devpost.md. **[TODO]** marks a fact to fill in before judging. Everyone named is fictional. Never quote a number that isn't in this file or on the scoreboard.
 
 ## The problem and the customer
 
@@ -53,11 +53,14 @@ more than the deal allows, and it accepts undercharges.
 Clawback asks once and saves the answer as Rule #1.
 
 **How does "never asks twice" work with different wording?**
-Rules are matched by meaning (Moss semantic search) plus the same term type and counterparty. Without Moss it
-falls back to an exact match on term type and counterparty. **[PLANNED: Moss]**
+Saved rules are indexed in Moss and matched by meaning: a differently worded display-fee clause still finds Rule #1
+(similarity at least 0.85, same kind of clause, same distributor), and the card shows the score. Without Moss it falls
+back to matching the kind of clause and the distributor. Show it in the scenario box with a reworded clause.
 
 **What if the two AI readers disagree?**
 The term is marked disputed and every charge that depends on it goes to the owner. Nothing is filed or booked.
+Real example: on "its core bars", Claude left the products out and Gemini read "core bars", so Clawback asked
+(docs/proof/gemini-vs-claude.md).
 
 **What if the distributor is right?**
 It concedes. When the judge attaches the signed amendment raising the cap to 6,000, Clawback withdraws $1,000
@@ -75,7 +78,8 @@ is checked per charge and again on the whole dispute. D-0417 is $4,120.
 
 **What actually gets written to QuickBooks?**
 A credit memo for the $2,730 accepted, one line per charge, applied to INV-3102; the disputed $4,120 stays open
-with a note listing the D-0417 lines. **[PLANNED: live sandbox write]**
+with a note listing the D-0417 lines. Checked live in the sandbox: INV-3102 dropped to $4,120 open, and
+`make reset` puts it back to $6,850.
 
 **Can I see why a decision was made later?**
 Every decision cites a sentence, a data row, a rule or a person, and every action is in a hash-chained audit
@@ -84,8 +88,8 @@ log; editing a past row breaks the chain check. (Show "Verify chain".)
 ## Proof
 
 **How accurate is it?**
-**[TODO: final eval: X of 30 correct, Y asked, Z wrong automatic actions.]** The 30 planted charges and the
-answer key were written before we ran it. Report the real number, whatever it is.
+30 of 30 correct on 30 planted charges, amounts right to the cent, 6 asked, 0 wrong automatic actions, in both engine mode (math and gate alone) and agent mode (readers and agents in the loop). The answer key was written before the first run. We wrote the cases ourselves, so a deal from someone
+outside the team is next. (Show the scoreboard.)
 
 **What counts as a "wrong automatic action"?**
 Acting where the key says Ask, disputing a fair charge, or accepting a wrong one. Our target is zero.
@@ -96,7 +100,8 @@ the eval score. Simulated: Peak Bar Co. and Northmart are fictional; we wrote th
 portal is our mock.
 
 **Can I try my own case?**
-Yes: open `/scenario`, paste a clause and a charge, and it decides with evidence. **[PLANNED]**
+Yes: paste a clause and a charge and it decides with evidence (`POST /scenario`, built). **[TODO: the `/scenario`
+screen]**
 
 **What if the Wi-Fi dies?**
 `DEMO_MODE` replays saved AI and QuickBooks responses with the same logic, so the demo runs offline.

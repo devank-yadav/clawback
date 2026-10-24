@@ -6,6 +6,10 @@ services:
       context: .
       dockerfile: api/Dockerfile
     env_file: ${CLAWBACK_ENV_FILE:-.env}
+    environment:
+      QBO_TOKEN_FILE: /app/state/qbo.env  # QuickBooks' rotated refresh token, kept across restarts
+    volumes:
+      - ./state:/app/state  # a folder, not a single-file mount: saving the token replaces the file
     restart: unless-stopped
     expose:
       - "8000"

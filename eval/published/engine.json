@@ -1,0 +1,12 @@
+{
+  "mode": "engine",
+  "cases": 30,
+  "correct": 30,
+  "correct_amounts": 30,
+  "asked": 6,
+  "wrong_actions": 0,
+  "unnecessary_questions": 0,
+  "wrong_amounts": 0,
+  "other": 0,
+  "run_at": "2026-10-24T05:05:17.190188-07:00"
+}

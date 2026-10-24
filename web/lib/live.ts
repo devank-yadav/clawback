@@ -1,7 +1,10 @@
 // Thin client for the FastAPI service (api/routes/). Only used when NEXT_PUBLIC_DATA_SOURCE=live.
 // Request and response shapes follow api/contracts.py; nothing here computes money.
 
-import type { Approval, ChargeDetail, LedgerPost } from "./types";
+import type {
+  Approval, AuditEntry, AuditVerify, ChargeDetail, CoachResponse, Dispute, EvalReport, Evidence, LedgerPost, PortalMessage,
+  ScenarioExample, ScenarioRequest, ScenarioResponse,
+} from "./types";
 
 /** `/api` behind Caddy on the deployed domain (set at build time by web/Dockerfile); the local API in dev. */
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000").replace(/\/$/, "");
@@ -10,12 +13,12 @@ export const apiUrl = (path: string) => (/^https?:/.test(path) ? path : `${API_B
 
 const TIMEOUT_MS = 15_000;
 
-async function call<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
+async function call<T>(path: string, init?: { method?: string; body?: unknown; timeoutMs?: number }): Promise<T> {
   const res = await fetch(apiUrl(path), {
     method: init?.method ?? "GET",
     headers: init?.body === undefined ? undefined : { "Content-Type": "application/json" },
     body: init?.body === undefined ? undefined : JSON.stringify(init.body),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
+    signal: AbortSignal.timeout(init?.timeoutMs ?? TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`${init?.method ?? "GET"} ${path} answered ${res.status}`);
   return (await res.json()) as T;
@@ -56,3 +59,31 @@ export const resetDemo = () => call<unknown>("/demo/reset", { method: "POST" });
 /** GET /charges/{id}: the evidence behind one row. */
 export const fetchChargeDetail = (chargeId: string, runId: string) =>
   call<ChargeDetail>(`/charges/${encodeURIComponent(chargeId)}?run_id=${encodeURIComponent(runId)}`);
+
+/** GET /evidence/{id}: the sentence, data row, email, rule or person behind one number. */
+export const fetchEvidence = (evidenceId: string, runId?: string) =>
+  call<Evidence>(`/evidence/${encodeURIComponent(evidenceId)}${runId ? `?run_id=${encodeURIComponent(runId)}` : ""}`);
+
+/** Mock Northmart portal (api/routes/portal.py). The dispute id is the demo's D-0417. */
+export const DISPUTE_ID = "D-0417";
+export type PortalPreset = { id: string; label: string; text: string; attachment_doc_id: string | null; expect: string; charge_ids: string[] };
+export const fetchPortalPresets = () => call<PortalPreset[]>("/portal/presets");
+export const fetchDispute = (id = DISPUTE_ID) => call<Dispute>(`/portal/disputes/${encodeURIComponent(id)}`);
+export const fetchPortalMessages = (id = DISPUTE_ID) => call<PortalMessage[]>(`/portal/disputes/${encodeURIComponent(id)}/messages`);
+/** Returns Northmart's message and Clawback's reply (only Northmart's when the reply is held for the owner). */
+export const postPortalMessage = (text: string, attachmentDocId: string | null, id = DISPUTE_ID) =>
+  call<PortalMessage[]>(`/portal/disputes/${encodeURIComponent(id)}/messages`, {
+    method: "POST",
+    body: { text, attachment_doc_id: attachmentDocId },
+  });
+
+/** POST /replay/april: starts the April run (the API asks Dana first if Rule #1 isn't saved yet). */
+export const replayApril = () => call<StartedRun>("/replay/april", { method: "POST" });
+export const fetchEval = () => call<EvalReport>("/eval/latest");
+/** POST /coach: redlines on the summer draft. The model may take a while. */
+export const fetchCoach = () => call<CoachResponse>("/coach", { method: "POST", timeoutMs: 40_000 });
+export const fetchScenarioExamples = () => call<ScenarioExample[]>("/scenario/examples");
+/** POST /scenario: the judge's own clause and charge. Allow up to 30 seconds. */
+export const postScenario = (req: ScenarioRequest) => call<ScenarioResponse>("/scenario", { method: "POST", body: req, timeoutMs: 35_000 });
+export const fetchAudit = () => call<AuditEntry[]>("/audit");
+export const verifyAudit = () => call<AuditVerify>("/audit/verify");

@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-24T10:06:07+00:00",
+  "recorded_at": "2026-10-24T11:55:29+00:00",
   "request": {
     "doc_id": "pasted-e3af95fe47",
     "model": "claude-opus-5-5",
@@ -27,9 +27,9 @@
       }
     ],
     "unclear": [
-      "3.1 mentions a \"reasonable per-unit rate\" with no stated amount; promo_rate left out.",
-      "3.1 says \"during the spring period\" without specific dates or year; date_range left out.",
-      "No products are named for the allowance; product_scope not stated."
+      "3.1 refers to a \"reasonable per-unit rate\" but states no amount, so no promo_rate was returned.",
+      "3.1 refers to \"the spring period\" without specific dates or a year, so no date_range was returned.",
+      "No products are named, so no product_scope was returned."
     ]
   },
   "service": "claude-reader"

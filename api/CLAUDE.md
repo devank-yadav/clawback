@@ -29,7 +29,9 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - POST /runs starts a live pipeline run (api/pipeline.py); `{"fixture": true}` replays the recorded fake run instead.
 - QuickBooks (api/integrations/qbo.py): with the QBO_* keys set it writes to the sandbox; without them, or in
   DEMO_MODE, a stand-in answers with "sim-" ids and every ledger post says it's simulated and why. POST /demo/reset
-  (`make reset`) deletes the payments and credit memos it wrote and clears its invoice note first. Texts
+  (`make reset`) deletes the payments and credit memos it wrote and clears its invoice note first. Each write is its
+  own ledger post (memo LP-{approval}, note LP-{approval}-note); if one fails, Sam approving again (in the app, or YES
+  by text) retries what didn't post with the same request ids, and a 401 fetches a new access token once. Texts
   (api/integrations/sms.py) go out only with the Twilio keys and outside DEMO_MODE; otherwise they wait in GET
   /inbox. Inbound texts: POST /webhooks/twilio/sms (signature checked when TWILIO_AUTH_TOKEN is set).
 - A new run of the same payment replaces older ones: their open questions close (Question.closed_at) and an answer
@@ -39,6 +41,13 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - Nessie (api/integrations/nessie.py): with NESSIE_API_KEY and NESSIE_ACCOUNT_ID the app polls the account every 5 s
   and a new Northmart deposit starts the March run; POST /payments/northmart is the "Northmart pays" button (posts the
   deposit, or starts the run directly without keys or in DEMO_MODE); GET /runs/latest finds the run.
+- Deployed site (docs/deploy.md): the VM is the single live instance (DEMO_MODE=false). POST /demo/reset needs
+  `Authorization: Bearer $CLAWBACK_ADMIN_TOKEN` when that's set; QBO_TOKEN_FILE keeps the rotated QuickBooks refresh
+  token in the mounted state/ folder; GET /eval/latest falls back to eval/published/ (`make publish-score`).
+- Moss (api/integrations/moss.py, F16): with MOSS_PROJECT_ID and MOSS_API_KEY each saved rule is indexed by its clause,
+  and a discretion clause is searched against them; a match at or above `rule_match_similarity` (config/policy.yaml)
+  with the same clause type and counterparty applies the rule, otherwise the exact match on type + counterparty does.
+  `python -m api.integrations.moss` indexes Rule #1 and prints the similarity of a reworded clause (the Devpost proof).
 - Tests never call live services: api/conftest.py blanks every live key for the session and blocks real Claude clients.
 - POST /coach redlines summer-draft from the newest finished March run (api/agents/coach.py); POST /scenario runs a
   pasted clause and charge (api/scenario.py); GET /scenario/examples has three recorded cases.

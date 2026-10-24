@@ -16,7 +16,7 @@ import anthropic
 
 from api import documents, evidence as evidence_mod, pipeline, adapters, rows
 from api.agents import investigator, negotiator, readers
-from api.contracts import Dispute, DisputeLine, Finding, MathPart, PortalMessage, PortalPreset
+from api.contracts import Dispute, DisputeLine, Finding, PortalMessage, PortalPreset
 from api.engine import gate, outbound_filter, totals
 from api.engine.allowed import compute_allowed
 from api.engine.policy import load_policy
@@ -155,7 +155,7 @@ def _refresh_finding(run: pipeline.Run, charge_id: str, a, client) -> None:
     old = run.eng_findings[charge_id]
     if inv.output:
         f = Finding(**inv.output.model_dump(), id=f"F-{charge_id}", expected=a.allowed, taken=a.taken, delta=a.delta,
-                    math=[MathPart(text=s) for s in a.steps])
+                    math=evidence_mod.math_parts(a.steps, a.terms, run.charges[charge_id], run.terms, run.evidence))
         run.findings[charge_id] = f
         run.emit("finding", f)
         kinds = {run.evidence[i].kind for i in f.evidence_ids} - {"charge"}

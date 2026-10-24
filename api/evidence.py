@@ -7,11 +7,11 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from decimal import Decimal
 
 from api import documents, rows
-from api.contracts import Charge, Evidence, PriorPayment, Quote, SalesRow, Term
+from api.contracts import Charge, Evidence, MathPart, PriorPayment, Quote, SalesRow, Term
 from api.engine.allowed import product_key
 
 def day(d, year: bool = False) -> str:
@@ -133,6 +133,41 @@ def from_payments(payments: Iterable[PriorPayment]) -> dict[str, Evidence]:
         summary=f"Northmart already took ${p.amount:,.2f} for {p.units:,} units sold {day(p.period_start)} to "
                 f"{day(p.period_end)}, on {day(p.paid_on)}.",
         rows=[p.model_dump(mode="json")]) for p in payments}
+
+
+def math_parts(steps: Sequence[str], used: Iterable, charge: Charge, terms: Iterable[Term],
+               ev: Mapping[str, Evidence]) -> list[MathPart]:
+    """The engine's math steps (allowed.py writes each in a fixed form), each linked to the evidence it rests on, so
+    every number on the card opens its source (F7). `used` is the allowance's engine terms. A step with nothing to
+    point at stays plain text."""
+    by_id = {t.id: t for t in terms}
+
+    def clause(kind: str) -> str | None:
+        t = next((by_id[u.id] for u in used if u.type.value == kind and u.id in by_id), None)
+        return clause_id(t) if t and clause_id(t) in ev else None
+
+    def found(kind: str, match) -> str | None:
+        hits = [e.id for e in ev.values() if e.kind == kind]
+        return next((i for i in hits if match(ev[i])), hits[0] if hits else None)
+
+    start, out = charge.period_start.isoformat(), []
+    for step in steps:
+        if step.startswith("Store sales show"):
+            sales = next((i for i in (f"ev-sales-{start}", f"ev-sales-{product_key(charge.product)}") if i in ev), None)
+        else:
+            sales = None
+        target = (sales if step.startswith("Store sales show") else
+                  clause("unit_cap") if step.startswith("Cap ") else
+                  clause("amendment") if "covered by an approved amendment" in step else
+                  found("prior_payment", lambda e: any(r.get("period_start") == start for r in e.rows))
+                  if step.startswith("A prior payment") else
+                  clause("promo_rate") if " units x $" in step else
+                  clause("product_scope") if "is not a product the deal covers" in step else
+                  clause("fee_discretion") if step.startswith("Deal allows a fee") else
+                  found("notice", lambda e: any(r.get("charge_ref") == charge.ref for r in e.rows))
+                  if step.startswith("Written notice came") else None)
+        out.append(MathPart(text=step, evidence_id=target))
+    return out
 
 
 def build(terms: Sequence[Term], charges: Sequence[Charge], sales: Sequence[SalesRow],

@@ -16,7 +16,7 @@ import anthropic
 from api import adapters, evidence as evidence_mod, pipeline, rows
 from api.agents import investigator, negotiator, readers
 from api.contracts import (
-    Charge, Finding, MathPart, Rehearsal, ScenarioCharge, ScenarioExample, ScenarioRequest, ScenarioResponse,
+    Charge, Finding, Rehearsal, ScenarioCharge, ScenarioExample, ScenarioRequest, ScenarioResponse,
 )
 from api.engine import gate
 from api.engine import types as eng
@@ -71,7 +71,8 @@ def run(req: ScenarioRequest, client: anthropic.Anthropic | None = None) -> Scen
                         [adapters.to_engine_sales(r) for r in sales], [adapters.to_engine_prior(p) for p in payments])
     inv = investigator.investigate(charge, a, evidence, client, live_first=True)
     finding = (Finding(**inv.output.model_dump(), id="F-S1", expected=a.allowed, taken=a.taken, delta=a.delta,
-                       math=[MathPart(text=s) for s in a.steps]) if inv.output else None)
+                       math=evidence_mod.math_parts(a.steps, a.terms, charge, terms, evidence))
+               if inv.output else None)
     discretion = any(gate.uses_discretion(t, policy) for t in a.terms)
     rehearsal = None
     if finding and a.delta > policy.match_tolerance and not discretion and not a.missing:
@@ -82,7 +83,9 @@ def run(req: ScenarioRequest, client: anthropic.Anthropic | None = None) -> Scen
                               comeback_answered=bool(rehearsal and rehearsal.answered),
                               type=finding.type if finding else "", finding=finding.finding if finding else "")
     rules = [r for r in pipeline.RULES if r.status == "active"]
-    d = gate.decide(adapters.to_engine_charge(charge), a, eng_finding, policy, [adapters.to_engine_rule(r) for r in rules])
+    eng_rules = [adapters.to_engine_rule(r) for r in rules]
+    found = pipeline.rule_matches(a, policy, eng_rules, live_first=True)  # a reworded clause still finds Rule #1
+    d = gate.decide(adapters.to_engine_charge(charge), a, eng_finding, policy, eng_rules, found.matches)
     decision = adapters.to_contract_decision(d, waiting=charge.amount if d.kind == eng.DecisionKind.ASK else Decimal(0),
                                              decided_by="gate", decided_at=pipeline._now())
     rule = next((r for r in rules if r.id == d.rule_id), None)
@@ -107,4 +110,5 @@ def _say(d: eng.Decision, rule) -> str:
         head = "Skip: Clawback can't verify the clause."
     else:
         head = "Ask the owner."
-    return f"{head} {d.reason}" + (f" ({rule.label}, learned from {rule.approver.split()[0]}.)" if rule else "")
+    how = f"; matched by Moss, similarity {d.rule_similarity:.2f}" if d.rule_similarity is not None else ""
+    return f"{head} {d.reason}" + (f" ({rule.label}, learned from {rule.approver.split()[0]}{how}.)" if rule else "")

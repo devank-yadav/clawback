@@ -145,9 +145,26 @@ def test_eval_latest_prefers_the_agent_score(tmp_path, monkeypatch):
     h = eval_route._harness()
     monkeypatch.setattr(h, "LATEST", tmp_path / "latest.json")
     monkeypatch.setattr(h, "LATEST_AGENT", tmp_path / "latest-agent.json")
+    monkeypatch.setattr(eval_route, "PUBLISHED", tmp_path / "published")  # none published in this test
     h.save(h.summary(h.run(h.DEFAULT_DATA)), h.LATEST)
     client = TestClient(app)
     assert client.get("/eval/latest").json()["mode"] == "engine"
     h.save({**h.summary(h.run(h.DEFAULT_DATA), mode="agent"), "correct": 27}, h.LATEST_AGENT)
     r = client.get("/eval/latest").json()
     assert (r["mode"], r["correct"]) == ("agent", 27)
+
+
+def test_the_deployed_scoreboard_shows_the_published_score(tmp_path, monkeypatch):
+    """The API image has no eval/latest*.json (gitignored), only eval/published/: that's what /eval/latest serves."""
+    from fastapi.testclient import TestClient
+    from api.main import app
+    from api.routes import eval as eval_route
+
+    h = eval_route._harness()
+    monkeypatch.setattr(h, "LATEST", tmp_path / "latest.json")
+    monkeypatch.setattr(h, "LATEST_AGENT", tmp_path / "latest-agent.json")
+    r = TestClient(app).get("/eval/latest").json()
+    published = json.loads((eval_route.PUBLISHED / "agent.json").read_text())
+    assert (r["status"], r["mode"], r["cases"], r["correct"], r["wrong_automatic"]) == (
+        "done", "agent", 30, published["correct"], published["wrong_actions"])
+    assert published["partial"] is False  # a full 30-case run, not a smoke test

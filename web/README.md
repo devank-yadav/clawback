@@ -18,6 +18,8 @@ npm run build && npm start
 | Route | What it is |
 | --- | --- |
 | `/` | The workspace: Overview, Payments (filters, evidence panel), Approvals, Rules. Navigation is in-page state, not URLs. |
+| `/portal` | Northmart's own look (separate layout); the judge replies to dispute D-0417 here. Needs the API. |
+| `/results` `/april` `/coach` `/scenario` `/audit` | Totals and QuickBooks posts, the April replay, Deal Coach redlines, the judge's own clause, and the audit log. |
 | `/board/demo` | The earlier review board (before the v0 screens), kept working on the recorded run. It has its own root layout and styles. |
 
 ## Environment variables
@@ -79,7 +81,9 @@ lib/fixture.ts, fixtures/   recorded runs (written by `python -m api.stubs.fixtu
 ## Known limitations and backend needs
 
 - Fixture mode replays one recording. The owner's reply is the recorded one, and a refusal shows the recorded note from `refusal-events.json`, not what you typed (nothing is sent). Live mode sends your note to `POST /approvals/{id}` and shows what the API recorded.
-- A failed or held QuickBooks post is shown with the API's note. Not in the workspace yet: April replay, Deal Coach, Scenario box, Audit log, Northmart portal, `/results` (the API has routes for them; the screens are separate cards R4 to R6).
+- A failed or held QuickBooks post is shown with the API's note.
+- `/results`, `/april`, `/coach`, `/scenario`, `/audit` and `/portal` are separate routes (header links on each). Results, April, Coach and Audit also show the recordings in fixture mode; the scenario box, the eval score and the chain check need the API (live mode).
+- Live runs' math lines currently carry no `evidence_id`, so the numbers on the live evidence panel are not clickable yet (they are in fixture mode). Needs Devank.
 - `/board/<run id>` follows that run in live mode; `/board/demo` follows the latest one.
 - On Windows the API's live pipeline fails at `api/evidence.py` (`%-d` in `strftime` works on Linux and macOS only). Needs Devank; use WSL, Docker, or fixture mode until then.
 - Evidence text is the recorded excerpt. Ledger posts from the fixture have no QuickBooks id, so they are labelled "Simulated posted".

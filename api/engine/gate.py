@@ -6,7 +6,7 @@ import re
 from decimal import Decimal
 from typing import Iterable
 
-from api.engine.rules import evaluate, find_rule
+from api.engine.rules import evaluate, find_rule, match_rule
 from api.engine.types import (
     Allowance,
     Charge,
@@ -15,6 +15,7 @@ from api.engine.types import (
     Finding,
     Policy,
     Rule,
+    RuleMatch,
     Term,
     TermStatus,
     Totals,
@@ -38,9 +39,15 @@ def decide(
     finding: Finding | None,
     policy: Policy,
     rules: Iterable[Rule] = (),
+    matches: Iterable[RuleMatch] = (),
 ) -> Decision:
-    def out(kind: DecisionKind, row: int, reason: str, disputed=ZERO, accepted=ZERO, rule_id=None) -> Decision:
-        return Decision(charge.id, kind, money(disputed), money(accepted), row, rule_id, reason)
+    """`matches` are Moss's candidate rules for the charge's discretion clause (rows 3 and 4); without one that
+    clears policy.rule_match_similarity, the exact match on term type + counterparty decides."""
+    rules = list(rules)
+
+    def out(kind: DecisionKind, row: int, reason: str, disputed=ZERO, accepted=ZERO, rule_id=None,
+            similarity=None) -> Decision:
+        return Decision(charge.id, kind, money(disputed), money(accepted), row, rule_id, reason, similarity)
 
     taken, allowed, delta = allowance.taken, allowance.allowed, allowance.delta
 
@@ -55,18 +62,20 @@ def decide(
     # Rows 3 and 4: discretion.
     discretion = [t for t in allowance.terms if uses_discretion(t, policy)]
     if discretion:
-        rule = find_rule(rules, discretion[0].type, charge.counterparty)
+        term = discretion[0]
+        matched = match_rule(rules, matches, term.type, charge.counterparty, policy.rule_match_similarity)
+        rule, similarity = matched if matched else (find_rule(rules, term.type, charge.counterparty), None)
         if rule is None:
             return out(DecisionKind.ASK, 4, "The deal leaves this to discretion and no saved rule covers it.")
         verdict, name = evaluate(rule, allowance.facts), rule.label or rule.id
         if verdict == DecisionKind.ACCEPT:
             if delta > policy.match_tolerance:  # e.g. a fee above the deal's maximum: accept only up to it
                 return out(DecisionKind.SPLIT, 3, f"Applied {name}; the part above the deal is disputed.",
-                           disputed=delta, accepted=allowed, rule_id=rule.id)
-            return out(DecisionKind.ACCEPT, 3, f"Applied {name}.", accepted=taken, rule_id=rule.id)
+                           disputed=delta, accepted=allowed, rule_id=rule.id, similarity=similarity)
+            return out(DecisionKind.ACCEPT, 3, f"Applied {name}.", accepted=taken, rule_id=rule.id, similarity=similarity)
         if verdict == DecisionKind.DISPUTE:
-            return out(DecisionKind.DISPUTE, 3, f"Applied {name}.", disputed=taken, rule_id=rule.id)
-        return out(DecisionKind.ASK, 3, f"{name} says to ask.", rule_id=rule.id)
+            return out(DecisionKind.DISPUTE, 3, f"Applied {name}.", disputed=taken, rule_id=rule.id, similarity=similarity)
+        return out(DecisionKind.ASK, 3, f"{name} says to ask.", rule_id=rule.id, similarity=similarity)
 
     # Not in the design table: with a required term missing the amount means nothing, so it can only be Ask (row 9).
     if allowance.missing:
