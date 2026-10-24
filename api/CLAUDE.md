@@ -41,6 +41,9 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - Nessie (api/integrations/nessie.py): with NESSIE_API_KEY and NESSIE_ACCOUNT_ID the app polls the account every 5 s
   and a new Northmart deposit starts the March run; POST /payments/northmart is the "Northmart pays" button (posts the
   deposit, or starts the run directly without keys or in DEMO_MODE); GET /runs/latest finds the run.
+- Deployed site (docs/deploy.md): the VM is the single live instance (DEMO_MODE=false). POST /demo/reset needs
+  `Authorization: Bearer $CLAWBACK_ADMIN_TOKEN` when that's set; QBO_TOKEN_FILE keeps the rotated QuickBooks refresh
+  token in the mounted state/ folder; GET /eval/latest falls back to eval/published/ (`make publish-score`).
 - Tests never call live services: api/conftest.py blanks every live key for the session and blocks real Claude clients.
 - POST /coach redlines summer-draft from the newest finished March run (api/agents/coach.py); POST /scenario runs a
   pasted clause and charge (api/scenario.py); GET /scenario/examples has three recorded cases.

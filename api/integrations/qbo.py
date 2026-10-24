@@ -21,6 +21,7 @@ new run's request, and the books would fail with Wi-Fi off.
 from __future__ import annotations
 
 import itertools
+import logging
 import os
 import re
 from collections.abc import Callable, Sequence
@@ -38,6 +39,7 @@ BASE = "https://sandbox-quickbooks.api.intuit.com/v3/company"
 MINOR = "75"
 REDIRECT_URI = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl"  # unused by a refresh
 ENV = Path(__file__).resolve().parents[2] / ".env"
+log = logging.getLogger("clawback.qbo")
 CUSTOMER = "Northmart"
 ALLOWANCE_ITEM = "Promotional Allowance"
 KEYS = ("QBO_CLIENT_ID", "QBO_CLIENT_SECRET", "QBO_REALM_ID", "QBO_REFRESH_TOKEN")
@@ -237,23 +239,47 @@ class StandInBooks:
 _books: LiveBooks | StandInBooks | None = None
 
 
-def _refreshing_token() -> Callable[[], str]:
-    """An access token from the refresh token; the newest refresh token goes back to .env (they rotate)."""
+def _token_file() -> Path | None:
+    """Where the VM keeps the newest refresh token: QBO_TOKEN_FILE, a file in the mounted state/ folder that outlives
+    the container (compose sets it). Laptops have none and keep the token in the repo's .env."""
+    return Path(os.environ["QBO_TOKEN_FILE"]) if os.getenv("QBO_TOKEN_FILE") else None
+
+
+def _keep_refresh_token(kept: Path | None, value: str) -> None:
+    """Refresh tokens rotate, and Intuit stops taking the old one a day later: save the new one where the next start
+    reads it. A failed save is logged, never raised (the write in hand still has its access token)."""
     from dotenv import set_key
+
+    try:
+        if kept:
+            kept.parent.mkdir(parents=True, exist_ok=True)
+            kept.touch(mode=0o600, exist_ok=True)
+            set_key(str(kept), "QBO_REFRESH_TOKEN", value)
+        elif ENV.exists():
+            set_key(str(ENV), "QBO_REFRESH_TOKEN", value)
+    except OSError as e:
+        log.warning("couldn't save the rotated QuickBooks refresh token (%s); it lasts until this process stops", e)
+
+
+def _refreshing_token() -> Callable[[], str]:
+    """An access token from the newest refresh token: QBO_TOKEN_FILE's when it has one, else QBO_REFRESH_TOKEN.
+    A rotated refresh token is saved back (_keep_refresh_token)."""
+    from dotenv import dotenv_values
     from intuitlib.client import AuthClient
 
     cache: dict[str, str] = {}
 
     def token() -> str:
         if "access" not in cache:
-            current = os.environ["QBO_REFRESH_TOKEN"]
+            kept = _token_file()
+            saved = dotenv_values(kept).get("QBO_REFRESH_TOKEN") if kept and kept.exists() else None
+            current = saved or os.environ["QBO_REFRESH_TOKEN"]
             auth = AuthClient(os.environ["QBO_CLIENT_ID"], os.environ["QBO_CLIENT_SECRET"], REDIRECT_URI, "sandbox",
                               refresh_token=current, realm_id=os.environ["QBO_REALM_ID"])
             auth.refresh()
             if auth.refresh_token != current:
                 os.environ["QBO_REFRESH_TOKEN"] = auth.refresh_token
-                if ENV.exists():
-                    set_key(str(ENV), "QBO_REFRESH_TOKEN", auth.refresh_token)
+                _keep_refresh_token(kept, auth.refresh_token)
             cache["access"] = auth.access_token
         return cache["access"]
 

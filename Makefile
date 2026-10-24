@@ -1,5 +1,5 @@
 # Targets are wired up as each part lands. Keep target names stable; the guides and the demo checklist use them.
-.PHONY: dev api web test acceptance seed eval eval-agent record demo reset check-data deploy-check
+.PHONY: dev api web test acceptance seed eval eval-agent publish-score record demo reset check-data deploy-check
 
 # The repo's .venv when there is one (it has the packages), else python3 (Macs often have no "python").
 # Override with: make test PYTHON=python
@@ -39,14 +39,22 @@ eval:
 eval-agent:
 	RECORD_FIXTURES=1 $(PYTHON) eval/run.py --mode agent
 
+# Copy the local scores (gitignored) into eval/published/, which is committed and ships in the API image.
+publish-score:
+	mkdir -p eval/published
+	cp eval/latest-agent.json eval/published/agent.json
+	cp eval/latest.json eval/published/engine.json
+
 record:
 	RECORD_FIXTURES=1 $(PYTHON) -m api.run_demo --portal --coach
 
 demo:
 	DEMO_MODE=true $(MAKE) dev
 
+# Laptop: make reset. The deployed site: make reset API=https://clawback.biz/api CLAWBACK_ADMIN_TOKEN=<token>
 reset:
-	curl -s -X POST http://localhost:8000/demo/reset
+	curl -s -X POST $(if $(CLAWBACK_ADMIN_TOKEN),-H "Authorization: Bearer $(CLAWBACK_ADMIN_TOKEN)") \
+		$(or $(API),http://localhost:8000)/demo/reset
 
 check-data:
 	$(PYTHON) scripts/check_data.py && $(PYTHON) scripts/check_eval.py

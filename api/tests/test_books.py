@@ -351,3 +351,41 @@ def test_reset_route_with_the_stand_in(api):
     assert r["ok"] and [(u["entity"], u["simulated"]) for u in r["quickbooks"]] == [
         ("Payment", True), ("CreditMemo", True), ("Invoice", True)]
     assert api.post("/demo/reset").json() == {"ok": True, "stub": False, "quickbooks": []}
+
+
+def test_the_deployed_reset_needs_the_admin_token(api, monkeypatch):
+    monkeypatch.setenv("CLAWBACK_ADMIN_TOKEN", "test-admin-token")
+    run = finished_march(ScenarioClaude())
+    assert api.post("/demo/reset").status_code == 401
+    assert api.post("/demo/reset", headers={"Authorization": "Bearer wrong"}).status_code == 401
+    assert pipeline.RUNS.get(run.id) is run  # nothing was wiped
+    assert api.post("/demo/reset", headers={"Authorization": "Bearer test-admin-token"}).json()["ok"]
+    assert not pipeline.RUNS
+
+
+def test_a_rotated_refresh_token_outlives_the_container(tmp_path, monkeypatch):
+    """On the VM the newest refresh token goes to QBO_TOKEN_FILE (the mounted state/ folder), and a restart starts
+    from it, not from the stale one in .env."""
+    import intuitlib.client
+
+    used = []
+
+    class Auth:
+        def __init__(self, *_a, refresh_token=None, **_k):
+            used.append(refresh_token)
+            self.refresh_token, self.access_token = refresh_token, None
+
+        def refresh(self):
+            self.refresh_token, self.access_token = f"{self.refresh_token}-next", "access"
+
+    for k in qbo.KEYS:
+        monkeypatch.setenv(k, "test-not-real")
+    monkeypatch.setenv("QBO_REFRESH_TOKEN", "first")
+    kept = tmp_path / "state" / "qbo.env"
+    monkeypatch.setenv("QBO_TOKEN_FILE", str(kept))
+    monkeypatch.setattr(intuitlib.client, "AuthClient", Auth)
+    assert qbo._refreshing_token()() == "access" and used == ["first"]
+    assert "QBO_REFRESH_TOKEN='first-next'" in kept.read_text() and oct(kept.stat().st_mode)[-3:] == "600"
+    monkeypatch.setenv("QBO_REFRESH_TOKEN", "first")  # a new container: .env still holds the old token
+    qbo._refreshing_token()()
+    assert used == ["first", "first-next"]  # it started from the kept one

@@ -1,7 +1,8 @@
 """Eval harness (F12): the scoreboard's numbers come from eval/run.py, never made up.
 
 GET /eval/latest serves the summary the last `make eval` saved (eval/latest.json); before any run it reports
-not_run. POST /eval/run runs the same harness in-process (engine mode, no AI calls) and saves the result.
+not_run. Those files stay local (gitignored), so `make publish-score` copies them into eval/published/, which is
+committed and ships in the API image: the deployed scoreboard shows the same score. POST /eval/run runs the same harness in-process (engine mode, no AI calls) and saves the result.
 """
 
 import importlib.util
@@ -17,6 +18,7 @@ from api.contracts import EvalReport
 router = APIRouter(tags=["eval"])
 
 RUN_PY = Path(__file__).resolve().parents[2] / "eval" / "run.py"
+PUBLISHED = RUN_PY.parent / "published"  # agent.json / engine.json: `make publish-score`
 CASES = 30  # data/eval/charges-30.csv
 
 
@@ -53,7 +55,7 @@ def run_eval() -> EvalReport:
 def latest() -> EvalReport:
     """The agent-mode score when one has been saved (readers and agents in the loop: the real number), else
     engine mode's. `mode` on the report says which."""
-    for path in (_harness().LATEST_AGENT, latest_path()):
+    for path in (_harness().LATEST_AGENT, PUBLISHED / "agent.json", latest_path(), PUBLISHED / "engine.json"):
         try:
             return to_report(json.loads(path.read_text()))
         except FileNotFoundError:

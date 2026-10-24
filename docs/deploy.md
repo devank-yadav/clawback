@@ -32,7 +32,8 @@ handshake). No VM exists yet.
 
 ## 0. Decide first: what the VM runs
 
-**`DEMO_MODE` on the VM** (Devank's call; log it in `DECISIONS.md`):
+**Decided (Oct 24, 06:45): the VM runs `DEMO_MODE=false` and is the single live instance; laptops run `make demo`.**
+What each setting means:
 
 | | `DEMO_MODE=true` | `DEMO_MODE=false` |
 | --- | --- | --- |
@@ -48,8 +49,9 @@ that polls, Dana gets one WhatsApp question per machine, and each machine can po
 
 **QuickBooks token caveats** (only with `DEMO_MODE=false` and the four `QBO_*` keys set):
 
-- *Access token, until the 401-retry in `api/integrations/qbo.py` is committed:* the API caches the access token for the life of the process, and Intuit access tokens last 1 hour. About an hour after the first write, QuickBooks writes fail until `POST /api/demo/reset` (its own undo fails that once; reset twice). Delete this bullet once the retry is on `main`.
-- *Refresh token:* a rotated refresh token is kept only in the container's memory (there is no `.env` inside the image), so a recreated `api` container starts again from the token in the VM's `.env`. Intuit expires an old refresh token 24 hours after it rotates. The laptops and the VM share one token chain, so use live QuickBooks from one machine only.
+- *Access token:* Intuit's last an hour; a 401 makes the API fetch a new one once and retry.
+- *Refresh token:* compose mounts `./state` into the api container and sets `QBO_TOKEN_FILE=/app/state/qbo.env`. A rotated refresh token is saved there, and a restarted or recreated container starts from it. Create the folder before the first start (step 6). If you ever paste a new refresh token into `.env` (after `invalid_grant`), delete `state/qbo.env` too, or the old saved one wins.
+- The laptops and the VM share one token chain, so no QuickBooks commands from a laptop while the VM is live. Seed the database from a laptop with `DEMO_MODE=true make seed`, which skips QuickBooks.
 - To keep the books simulated while texts go out live, leave the four `QBO_*` values empty in the VM's `.env`.
 
 ## 1. Accounts and access (before Sat noon)
@@ -163,10 +165,12 @@ cd /opt/clawback
 setenv() { if grep -q "^$1=" .env; then sed -i "s|^$1=.*|$1=$2|" .env; else echo "$1=$2" >> .env; fi; }
 setenv DOMAIN clawback.biz                  # bare, no https://; Caddy gets the certificate for it
 setenv PUBLIC_BASE_URL https://clawback.biz # exactly this: no www, no trailing slash (Twilio signature)
-setenv DEMO_MODE true                       # or false: step 0
+setenv DEMO_MODE false                      # step 0: the VM is the single live instance
 setenv RECORD_FIXTURES 0                    # recordings inside a container never reach git
 setenv NESSIE_POLL on                       # only matters with DEMO_MODE=false
 setenv SMS_CHANNEL whatsapp
+setenv CLAWBACK_ADMIN_TOKEN "$(openssl rand -hex 24)"  # locks POST /api/demo/reset; keep a copy for the presenter
+mkdir -m 700 -p state                       # QuickBooks' saved refresh token lives here (step 0)
 grep -E '^(DOMAIN|PUBLIC_BASE_URL|DEMO_MODE|RECORD_FIXTURES|NESSIE_POLL|SMS_CHANNEL)=' .env
 
 # Which keys are filled, names only:
@@ -261,7 +265,7 @@ bash deploy/smoke.sh https://clawback.biz # from a laptop
 - `deploy/Caddyfile` change: `docker compose restart caddy`. The file is bind-mounted, and `git pull` replaces it with a new file, so `caddy reload` inside the container would still read the old one.
 - `.env` change: `docker compose up -d --force-recreate api` (wipes the in-memory state).
 - Option B: rerun step 5's `rsync` from the laptop, then the same `docker compose` commands.
-- Reset between judge tables: the app's reset button, or `curl -s -X POST https://clawback.biz/api/demo/reset` (`make reset` only targets localhost).
+- Reset between judge tables, from a laptop: `make reset API=https://clawback.biz/api CLAWBACK_ADMIN_TOKEN=<token>`. On the VM, `grep '^CLAWBACK_ADMIN_TOKEN=' .env` shows the token. Without it the reset answers 401, and so does the app's reset button on the live site: anyone with the URL could otherwise wipe the demo mid-pitch.
 
 ## Roll back
 
@@ -291,7 +295,7 @@ docker compose up -d --build
 | Board says "Can't reach the Clawback API" | `curl https://clawback.biz/api/health`; the web image bakes `NEXT_PUBLIC_API_BASE=/api` at build time |
 | Phone replies don't land | `docker compose logs caddy \| grep webhooks`. 403: `PUBLIC_BASE_URL` and the Sandbox URL differ. 200 but nothing changes: the sender isn't `OWNER_PHONE` / `CONTROLLER_PHONE`, or nothing is waiting on them. No line at all: the Sandbox URL is wrong |
 | Board stops updating mid-run | `deploy/smoke.sh`'s stream check; the API sends `: keep-alive` every few seconds and the browser reconnects with `Last-Event-ID` |
-| QuickBooks writes fail an hour in (`DEMO_MODE=false`) | Step 0's token caveat: reset twice. `invalid_grant`: get a new refresh token from Intuit's OAuth Playground, put it in the VM's `.env`, `docker compose up -d --force-recreate api` |
+| QuickBooks writes fail an hour in (`DEMO_MODE=false`) | Step 0's token caveat: reset twice. `invalid_grant`: get a new refresh token from Intuit's OAuth Playground, put it in the VM's `.env`, delete `state/qbo.env`, `docker compose up -d --force-recreate api` |
 | Disk filling up | `docker system df`; `docker image prune -f` removes old untagged builds |
 
 ## Fallback: laptop + tunnel (cut rule)

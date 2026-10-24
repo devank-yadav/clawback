@@ -314,6 +314,7 @@ def test_f12_eval_latest_serves_what_make_eval_printed(client, tmp_path, monkeyp
     monkeypatch.setattr(eval_route, "latest_path", lambda: latest)
     # GET /eval/latest prefers a saved agent-mode score; keep any real one out of this engine-mode test
     monkeypatch.setattr(eval_route._harness(), "LATEST_AGENT", tmp_path / "latest-agent.json")
+    monkeypatch.setattr(eval_route, "PUBLISHED", tmp_path / "published")  # and the committed copy
     ev = eval_route._harness()
     assert client.get("/eval/latest").json()["status"] == "not_run"
 

@@ -11,3 +11,5 @@
 web/node_modules
 web/.next
 eval/latest*.json
+# the VM's saved QuickBooks refresh token (docker-compose.yml mounts it into the api container)
+state/

@@ -1,0 +1,20 @@
+{
+  "mode": "agent",
+  "cases": 30,
+  "correct": 30,
+  "correct_amounts": 30,
+  "asked": 6,
+  "wrong_actions": 0,
+  "unnecessary_questions": 0,
+  "wrong_amounts": 0,
+  "other": 0,
+  "readers": [
+    [
+      "claude",
+      "claude-b"
+    ]
+  ],
+  "two_models": false,
+  "partial": false,
+  "run_at": "2026-10-24T03:07:17.193677-07:00"
+}
