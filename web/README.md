@@ -50,7 +50,7 @@ NEXT_PUBLIC_API_BASE=http://localhost:8000
 | Approve or refuse | `POST /approvals/{id}` with `{approve, note}` |
 | Reset fictional demo | `POST /demo/reset`, then a new run |
 
-In live mode a step shows as done only when its event arrives from the stream, never because a button was clicked. Local API: `make api` (port 8000; CORS allows `http://localhost:3000`).
+In live mode a step shows as done only when its event arrives from the stream, never because a button was clicked. Local API: `make api` (port 8000). The API's CORS list allows only `http://localhost:3000` and `PUBLIC_BASE_URL`, so run live mode locally on port 3000.
 
 Always labelled as demo data, in both modes: the people (Dana Okafor, Sam Reyes), the brand, the deal text and the evidence excerpts. The "Demo role" switch in the Peak Bar Co. menu is a presentation control only (no authentication); it just decides which of the two buttons is enabled.
 
@@ -77,7 +77,7 @@ lib/fixture.ts, fixtures/   recorded runs (written by `python -m api.stubs.fixtu
 
 ## Known limitations and backend needs
 
-- Fixture mode replays one recording. The owner's reply is the recorded one, and the controller's refusal note is not sent anywhere (it is only displayed locally); live mode sends it.
+- Fixture mode replays one recording. The owner's reply is the recorded one, and a refusal shows the recorded note from `refusal-events.json`, not what you typed (nothing is sent). Live mode sends your note to `POST /approvals/{id}` and shows what the API recorded.
 - Not in the workspace yet: April replay, Deal Coach, Scenario box, Audit log, Northmart portal, `/results` (the API has routes for them; the screens are separate cards R4 to R6).
 - `/board/demo` still reads only the fixture (it predates live mode).
 - On Windows the API's live pipeline fails at `api/evidence.py` (`%-d` in `strftime` works on Linux and macOS only). Needs Devank; use WSL, Docker, or fixture mode until then.
