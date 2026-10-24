@@ -232,11 +232,19 @@ Every AI call a run makes is recorded (`api/trace.py`) and served at `GET /runs/
 | --- | --- |
 | `seq`, `at` | Order (as calls finish) and start time |
 | `agent` | Deal reader (Claude), Deal reader (Gemini), Deal reader (second Claude read), Investigator, Negotiator: comeback, Negotiator: portal reply, Deal Coach, Rule writer, Rule memory (Moss), QuickBooks |
-| `charge_id`, `model`, `prompt` | The charge, the model asked, the prompt file and its first line |
+| `charge_id`, `model`, `prompt` | The charge, the model (the one that answered a live call), the prompt file and its first line |
 | `input` | The request exactly as sent: the system prompt and the user content (for the Investigator, a JSON payload holding the engine's numbers) |
 | `output` | The parsed answer, before the code check |
 | `status` | `live` (answered now), `recorded` (a saved answer replayed) or `failed` |
 | `attempts`, `error`, `latency_ms` | Tries, what went wrong, how long it took |
+| `usage` | A live call's tokens (`input_tokens`, `output_tokens`, cache tokens; Gemini's thinking tokens); none for a recorded answer |
+
+`GET /runs/{run_id}/trace/summary` adds it up: calls by agent and model, tokens, the AI calls' time, the run's
+wall time from its first event to the decided board, and the cost of the live calls at the prices in
+`config/pricing.yaml` (copied from the providers' pricing pages, with the links; a model with no price there shows
+its tokens and no cost). Each Claude agent can run on another model for a test, set by `CLAWBACK_MODEL_<AGENT>`
+(`READER`, `INVESTIGATOR`, `REHEARSAL`, `PORTAL_REPLY`, `COACH`, `RULE_WRITER`); unset, every agent uses Claude
+Opus 5.5.
 
 A first March run makes 16 calls, more if one is retried: both readers on each of the 3 documents, then for each
 charge the Investigator, and the comeback for the 4 charges the engine says are overcharged. Answering the owner's question adds the rule

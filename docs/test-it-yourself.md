@@ -57,11 +57,13 @@ trace $RUN                       # every call: both readers per document, then t
 trace $RUN C1                    # one charge: its Investigator and its comeback
 curl -s "$API/runs/$RUN/trace?charge_id=C1" | jq '.[0].input.user | fromjson | .engine'   # what the Investigator was given
 curl -s "$API/runs/$RUN/trace?charge_id=C1" | jq '.[0].output'                            # what it answered
+curl -s $API/runs/$RUN/trace/summary | jq '{calls, input_tokens, output_tokens, ai_ms, wall_ms, cost_usd}'
 ```
 
 **What to look for:** the Investigator's input already holds the engine's numbers (`allowed`, `taken`, `delta`,
 its steps). Its output is a sentence, a type, evidence IDs and a confidence: no amount. `status` is `live` for a
-call answered now, `recorded` for a saved answer, `failed` with its `error`. Each reader's `output.terms` is what
+call answered now, `recorded` for a saved answer, `failed` with its `error`; a live call's `usage` holds its
+tokens, and the summary adds them up with the run's time and cost. Each reader's `output.terms` is what
 it read, before the quote check. The readers' `input.user` holds the document itself.
 
 A code check that sends an answer back shows as a second call for the same charge, with the reason at the end of
@@ -211,6 +213,9 @@ engine disputed what the edited data says; the old key no longer matches.
 That's the engine and the gate on their own. With the readers and the agents in the loop:
 `.venv/bin/python eval/run.py --mode agent --estimate` counts the AI calls (about 111), `make eval-agent` runs
 them live, and `DEMO_MODE=true .venv/bin/python eval/run.py --mode agent` replays the recorded agent run for free.
+To see whether a cheaper model would do for one agent, set it for that agent only and run the agents again:
+`CLAWBACK_MODEL_INVESTIGATOR=claude-sonnet-5-5 make eval-agent` (`make eval-agent` also records the answers in
+`data/fixtures/`).
 
 ## 8. Answer the owner's question differently
 

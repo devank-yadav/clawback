@@ -1,0 +1,41 @@
+# AI prices in USD per million tokens, for GET /runs/{id}/trace/summary (api/trace.py). Copied from the providers'
+# pricing pages, never guessed: a model with no prices here shows its tokens and no cost.
+#
+# Anthropic: https://platform.claude.com/docs/en/about-claude/pricing (read 2026-10-24), "Model pricing" table.
+#   Standard Claude API pricing: global inference, no Batch API, no fast mode. A call made in fast mode or with
+#   US-only inference is left unpriced. cache_write_5m / cache_write_1h are the 5-minute and 1-hour cache writes;
+#   cache_read is "Cache hits and refreshes".
+# Google: https://ai.google.dev/gemini-api/docs/pricing could not be opened from the machine this was written on
+#   (2026-10-24), so the Gemini models have no prices yet. Copy input and output from that page to price Reader B.
+sources:
+  - https://platform.claude.com/docs/en/about-claude/pricing
+  - https://ai.google.dev/gemini-api/docs/pricing
+
+models:
+  claude-opus-5-5:  # Claude Opus 5.5: every Claude agent's default (api/agents/claude.py MODEL)
+    input: 4
+    output: 20
+    cache_write_5m: 5
+    cache_write_1h: 8
+    cache_read: 0.20
+  claude-sonnet-5-5:  # Claude Sonnet 5.5
+    input: 2
+    output: 10
+    cache_write_5m: 2.50
+    cache_write_1h: 4
+    cache_read: 0.10
+  claude-haiku-5-5:  # Claude Haiku 5.5, prompts up to 100,000 tokens (cache reads and writes count)
+    input: 0.10
+    output: 0.50
+    cache_write_5m: 0.125
+    cache_write_1h: 0.20
+    cache_read: 0.01
+    long_prompt:  # prompts over 100,000 tokens
+      over_input_tokens: 100000
+      input: 0.50
+      output: 2.50
+      cache_write_5m: 0.625
+      cache_write_1h: 1
+      cache_read: 0.05
+  gemini-3.6-flash: {}  # Reader B's default (api/agents/reader_b.py): prices not copied yet
+  gemini-3.5-flash-lite: {}  # Reader B's fallback: prices not copied yet

@@ -10,11 +10,13 @@ One entry per call_outside (so a validation retry, or a Gemini model that didn't
     agent       "Deal reader (Claude)", "Investigator", "Negotiator: comeback", "QuickBooks", ...
     service     the call_outside service name (claude-reader, gemini-reader, moss, qbo, ...)
     run_id, charge_id
-    model       the model asked (None for Moss and QuickBooks)
+    model       the model that answered a live call, else the model asked (None for Moss and QuickBooks)
     prompt      the prompt file and the first line of the system prompt; Moss and QuickBooks name the operation
     input       the request exactly as sent: system prompt + user content, or the payload
     output      the parsed answer (live or recorded); None when the call failed
     latency_ms, status (live · recorded · failed), attempts, error
+    usage       a live call's tokens ({input_tokens, output_tokens, ...}); None for a recorded or failed call
+GET /runs/{run_id}/trace/summary adds them up by agent and model, with the cost from config/pricing.yaml.
 Secrets never land here: a value of any secret env var (replay's own scan), a field named like a key or token,
 and anything shaped like an API key or a bearer token are replaced by "[redacted]".
 
@@ -45,9 +47,11 @@ from collections.abc import Iterator, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Literal
 
+import yaml
 from pydantic import BaseModel
 
 log = logging.getLogger("clawback.trace")
@@ -56,6 +60,7 @@ MAX_RUNS = 100  # the oldest run's trace goes first
 MAX_PER_RUN = 500  # a March run makes about 20 calls; past this, a run's later calls are counted, not kept
 MAX_TEXT = 50_000  # characters kept of any one string (a pasted portal reply could be anything)
 PROMPTS = Path(__file__).resolve().parent / "agents" / "prompts"
+PRICING = Path(__file__).resolve().parents[1] / "config" / "pricing.yaml"
 REDACTED = "[redacted]"
 
 AGENTS = {
@@ -90,6 +95,7 @@ class TraceEntry(BaseModel):
     status: Literal["live", "recorded", "failed"]
     attempts: int = 0
     error: str | None = None
+    usage: dict[str, Any] | None = None
 
 
 class _Trace:
@@ -161,10 +167,11 @@ def trace_for(run_id: str, charge_id: str | None = None) -> list[TraceEntry]:
 
 
 def record(service: str, request: Any, response: Any = None, *, status: str, at: datetime, latency_ms: int = 0,
-           attempts: int = 0, error: str | None = None, run_id: str | None = None,
-           charge_id: str | None = None) -> TraceEntry | None:
-    """One call, against run_id (default: the current run context). Returns the entry, or None when there's no
-    run, the run is full, or anything about recording failed: recording never raises."""
+           attempts: int = 0, error: str | None = None, run_id: str | None = None, charge_id: str | None = None,
+           usage: dict | None = None, model: str | None = None) -> TraceEntry | None:
+    """One call, against run_id (default: the current run context). `usage` and `model` are what a live call
+    reported (its tokens, the model that answered). Returns the entry, or None when there's no run, the run is
+    full, or anything about recording failed: recording never raises."""
     try:
         run_id = run_id or _run.get()
         if not run_id:
@@ -172,10 +179,11 @@ def record(service: str, request: Any, response: Any = None, *, status: str, at:
         charge_id = charge_id or _charge.get() or _request_field(request, "charge_id")
         secrets = _secret_values()
         entry = dict(at=at, agent=AGENTS.get(service, service), service=service, run_id=run_id,
-                     charge_id=charge_id, model=_request_field(request, "model"),
+                     charge_id=charge_id, model=model or _request_field(request, "model"),
                      prompt=_prompt(service, request), input=_clean(request, secrets),
                      output=_clean(response, secrets), latency_ms=int(latency_ms), status=status,
-                     attempts=int(attempts), error=_clean(error, secrets))
+                     attempts=int(attempts), error=_clean(error, secrets),
+                     usage=_clean(dict(usage), secrets) if usage and status == "live" else None)
         with _lock:
             t = _store.get(run_id)
             if t is None:
@@ -259,3 +267,131 @@ def _clean(value: Any, secrets: list[str]) -> Any:
         return _clean(value.model_dump(mode="json"), secrets)
     return _clean(json.loads(json.dumps(value, default=str)) if not isinstance(value, (bytes, bytearray))
                   else value.decode(errors="replace"), secrets)
+
+
+# ---------------------------------------------------------------- summary: calls, tokens, time, cost
+
+AI_SERVICES = ("claude-", "gemini-")  # the model calls; Moss and QuickBooks aren't AI time
+TOKENS = ("input_tokens", "output_tokens", "cache_write_tokens", "cache_write_1h_tokens", "cache_read_tokens")
+PRICE_OF = {"input_tokens": "input", "output_tokens": "output", "cache_write_tokens": "cache_write_5m",
+            "cache_write_1h_tokens": "cache_write_1h", "cache_read_tokens": "cache_read"}
+MTOK = Decimal(1_000_000)
+
+
+class AgentSummary(BaseModel):
+    agent: str
+    model: str | None
+    calls: int
+    live: int
+    recorded: int
+    failed: int
+    input_tokens: int
+    output_tokens: int
+    ai_ms: int
+    cost_usd: float | None  # None: a live call here reported no tokens, or its model has no price
+
+
+class TraceSummary(BaseModel):
+    run_id: str
+    calls: int
+    live: int
+    recorded: int
+    failed: int
+    metered_calls: int  # live calls that reported their tokens (a recorded answer costs nothing now)
+    input_tokens: int
+    output_tokens: int
+    cache_write_tokens: int
+    cache_read_tokens: int
+    ai_ms: int  # the Claude and Gemini calls' time added up; the two readers overlap, so it can pass wall_ms
+    wall_ms: int | None  # the run's first event to the decided board; None while it's still deciding
+    cost_usd: float | None  # the live calls at config/pricing.yaml prices; None if any of them can't be priced
+    unpriced_models: list[str]
+    pricing_sources: list[str]
+    by_agent: list[AgentSummary]
+
+
+def load_pricing(path: Path = PRICING) -> tuple[dict[str, dict], list[str]]:
+    """Per-million-token prices by model id, and the pages they were copied from. A missing file prices nothing."""
+    try:
+        raw = yaml.safe_load(path.read_text()) or {}
+    except FileNotFoundError:
+        return {}, []
+    return raw.get("models") or {}, list(raw.get("sources") or [])
+
+
+def _prices_for(model: str | None, pricing: dict[str, dict]) -> dict | None:
+    """Exact model id, else the longest id it starts with (a served "gemini-3.6-flash-001" is gemini-3.6-flash)."""
+    if not model:
+        return None
+    if model in pricing:
+        return pricing[model] or None
+    prefix = max((m for m in pricing if model.startswith(m)), key=len, default=None)
+    return (pricing[prefix] or None) if prefix else None
+
+
+def call_cost(model: str | None, usage: dict | None, pricing: dict[str, dict]) -> Decimal | None:
+    """What one live call cost in USD, or None when it can't be priced: no tokens reported, no price for its model
+    or for a kind of token it used, or a pricing mode the table doesn't cover (fast mode, US-only inference)."""
+    if not usage or usage.get("speed") or usage.get("inference_geo"):
+        return None
+    prices = _prices_for(model, pricing)
+    if not prices:
+        return None
+    longer = prices.get("long_prompt")  # e.g. Haiku 5.5 prompts over 100,000 tokens (cache reads and writes count)
+    prompt = sum(int(usage.get(k, 0)) for k in TOKENS if k != "output_tokens")
+    if longer and prompt > int(longer["over_input_tokens"]):
+        prices = longer
+    total = Decimal(0)
+    for kind, key in PRICE_OF.items():
+        n = int(usage.get(kind, 0))
+        if n:
+            if prices.get(key) in (None, ""):
+                return None
+            total += n * Decimal(str(prices[key])) / MTOK
+    return total
+
+
+def summarize(run_id: str, started_at: datetime | None = None, decided_at: datetime | None = None,
+              pricing: tuple[dict[str, dict], list[str]] | None = None) -> TraceSummary:
+    """The run's calls added up by agent and model: tokens from live calls, AI time, wall time, and the cost."""
+    models, sources = pricing if pricing is not None else load_pricing()
+    entries = trace_for(run_id)
+    rows: dict[tuple[str, str | None], dict] = {}
+    unpriced: set[str] = set()
+    for e in entries:
+        r = rows.setdefault((e.agent, e.model), {"calls": 0, "live": 0, "recorded": 0, "failed": 0, "input_tokens": 0,
+                                                 "output_tokens": 0, "ai_ms": 0, "cost": Decimal(0)})
+        r["calls"] += 1
+        r[e.status] += 1
+        if e.service.startswith(AI_SERVICES):
+            r["ai_ms"] += e.latency_ms
+        if e.usage:
+            r["input_tokens"] += int(e.usage.get("input_tokens", 0))
+            r["output_tokens"] += int(e.usage.get("output_tokens", 0))
+        if e.status == "live" and e.service.startswith(AI_SERVICES):
+            cost = call_cost(e.model, e.usage, models)
+            if cost is None:
+                r["cost"] = None
+                unpriced.add(e.model or e.service)
+            elif r["cost"] is not None:
+                r["cost"] += cost
+    by_agent = [AgentSummary(agent=a, model=m, calls=r["calls"], live=r["live"], recorded=r["recorded"],
+                             failed=r["failed"], input_tokens=r["input_tokens"], output_tokens=r["output_tokens"],
+                             ai_ms=r["ai_ms"], cost_usd=None if r["cost"] is None else _usd(r["cost"]))
+                for (a, m), r in rows.items()]
+    costs = [r["cost"] for r in rows.values()]
+    tokens = lambda kind: sum(int(e.usage.get(kind, 0)) for e in entries if e.usage)  # noqa: E731
+    return TraceSummary(
+        run_id=run_id, calls=len(entries), live=sum(e.status == "live" for e in entries),
+        recorded=sum(e.status == "recorded" for e in entries), failed=sum(e.status == "failed" for e in entries),
+        metered_calls=sum(1 for e in entries if e.usage), input_tokens=tokens("input_tokens"),
+        output_tokens=tokens("output_tokens"),
+        cache_write_tokens=tokens("cache_write_tokens") + tokens("cache_write_1h_tokens"),
+        cache_read_tokens=tokens("cache_read_tokens"), ai_ms=sum(r.ai_ms for r in by_agent),
+        wall_ms=int((decided_at - started_at).total_seconds() * 1000) if started_at and decided_at else None,
+        cost_usd=None if any(c is None for c in costs) else _usd(sum(costs, Decimal(0))),
+        unpriced_models=sorted(unpriced), pricing_sources=sources, by_agent=by_agent)
+
+
+def _usd(amount: Decimal) -> float:
+    return float(amount.quantize(Decimal("0.000001")))

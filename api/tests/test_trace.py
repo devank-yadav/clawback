@@ -9,17 +9,20 @@ import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
 
 from api import pipeline, trace
-from api.agents import claude, investigator, readers
+from api.agents import claude, investigator, reader_b, readers
 from api.agents.investigator import LLMFinding
 from api.integrations import moss, replay
 from api.main import app
 from api.tests.test_moss import FakeMoss
-from api.tests.test_pipeline import ScenarioClaude
+from api.tests.test_pipeline import MARCH_FIRST, ScenarioClaude, final
+from api.tests.test_reader import SPRING, answer
 
 http = TestClient(app)
 READERS = {"Deal reader (Claude)", "Deal reader (second Claude read)"}
@@ -103,7 +106,7 @@ def test_route_serves_the_trace_and_filters_by_charge(wired):
     body = r.json()
     assert [e["seq"] for e in body] == list(range(1, 17))
     assert set(body[0]) == {"seq", "at", "agent", "service", "run_id", "charge_id", "model", "prompt", "input",
-                            "output", "latency_ms", "status", "attempts", "error"}
+                            "output", "latency_ms", "status", "attempts", "error", "usage"}
     c1 = http.get(f"/runs/{run.id}/trace", params={"charge_id": "C1"}).json()
     assert [(e["agent"], e["charge_id"]) for e in c1] == [("Investigator", "C1"), ("Negotiator: comeback", "C1")]
     c3 = http.get(f"/runs/{run.id}/trace", params={"charge_id": "C3"}).json()
@@ -374,3 +377,121 @@ def test_every_service_has_a_plain_name():
                 "claude-portal-reply", "claude-coach", "claude-rule-writer", "moss", "qbo"}
     assert set(trace.AGENTS) == services
     assert {d.name for d in (replay.ROOT / "data" / "fixtures").iterdir() if d.is_dir()} <= services
+
+
+# ---------------------------------------------------------------- tokens, the summary, and a model per agent
+
+
+class MeteredClaude(ScenarioClaude):
+    """ScenarioClaude whose answers report their tokens and model, as the API's do: 1,000 in and 200 out each."""
+
+    def _parse(self, output_format, messages, **kw):
+        resp = super()._parse(output_format=output_format, messages=messages, **kw)
+        resp.model = kw["model"]
+        resp.usage = SimpleNamespace(input_tokens=1000, output_tokens=200, cache_creation_input_tokens=None,
+                                     cache_read_input_tokens=None, cache_creation=None, speed=None,
+                                     inference_geo="global")
+        return resp
+
+
+class MeteredGemini:
+    """Stands in for google.genai.Client: reads the Spring deal and reports 900 prompt, 150 answer, 50 thinking."""
+
+    def __init__(self):
+        self.models = SimpleNamespace(generate_content=self._generate)
+
+    def _generate(self, model, **_):
+        usage = SimpleNamespace(prompt_token_count=900, candidates_token_count=150, thoughts_token_count=50)
+        return SimpleNamespace(text=json.dumps(answer(SPRING)), usage_metadata=usage, model_version=model)
+
+
+def test_live_calls_carry_their_tokens_and_recordings_dont(wired, monkeypatch):
+    monkeypatch.setenv("RECORD_FIXTURES", "1")
+    live = pipeline.start("march", MeteredClaude(), background=False)
+    assert final(live) == MARCH_FIRST  # the answers the agents got are the same
+    t = trace.trace_for(live.id)
+    assert all(e.usage == {"input_tokens": 1000, "output_tokens": 200} and e.model == claude.MODEL for e in t)
+    for f in replay.FIXTURES.glob("*/*.json"):  # what's recorded is the answer alone
+        assert "usage" not in json.loads(f.read_text())["response"]
+    monkeypatch.delenv("RECORD_FIXTURES")
+    monkeypatch.setenv("DEMO_MODE", "true")
+    replayed = pipeline.start("march", MeteredClaude(), background=False)
+    assert final(replayed) == MARCH_FIRST and all(e.usage is None for e in trace.trace_for(replayed.id))
+
+
+def test_summary_adds_up_calls_tokens_time_and_cost(wired):
+    run = pipeline.start("march", MeteredClaude(), background=False)
+    s = http.get(f"/runs/{run.id}/trace/summary").json()
+    assert (s["calls"], s["live"], s["recorded"], s["failed"], s["metered_calls"]) == (16, 16, 0, 0, 16)
+    assert (s["input_tokens"], s["output_tokens"], s["cache_write_tokens"], s["cache_read_tokens"]) == (16000, 3200, 0, 0)
+    # Opus 5.5 at $4 in and $20 out per million tokens: each call 1,000 x $4 + 200 x $20 = $0.008
+    assert s["cost_usd"] == 0.128 and s["unpriced_models"] == []
+    assert "https://platform.claude.com/docs/en/about-claude/pricing" in s["pricing_sources"]
+    rows = {(r["agent"], r["model"]): (r["calls"], r["input_tokens"], r["cost_usd"]) for r in s["by_agent"]}
+    assert rows == {("Deal reader (Claude)", "claude-opus-5-5"): (3, 3000, 0.024),
+                    ("Deal reader (second Claude read)", "claude-opus-5-5"): (3, 3000, 0.024),
+                    ("Investigator", "claude-opus-5-5"): (6, 6000, 0.048),
+                    ("Negotiator: comeback", "claude-opus-5-5"): (4, 4000, 0.032)}
+    events = run.events_after(0)
+    decided = next(e.at for e in events if e.type == "run" and e.data.status == "waiting")
+    assert s["wall_ms"] == int((decided - events[0].at).total_seconds() * 1000)
+    assert s["ai_ms"] == sum(e.latency_ms for e in trace.trace_for(run.id))
+    assert http.get("/runs/run-march-nope/trace/summary").status_code == 404
+
+
+def test_a_model_without_a_price_shows_tokens_and_no_cost(monkeypatch):
+    monkeypatch.setattr(readers, "ThreadPoolExecutor", trace.ContextPool)
+    with trace.run_context("run-x"):
+        readers.read_both("spring-promo", client=MeteredClaude(), gemini=MeteredGemini())
+    gemini = next(e for e in trace.trace_for("run-x") if e.agent == "Deal reader (Gemini)")
+    assert gemini.model == "gemini-3.6-flash" and gemini.usage == {"input_tokens": 900, "output_tokens": 200,
+                                                                   "thinking_tokens": 50}
+    s = trace.summarize("run-x")
+    assert (s.input_tokens, s.output_tokens, s.cost_usd, s.unpriced_models) == (1900, 400, None, ["gemini-3.6-flash"])
+    claude_row = next(r for r in s.by_agent if r.agent == "Deal reader (Claude)")
+    assert claude_row.cost_usd == 0.008 and s.wall_ms is None  # priced where it can be; no run events here
+
+
+def test_call_cost_follows_the_price_table():
+    models, _ = trace.load_pricing()
+    opus = {"input_tokens": 1_000_000, "output_tokens": 100_000, "cache_write_tokens": 10_000,
+            "cache_write_1h_tokens": 10_000, "cache_read_tokens": 100_000}
+    # $4 + $2 output + $0.05 5-minute writes + $0.08 1-hour writes + $0.02 cache reads
+    assert trace.call_cost("claude-opus-5-5", opus, models) == Decimal("6.15")
+    short = {"input_tokens": 90_000, "output_tokens": 1_000, "cache_read_tokens": 10_000}
+    long = {"input_tokens": 90_000, "output_tokens": 1_000, "cache_read_tokens": 10_001}  # the prompt passes 100,000
+    # up to 100,000: $0.009 in + $0.0005 out + $0.0001 cache reads; over it every token pays the higher price
+    assert trace.call_cost("claude-haiku-5-5", short, models) == Decimal("0.0096")
+    assert trace.call_cost("claude-haiku-5-5", long, models) == Decimal("0.04800005")
+    assert trace.call_cost("claude-opus-5-5", {**short, "speed": "fast"}, models) is None
+    assert trace.call_cost("claude-opus-5-5", {**short, "inference_geo": "us"}, models) is None
+    assert trace.call_cost("gemini-3.6-flash", short, models) is None  # no price copied yet
+    assert trace.call_cost("claude-opus-5-5", None, models) is None
+    priced = {"gemini-3.6-flash": {"input": "1", "output": "2"}}
+    assert trace.call_cost("gemini-3.6-flash-001", {"input_tokens": 1_000_000}, priced) == Decimal(1)
+    assert trace.call_cost("gemini-3.6-flash", {"cache_read_tokens": 5}, priced) is None  # no cache_read price
+
+
+def test_each_price_names_its_source():
+    models, sources = trace.load_pricing()
+    assert sources and all(s.startswith("https://") for s in sources)
+    assert models["claude-opus-5-5"] == {"input": 4, "output": 20, "cache_write_5m": 5, "cache_write_1h": 8,
+                                         "cache_read": 0.20}
+    assert claude.MODEL in models and reader_b.DEFAULT_GEMINI_MODEL in models
+
+
+def test_a_model_per_agent_and_the_default_unchanged(wired, monkeypatch):
+    for service in claude.MODEL_ENV:
+        assert claude.model_for(service) == claude.MODEL  # unset: every request, so every recording's key, as before
+    monkeypatch.setenv("CLAWBACK_MODEL_INVESTIGATOR", " claude-sonnet-5-5 ")
+    monkeypatch.setenv("CLAWBACK_MODEL_READER", "")
+    fake = MeteredClaude()
+    run = pipeline.start("march", fake, background=False)
+    assert final(run) == MARCH_FIRST
+    models = {(e.agent, e.input["model"]) for e in trace.trace_for(run.id)}
+    assert models == {("Deal reader (Claude)", "claude-opus-5-5"), ("Deal reader (second Claude read)", "claude-opus-5-5"),
+                      ("Investigator", "claude-sonnet-5-5"), ("Negotiator: comeback", "claude-opus-5-5")}
+    s = trace.summarize(run.id)  # Sonnet 5.5 at $2 / $10: 6 x $0.004, plus 10 Opus calls x $0.008
+    assert s.cost_usd == 0.104 and s.unpriced_models == []
+    monkeypatch.setenv("CLAWBACK_MODEL_READER", "claude-haiku-5-5")
+    assert claude.model_for("claude-reader") == claude.model_for("claude-reader-b") == "claude-haiku-5-5"

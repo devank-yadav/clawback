@@ -62,6 +62,18 @@ class CallResult:
     attempts: int = 0
     latency_ms: int = 0
     errors: list[str] = field(default_factory=list)
+    usage: dict | None = None  # what a live call used (tokens), when its fn returned a Metered answer
+    model: str | None = None  # the model that answered, when the service says
+
+
+@dataclass(frozen=True)
+class Metered:
+    """What fn may return instead of the bare response: the response plus what the call used (tokens, the model that
+    answered), for the run's trace. call_outside unwraps it, so the response it returns and records is the same."""
+
+    response: Any
+    usage: dict | None = None
+    model: str | None = None
 
 
 def _flag(name: str) -> bool:
@@ -148,7 +160,7 @@ def _trace_call(service: str, request: Any, result: CallResult, at: datetime, st
         if failed is None:
             trace.record(service, request, result.response, status="live" if result.source == "live" else "recorded",
                          at=at, latency_ms=result.latency_ms, attempts=result.attempts,
-                         error="; ".join(result.errors) or None)
+                         error="; ".join(result.errors) or None, usage=result.usage, model=result.model)
             return
         if isinstance(failed, OutsideCallFailed):
             why = "DEMO_MODE is on" if demo and not result.attempts else "; ".join(result.errors)
@@ -216,6 +228,8 @@ def call_outside(
             except Exception as e:  # noqa: BLE001 - any failure counts; the next step is retry, then fixture
                 result.errors.append(f"{type(e).__name__}: {e}")
                 continue
+            if isinstance(response, Metered):
+                response, result.usage, result.model = response.response, response.usage, response.model
             if record:
                 save_fixture(service, key, request, response, fixtures_dir)
             result.response, result.source = response, "live"
@@ -266,6 +280,8 @@ async def acall_outside(
             except Exception as e:  # noqa: BLE001
                 result.errors.append(f"{type(e).__name__}: {e or 'timed out'}")
                 continue
+            if isinstance(response, Metered):
+                response, result.usage, result.model = response.response, response.usage, response.model
             if record:
                 save_fixture(service, key, request, response, fixtures_dir)
             result.response, result.source = response, "live"
