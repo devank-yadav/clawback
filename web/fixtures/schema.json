@@ -376,6 +376,17 @@
               }
             ]
           },
+          "rule": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Rule"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "evidence": {
             "items": {
               "$ref": "#/$defs/Evidence"
@@ -1061,6 +1072,18 @@
               }
             ],
             "title": "Qbo Id"
+          },
+          "qbo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Qbo Url"
           },
           "amount": {
             "title": "Amount",
@@ -2645,6 +2668,120 @@
         ],
         "title": "Rehearsal",
         "type": "object"
+      },
+      "Rule": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "pattern_text": {
+            "title": "Pattern Text",
+            "type": "string"
+          },
+          "term_type": {
+            "enum": [
+              "promo_rate",
+              "product_scope",
+              "unit_cap",
+              "date_range",
+              "fee_discretion",
+              "amendment"
+            ],
+            "title": "Term Type",
+            "type": "string"
+          },
+          "counterparty": {
+            "title": "Counterparty",
+            "type": "string"
+          },
+          "condition": {
+            "title": "Condition",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "accept",
+              "dispute",
+              "ask"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "else_decision": {
+            "enum": [
+              "accept",
+              "dispute",
+              "ask"
+            ],
+            "title": "Else Decision",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "approver": {
+            "title": "Approver",
+            "type": "string"
+          },
+          "approver_role": {
+            "enum": [
+              "owner",
+              "controller"
+            ],
+            "title": "Approver Role",
+            "type": "string"
+          },
+          "learned_at": {
+            "format": "date-time",
+            "title": "Learned At",
+            "type": "string"
+          },
+          "source_question_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Question Id"
+          },
+          "status": {
+            "default": "active",
+            "enum": [
+              "pending",
+              "active",
+              "undone"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "pattern_text",
+          "term_type",
+          "counterparty",
+          "condition",
+          "decision",
+          "else_decision",
+          "summary",
+          "approver",
+          "approver_role",
+          "learned_at",
+          "source_question_id"
+        ],
+        "title": "Rule",
+        "type": "object"
       }
     },
     "additionalProperties": false,
@@ -2682,6 +2819,17 @@
             "type": "null"
           }
         ]
+      },
+      "rule": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Rule"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
       },
       "evidence": {
         "items": {

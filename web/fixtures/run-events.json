@@ -18,7 +18,7 @@
           "received": 41350.0,
           "taken": 6850.0,
           "charge_count": 6,
-          "received_at": null,
+          "received_at": "2026-10-24T10:30:00-07:00",
           "nessie_tx_id": null
         },
         "demo_mode": true
@@ -1234,6 +1234,7 @@
         "id": "LP-1",
         "qbo_entity": "credit_memo",
         "qbo_id": null,
+        "qbo_url": null,
         "amount": 2730.0,
         "lines": [
           {
@@ -1267,6 +1268,7 @@
         "id": "LP-2",
         "qbo_entity": "invoice_note",
         "qbo_id": null,
+        "qbo_url": null,
         "amount": 4120.0,
         "lines": [
           {
@@ -1473,6 +1475,7 @@
         ],
         "answered": true
       },
+      "rule": null,
       "evidence": [
         {
           "id": "ev-deal-3.1",
@@ -1668,6 +1671,7 @@
         ],
         "answered": true
       },
+      "rule": null,
       "evidence": [
         {
           "id": "ev-payment-NM-2178",
@@ -1853,6 +1857,7 @@
         "reason": "Matches the deal as extended by the broker's Mar 28 email."
       },
       "rehearsal": null,
+      "rule": null,
       "evidence": [
         {
           "id": "ev-email-broker-0328",
@@ -2057,6 +2062,7 @@
         ],
         "answered": true
       },
+      "rule": null,
       "evidence": [
         {
           "id": "ev-deal-3.2",
@@ -2300,6 +2306,7 @@
         ],
         "answered": true
       },
+      "rule": null,
       "evidence": [
         {
           "id": "ev-deal-3.1",
@@ -2467,6 +2474,22 @@
         "reason": "Rule #1: 20 days' notice is at least 14, so accept."
       },
       "rehearsal": null,
+      "rule": {
+        "id": "rule-1",
+        "label": "Rule #1",
+        "pattern_text": "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.",
+        "term_type": "fee_discretion",
+        "counterparty": "Northmart",
+        "condition": "notice_days >= 14",
+        "decision": "accept",
+        "else_decision": "dispute",
+        "summary": "Accept Northmart display fees with at least 14 days' notice; otherwise dispute.",
+        "approver": "Dana Okafor",
+        "approver_role": "owner",
+        "learned_at": "2026-10-24T10:31:17-07:00",
+        "source_question_id": "Q-1",
+        "status": "active"
+      },
       "evidence": [
         {
           "id": "ev-deal-5.4",

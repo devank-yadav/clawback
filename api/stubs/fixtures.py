@@ -314,18 +314,20 @@ MARCH_PLAN = [  # charge, decision, gate row, reason, disputed, accepted, waitin
 ]
 
 
-def _detail(c: Charge, decision: Decision | None) -> ChargeDetail:
+def _detail(c: Charge, decision: Decision | None, rule: Rule | None = None) -> ChargeDetail:
     f = FINDINGS.get(c.id)
     r = REHEARSALS.get(c.id)
     ids = list(dict.fromkeys((f.evidence_ids if f else []) + (r.answer_evidence_ids if r else [])
                              + (["ev-rule-1", "ev-answer-Q-1"] if decision and decision.rule_id else [])))
-    return ChargeDetail(charge=c, finding=f, decision=decision, rehearsal=r, evidence=[EVIDENCE[i] for i in ids])
+    rule = rule if decision and rule and decision.rule_id == rule.id else None
+    return ChargeDetail(charge=c, finding=f, decision=decision, rehearsal=r, rule=rule, evidence=[EVIDENCE[i] for i in ids])
 
 
 @cache
 def march_run() -> RunFixture:
     run = _Run(MARCH_RUN, datetime(2026, 10, 24, 10, 30, 0, tzinfo=PDT))
-    run.add("run", RunInfo(run_id=MARCH_RUN, kind="march", status="started", remittance=REMITTANCE, demo_mode=True))
+    remittance = REMITTANCE.model_copy(update={"received_at": run.now()})  # the deposit is what starts the run
+    run.add("run", RunInfo(run_id=MARCH_RUN, kind="march", status="started", remittance=remittance, demo_mode=True))
     run.log("Northmart paid $41,350 on invoice INV-3102 for $48,200. $6,850 was taken out in 6 charges.")
     run.totals(0, 0, 0, 6850, 0)
     run.log("Reading the Spring Promo deal with two readers, Claude and Gemini.", actor="reader")
@@ -363,7 +365,8 @@ def march_run() -> RunFixture:
     answered_at = run.now() + run.step * 10  # Dana takes a few seconds to text back
     run.add("answer", Answer(question_id="Q-1", from_role="owner", text="accept if notice is at least 14 days",
                              answered_at=answered_at, rule_id="rule-1"), gap=10)
-    run.add("rule", _rule_1(learned_at=run.now() + run.step))
+    rule = _rule_1(learned_at=run.now() + run.step)
+    run.add("rule", rule)
     run.log("Saved Rule #1 and texted Dana: \"Saved: accept display fees with 14+ days' notice. Reply UNDO to cancel.\"",
             "good", "gate")
     decisions["C6"] = run.decide("C6", "accept", 3, "Rule #1: 20 days' notice is at least 14, so accept.",
@@ -407,7 +410,7 @@ def march_run() -> RunFixture:
     run.log("Answered with §3.2 and weeks 1 to 3 sales, and asked for the signed amendment.", "good", "negotiator", "C4")
     run.add("run", RunInfo(run_id=MARCH_RUN, kind="march", status="finished"))
 
-    details = {c.id: _detail(c, decisions[c.id]) for c in MARCH_CHARGES}
+    details = {c.id: _detail(c, decisions[c.id], rule) for c in MARCH_CHARGES}
     used = {e.id for d in details.values() for e in d.evidence}
     used |= {i for ln in DISPUTE_LINES for i in ln.evidence_ids}
     used |= {i for e in run.events if e.type == "portal_message" for i in e.data.evidence_ids}
@@ -434,7 +437,8 @@ def april_run() -> RunFixture:
         run.totals(*tot, taken=2000)
     run.log("0 questions asked. Both fees decided by Rule #1.", "good", "gate")
     run.add("run", RunInfo(run_id=APRIL_RUN, kind="april", status="finished"))
-    details = {c.id: _detail(c, decisions[c.id]) for c in APRIL_CHARGES}
+    rule = next(e.data for e in march_run().events if e.type == "rule")  # learned in March, applied here
+    details = {c.id: _detail(c, decisions[c.id], rule) for c in APRIL_CHARGES}
     used = sorted({e.id for d in details.values() for e in d.evidence})
     return RunFixture(run_id=APRIL_RUN, events=run.events, charges=details, evidence={i: EVIDENCE[i] for i in used})
 
