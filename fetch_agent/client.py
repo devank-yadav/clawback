@@ -26,8 +26,8 @@ class ClawbackError(Exception):
 
 
 class ClawbackClient:
-    def __init__(self, base_url: str, token: str, http: httpx.Client | None = None):
-        self.token = token
+    def __init__(self, base_url: str, token: str, http: httpx.Client | None = None, owner_token: str = ""):
+        self.token, self.owner_token = token, owner_token  # owner_token: the API's OWNER_TOKEN, when it has one
         self.http = http or httpx.Client(base_url=base_url.rstrip("/"), timeout=TIMEOUT_S)
 
     def summary(self) -> Summary:
@@ -35,8 +35,9 @@ class ClawbackClient:
         return Summary.model_validate(r.json())
 
     def answer(self, question_id: str, text: str) -> AnswerResponse:
+        headers = {"X-Clawback-Role-Token": self.owner_token} if self.owner_token else {}
         r = self._call("POST", f"/questions/{quote(question_id, safe='')}/answer", idempotent=False,
-                       json={"text": text, "from_role": "owner"})
+                       json={"text": text, "from_role": "owner"}, headers=headers)
         return AnswerResponse.model_validate(r.json())
 
     def _call(self, method: str, path: str, idempotent: bool, **kw) -> httpx.Response:

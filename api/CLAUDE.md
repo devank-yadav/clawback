@@ -49,6 +49,9 @@ decision gate and approvals; Data model; API, live updates and integrations.
   and a discretion clause is searched against them; a match at or above `rule_match_similarity` (config/policy.yaml)
   with the same clause type and counterparty applies the rule, otherwise the exact match on type + counterparty does.
   `python -m api.integrations.moss` indexes Rule #1 and prints the similarity of a reworded clause (the Devpost proof).
+- Roles and limits (api/auth.py): with OWNER_TOKEN / CONTROLLER_TOKEN set, the in-app owner answer and controller
+  approval need that role's X-Clawback-Role-Token; with CLAWBACK_ADMIN_TOKEN set, live runs and other AI requests are
+  limited per visitor (the admin token skips it). Texts are checked by phone number and Twilio's signature instead.
 - Tests never call live services: api/conftest.py blanks every live key for the session and blocks real Claude clients.
 - POST /coach redlines summer-draft from the newest finished March run (api/agents/coach.py); POST /scenario runs a
   pasted clause and charge (api/scenario.py); GET /scenario/examples has three recorded cases.

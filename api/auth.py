@@ -1,0 +1,82 @@
+"""Who may do what on the deployed site, and how often anyone may spend AI credits.
+
+Roles (docs/design.md, "Approvals"): only the controller approves a credit memo, only the owner answers the owner's
+question. With OWNER_TOKEN and CONTROLLER_TOKEN set (the VM), the in-app action needs that role's token in the
+`X-Clawback-Role-Token` header; one role's token never works for the other. Unset (laptops, tests): open, as before.
+Texts need no token: the Twilio webhook already checks the sender's phone number and Twilio's signature.
+
+Limits: a live run spends ~20 AI calls, and the site is public. With CLAWBACK_ADMIN_TOKEN set (the VM), each client
+IP may start RUNS_PER_IP runs (default 3) and make AI_PER_IP other AI requests (default 20: scenario box, Deal Coach,
+portal replies) per 10 minutes, and the whole site RUNS_PER_HOUR runs (default 30). `Authorization: Bearer
+<CLAWBACK_ADMIN_TOKEN>` skips the limits (the presenter). Uvicorn runs with --proxy-headers, so the client IP is the
+caller's, not Caddy's.
+"""
+
+from __future__ import annotations
+
+import hmac
+import os
+import threading
+import time
+from collections import deque
+
+from fastapi import Header, HTTPException, Request
+
+ROLE_ENV = {"owner": "OWNER_TOKEN", "controller": "CONTROLLER_TOKEN"}
+WINDOW_S = 600
+HOUR_S = 3600
+
+
+def require_role(role: str):
+    """FastAPI dependency: the caller must hold this role's token, when the site has one."""
+    env = ROLE_ENV[role]
+
+    def check(x_clawback_role_token: str | None = Header(default=None)) -> None:
+        token = os.getenv(env)
+        if token and not hmac.compare_digest(x_clawback_role_token or "", token):
+            raise HTTPException(401, f"Only the {role} can do this. Sign in as the {role} (X-Clawback-Role-Token).")
+
+    return check
+
+
+_hits: dict[tuple[str, str], deque[float]] = {}
+_lock = threading.Lock()
+
+
+def _admin(authorization: str | None) -> bool:
+    token = os.getenv("CLAWBACK_ADMIN_TOKEN")
+    return bool(token) and hmac.compare_digest(authorization or "", f"Bearer {token}")
+
+
+def _allow(key: tuple[str, str], limit: int, window: float, now: float) -> bool:
+    seen = _hits.setdefault(key, deque())
+    while seen and now - seen[0] > window:
+        seen.popleft()
+    if len(seen) >= limit:
+        return False
+    seen.append(now)
+    return True
+
+
+def limit(bucket: str):
+    """FastAPI dependency: the per-IP (and, for runs, site-wide) limit for this kind of request."""
+    per_ip = {"runs": ("RUNS_PER_IP", 3), "ai": ("AI_PER_IP", 20)}[bucket]
+
+    def check(request: Request, authorization: str | None = Header(default=None)) -> None:
+        if not os.getenv("CLAWBACK_ADMIN_TOKEN") or _admin(authorization):
+            return
+        ip = request.client.host if request.client else "unknown"
+        now = time.monotonic()
+        with _lock:
+            if not _allow((bucket, ip), int(os.getenv(per_ip[0], per_ip[1])), WINDOW_S, now):
+                raise HTTPException(429, "That's the limit for now: each analysis runs live AI. Try again in a few "
+                                         "minutes.")
+            if bucket == "runs" and not _allow(("runs", "*"), int(os.getenv("RUNS_PER_HOUR", 30)), HOUR_S, now):
+                raise HTTPException(429, "The site has run its hourly share of live analyses. Try again later.")
+
+    return check
+
+
+def reset() -> None:
+    with _lock:
+        _hits.clear()

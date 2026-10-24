@@ -93,7 +93,8 @@ def settings() -> tuple[str, str, str, frozenset[str]]:
 def main() -> None:
     load_dotenv(ROOT / ".env")
     api_url, token, seed, owners = settings()
-    agent = build_agent(seed, Assistant(ClawbackClient(api_url, token), owners=owners))
+    client = ClawbackClient(api_url, token, owner_token=os.getenv("OWNER_TOKEN", ""))
+    agent = build_agent(seed, Assistant(client, owners=owners))
     print(f"{NAME}: {agent.address}, reading {api_url}; "
           + (f"{len(owners)} address(es) may answer" if owners else "anyone who chats may answer Clawback's question"))
     agent.run()

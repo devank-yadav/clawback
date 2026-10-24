@@ -8,9 +8,10 @@ DEMO_MODE, the run starts directly: the button is the fallback the design names.
 
 import time
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from api import pipeline
+from api.auth import limit
 from api.contracts import PaymentResponse
 from api.integrations import nessie, replay
 
@@ -27,7 +28,7 @@ def _poller_run(deposit_id: str) -> pipeline.Run | None:
     return run
 
 
-@router.post("/payments/northmart", response_model=PaymentResponse)
+@router.post("/payments/northmart", response_model=PaymentResponse, dependencies=[Depends(limit("runs"))])
 def northmart_pays() -> PaymentResponse:
     client = None if replay.demo_mode() else nessie.client()
     if client is None:

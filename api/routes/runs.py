@@ -9,13 +9,14 @@ import asyncio
 import os
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request
 from fastapi.responses import StreamingResponse
 
 from api.contracts import (
     AnswerRequest, AnswerResponse, ChargeDetail, Evidence, RunFixture, StartRunRequest, StartRunResponse, Summary,
 )
 from api import pipeline
+from api.auth import limit, require_role
 from api.db import events as saved_events
 from api.routes import portal
 from api.stubs import fixtures
@@ -42,13 +43,13 @@ def _start(kind: str, fixture: bool) -> StartRunResponse:
     return StartRunResponse(run_id=run_id, events_url=f"/runs/{run_id}/events")
 
 
-@router.post("/runs", response_model=StartRunResponse)
+@router.post("/runs", response_model=StartRunResponse, dependencies=[Depends(limit("runs"))])
 def start_run(req: StartRunRequest | None = None) -> StartRunResponse:
     req = req or StartRunRequest()
     return _start(req.kind, req.fixture)
 
 
-@router.post("/replay/april", response_model=StartRunResponse)
+@router.post("/replay/april", response_model=StartRunResponse, dependencies=[Depends(limit("runs"))])
 def replay_april(fixture: bool = Query(default=False)) -> StartRunResponse:
     return _start("april", fixture)
 
@@ -129,7 +130,8 @@ def evidence(evidence_id: str, run_id: str | None = Query(default=None)) -> Evid
     return ev
 
 
-@router.post("/questions/{question_id}/answer", response_model=AnswerResponse)
+@router.post("/questions/{question_id}/answer", response_model=AnswerResponse,
+             dependencies=[Depends(require_role("owner"))])
 def answer_question(question_id: str, req: AnswerRequest) -> AnswerResponse:
     if question_id in pipeline.QUESTIONS:
         try:

@@ -6,9 +6,10 @@ screens built against web/fixtures.
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from api import pipeline
+from api.auth import require_role
 from api.contracts import Approval, ApprovalDecisionRequest, ApprovalDecisionResponse, InboxResponse
 from api.stubs import fixtures
 
@@ -27,7 +28,8 @@ def reset() -> None:
 reset()
 
 
-@router.post("/approvals/{approval_id}", response_model=ApprovalDecisionResponse)
+@router.post("/approvals/{approval_id}", response_model=ApprovalDecisionResponse,
+             dependencies=[Depends(require_role("controller"))])
 def decide(approval_id: str, req: ApprovalDecisionRequest) -> ApprovalDecisionResponse:
     """Approve posts the credit memo to QuickBooks; refuse posts nothing and keeps the note for the card."""
     if pipeline.find_approval(approval_id):

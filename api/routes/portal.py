@@ -8,9 +8,10 @@ drops to $540, and the run's event stream and GET /charges/C4 show the new decis
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from api import disputes
+from api.auth import limit
 from api.contracts import Dispute, PortalMessage, PortalPreset, PortalReplyRequest
 from api.stubs import fixtures
 
@@ -67,7 +68,8 @@ def list_messages(dispute_id: str) -> list[PortalMessage]:
     return _thread(dispute_id)
 
 
-@router.post("/portal/disputes/{dispute_id}/messages", response_model=list[PortalMessage])
+@router.post("/portal/disputes/{dispute_id}/messages", response_model=list[PortalMessage],
+             dependencies=[Depends(limit("ai"))])
 def post_message(dispute_id: str, req: PortalReplyRequest) -> list[PortalMessage]:
     """Adds Northmart's message and Clawback's reply; returns both (or only Northmart's when it's held)."""
     global _amendment_attached
