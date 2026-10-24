@@ -2,6 +2,21 @@
    flow.css parts). workspace.css and app.css keep their structure; their light colors were mapped to these tokens.
    This file holds what a color map can't: the flow's top bar instead of the sidebar, the flow's type and a few fixes. */
 
+
+/* Pinned above every other :root / .dark block (base.css's Tailwind tokens share names such as --card and --accent),
+   so the flow's tokens win whatever order the build puts the stylesheets in. */
+html.dark:root {
+  color-scheme: dark;
+  --bg: #16171f; --side: #13141b; --card: #20212c; --card-2: #22232e; --raised: #282a37; --selected: #2b2d49;
+  --line: #333542; --ink: #f0f0f4; --sub: #a1a3b4; --faint: #8b8ea3;
+  --accent: #777cff; --accent-ink: #b6b6ff; --accent-soft: #282944; --button: #6268f1;
+  --green: #9cd9bc; --green-bg: #1c2c29; --amber: #ebc28c; --amber-bg: #302a26; --radius: 10px;
+  --violet: #777cff; --violet-soft: #282944; --green-soft: #1c2c29; --amber-soft: #302a26;
+  --red: #b6b6ff; --red-soft: #282944; --surface: #20212c; --canvas: #16171f;
+  --background: #16171f; --foreground: #f0f0f4; --card-foreground: #f0f0f4; --popover: #20212c;
+  --popover-foreground: #f0f0f4; --muted: #282a37; --muted-foreground: #a1a3b4; --border: #333542; --input: #333542;
+}
+
 body { font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif; background: var(--bg); color: var(--ink); }
 h1, h2, h3 { font-weight: 500; letter-spacing: -0.4px; }
 h1 { font-size: clamp(26px, 3vw, 34px); letter-spacing: -0.9px; }

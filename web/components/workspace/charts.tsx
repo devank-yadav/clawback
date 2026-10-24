@@ -7,12 +7,12 @@ import { codeLabel } from '@/lib/accounts'
 import { compactMoney, dollars, monthLabel, monthShortLabel, share } from '@/lib/format'
 import type { Overview } from '@/lib/types'
 
-// Validated categorical slots 1-3 (dataviz palette check: adjacent CVD ΔE ≥ 9, normal-vision ≥ 24). Paid sits below
-// 3:1 contrast, so the chart always ships with a legend and a table view.
+// The agents' flow's colors on the dark canvas: invoiced = accent, paid = fair green, deducted = amber (the flow's
+// "took $X"). The chart always ships with a legend and a table view, so color is never the only cue.
 const SERIES = [
-  { key: 'invoiced', label: 'Invoiced', color: '#2a78d6' },
-  { key: 'paid', label: 'Paid', color: '#1baf7a' },
-  { key: 'deducted', label: 'Deducted', color: '#eb6834' },
+  { key: 'invoiced', label: 'Invoiced', color: '#777cff' },
+  { key: 'paid', label: 'Paid', color: '#9cd9bc' },
+  { key: 'deducted', label: 'Deducted', color: '#ebc28c' },
 ] as const
 
 type Month = Overview['months'][number]

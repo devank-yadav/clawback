@@ -42,8 +42,8 @@ function Line({ l, active, onPick }: { l: RemittanceLine; active: boolean; onPic
           <span className="flex flex-col gap-1 text-[12px] text-[var(--amber)]">{l.reasons.map((r) => <span key={r}>{r}</span>)}</span>
         )}
         {/* The printed line with its column padding collapsed so it wraps on a phone; the panel keeps the layout. */}
-        <span className="block w-full rounded-[6px] bg-[#f7f6f2] px-2 py-1 font-mono text-[11px] leading-[1.6] text-[var(--sub)] [overflow-wrap:anywhere]">
-          <mark className={`text-inherit [box-decoration-break:clone] ${l.status === "verified" ? "bg-[#fff1a8]" : l.status === "needs_person" ? "bg-[var(--amber-soft)]" : "bg-transparent line-through"}`}>{l.exact_quote.replace(/\s+/g, " ").trim()}</mark>
+        <span className="block w-full rounded-[6px] bg-[var(--raised)] px-2 py-1 font-mono text-[11px] leading-[1.6] text-[var(--sub)] [overflow-wrap:anywhere]">
+          <mark className={`text-inherit [box-decoration-break:clone] ${l.status === "verified" ? "bg-[var(--amber-bg)]" : l.status === "needs_person" ? "bg-[var(--amber-soft)]" : "bg-transparent line-through"}`}>{l.exact_quote.replace(/\s+/g, " ").trim()}</mark>
         </span>
       </button>
     </li>
@@ -211,7 +211,7 @@ export default function UploadApp() {
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
           onDrop={(e) => { e.preventDefault(); setDragging(false); chosen(e.dataTransfer.files); }}
-          className={`!m-0 flex cursor-pointer flex-col items-center gap-2 rounded-[12px] border-2 border-dashed px-4 py-9 text-center focus-within:outline focus-within:outline-2 focus-within:outline-[var(--violet)] ${dragging ? "border-[var(--violet)] bg-[var(--violet-soft)]" : "border-[var(--line)] bg-[#fbfaf8]"}`}
+          className={`!m-0 flex cursor-pointer flex-col items-center gap-2 rounded-[12px] border-2 border-dashed px-4 py-9 text-center focus-within:outline focus-within:outline-2 focus-within:outline-[var(--violet)] ${dragging ? "border-[var(--violet)] bg-[var(--violet-soft)]" : "border-[var(--line)] bg-[var(--card)]"}`}
         >
           <strong className="text-[17px]">Drop the remittance here</strong>
           <span className="muted text-[13px] font-normal">The PDF or text the distributor sent with the payment, or click to choose it</span>

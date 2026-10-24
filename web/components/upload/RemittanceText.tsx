@@ -32,7 +32,7 @@ export default function RemittanceText({ text, lines, active, onPick }: {
 }) {
   return (
     <pre
-      className="m-0 max-h-[560px] overflow-auto rounded-[10px] border border-[var(--line)] bg-[#fbfaf8] p-3 font-mono text-[11.5px] leading-[1.7] text-[var(--ink)]"
+      className="m-0 max-h-[560px] overflow-auto rounded-[10px] border border-[var(--line)] bg-[var(--card)] p-3 font-mono text-[11.5px] leading-[1.7] text-[var(--ink)]"
       aria-label="The remittance as Clawback read it"
       tabIndex={0}
     >
@@ -42,7 +42,7 @@ export default function RemittanceText({ text, lines, active, onPick }: {
             key={i}
             id={`remit-quote-${p.line.n}`}
             onClick={() => onPick(p.line!.n)}
-            className={`cursor-pointer rounded-[3px] text-inherit ${p.line.status === "verified" ? "bg-[#fff1a8]" : "bg-[var(--amber-soft)] outline outline-1 outline-[var(--amber)]"} ${active === p.line.n ? "outline outline-2 outline-[var(--violet)]" : ""}`}
+            className={`cursor-pointer rounded-[3px] text-inherit ${p.line.status === "verified" ? "bg-[var(--amber-bg)]" : "bg-[var(--amber-soft)] outline outline-1 outline-[var(--amber)]"} ${active === p.line.n ? "outline outline-2 outline-[var(--violet)]" : ""}`}
           >
             {p.text}
           </mark>

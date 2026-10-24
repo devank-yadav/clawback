@@ -48,9 +48,9 @@ const STATUS_WORD: Record<LookbackStatus, string> = {
 
 // Stacked bottom to top. Past-window money is hatched so it reads as gone without relying on color alone.
 const SEGMENTS: { status: LookbackStatus; label: string; color: string; hatch?: boolean }[] = [
-  { status: 'past_window', label: 'Too late to claim', color: '#9a5757', hatch: true },
-  { status: 'settled', label: 'Settled', color: '#527b6e' },
-  { status: 'claimable', label: 'Still claimable', color: '#eb6834' },
+  { status: 'past_window', label: 'Too late to claim', color: '#8b8ea3', hatch: true },
+  { status: 'settled', label: 'Settled', color: '#9cd9bc' },
+  { status: 'claimable', label: 'Still claimable', color: '#ebc28c' },
 ]
 
 function useWidth<T extends HTMLElement>() {
@@ -93,8 +93,8 @@ function LookbackChart({ rows }: { rows: Row[] }) {
         <svg width={width} height={height} role="img" aria-label={`Money taken wrongly by month, ${months.length} months`} onMouseLeave={() => setHover(null)}>
           <defs>
             <pattern id="lookback-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <rect width="6" height="6" fill="#f3e6e6" />
-              <line x1="0" y1="0" x2="0" y2="6" stroke="#9a5757" strokeWidth="3" />
+              <rect width="6" height="6" fill="#282a37" />
+              <line x1="0" y1="0" x2="0" y2="6" stroke="#8b8ea3" strokeWidth="3" />
             </pattern>
           </defs>
           <line x1={pad.left} x2={width - pad.right} y1={pad.top + innerH} y2={pad.top + innerH} className="chart-grid" />
