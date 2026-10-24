@@ -105,9 +105,9 @@ def test_simple_stubs(method, path, check):
     assert r.status_code == 200 and check(r.json())
 
 
-def test_scenario_stub():
-    r = client.post("/scenario", json={"clause": "x", "charge": {"description": "y", "amount": 10}}).json()
-    assert r["stub"] is True
+def test_scenario_rejects_a_bad_request():
+    """The live scenario box is covered in test_coach_scenario.py with a fake model."""
+    assert client.post("/scenario", json={"clause": "x"}).status_code == 422
 
 
 def test_portal_dispute_and_amendment_flow():

@@ -643,14 +643,17 @@ class PortalPreset(Contract):
 class ScenarioCharge(Contract):
     description: str
     amount: Money
+    code: Literal["PA", "DF"] | None = None  # promo allowance or display fee; guessed from units and rate if left out
+    product: str | None = None  # "Original+Chocolate", "Mint"; promo charges default to the deal's two products
     units: int | None = None
     rate: Rate | None = None
-    period_start: date | None = None
+    period_start: date | None = None  # defaults to the Spring promo month, Mar 1 to Mar 31, 2026
     period_end: date | None = None
+    notice_date: date | None = None  # fees: when written notice came
 
 
 class ScenarioRequest(Contract):
-    clause: str
+    clause: str  # replaces the matching part of the Spring deal for this one charge
     charge: ScenarioCharge
 
 
@@ -660,6 +663,18 @@ class ScenarioResponse(Contract):
     finding: Finding | None
     evidence: list[Evidence]
     message: str | None = None
+    terms: list[Term] = []  # what the clause said, each verified or rejected word for word
+    rehearsal: Rehearsal | None = None
+    rule: Rule | None = None  # a saved owner rule that decided it
+    unclear: list[str] = []
+
+
+class ScenarioExample(Contract):
+    """GET /scenario/examples: ready-made cases for the scenario box (recorded, so they work offline)."""
+
+    id: str
+    label: str
+    request: ScenarioRequest
 
 
 class Redline(Contract):
@@ -667,8 +682,9 @@ class Redline(Contract):
     original_quote: str
     suggested_text: str
     reason: str
-    dollars_at_stake: Money
+    dollars_at_stake: Money  # the cited findings' costs, added up by code
     finding_ids: list[str]
+    quote: Quote | None = None  # where original_quote sits in the draft, for striking it through in place
 
 
 class CoachResponse(Contract):

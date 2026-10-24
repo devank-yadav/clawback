@@ -22,7 +22,7 @@ acceptance:
 	$(PYTHON) -m pytest -q api/tests/test_acceptance_p0.py api/tests/test_pipeline.py api/tests/test_reader.py \
 		api/engine/tests/test_quote_check.py api/engine/tests/test_allowed.py api/engine/tests/test_gate.py \
 		api/engine/tests/test_eval_harness.py api/tests/test_replay.py api/tests/test_routes.py api/tests/test_disputes.py \
-		api/tests/test_books.py
+		api/tests/test_books.py api/tests/test_coach_scenario.py
 	$(PYTHON) eval/run.py
 
 seed:
@@ -32,7 +32,7 @@ eval:
 	$(PYTHON) eval/run.py
 
 record:
-	RECORD_FIXTURES=1 $(PYTHON) -m api.run_demo --portal
+	RECORD_FIXTURES=1 $(PYTHON) -m api.run_demo --portal --coach
 
 demo:
 	DEMO_MODE=true $(MAKE) dev

@@ -63,6 +63,7 @@ class Run:
     decisions: dict[str, eng.Decision] = field(default_factory=dict)
     shown: dict[str, Decision] = field(default_factory=dict)
     questions: dict[str, Question] = field(default_factory=dict)
+    coach: Any = None  # the Deal Coach's redlines for this run, once asked for (POST /coach)
     texts: list[tuple[str, str]] = field(default_factory=list)  # (role, SMS body) sent back; the webhook replies with them
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -546,3 +547,21 @@ def inbox() -> tuple[list[Question], list[Approval]]:
                 latest[e.data.id] = e.data
         pending += [a for a in latest.values() if a.status == "pending"]
     return questions, pending
+
+
+def coach_costs(run: Run) -> list:
+    """This run's costs for the Deal Coach: every disputed amount, and every fee that needed a question."""
+    from api.agents.coach import Cost
+
+    out, seen = [], set()
+    for cid, d in run.decisions.items():
+        f = run.findings.get(cid)
+        if d.disputed > 0 and f:
+            out.append(Cost(f.id, cid, run.charges[cid].ref, f.type, f.finding, d.disputed, "disputed"))
+            seen.add(cid)
+    for q in run.questions.values():
+        f = run.findings.get(q.charge_id)
+        if q.charge_id not in seen and f:
+            out.append(Cost(f.id, q.charge_id, run.charges[q.charge_id].ref, f.type, f.finding,
+                            run.charges[q.charge_id].amount, "needed a question to the owner"))
+    return out

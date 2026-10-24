@@ -87,18 +87,24 @@ def _to_reader_output(raw: dict, doc: Document, text: str) -> ReaderOutput:
     return ReaderOutput(terms=terms, unclear=out.unclear)
 
 
-def read_document(doc_id: str, base_terms: Sequence[Term] = (), client: anthropic.Anthropic | None = None) -> ReaderResult:
+def read_document(doc_id: str, base_terms: Sequence[Term] = (), client: anthropic.Anthropic | None = None,
+                  live_first: bool = False) -> ReaderResult:
     """Read one document. `base_terms` are the deal's verified terms, used only to date an extension
     that states its end but not its start (it starts the day after the deal's date_range ends)."""
     doc, text = documents.load(doc_id)
     ans = claude.ask(SERVICE, PROMPT, _user_message(doc, text), LLMOutput, lambda raw: _to_reader_output(raw, doc, text),
-                     client, doc_id=doc_id)
+                     client, live_first=live_first, doc_id=doc_id)
     if ans.value is None:
         return ReaderResult(doc, [], [f"{doc_id}: reader output failed validation twice; needs a person"],
                             ans.source, ans.attempts, ans.errors)
     output = ans.value
     return ReaderResult(doc, _check(output, doc, text, base_terms), output.unclear, ans.source, ans.attempts,
                         ans.errors)
+
+
+def read_text(text: str, client: anthropic.Anthropic | None = None) -> ReaderResult:
+    """The scenario box: read a pasted clause. Tries live first (the judge's own words have no recording yet)."""
+    return read_document(documents.paste(text).id, client=client, live_first=True)
 
 
 def _check(output: ReaderOutput, doc: Document, text: str, base_terms: Sequence[Term]) -> list[Term]:

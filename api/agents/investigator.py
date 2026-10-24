@@ -59,7 +59,7 @@ def invented_numbers(text: str, source: str) -> list[Decimal]:
 
 
 def investigate(charge: Charge, allowance: Allowance, evidence: dict[str, Evidence],
-                client: anthropic.Anthropic | None = None) -> Investigation:
+                client: anthropic.Anthropic | None = None, live_first: bool = False) -> Investigation:
     items = evidence_for(charge, evidence)
     user = json.dumps({"charge": charge.model_dump(mode="json", exclude={"remittance_id"}), "engine": engine_payload(allowance),
                        "evidence": evidence_payload(items)}, indent=1, default=str)
@@ -78,5 +78,5 @@ def investigate(charge: Charge, allowance: Allowance, evidence: dict[str, Eviden
             raise ValueError("; ".join(problems))
         return out
 
-    ans = claude.ask(SERVICE, PROMPT, user, LLMFinding, check, client, charge_id=charge.id)
+    ans = claude.ask(SERVICE, PROMPT, user, LLMFinding, check, client, live_first=live_first, charge_id=charge.id)
     return Investigation(ans.value, ans.source, ans.errors)

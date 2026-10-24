@@ -3065,6 +3065,46 @@
   },
   "CoachResponse": {
     "$defs": {
+      "Quote": {
+        "additionalProperties": false,
+        "description": "The drawer shows context_before + text (highlighted) + context_after: the sentence inside its paragraph.",
+        "properties": {
+          "doc_id": {
+            "title": "Doc Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "char_start": {
+            "title": "Char Start",
+            "type": "integer"
+          },
+          "char_end": {
+            "title": "Char End",
+            "type": "integer"
+          },
+          "context_before": {
+            "default": "",
+            "title": "Context Before",
+            "type": "string"
+          },
+          "context_after": {
+            "default": "",
+            "title": "Context After",
+            "type": "string"
+          }
+        },
+        "required": [
+          "doc_id",
+          "text",
+          "char_start",
+          "char_end"
+        ],
+        "title": "Quote",
+        "type": "object"
+      },
       "Redline": {
         "additionalProperties": false,
         "properties": {
@@ -3094,6 +3134,17 @@
             },
             "title": "Finding Ids",
             "type": "array"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Quote"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -4105,6 +4156,279 @@
         ],
         "title": "Quote",
         "type": "object"
+      },
+      "Rehearsal": {
+        "additionalProperties": false,
+        "description": "Negotiator, before filing: the comeback it predicts and the answer it would give.",
+        "properties": {
+          "charge_id": {
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "predicted_rebuttal": {
+            "title": "Predicted Rebuttal",
+            "type": "string"
+          },
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "answer_evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Answer Evidence Ids",
+            "type": "array"
+          },
+          "answered": {
+            "title": "Answered",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "charge_id",
+          "predicted_rebuttal",
+          "answer",
+          "answer_evidence_ids",
+          "answered"
+        ],
+        "title": "Rehearsal",
+        "type": "object"
+      },
+      "Rule": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "pattern_text": {
+            "title": "Pattern Text",
+            "type": "string"
+          },
+          "term_type": {
+            "enum": [
+              "promo_rate",
+              "product_scope",
+              "unit_cap",
+              "date_range",
+              "fee_discretion",
+              "amendment"
+            ],
+            "title": "Term Type",
+            "type": "string"
+          },
+          "counterparty": {
+            "title": "Counterparty",
+            "type": "string"
+          },
+          "condition": {
+            "title": "Condition",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "accept",
+              "dispute",
+              "ask"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "else_decision": {
+            "enum": [
+              "accept",
+              "dispute",
+              "ask"
+            ],
+            "title": "Else Decision",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "approver": {
+            "title": "Approver",
+            "type": "string"
+          },
+          "approver_role": {
+            "enum": [
+              "owner",
+              "controller"
+            ],
+            "title": "Approver Role",
+            "type": "string"
+          },
+          "learned_at": {
+            "format": "date-time",
+            "title": "Learned At",
+            "type": "string"
+          },
+          "source_question_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Question Id"
+          },
+          "status": {
+            "default": "active",
+            "enum": [
+              "pending",
+              "active",
+              "undone"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "pattern_text",
+          "term_type",
+          "counterparty",
+          "condition",
+          "decision",
+          "else_decision",
+          "summary",
+          "approver",
+          "approver_role",
+          "learned_at",
+          "source_question_id"
+        ],
+        "title": "Rule",
+        "type": "object"
+      },
+      "Term": {
+        "additionalProperties": false,
+        "description": "A stored term: one row per reader, plus the merged row once both readers agree and the quote is found.",
+        "properties": {
+          "type": {
+            "enum": [
+              "promo_rate",
+              "product_scope",
+              "unit_cap",
+              "date_range",
+              "fee_discretion",
+              "amendment"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": true,
+            "title": "Params",
+            "type": "object"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Effective To"
+          },
+          "exact_quote": {
+            "title": "Exact Quote",
+            "type": "string"
+          },
+          "char_start": {
+            "minimum": 0,
+            "title": "Char Start",
+            "type": "integer"
+          },
+          "char_end": {
+            "minimum": 0,
+            "title": "Char End",
+            "type": "integer"
+          },
+          "discretion": {
+            "default": false,
+            "title": "Discretion",
+            "type": "boolean"
+          },
+          "source_doc_id": {
+            "title": "Source Doc Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "reader": {
+            "enum": [
+              "claude",
+              "gemini",
+              "merged"
+            ],
+            "title": "Reader",
+            "type": "string"
+          },
+          "status": {
+            "default": "pending",
+            "enum": [
+              "pending",
+              "verified",
+              "rejected",
+              "disputed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "source_approved": {
+            "default": true,
+            "title": "Source Approved",
+            "type": "boolean"
+          },
+          "reasons": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "type",
+          "params",
+          "exact_quote",
+          "char_start",
+          "char_end",
+          "source_doc_id",
+          "id",
+          "reader"
+        ],
+        "title": "Term",
+        "type": "object"
       }
     },
     "additionalProperties": false,
@@ -4152,6 +4476,44 @@
         ],
         "default": null,
         "title": "Message"
+      },
+      "terms": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/Term"
+        },
+        "title": "Terms",
+        "type": "array"
+      },
+      "rehearsal": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Rehearsal"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "rule": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Rule"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "unclear": {
+        "default": [],
+        "items": {
+          "type": "string"
+        },
+        "title": "Unclear",
+        "type": "array"
       }
     },
     "required": [
@@ -5143,6 +5505,290 @@
       "expect"
     ],
     "title": "PortalPreset",
+    "type": "object"
+  },
+  "ScenarioRequest": {
+    "$defs": {
+      "ScenarioCharge": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "PA",
+                  "DF"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Code"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Product"
+          },
+          "units": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Units"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rate"
+          },
+          "period_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Period Start"
+          },
+          "period_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Period End"
+          },
+          "notice_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Notice Date"
+          }
+        },
+        "required": [
+          "description",
+          "amount"
+        ],
+        "title": "ScenarioCharge",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "clause": {
+        "title": "Clause",
+        "type": "string"
+      },
+      "charge": {
+        "$ref": "#/$defs/ScenarioCharge"
+      }
+    },
+    "required": [
+      "clause",
+      "charge"
+    ],
+    "title": "ScenarioRequest",
+    "type": "object"
+  },
+  "ScenarioExample": {
+    "$defs": {
+      "ScenarioCharge": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "PA",
+                  "DF"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Code"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Product"
+          },
+          "units": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Units"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rate"
+          },
+          "period_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Period Start"
+          },
+          "period_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Period End"
+          },
+          "notice_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Notice Date"
+          }
+        },
+        "required": [
+          "description",
+          "amount"
+        ],
+        "title": "ScenarioCharge",
+        "type": "object"
+      },
+      "ScenarioRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "clause": {
+            "title": "Clause",
+            "type": "string"
+          },
+          "charge": {
+            "$ref": "#/$defs/ScenarioCharge"
+          }
+        },
+        "required": [
+          "clause",
+          "charge"
+        ],
+        "title": "ScenarioRequest",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "description": "GET /scenario/examples: ready-made cases for the scenario box (recorded, so they work offline).",
+    "properties": {
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "label": {
+        "title": "Label",
+        "type": "string"
+      },
+      "request": {
+        "$ref": "#/$defs/ScenarioRequest"
+      }
+    },
+    "required": [
+      "id",
+      "label",
+      "request"
+    ],
+    "title": "ScenarioExample",
     "type": "object"
   }
 }

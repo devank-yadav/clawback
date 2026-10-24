@@ -33,7 +33,7 @@ class LLMRehearsal(Strict):
 
 
 def rehearse(charge: Charge, finding: Finding, allowance: Allowance, evidence: dict[str, Evidence],
-             terms: Sequence[Term], client: anthropic.Anthropic | None = None) -> Rehearsal:
+             terms: Sequence[Term], client: anthropic.Anthropic | None = None, live_first: bool = False) -> Rehearsal:
     items = evidence_for(charge, evidence)
     user = json.dumps({"charge": charge.model_dump(mode="json", exclude={"remittance_id"}),
                        "finding": {"text": finding.finding, "type": finding.type, "evidence_ids": finding.evidence_ids},
@@ -61,7 +61,8 @@ def rehearse(charge: Charge, finding: Finding, allowance: Allowance, evidence: d
         return Rehearsal(charge_id=charge.id, predicted_rebuttal=r.predicted_rebuttal, answer=r.answer,
                          answer_evidence_ids=r.answer_evidence_ids, answered=True)
 
-    ans = claude.ask(REHEARSAL_SERVICE, REHEARSAL_PROMPT, user, LLMRehearsal, check, client, charge_id=charge.id)
+    ans = claude.ask(REHEARSAL_SERVICE, REHEARSAL_PROMPT, user, LLMRehearsal, check, client, live_first=live_first,
+                     charge_id=charge.id)
     return ans.value or Rehearsal(charge_id=charge.id, predicted_rebuttal="", answer="", answer_evidence_ids=[],
                                   answered=False)
 
