@@ -73,5 +73,7 @@ decision gate and approvals; Data model; API, live updates and integrations.
   and the promo plan from it (api/db/reads.py, exactly the files' rows; any database error means the files), every
   event is saved to the events table off the run's thread (api/db/events.py), GET /runs/{id}/events and GET
   /runs/latest replay a run after a restart, and GET /db/cap is the cap query. `make db-check` shows all of it.
+  Saved rules (with their account) and the audit chain are kept there too (api/db/state.py, migration 004): startup
+  restores them, so Rule #1 and /audit/verify survive a restart; POST /demo/reset clears them.
 - Stub routes serve the fixture run in api/stubs/fixtures.py. After changing it, run `python -m api.stubs.fixtures`
   to rewrite web/fixtures/*.json (a test fails if they're stale).

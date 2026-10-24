@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api import pipeline
-from api.db import events as saved_events
+from api.db import events as saved_events, state as saved_state
 from api.integrations import nessie, replay
 from api.routes import accounts, approvals, audit, db, demo, eval, payments, portal, runs, scenario, webhooks
 
@@ -19,7 +19,9 @@ log = logging.getLogger("clawback")
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """Start the Nessie poller (F15) when it can run: keys set, not DEMO_MODE, NESSIE_POLL not "off"."""
+    """Bring back the saved rules and audit chain (api/db/state.py), and start the Nessie poller (F15) when it can run:
+    keys set, not DEMO_MODE, NESSIE_POLL not "off"."""
+    saved_state.restore()
     client = nessie.client()
     if client and not replay.demo_mode() and os.getenv("NESSIE_POLL", "on").lower() != "off":
         nessie.poller = nessie.Poller(client, pipeline.start_for_deposit)

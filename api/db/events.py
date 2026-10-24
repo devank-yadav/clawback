@@ -52,15 +52,25 @@ class _Forget:
     before: datetime
 
 
+@dataclass(frozen=True)
+class _Statement:
+    """Queued by write_later(): one statement (a saved rule, an audit row), in order with what's queued ahead of it."""
+    query: str
+    params: tuple = ()
+
+
 def _write(db, batch: list[Any]) -> None:
     with db.transaction(), db.cursor() as cur:
         rows = []
         for item in batch:
-            if isinstance(item, _Forget):
+            if isinstance(item, (_Forget, _Statement)):
                 if rows:
                     cur.executemany(INSERT, rows)
                     rows = []
-                cur.execute("DELETE FROM events WHERE at <= %s", (item.before,))
+                if isinstance(item, _Forget):
+                    cur.execute("DELETE FROM events WHERE at <= %s", (item.before,))
+                else:
+                    cur.execute(item.query, item.params)
             else:
                 rows.append((item.run_id, item.id, item.type, item.at, Jsonb(item.data.model_dump(mode="json")),
                              _accounts.get(item.run_id, accounts.DEFAULT)))
@@ -180,6 +190,16 @@ def record(ev: Any, account_id: str = accounts.DEFAULT) -> None:
         _writer.put(ev)
     except Exception as e:  # noqa: BLE001 - saving must never break a run
         _writer.failing.failed(f"couldn't queue an event ({type(e).__name__}: {e})")
+
+
+def write_later(query: str, params: tuple = ()) -> None:
+    """Queue one more statement for the writer thread (api/db/state.py saves rules and audit rows this way): written
+    in order with the events, never blocking the caller, tried again while the database is away."""
+    try:
+        if conn.enabled():
+            _writer.put(_Statement(query, params))
+    except Exception as e:  # noqa: BLE001 - saving must never break a run
+        _writer.failing.failed(f"couldn't queue a statement ({type(e).__name__}: {e})")
 
 
 def flush(timeout: float = 5.0) -> bool:

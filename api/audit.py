@@ -1,9 +1,10 @@
 """The audit log for live runs (F18): every decision, question, answer, rule, approval, ledger post, dispute and
 portal message, appended to the engine's hash chain (api/engine/audit_chain.py) the moment its event is emitted.
 
-One chain for every run, like the audit_log table it becomes with the database (D3). Rows are never edited or
-removed by the app; the head hash is kept apart from the rows, so verify() catches an edited row, a reordered
-or missing one, and the newest rows being cut off.
+One chain for every run. With the database on, every entry is also saved to the audit_log table and the head to
+audit_head (api/db/state.py), and the chain is restored from them at startup, so a restart keeps it. Rows are never
+edited or removed by the app; the head hash is kept apart from the rows, so verify() catches an edited row, a
+reordered or missing one, and the newest rows being cut off.
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ import threading
 from typing import Any
 
 from api import accounts
+from api.db import state as saved_state
 from api.engine import audit_chain
 
 AUDITED = ("decision", "question", "answer", "rule", "approval", "ledger_post", "dispute", "portal_message")
@@ -62,6 +64,7 @@ def record(ev: Any, account: accounts.Account | str | None = None) -> audit_chai
     with _lock:
         entry = _chain.append(actor, action, ref, evidence, at=ev.at)
         _head = entry.hash
+        saved_state.save_audit(entry)  # queued in chain order, inside the lock
     return entry
 
 
@@ -72,6 +75,13 @@ def entries() -> tuple[audit_chain.AuditEntry, ...]:
 def verify(rows=None) -> audit_chain.ChainCheck:
     """Recompute the chain over the stored rows (or given ones) and compare its end with the saved head."""
     return audit_chain.verify(_chain.entries if rows is None else rows, expected_head=_head)
+
+
+def restore(entries, head: str) -> None:
+    """At startup: the chain saved before a restart, and its head (api/db/state.py)."""
+    global _chain, _head
+    with _lock:
+        _chain, _head = audit_chain.AuditChain(_entries=list(entries)), head
 
 
 def reset() -> None:

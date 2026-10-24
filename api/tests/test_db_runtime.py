@@ -19,9 +19,9 @@ from decimal import Decimal
 import pytest
 from fastapi.testclient import TestClient
 
-from api import accounts, pipeline, rows
+from api import accounts, audit, pipeline, rows
 from api.contracts import EventAdapter
-from api.db import conn, events, reads, seed
+from api.db import conn, events, reads, seed, state
 from api.integrations import replay
 from api.main import app
 from api.tests.test_pipeline import ScenarioClaude
@@ -387,3 +387,84 @@ def test_each_account_finds_its_own_runs_after_a_restart(two_accounts, database)
     assert client.get("/runs/latest").status_code == 404  # Peak Bar has no run of its own
     assert repr(rows.charges("june", account="test-oat")) == \
         repr(rows.charges_from_files("june", account="test-oat"))
+
+
+# --- Saved rules and the audit chain survive a restart (api/db/state.py) -----------------------------------
+
+OWNER_ANSWER = "accept if notice is at least 14 days"
+
+
+def _restart():
+    """The API restarted: nothing in memory, then startup (the app's lifespan) restores what was saved."""
+    assert events.flush(timeout=10)
+    pipeline.RUNS.clear(), pipeline.RULES.clear(), pipeline.RULE_ACCOUNTS.clear(), pipeline.QUESTIONS.clear()
+    audit.reset()
+    with TestClient(app):
+        pass
+
+
+def _decided(run):
+    return {cid: (d.decision, d.disputed, d.accepted, d.rule_id) for cid, d in run.shown.items()}
+
+
+@pytest.fixture
+def saved(database, monkeypatch):
+    monkeypatch.setattr(state, "_on", False)
+    assert state.restore() is not None  # startup read the (empty) saved state, so this process saves
+    return database[0]
+
+
+def test_without_a_database_rules_and_the_chain_stay_in_memory(monkeypatch):
+    monkeypatch.setattr(state, "_on", False)
+    assert state.restore() is None
+    fake = ScenarioClaude()
+    run = pipeline.start("march", fake, background=False)
+    pipeline.answer(next(iter(run.questions)), OWNER_ANSWER, client=fake)
+    assert [r.label for r in pipeline.RULES] == ["Rule #1"] and audit.entries()
+    assert events._writer.thread is None  # nothing was queued for a database
+
+
+def test_rule_1_and_the_audit_chain_survive_a_restart(saved):
+    fake = ScenarioClaude()
+    march = pipeline.start("march", fake, background=False)
+    pipeline.answer(next(iter(march.questions)), OWNER_ANSWER, client=fake)
+    chain = [e.as_row() for e in audit.entries()]
+    _restart()
+    assert [(r.id, r.label, r.status) for r in pipeline.rules_of("peak-bar")] == [("rule-1", "Rule #1", "active")]
+    assert [e.as_row() for e in audit.entries()] == chain
+    assert client.get("/audit/verify").json() == {"ok": True, "checked": len(chain), "broken_at": None, "reason": ""}
+    april = pipeline.start("april", ScenarioClaude(), background=False)  # decided by Rule #1, nobody asked
+    assert _decided(april) == {"A1": ("accept", D(0), D(1200), "rule-1"), "A2": ("dispute", D(800), D(0), "rule-1")}
+    assert not april.questions
+    _restart()  # the chain goes on across restarts
+    check = client.get("/audit/verify").json()
+    assert check["ok"] and check["checked"] > len(chain)
+    saved.execute("UPDATE audit_log SET actor = 'someone else' WHERE id = 2")  # edited while the API was down
+    _restart()
+    assert client.get("/audit/verify").json()["broken_at"] == 2
+
+
+def test_undo_survives_a_restart(saved):
+    fake = ScenarioClaude()
+    march = pipeline.start("march", fake, background=False)
+    question = next(iter(march.questions))
+    pipeline.answer(question, OWNER_ANSWER, client=fake)
+    pipeline.answer(question, "UNDO", client=fake)
+    _restart()
+    assert [(r.id, r.status) for r in pipeline.RULES] == [("rule-1", "undone")]
+    april = pipeline.start("april", ScenarioClaude(), background=False)
+    assert len(april.questions) == 2  # no rule: both fees ask again
+    pipeline.answer(next(iter(april.questions)), OWNER_ANSWER, client=ScenarioClaude())
+    assert [(r.id, r.label) for r in pipeline.RULES] == [("rule-1", "Rule #1"), ("rule-2", "Rule #2")]
+
+
+def test_a_demo_reset_clears_the_saved_rules_and_the_chain(saved):
+    fake = ScenarioClaude()
+    march = pipeline.start("march", fake, background=False)
+    pipeline.answer(next(iter(march.questions)), OWNER_ANSWER, client=fake)
+    assert client.post("/demo/reset").status_code == 200
+    _restart()
+    assert pipeline.RULES == [] and audit.entries() == ()
+    assert [saved.execute(f"SELECT count(*) FROM {t}").fetchone()[0] for t in ("rules", "audit_log", "audit_head")] \
+        == [0, 0, 0]
+    assert client.get("/audit/verify").json()["ok"]  # the recorded run's chain again, until a new run

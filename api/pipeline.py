@@ -29,7 +29,7 @@ from api.contracts import (
     Answer, Approval, ApprovalLine, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, Dispute, DisputeLine, Event, EventAdapter,
     Evidence, Finding, LogLine, Question, Rehearsal, Remittance, Rule, RunInfo, Term, Totals,
 )
-from api.db import events as saved_events
+from api.db import events as saved_events, state as saved_state
 from api.engine import gate, totals
 from api.engine import types as eng
 from api.engine.allowed import compute_allowed
@@ -131,6 +131,14 @@ def rules_of(account: accounts.Account | str | None = None) -> list[Rule]:
     """One account's saved rules, oldest first."""
     account_id = accounts.resolve(account).id
     return [r for r in RULES if RULE_ACCOUNTS.get(r.id, accounts.DEFAULT) == account_id]
+
+
+def restore_rules(saved: list[tuple[Rule, str]]) -> None:
+    """At startup: the rules saved before a restart (api/db/state.py), with the account each belongs to."""
+    with _state:
+        RULES[:] = [rule for rule, _ in saved]
+        RULE_ACCOUNTS.clear()
+        RULE_ACCOUNTS.update({rule.id: account_id for rule, account_id in saved})
 
 
 def reset() -> None:
@@ -538,6 +546,7 @@ def answer(question_id: str, text: str, from_role: str = "owner",
         undone = replies.undo_rule(rules_of(run.account))
         if undone:
             RULES[:] = [undone if r.id == undone.id else r for r in RULES]
+            saved_state.save_rule(undone, run.account.id)  # a restart keeps it undone
             run.emit("rule", undone)
             _forget(run, undone)
         run.texts.append(("owner", replies.undo_text(undone)))
@@ -585,6 +594,7 @@ def answer(question_id: str, text: str, from_role: str = "owner",
     ans = record(rule.id)
     RULES.append(rule)
     RULE_ACCOUNTS[rule.id] = run.account.id
+    saved_state.save_rule(rule, run.account.id)  # a restart keeps it (api/db/state.py)
     run.questions[question_id] = q.model_copy(update={"answer": text, "answered_at": now, "rule_id": rule.id})
     run.evidence[f"ev-{rule.id}"] = _rule_evidence(rule, run.account)
     run.emit("rule", rule)
