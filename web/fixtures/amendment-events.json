@@ -1,0 +1,947 @@
+{
+  "run_id": "run-march-demo",
+  "events": [
+    {
+      "id": 68,
+      "run_id": "run-march-demo",
+      "at": "2026-10-24T10:32:07-07:00",
+      "type": "portal_message",
+      "data": {
+        "id": "PM-3",
+        "dispute_id": "D-0417",
+        "from_party": "northmart",
+        "text": "Attached: Amendment No. 1, signed by both parties on Mar 20. It raises the cap to 6,000 units.",
+        "attachment_doc_id": "amendment-1",
+        "classification": "new_document",
+        "charge_ids": [
+          "C4"
+        ],
+        "evidence_ids": [],
+        "created_at": "2026-10-24T10:32:07-07:00"
+      }
+    },
+    {
+      "id": 69,
+      "run_id": "run-march-demo",
+      "at": "2026-10-24T10:32:08-07:00",
+      "type": "log",
+      "data": {
+        "text": "Northmart attached Amendment No. 1. It's signed by both parties, so it counts: the §3.2 cap is now 6,000 bars.",
+        "level": "good",
+        "actor": "reader",
+        "charge_id": "C4"
+      }
+    },
+    {
+      "id": 70,
+      "run_id": "run-march-demo",
+      "at": "2026-10-24T10:32:09-07:00",
+      "type": "log",
+      "data": {
+        "text": "Both readers agree on the new cap. The quote was found word for word in the amendment.",
+        "level": "good",
+        "actor": "reader",
+        "charge_id": "C4"
+      }
+    },
+    {
+      "id": 71,
+      "run_id": "run-march-demo",
+      "at": "2026-10-24T10:32:12-07:00",
+      "type": "finding",
+      "data": {
+        "charge_id": "C4",
+        "finding": "Amendment No. 1 raises the cap to 6,000. Weeks 1 to 3 used 5,000, so 1,000 of week 4's 1,540 bars are covered; 540 aren't.",
+        "type": "over_cap",
+        "evidence_ids": [
+          "ev-amendment-1",
+          "ev-deal-3.1",
+          "ev-sales-w1",
+          "ev-sales-w2",
+          "ev-sales-w3",
+          "ev-sales-w4",
+          "ev-charge-C4"
+        ],
+        "confidence": 0.97,
+        "open_questions": [],
+        "id": "F-C4",
+        "expected": 1000.0,
+        "taken": 1540.0,
+        "delta": 540.0,
+        "readers_agree": true,
+        "math": [
+          {
+            "text": "6,000 cap",
+            "evidence_id": "ev-amendment-1"
+          },
+          {
+            "text": " − 5,000 sold by Mar 21 = 1,000 bars × ",
+            "evidence_id": null
+          },
+          {
+            "text": "$1.00",
+            "evidence_id": "ev-deal-3.1"
+          },
+          {
+            "text": " = $1,000 allowed · took ",
+            "evidence_id": null
+          },
+          {
+            "text": "$1,540",
+            "evidence_id": "ev-charge-C4"
+          },
+          {
+            "text": " → $540 too much",
+            "evidence_id": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 72,
+      "run_id": "run-march-demo",
+      "at": "2026-10-24T10:32:13-07:00",
+      "type": "decision",
+      "data": {
+        "charge_id": "C4",
+        "decision": "split",
+        "disputed": 540.0,
+        "accepted": 1000.0,
+        "waiting": 0.0,
+        "gate_row": 7,
+        "rule_id": null,
+        "decided_by": "gate",
+        "decided_at": "2026-10-24T10:32:13-07:00",
+        "reason": "Signed Amendment No. 1 raises the cap to 6,000: accept $1,000, keep $540 disputed."
+      }
+    },
+    {
+      "id": 73,
+      "run_id": "run-march-demo",
+      "at": "2026-10-24T10:32:13-07:00",
+      "type": "totals",
+      "data": {
+        "taken": 6850.0,
+        "disputed": 3120.0,
+        "accepted": 3730.0,
+        "waiting": 0.0,
+        "undecided": 0.0,
+        "questions": 1,
+        "skipped": 0
+      }
+    },
+    {
+      "id": 74,
+      "run_id": "run-march-demo",
+      "at": "2026-10-24T10:32:15-07:00",
+      "type": "dispute",
+      "data": {
+        "id": "D-0417",
+        "remittance_id": "REM-3102",
+        "counterparty": "Northmart",
+        "lines": [
+          {
+            "charge_id": "C1",
+            "ref": "NM-2229",
+            "amount": 600.0,
+            "reason": "Rate charged $1.50 a bar; the deal says $1.00.",
+            "clause_ref": "§3.1",
+            "quote": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
+            "math": "1,200 bars × ($1.50 − $1.00) = $600",
+            "evidence_ids": [
+              "ev-deal-3.1",
+              "ev-sales-w1",
+              "ev-charge-C1"
+            ]
+          },
+          {
+            "charge_id": "C2",
+            "ref": "NM-2231",
+            "amount": 980.0,
+            "reason": "Week 2 was already paid on Mar 14 (NM-2178).",
+            "clause_ref": "§4.2",
+            "quote": "A unit may be claimed only once.",
+            "math": "980 bars for Mar 8 to 14 already paid under NM-2178",
+            "evidence_ids": [
+              "ev-payment-NM-2178",
+              "ev-sales-w2",
+              "ev-charge-C2",
+              "ev-deal-4.2"
+            ]
+          },
+          {
+            "charge_id": "C4",
+            "ref": "NM-2236",
+            "amount": 540.0,
+            "reason": "Over the 6,000-unit cap set by Amendment No. 1.",
+            "clause_ref": "§3.2 (Amendment No. 1)",
+            "quote": "The promotional allowance applies to a maximum of 6,000 units in total.",
+            "math": "1,200 + 980 + 2,820 = 5,000 by Mar 21; 1,000 more bars reach the 6,000 cap; 540 bars after it",
+            "evidence_ids": [
+              "ev-amendment-1",
+              "ev-sales-w1",
+              "ev-sales-w2",
+              "ev-sales-w3",
+              "ev-sales-w4",
+              "ev-charge-C4"
+            ]
+          },
+          {
+            "charge_id": "C5",
+            "ref": "NM-2237",
+            "amount": 1000.0,
+            "reason": "Mint is not a promoted product.",
+            "clause_ref": "§3.1",
+            "quote": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
+            "math": "1,000 Mint bars; Mint isn't covered, so $0 allowed",
+            "evidence_ids": [
+              "ev-deal-3.1",
+              "ev-sales-mint",
+              "ev-charge-C5"
+            ]
+          }
+        ],
+        "total": 3120.0,
+        "status": "answered",
+        "approved_by": "policy",
+        "filed_at": "2026-10-24T10:31:03-07:00"
+      }
+    },
+    {
+      "id": 75,
+      "run_id": "run-march-demo",
+      "at": "2026-10-24T10:32:16-07:00",
+      "type": "portal_message",
+      "data": {
+        "id": "PM-4",
+        "dispute_id": "D-0417",
+        "from_party": "clawback",
+        "text": "Thanks. The signed amendment raises the §3.2 cap to 6,000 units, so 1,000 of week 4's 1,540 bars are covered. We withdraw $1,000 of the week 4 line (C4) and keep $540 disputed.",
+        "attachment_doc_id": null,
+        "classification": null,
+        "charge_ids": [
+          "C4"
+        ],
+        "evidence_ids": [
+          "ev-amendment-1",
+          "ev-sales-w1",
+          "ev-sales-w2",
+          "ev-sales-w3",
+          "ev-sales-w4"
+        ],
+        "created_at": "2026-10-24T10:32:16-07:00"
+      }
+    },
+    {
+      "id": 76,
+      "run_id": "run-march-demo",
+      "at": "2026-10-24T10:32:17-07:00",
+      "type": "log",
+      "data": {
+        "text": "Conceded $1,000 of C4 and kept $540 disputed. D-0417 now totals $3,120.",
+        "level": "good",
+        "actor": "negotiator",
+        "charge_id": "C4"
+      }
+    },
+    {
+      "id": 77,
+      "run_id": "run-march-demo",
+      "at": "2026-10-24T10:32:18-07:00",
+      "type": "run",
+      "data": {
+        "run_id": "run-march-demo",
+        "kind": "march",
+        "status": "finished",
+        "remittance": null,
+        "demo_mode": false
+      }
+    }
+  ],
+  "charges": {
+    "C4": {
+      "charge": {
+        "id": "C4",
+        "remittance_id": "REM-3102",
+        "ref": "NM-2236",
+        "code": "PA",
+        "description": "Spring promo week 4",
+        "product": "Original+Chocolate",
+        "units": 1540,
+        "rate": 1.0,
+        "amount": 1540.0,
+        "period_start": "2026-03-22",
+        "period_end": "2026-03-31",
+        "notice_date": null
+      },
+      "finding": {
+        "charge_id": "C4",
+        "finding": "Amendment No. 1 raises the cap to 6,000. Weeks 1 to 3 used 5,000, so 1,000 of week 4's 1,540 bars are covered; 540 aren't.",
+        "type": "over_cap",
+        "evidence_ids": [
+          "ev-amendment-1",
+          "ev-deal-3.1",
+          "ev-sales-w1",
+          "ev-sales-w2",
+          "ev-sales-w3",
+          "ev-sales-w4",
+          "ev-charge-C4"
+        ],
+        "confidence": 0.97,
+        "open_questions": [],
+        "id": "F-C4",
+        "expected": 1000.0,
+        "taken": 1540.0,
+        "delta": 540.0,
+        "readers_agree": true,
+        "math": [
+          {
+            "text": "6,000 cap",
+            "evidence_id": "ev-amendment-1"
+          },
+          {
+            "text": " − 5,000 sold by Mar 21 = 1,000 bars × ",
+            "evidence_id": null
+          },
+          {
+            "text": "$1.00",
+            "evidence_id": "ev-deal-3.1"
+          },
+          {
+            "text": " = $1,000 allowed · took ",
+            "evidence_id": null
+          },
+          {
+            "text": "$1,540",
+            "evidence_id": "ev-charge-C4"
+          },
+          {
+            "text": " → $540 too much",
+            "evidence_id": null
+          }
+        ]
+      },
+      "decision": {
+        "charge_id": "C4",
+        "decision": "split",
+        "disputed": 540.0,
+        "accepted": 1000.0,
+        "waiting": 0.0,
+        "gate_row": 7,
+        "rule_id": null,
+        "decided_by": "gate",
+        "decided_at": "2026-10-24T10:32:13-07:00",
+        "reason": "Signed Amendment No. 1 raises the cap to 6,000: accept $1,000, keep $540 disputed."
+      },
+      "rehearsal": {
+        "charge_id": "C4",
+        "predicted_rebuttal": "The promo had no unit cap.",
+        "answer": "§3.2 caps the promo at 5,000 bars in total. Weeks 1 to 3 sold 1,200 + 980 + 2,820 = 5,000, so week 4's 1,540 bars aren't covered.",
+        "answer_evidence_ids": [
+          "ev-deal-3.2",
+          "ev-sales-w1",
+          "ev-sales-w2",
+          "ev-sales-w3"
+        ],
+        "answered": true
+      },
+      "rule": null,
+      "evidence": [
+        {
+          "id": "ev-amendment-1",
+          "kind": "clause",
+          "label": "Amendment No. 1 (signed)",
+          "summary": "Signed by Peak Bar and Northmart on Mar 20: raises the §3.2 cap to 6,000 bars.",
+          "quote": {
+            "doc_id": "amendment-1",
+            "text": "The promotional allowance applies to a maximum of 6,000 units in total.",
+            "char_start": 544,
+            "char_end": 615,
+            "context_before": "> 3.2 ",
+            "context_after": ""
+          },
+          "rows": [],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": null
+        },
+        {
+          "id": "ev-deal-3.1",
+          "kind": "clause",
+          "label": "§3.1 rate and products",
+          "summary": "The deal pays $1.00 a bar on Original and Chocolate sold March 1 to 31.",
+          "quote": {
+            "doc_id": "spring-promo",
+            "text": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
+            "char_start": 934,
+            "char_end": 1079,
+            "context_before": "3.1 ",
+            "context_after": ""
+          },
+          "rows": [],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": null
+        },
+        {
+          "id": "ev-sales-w1",
+          "kind": "sales",
+          "label": "Week 1 sales",
+          "summary": "1,200 promoted bars sold Mar 1 to 7.",
+          "quote": null,
+          "rows": [
+            {
+              "week_start": "2026-03-01",
+              "week_end": "2026-03-07",
+              "product": "Peak Bar Original",
+              "promo_units": 700,
+              "total_units": 820
+            },
+            {
+              "week_start": "2026-03-01",
+              "week_end": "2026-03-07",
+              "product": "Peak Bar Chocolate",
+              "promo_units": 500,
+              "total_units": 590
+            }
+          ],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": null
+        },
+        {
+          "id": "ev-sales-w2",
+          "kind": "sales",
+          "label": "Week 2 sales",
+          "summary": "980 promoted bars sold Mar 8 to 14.",
+          "quote": null,
+          "rows": [
+            {
+              "week_start": "2026-03-08",
+              "week_end": "2026-03-14",
+              "product": "Peak Bar Original",
+              "promo_units": 540,
+              "total_units": 650
+            },
+            {
+              "week_start": "2026-03-08",
+              "week_end": "2026-03-14",
+              "product": "Peak Bar Chocolate",
+              "promo_units": 440,
+              "total_units": 520
+            }
+          ],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": null
+        },
+        {
+          "id": "ev-sales-w3",
+          "kind": "sales",
+          "label": "Week 3 sales",
+          "summary": "2,820 promoted bars sold Mar 15 to 21; the running total reaches the 5,000 cap.",
+          "quote": null,
+          "rows": [
+            {
+              "week_start": "2026-03-15",
+              "week_end": "2026-03-21",
+              "product": "Peak Bar Original",
+              "promo_units": 1600,
+              "total_units": 1780
+            },
+            {
+              "week_start": "2026-03-15",
+              "week_end": "2026-03-21",
+              "product": "Peak Bar Chocolate",
+              "promo_units": 1220,
+              "total_units": 1370
+            }
+          ],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": null
+        },
+        {
+          "id": "ev-sales-w4",
+          "kind": "sales",
+          "label": "Week 4 sales",
+          "summary": "1,540 promoted bars sold Mar 22 to 31, all after the cap.",
+          "quote": null,
+          "rows": [
+            {
+              "week_start": "2026-03-22",
+              "week_end": "2026-03-31",
+              "product": "Peak Bar Original",
+              "promo_units": 880,
+              "total_units": 1010
+            },
+            {
+              "week_start": "2026-03-22",
+              "week_end": "2026-03-31",
+              "product": "Peak Bar Chocolate",
+              "promo_units": 660,
+              "total_units": 760
+            }
+          ],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": null
+        },
+        {
+          "id": "ev-charge-C4",
+          "kind": "charge",
+          "label": "Charge C4 (NM-2236)",
+          "summary": "Northmart's remittance line NM-2236: Spring promo week 4.",
+          "quote": null,
+          "rows": [
+            {
+              "id": "C4",
+              "remittance_id": "REM-3102",
+              "ref": "NM-2236",
+              "code": "PA",
+              "description": "Spring promo week 4",
+              "product": "Original+Chocolate",
+              "units": 1540,
+              "rate": 1.0,
+              "amount": 1540.0,
+              "period_start": "2026-03-22",
+              "period_end": "2026-03-31",
+              "notice_date": null
+            }
+          ],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": null
+        },
+        {
+          "id": "ev-deal-3.2",
+          "kind": "clause",
+          "label": "§3.2 cap",
+          "summary": "The promo covers at most 5,000 bars in total.",
+          "quote": {
+            "doc_id": "spring-promo",
+            "text": "The promotional allowance applies to a maximum of 5,000 units in total.",
+            "char_start": 1085,
+            "char_end": 1156,
+            "context_before": "3.2 ",
+            "context_after": ""
+          },
+          "rows": [],
+          "sender": null,
+          "approved_sender": null,
+          "sent_at": null,
+          "rule_id": null,
+          "approval_id": null,
+          "person": null
+        }
+      ]
+    }
+  },
+  "evidence": {
+    "ev-amendment-1": {
+      "id": "ev-amendment-1",
+      "kind": "clause",
+      "label": "Amendment No. 1 (signed)",
+      "summary": "Signed by Peak Bar and Northmart on Mar 20: raises the §3.2 cap to 6,000 bars.",
+      "quote": {
+        "doc_id": "amendment-1",
+        "text": "The promotional allowance applies to a maximum of 6,000 units in total.",
+        "char_start": 544,
+        "char_end": 615,
+        "context_before": "> 3.2 ",
+        "context_after": ""
+      },
+      "rows": [],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-charge-C1": {
+      "id": "ev-charge-C1",
+      "kind": "charge",
+      "label": "Charge C1 (NM-2229)",
+      "summary": "Northmart's remittance line NM-2229: Spring promo week 1.",
+      "quote": null,
+      "rows": [
+        {
+          "id": "C1",
+          "remittance_id": "REM-3102",
+          "ref": "NM-2229",
+          "code": "PA",
+          "description": "Spring promo week 1",
+          "product": "Original+Chocolate",
+          "units": 1200,
+          "rate": 1.5,
+          "amount": 1800.0,
+          "period_start": "2026-03-01",
+          "period_end": "2026-03-07",
+          "notice_date": null
+        }
+      ],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-charge-C2": {
+      "id": "ev-charge-C2",
+      "kind": "charge",
+      "label": "Charge C2 (NM-2231)",
+      "summary": "Northmart's remittance line NM-2231: Spring promo week 2.",
+      "quote": null,
+      "rows": [
+        {
+          "id": "C2",
+          "remittance_id": "REM-3102",
+          "ref": "NM-2231",
+          "code": "PA",
+          "description": "Spring promo week 2",
+          "product": "Original+Chocolate",
+          "units": 980,
+          "rate": 1.0,
+          "amount": 980.0,
+          "period_start": "2026-03-08",
+          "period_end": "2026-03-14",
+          "notice_date": null
+        }
+      ],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-charge-C4": {
+      "id": "ev-charge-C4",
+      "kind": "charge",
+      "label": "Charge C4 (NM-2236)",
+      "summary": "Northmart's remittance line NM-2236: Spring promo week 4.",
+      "quote": null,
+      "rows": [
+        {
+          "id": "C4",
+          "remittance_id": "REM-3102",
+          "ref": "NM-2236",
+          "code": "PA",
+          "description": "Spring promo week 4",
+          "product": "Original+Chocolate",
+          "units": 1540,
+          "rate": 1.0,
+          "amount": 1540.0,
+          "period_start": "2026-03-22",
+          "period_end": "2026-03-31",
+          "notice_date": null
+        }
+      ],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-charge-C5": {
+      "id": "ev-charge-C5",
+      "kind": "charge",
+      "label": "Charge C5 (NM-2237)",
+      "summary": "Northmart's remittance line NM-2237: Spring promo Mint.",
+      "quote": null,
+      "rows": [
+        {
+          "id": "C5",
+          "remittance_id": "REM-3102",
+          "ref": "NM-2237",
+          "code": "PA",
+          "description": "Spring promo Mint",
+          "product": "Mint",
+          "units": 1000,
+          "rate": 1.0,
+          "amount": 1000.0,
+          "period_start": "2026-03-01",
+          "period_end": "2026-03-31",
+          "notice_date": null
+        }
+      ],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-deal-3.1": {
+      "id": "ev-deal-3.1",
+      "kind": "clause",
+      "label": "§3.1 rate and products",
+      "summary": "The deal pays $1.00 a bar on Original and Chocolate sold March 1 to 31.",
+      "quote": {
+        "doc_id": "spring-promo",
+        "text": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
+        "char_start": 934,
+        "char_end": 1079,
+        "context_before": "3.1 ",
+        "context_after": ""
+      },
+      "rows": [],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-deal-3.2": {
+      "id": "ev-deal-3.2",
+      "kind": "clause",
+      "label": "§3.2 cap",
+      "summary": "The promo covers at most 5,000 bars in total.",
+      "quote": {
+        "doc_id": "spring-promo",
+        "text": "The promotional allowance applies to a maximum of 5,000 units in total.",
+        "char_start": 1085,
+        "char_end": 1156,
+        "context_before": "3.2 ",
+        "context_after": ""
+      },
+      "rows": [],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-deal-4.2": {
+      "id": "ev-deal-4.2",
+      "kind": "clause",
+      "label": "§4.2 claim once",
+      "summary": "A bar can be claimed only once.",
+      "quote": {
+        "doc_id": "spring-promo",
+        "text": "A unit may be claimed only once.",
+        "char_start": 1451,
+        "char_end": 1483,
+        "context_before": "4.1 Each deduction must be supported by store sales data for the period claimed.\n4.2 ",
+        "context_after": " Deductions already paid or credited may not be taken again.\n4.3 Supplier may dispute any deduction within 60 days of the remittance date by written notice to\ndeductions@northmart.example."
+      },
+      "rows": [],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-payment-NM-2178": {
+      "id": "ev-payment-NM-2178",
+      "kind": "prior_payment",
+      "label": "Paid Mar 14 (NM-2178)",
+      "summary": "Northmart already took $980 for week 2 on Mar 14.",
+      "quote": null,
+      "rows": [
+        {
+          "ref": "NM-2178",
+          "paid_on": "2026-03-14",
+          "promo_id": "SPRING-26",
+          "product": "Original+Chocolate",
+          "period_start": "2026-03-08",
+          "period_end": "2026-03-14",
+          "units": 980,
+          "amount": 980.0
+        }
+      ],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-sales-mint": {
+      "id": "ev-sales-mint",
+      "kind": "sales",
+      "label": "Mint sales",
+      "summary": "1,000 Mint bars sold on promo in March.",
+      "quote": null,
+      "rows": [
+        {
+          "week_start": "2026-03-01",
+          "week_end": "2026-03-07",
+          "product": "Peak Bar Mint",
+          "promo_units": 250,
+          "total_units": 300
+        },
+        {
+          "week_start": "2026-03-08",
+          "week_end": "2026-03-14",
+          "product": "Peak Bar Mint",
+          "promo_units": 250,
+          "total_units": 290
+        },
+        {
+          "week_start": "2026-03-15",
+          "week_end": "2026-03-21",
+          "product": "Peak Bar Mint",
+          "promo_units": 250,
+          "total_units": 310
+        },
+        {
+          "week_start": "2026-03-22",
+          "week_end": "2026-03-31",
+          "product": "Peak Bar Mint",
+          "promo_units": 250,
+          "total_units": 320
+        }
+      ],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-sales-w1": {
+      "id": "ev-sales-w1",
+      "kind": "sales",
+      "label": "Week 1 sales",
+      "summary": "1,200 promoted bars sold Mar 1 to 7.",
+      "quote": null,
+      "rows": [
+        {
+          "week_start": "2026-03-01",
+          "week_end": "2026-03-07",
+          "product": "Peak Bar Original",
+          "promo_units": 700,
+          "total_units": 820
+        },
+        {
+          "week_start": "2026-03-01",
+          "week_end": "2026-03-07",
+          "product": "Peak Bar Chocolate",
+          "promo_units": 500,
+          "total_units": 590
+        }
+      ],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-sales-w2": {
+      "id": "ev-sales-w2",
+      "kind": "sales",
+      "label": "Week 2 sales",
+      "summary": "980 promoted bars sold Mar 8 to 14.",
+      "quote": null,
+      "rows": [
+        {
+          "week_start": "2026-03-08",
+          "week_end": "2026-03-14",
+          "product": "Peak Bar Original",
+          "promo_units": 540,
+          "total_units": 650
+        },
+        {
+          "week_start": "2026-03-08",
+          "week_end": "2026-03-14",
+          "product": "Peak Bar Chocolate",
+          "promo_units": 440,
+          "total_units": 520
+        }
+      ],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-sales-w3": {
+      "id": "ev-sales-w3",
+      "kind": "sales",
+      "label": "Week 3 sales",
+      "summary": "2,820 promoted bars sold Mar 15 to 21; the running total reaches the 5,000 cap.",
+      "quote": null,
+      "rows": [
+        {
+          "week_start": "2026-03-15",
+          "week_end": "2026-03-21",
+          "product": "Peak Bar Original",
+          "promo_units": 1600,
+          "total_units": 1780
+        },
+        {
+          "week_start": "2026-03-15",
+          "week_end": "2026-03-21",
+          "product": "Peak Bar Chocolate",
+          "promo_units": 1220,
+          "total_units": 1370
+        }
+      ],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    },
+    "ev-sales-w4": {
+      "id": "ev-sales-w4",
+      "kind": "sales",
+      "label": "Week 4 sales",
+      "summary": "1,540 promoted bars sold Mar 22 to 31, all after the cap.",
+      "quote": null,
+      "rows": [
+        {
+          "week_start": "2026-03-22",
+          "week_end": "2026-03-31",
+          "product": "Peak Bar Original",
+          "promo_units": 880,
+          "total_units": 1010
+        },
+        {
+          "week_start": "2026-03-22",
+          "week_end": "2026-03-31",
+          "product": "Peak Bar Chocolate",
+          "promo_units": 660,
+          "total_units": 760
+        }
+      ],
+      "sender": null,
+      "approved_sender": null,
+      "sent_at": null,
+      "rule_id": null,
+      "approval_id": null,
+      "person": null
+    }
+  }
+}

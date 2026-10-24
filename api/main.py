@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import audit, demo, eval, portal, runs, scenario, webhooks
+from api.routes import approvals, audit, demo, eval, portal, runs, scenario, webhooks
 
 load_dotenv()
 
@@ -18,7 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (runs, portal, webhooks, scenario, eval, audit, demo):
+for r in (runs, portal, approvals, webhooks, scenario, eval, audit, demo):
     app.include_router(r.router)
 
 

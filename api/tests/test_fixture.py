@@ -40,7 +40,7 @@ def test_web_fixtures_are_up_to_date():
         assert (fixtures.WEB_FIXTURES / name).read_text() == text, f"{name} is stale: run python -m api.stubs.fixtures"
 
 
-@pytest.mark.parametrize("name", ["run-events.json", "april-events.json"])
+@pytest.mark.parametrize("name", ["run-events.json", "refusal-events.json", "april-events.json"])
 def test_events_are_ordered(name):
     run = _load(name)
     assert [e.id for e in run.events] == list(range(1, len(run.events) + 1))
@@ -95,7 +95,7 @@ def test_dispute_and_books(march):
     assert ids["approved"] < ids[memo.id]
 
 
-@pytest.mark.parametrize("name", ["run-events.json", "april-events.json"])
+@pytest.mark.parametrize("name", ["run-events.json", "refusal-events.json", "amendment-events.json", "april-events.json"])
 def test_every_evidence_id_resolves(name):
     run = _load(name)
     refs = set()
@@ -179,3 +179,65 @@ def test_rule_card_data_on_charges(march, april):
 def test_remittance_has_received_at(march):
     rem = march.events[0].data.remittance
     assert rem.received_at is not None and rem.received_at <= march.events[0].at
+
+
+def test_refusal_posts_nothing_and_keeps_totals(march):
+    refused = _load("refusal-events.json")
+    approvals = [e.data for e in refused.events if e.type == "approval"]
+    assert [a.status for a in approvals] == ["pending", "refused"]
+    assert approvals[-1].note and approvals[-1].approver_role == "controller" and approvals[-1].decided_at
+    assert not [e for e in refused.events if e.type == "ledger_post"]
+    totals = [e.data for e in refused.events if e.type == "totals"]
+    assert totals[-1] == [e.data for e in march.events if e.type == "totals"][-1]
+    assert _final_decisions(refused) == _final_decisions(march)
+
+
+def test_amendment_continues_the_march_run(march):
+    amended = _load("amendment-events.json")
+    assert amended.run_id == march.run_id and {e.run_id for e in amended.events} == {march.run_id}
+    assert [e.id for e in amended.events] == list(range(march.events[-1].id + 1, march.events[-1].id + 1 + len(amended.events)))
+    ats = [e.at for e in amended.events]
+    assert ats == sorted(ats) and ats[0] > march.events[-1].at
+    assert amended.events[-1].type == "run" and amended.events[-1].data.status == "finished"
+
+
+def test_amendment_concession_numbers(march):
+    amended = _load("amendment-events.json")
+    attach = next(e.data for e in amended.events if e.type == "portal_message")
+    assert attach.from_party == "northmart" and attach.attachment_doc_id == "amendment-1"
+    assert attach.classification == "new_document"
+    c4 = _final_decisions(amended)["C4"]
+    assert (c4.decision, c4.disputed, c4.accepted) == ("split", Decimal(540), Decimal(1000))
+    t = [e.data for e in amended.events if e.type == "totals"][-1]
+    assert (t.disputed, t.accepted, t.waiting, t.undecided, t.questions) == (Decimal(3120), Decimal(3730), 0, 0, 1)
+    assert t.taken == t.disputed + t.accepted == Decimal(6850)
+    dispute = next(e.data for e in amended.events if e.type == "dispute")
+    assert dispute.total == Decimal(3120) == sum(ln.amount for ln in dispute.lines)
+    assert {ln.charge_id: ln.amount for ln in dispute.lines}["C4"] == Decimal(540)
+    reply = [e.data for e in amended.events if e.type == "portal_message"][-1]
+    assert reply.from_party == "clawback" and "$1,000" in reply.text and "$540" in reply.text
+    # the other five decisions are untouched
+    assert set(_final_decisions(amended)) == {"C4"}
+
+
+def test_amendment_amounts_match_engine():
+    from api.engine.allowed import compute_allowed
+    from api.engine.tests import scenario as s
+
+    a = compute_allowed(s.march_charges()["C4"], s.spring_terms() + [s.amendment_1()], s.store_sales(), s.prior_payments())
+    f = _load("amendment-events.json").charges["C4"].finding
+    assert (f.expected, f.taken, f.delta) == (a.allowed, a.taken, a.delta) == (Decimal(1000), Decimal(1540), Decimal(540))
+
+
+@pytest.mark.parametrize("ev_id", [e.id for e in fixtures.EVIDENCE.values() if e.quote])
+def test_quote_context_is_its_paragraph(ev_id):
+    q = fixtures.EVIDENCE[ev_id].quote
+    text = (DATA / fixtures.QUOTE_SOURCES[q.doc_id]).read_text()
+    assert text[q.char_start - len(q.context_before):q.char_start] == q.context_before
+    assert text[q.char_end:q.char_end + len(q.context_after)] == q.context_after
+    assert "\n\n" not in q.context_before + q.context_after
+    para = q.context_before + text[q.char_start:q.char_end] + q.context_after
+    start = q.char_start - len(q.context_before)
+    assert start == 0 or text[start - 2:start] == "\n\n"  # starts at the paragraph's start
+    end = start + len(para)
+    assert end == len(text.rstrip("\n")) or text[end:end + 2] == "\n\n"  # ends at the paragraph's end
