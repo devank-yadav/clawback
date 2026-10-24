@@ -4,13 +4,16 @@
 // A live run takes tens of seconds (every answer is generated), so this keeps it from ever looking frozen.
 
 import { useState } from 'react'
-import { Check, CircleAlert, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { clock } from '@/lib/format'
 import type { Account } from '@/lib/types'
 import type { RunState } from '@/lib/useRunEvents'
 import type { WorkspaceView } from '@/lib/workspace'
+import { firstName } from '@/lib/accounts'
+import { Meter } from '@/components/flow/parts'
+import { StageRail } from '@/components/flow/StageRail'
+import { buildStages } from '@/components/flow/stages'
 
-type StepState = 'done' | 'active' | 'todo' | 'failed'
 
 const ACTOR: Record<string, string> = {
   system: 'Clawback', reader: 'Deal readers', investigator: 'Investigator', gate: 'Decision rules', negotiator: 'Negotiator',
@@ -23,31 +26,25 @@ export function RunProgress({ account, state, ws }: { account: Account; state: R
   if (!run) return null
   const failed = run.status === 'failed'
   const working = run.status === 'started' && !failed
-  const total = ws.remittance?.charge_count ?? ws.charges.length
-  const decided = ws.charges.filter((c) => c.status !== 'Reviewing').length
-  const anyFinding = Object.keys(state.findings).length > 0 || decided > 0
-  const disputed = (ws.totals?.disputed ?? 0) > 0
-  const filed = state.dispute && state.dispute.status !== 'draft'
-  const people = ws.stage === 'owner' ? `Waiting on ${account.brand.owner.name}` : ws.stage === 'controller' ? `Waiting on ${account.brand.controller.name}` : ws.stage === 'posted' ? 'Approved' : ws.stage === 'refused' ? 'Entry refused' : 'People approve'
 
-  const steps: { label: string; state: StepState }[] = [
-    { label: `${account.distributor.name}’s payment received`, state: 'done' },
-    { label: 'Reading the deal and the emails', state: anyFinding ? 'done' : failed ? 'failed' : 'active' },
-    { label: `Checking each charge · ${decided} of ${total}`, state: ws.reviewed ? 'done' : !anyFinding ? 'todo' : failed ? 'failed' : 'active' },
-    ...(disputed || filed ? [{ label: filed ? `Dispute ${state.dispute!.id} filed` : 'Filing the dispute', state: (filed ? 'done' : ws.reviewed ? (failed ? 'failed' : 'active') : 'todo') as StepState }] : []),
-    { label: people, state: ws.stage === 'posted' || ws.stage === 'refused' ? 'done' : ws.stage === 'owner' || ws.stage === 'controller' ? 'active' : 'todo' },
-  ]
 
   const feed = all ? state.feed : state.feed.slice(-6)
+  const cast = { distributor: account.distributor.name, owner: firstName(account.brand.owner.name), controller: firstName(account.brand.controller.name) }
   return (
     <section className={`surface run-progress ${working ? 'working' : ''}`} aria-label="Analysis progress">
       <div className="progress-head">
         <h2>{failed ? 'The analysis stopped' : working ? 'Working on it' : ws.stage === 'posted' || ws.stage === 'refused' ? 'Analysis complete' : 'Analysis paused for a person'}</h2>
         {working && <span className="working-pill"><Loader2 className="spin" /> Live</span>}
       </div>
-      <ol className="progress-steps">
-        {steps.map((s) => <li key={s.label} className={s.state}><span className="step-mark" aria-hidden>{s.state === 'done' ? <Check /> : s.state === 'failed' ? <CircleAlert /> : s.state === 'active' ? <Loader2 className="spin" /> : null}</span>{s.label}<span className="sr-only"> · {s.state}</span></li>)}
-      </ol>
+      {/* The agents' flow's own meters and stage rail, from the same events: one app, one picture of a run. */}
+      <div className="ws-run">
+        <div className="fl-meters">
+          <Meter label="Disputing, with proof" value={ws.totals?.disputed ?? 0} tone="dispute" />
+          <Meter label="Fair, accepted" value={ws.totals?.accepted ?? 0} tone="fair" />
+          <Meter label={`Waiting on ${ws.stage === 'controller' ? cast.controller : cast.owner}`} value={(ws.totals?.waiting ?? 0) + (ws.stage === 'controller' ? ws.approval?.amount ?? 0 : 0)} tone="wait" />
+        </div>
+        <StageRail stages={buildStages(state, ws, cast, false)} compact />
+      </div>
       {state.feed.length > 0 && (
         <>
           <ol className="activity" aria-live="polite" aria-label="Activity">

@@ -107,7 +107,8 @@ function Workspace({ account, accounts, view }: { account: Account; accounts: Ac
           <>
             <PaymentStrip account={account} ws={ws} awaitingPayment={awaitingPayment} />
             {value && !awaitingPayment && <ValueStrip value={value} />}
-            <Summary ws={ws} compact />
+            {/* With a run, the flow's meters inside RunProgress show these totals; without one, the summary does. */}
+            {!state.run && <Summary ws={ws} compact />}
             <RunProgress account={account} state={state} ws={ws} />
             <div className="payment-workspace">
               <section className="surface charge-main"><div className="list-heading"><div><h2>Charges</h2><p>{awaitingPayment ? `Waiting for ${distributor}’s payment.` : 'Select a charge to see its evidence and how it was decided.'}</p></div></div><ChargeList charges={ws.charges} selected={selected?.id} onSelect={(charge) => setSelectedId(charge.id)} filter={filter} onFilterChange={setFilter} waiting={awaitingPayment} pending={pendingCharges} /><div className="table-footer"><ShieldCheck /> {ws.disputeId ? <>{ws.disputeLabel} · <a href={withAccount('/portal', account.id, { dispute: ws.disputeId })} target="_blank" rel="noreferrer">Open on {account.distributor.portal_name}</a><PacketLink disputeId={ws.disputeId} /></> : ws.disputeLabel}</div></section>

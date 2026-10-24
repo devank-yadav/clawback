@@ -31,8 +31,11 @@ from dispute / question / approval / ledger_post. `?run=latest` opens the last r
 Figma console) · `/portal?account=…` (the distributor's own look, from the account's colors).
 
 ## Workspace screens (current visual baseline)
-`/workspace` is the v0 workspace in `app/(workspace)/` and `components/workspace/`. Keep `workspace.css` as exported;
-the multi-account additions live in `app.css`. Read web/README.md before changing data flow.
+`/workspace` is the v0 workspace in `app/(workspace)/` and `components/workspace/`, drawn in the agents' flow's design
+language: one app. Its layout loads console.css (tokens) and flow.css (parts) and ends with `unify.css` (the flow's top
+bar instead of the sidebar, its type, pills and buttons). workspace.css and app.css keep their structure, with every
+light color mapped to the console tokens. The shared nav is `components/shell/nav.ts`; a run shows the flow's
+`StageRail` and meters in the workspace too. New screens use the console tokens, never new light colors.
 
 ## Design tokens from the first prototype (the earlier board is gone; kept for reference)
 - Fonts: Archivo (headings, 600/800), Source Sans 3 (text), JetBrains Mono (every number, tabular figures).

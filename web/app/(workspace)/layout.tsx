@@ -1,10 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./base.css";
 import "./workspace.css";
 import "./app.css";
+import "../(console)/console.css";
+import "../(console)/flow.css";
+import "./unify.css";
 
-const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope", display: "swap" });
+// One app with the agents' flow at `/`: the same tokens (console.css), the same parts (flow.css) and the same type.
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
   title: "Clawback · Deductions, checked against the deal",
@@ -12,14 +16,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  colorScheme: "light",
-  themeColor: "#fafaf9",
+  colorScheme: "dark",
+  themeColor: "#16171f",
 };
 
 export default function WorkspaceLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="light">
-      <body className={`${manrope.variable} antialiased`}>{children}</body>
+    <html lang="en" className="dark">
+      <body className={`${inter.variable} antialiased`}>{children}</body>
     </html>
   );
 }

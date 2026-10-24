@@ -4,13 +4,14 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
-  CalendarClock, ChartColumn, Check, ChevronDown, ClipboardCheck, CornerUpLeft, ExternalLink, FileUp, FlaskConical, Home, Info,
-  Layers3, LogIn, LogOut, PenLine, ReceiptText, RotateCcw, ScrollText, X,
+  CalendarClock, ChartColumn, Check, ChevronDown, ClipboardCheck, ExternalLink, FileUp, FlaskConical, Home, Info,
+  Layers3, LogIn, LogOut, PenLine, Play, ReceiptText, RotateCcw, ScrollText, X,
 } from 'lucide-react'
 import { inkOn, withAccount } from '@/lib/accounts'
 import { ApiError, resetWorkspace } from '@/lib/api'
 import { askAdminToken, askSignIn, signOut, useSession } from '@/lib/session'
 import type { Account } from '@/lib/types'
+import { Logo } from '@/components/console/ui'
 import SessionDialogs, { roleName } from './SessionDialogs'
 
 export type View = 'overview' | 'payments' | 'approvals' | 'rules'
@@ -104,7 +105,7 @@ export default function AppShell({ account, accounts, active, crumb, approvalsWa
     <div className="app-shell">
       <aside className="sidebar">
         <Link className="wordmark" href={withAccount('/', id)} aria-label="Clawback: watch the agents work">
-          <span className="brand-mark"><CornerUpLeft /></span>clawback<span className="wordmark-dot">.</span>
+          <Logo /> clawback
         </Link>
 
         <div className="workspace-wrap" ref={menuRef}>
@@ -138,6 +139,7 @@ export default function AppShell({ account, accounts, active, crumb, approvalsWa
 
         <span className="nav-label">Workspace</span>
         <nav aria-label="Workspace">
+          <Link href={withAccount('/', id)} className="nav-item is-run"><Play />Run</Link>
           {WORKSPACE.map(({ key, label, icon: Icon }) => (
             <Link key={key} href={withAccount('/workspace', id, key === 'overview' ? undefined : { view: key })} className={`nav-item ${active === key ? 'active' : ''}`} aria-current={active === key ? 'page' : undefined}>
               <Icon />{label}{key === 'approvals' && approvalsWaiting && <span className="nav-count" aria-label="1 waiting">1</span>}

@@ -10,6 +10,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
+import { NAV } from "@/components/shell/nav";
 import { ChargeDrawer } from "@/components/console/Review";
 import { useRun } from "@/components/console/RunProvider";
 import { Logo } from "@/components/console/ui";
@@ -107,11 +108,11 @@ function FlowFor() {
             {accounts.map((a) => <option key={a.id} value={a.id}>{a.brand.name} ← {a.distributor.name}</option>)}
           </select>
         )}
-        <nav aria-label="More">
-          <Link href={link("/workspace")}>Workspace</Link>
-          <Link href={link("/home")}>Console</Link>
+        <nav aria-label="Clawback">
+          {NAV.map((n) => (
+            <Link key={n.label} href={link(n.href, n.view && n.view !== "overview" ? { view: n.view } : undefined)} aria-current={n.href === "/" ? "page" : undefined}>{n.label}</Link>
+          ))}
           <a href={link("/portal")} target="_blank" rel="noreferrer">{cast.distributor} portal ↗</a>
-          <Link href={link("/audit")}>Audit</Link>
         </nav>
       </header>
 
