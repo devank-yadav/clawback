@@ -16,7 +16,7 @@ from api import pipeline
 from api import auth, drive, story
 from api.db import events as saved_events, state as saved_state
 from api.integrations import qbo, qbo_source
-from api.routes import approvals, portal
+from api.routes import approvals, payments, portal
 
 router = APIRouter(tags=["demo"])
 
@@ -31,6 +31,7 @@ def reset(authorization: str | None = Header(default=None)) -> dict:
     except Exception as e:  # noqa: BLE001 - a QuickBooks failure still resets the demo; a second reset finishes the job
         undone, error = [], f"{type(e).__name__}: {e}"
     portal.reset()
+    payments.reset()  # and the payments sent from a portal that waited for "Run the agents"
     approvals.reset()
     pipeline.reset()  # live runs, open questions and saved rules
     auth.reset()  # and the per-IP limits on live runs

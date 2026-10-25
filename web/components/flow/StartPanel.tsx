@@ -1,19 +1,54 @@
 "use client";
 
-// The first screen: one place to drop the payment advice the distributor sent (PDF, CSV or pasted text), or the
-// sample payment. A dropped file is read by the Payment reader (POST /accounts/{id}/remittance); if its lines add up,
-// the run starts on its own (POST …/remittance/run). Nothing here computes money.
+// The first screen, saying what is true right now: payments received and waiting for "Run the agents" (sent from a
+// distributor's portal), a run going on for another distributor, or no new payment (then "Check for new payments").
+// Also one place to drop the payment advice the distributor sent (PDF, CSV or pasted text): the Payment reader reads
+// it (POST /accounts/{id}/remittance) and, if its lines add up, the run starts (POST …/remittance/run). Nothing here
+// computes money.
 
-import { useState, type DragEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState, type DragEvent } from "react";
+import { Play } from "lucide-react";
 import { useRun } from "@/components/console/RunProvider";
 import { readRemittance, runRemittance } from "@/components/upload/api";
+import { withAccount } from "@/lib/accounts";
+import * as api from "@/lib/api";
 import { money } from "@/lib/format";
+import { useFetched } from "@/lib/useFetched";
 import { PageHeader } from "@/components/ui/kit";
 import CheckPayments from "@/components/app/CheckPayments";
 import { AgentRoster } from "./AgentRoster";
 
+const ago = (iso: string) => {
+  const s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000));
+  return s < 60 ? "just now" : s < 3600 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} h ago`;
+};
+
+/** What arrives while this screen is open: payments waiting for "Run the agents" and runs going on elsewhere, read
+ * again every 4 seconds. */
+function useArrivals() {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setTick((n) => n + 1), 4_000);
+    return () => window.clearInterval(t);
+  }, []);
+  const load = useCallback(() => Promise.all([
+    api.fetchPendingPayments().catch(() => [] as api.PendingPayment[]),
+    api.fetchSuppliers().catch(() => []),
+  ]), []);
+  const fetched = useFetched(load, String(tick));
+  const pending = fetched.data?.[0] ?? [];
+  const checking = (fetched.data?.[1] ?? []).flatMap((s) => s.distributors).filter((d) => d.tracked && d.status === "checking");
+  return { pending, checking, loaded: !!fetched.data };
+}
+
 export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpenLast: () => void }) {
   const { account, cast, state, view, starting, limited, follow, error } = useRun();
+  const router = useRouter();
+  const { pending, checking } = useArrivals();
+  const elsewhere = checking.filter((d) => d.account_id !== account?.id);
+  const [runningId, setRunningId] = useState<string | null>(null);
   const [over, setOver] = useState(false);
   const [reading, setReading] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -43,6 +78,20 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
     }
   }
 
+  /** "Run the agents" on a received payment: its run starts and this screen opens on it. */
+  async function runPayment(p: api.PendingPayment) {
+    if (runningId) return;
+    setRunningId(p.id);
+    setProblem(null);
+    try {
+      const r = await api.runPendingPayment(p.id);
+      router.push(withAccount("/", p.account_id, r.run_id ? { run: r.run_id } : undefined));
+    } catch (e) {
+      setProblem(`The agents couldn’t start on ${p.distributor}’s payment (${(e as Error).message}).`);
+      setRunningId(null);
+    }
+  }
+
   function drop(e: DragEvent) {
     e.preventDefault();
     setOver(false);
@@ -56,13 +105,32 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
       <section className="fl-start" aria-label="Start a payment check">
         <PageHeader
           title="Agents"
-          line={<>No payment being checked right now. Payments from {cast.distributor} arrive by themselves; the agents start as soon as one does. <button className="ph-link" onClick={() => setPasting((v) => !v)} disabled={busy} aria-expanded={pasting}>Upload a remittance manually</button></>}
-          actions={!reading && (
-            <>
-              <CheckPayments account={account?.id} />
-            </>
-          )}
+          line={<>
+            {pending.length > 0
+              ? <>{pending.length} payment{pending.length === 1 ? "" : "s"} received. Run the agents to check {pending.length === 1 ? "it" : "them"} against the deal.</>
+              : elsewhere.length > 0
+                ? <>The agents are checking {elsewhere.map((d) => `${d.distributor.name}’s`).join(" and ")} payment now. <Link className="ph-link" href={withAccount("/", elsewhere[0].account_id, elsewhere[0].latest_run_id ? { run: elsewhere[0].latest_run_id } : undefined)}>Watch it</Link></>
+                : <>No new payment from {cast.distributor}. New payments show up here; once the bank or QuickBooks is connected, they start the agents on their own.</>}
+            {" "}<button className="ph-link" onClick={() => setPasting((v) => !v)} disabled={busy} aria-expanded={pasting}>Upload a remittance manually</button>
+          </>}
+          actions={!reading && (pending.length > 0
+            ? <button className="cx-btn is-blue fl-runbtn" onClick={() => void runPayment(pending[0])} disabled={!!runningId}><Play aria-hidden="true" />{runningId === pending[0].id ? "Starting…" : "Run the agents"}</button>
+            : <CheckPayments account={account?.id} />)}
         />
+        {pending.length > 0 && (
+          <ul className="fl-received" aria-label="Payments received">
+            {pending.map((p, i) => (
+              <li key={p.id}>
+                <span className="fl-received-chip">Payment received</span>
+                <span className="fl-received-text">
+                  <strong>{p.distributor} paid {money(p.received)} of {money(p.expected)} on {p.invoice_id}</strong>
+                  <small>Sent from {p.distributor}’s portal · {ago(p.received_at)} · the agents haven’t started</small>
+                </span>
+                {i > 0 && <button className="cx-btn is-ghost" onClick={() => void runPayment(p)} disabled={!!runningId}>{runningId === p.id ? "Starting…" : "Run the agents"}</button>}
+              </li>
+            ))}
+          </ul>
+        )}
         {reading && (
           <div className="fl-drop is-busy">
             <span className="fl-reading" aria-live="polite">
@@ -112,7 +180,7 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
           </div>
         ) : null)}
 
-        <AgentRoster account={account?.id} working={starting || !!reading} />
+        <AgentRoster account={account?.id} working={starting || !!reading || !!runningId || elsewhere.length > 0} received={pending[0]?.distributor ?? null} />
 
       </section>
     </div>

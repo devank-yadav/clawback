@@ -46,6 +46,49 @@ export default function PortalApp() {
   return <Portal key={`${account.id}:${given}`} account={account} given={given} />;
 }
 
+/** The distributor pays its invoice from here. The payment shows on the supplier's Agents page as received; their
+ * agents start only when they press "Run the agents" (POST /portal/payments/{account}). */
+function PayCard({ account }: { account: Account }) {
+  const inv = account.invoice;
+  const [sent, setSent] = useState<api.PendingPayment | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  async function pay() {
+    setBusy(true);
+    setProblem(null);
+    try {
+      setSent(await api.sendPortalPayment(account.id));
+    } catch (e) {
+      setProblem(api.unreachable(e as Error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="p-card" aria-labelledby="pay-h">
+      <div className="p-head">
+        <div>
+          <small>Invoice from {account.brand.name}</small>
+          <h2 id="pay-h">{inv.id}</h2>
+          <p>Invoiced {dollars(inv.expected)}</p>
+        </div>
+        <div className="p-total"><small>Payment</small><strong>{dollars(inv.received)}</strong></div>
+      </div>
+      <div className="p-row">
+        <p className="p-muted" role="status">
+          {sent
+            ? `Sent ${when(sent.received_at)}. ${account.brand.name} sees it as received; their agents start when they run them.`
+            : `Pays ${dollars(inv.received)} of the ${dollars(inv.expected)} invoiced; the rest is taken as deductions.`}
+        </p>
+        <button type="button" className="p-send" onClick={() => void pay()} disabled={busy || !!sent}>{sent ? "Payment sent" : busy ? "Sending…" : "Send payment"}</button>
+      </div>
+      {problem && <p className="p-error" role="alert">{problem}</p>}
+    </section>
+  );
+}
+
 /** The distributor's side of a dispute: the lines Clawback filed, the thread, and a reply box the judge types into. */
 function Portal({ account, given }: { account: Account; given: string | null }) {
   const d = account.distributor;
@@ -137,6 +180,7 @@ function Portal({ account, given }: { account: Account; given: string | null }) 
       </header>
 
       <main className="p-main">
+        <PayCard account={account} />
         <section className="p-card" aria-labelledby="dispute-h">
           <div className="p-head">
             <div>

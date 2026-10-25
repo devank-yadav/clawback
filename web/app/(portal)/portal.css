@@ -38,3 +38,5 @@ textarea,.p-limit input{width:100%;border:1px solid var(--line);border-radius:10
 .p-thread-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px 16px;flex-wrap:wrap;margin-bottom:12px}.p-thread-head h2{margin:0}
 .p-packet{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border:1px solid var(--brand);border-radius:10px;color:var(--brand-line);font-size:15px;font-weight:600;text-decoration:none}
 .p-packet:hover{background:var(--brand-soft)}.p-packet:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+/* the invoice the distributor pays from here (PayCard) */
+.p-head h2{margin:0;font-size:24px;font-weight:600}

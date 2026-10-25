@@ -21,7 +21,7 @@ import { NeedsYou, ReaderCard } from "./Spotlight";
 import { StageRail } from "./StageRail";
 import { StageHero } from "./StageHero";
 import { AgentTalk } from "./AgentTalk";
-import { AgentStrip } from "./AgentStrip";
+import { StageAgents } from "./AgentStrip";
 import { StartPanel } from "./StartPanel";
 import { buildStages, focusStage, type Stage, type StageKey } from "./stages";
 import { money } from "@/lib/format";
@@ -30,6 +30,7 @@ const noop = () => () => {};
 // The decisions that wait on the admin, in the order to take them: the question first (its answer can change the
 // memo), then the credit memo's approval, then the dispute to send. All of them show at once, never one at a time.
 const NEEDS: StageKey[] = ["owner", "approval", "file"];
+const stageAgents = (key: StageKey) => <StageAgents stage={key} />;
 /** ?run=latest opens the account's last run instead of the start screen. */
 function useOpenLatest() {
   return useSyncExternalStore(noop, () => !!new URLSearchParams(window.location.search).get("run"), () => false);
@@ -147,11 +148,11 @@ function FlowFor() {
               <Elapsed from={r?.received_at ?? state.feed[0]?.at ?? null} running={status === "started"} decidedIn={view.value?.seconds_to_decided ?? null} />
             )}
           </div>
-          {/* Top to bottom: the seven steps, the totals, then the charges with what's happening now beside them, all
-              above the fold; the agents and the full activity below. */}
+          {/* Top to bottom: the seven steps (each opens what its agents did), the totals, then the charges with what's
+              happening now beside them, all above the fold; the full activity below. */}
           <div className="bw-stage">
             <div className="bw-frame">
-              <StageRail stages={stages} compact />
+              <StageRail stages={stages} compact details={stageAgents} />
               <div className="fl-meters">
                 <Meter label="Disputing, with proof" value={t?.disputed ?? 0} tone="dispute" />
                 <Meter label="Fair, accepted" value={t?.accepted ?? 0} tone="fair" />
@@ -170,7 +171,6 @@ function FlowFor() {
             </div>
           </div>
           {status === "failed" && <div className="fl-problem" role="alert">The run stopped. {state.feed.filter((l) => l.level === "error").at(-1)?.text}</div>}
-          <AgentStrip state={state} view={view} owner={cast.owner} distributor={cast.distributor} />
           <Feed />
         </main>
       )}
@@ -178,7 +178,7 @@ function FlowFor() {
       {phase === "done" && (
         <main className="fl-main">
           <DonePanel onOpen={setDrawer} onNew={restart} onReplay={() => { setOpened(true); window.scrollTo({ top: 0 }); void replay(); }}
-            rail={<StageRail stages={stages} compact />} next={pending.length ? <NeedsYou stages={pending} /> : null} disputeInNext={pending.some((s) => s.key === "file")} failed={status === "failed"} />
+            rail={<StageRail stages={stages} compact details={stageAgents} />} next={pending.length ? <NeedsYou stages={pending} /> : null} disputeInNext={pending.some((s) => s.key === "file")} failed={status === "failed"} />
         </main>
       )}
 
