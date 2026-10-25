@@ -6,7 +6,7 @@ from fastapi import Depends, APIRouter, HTTPException
 
 from api import accounts, history, library, lookback as lookback_mod, overview as overview_mod, suppliers
 from api.contracts import (
-    AccountListItem, AccountOverview, Connection, ContractLibrary, DocumentText, Lookback, RunSummary, SavedDocument, SavedOverview, SavedRecords,
+    AccountListItem, AccountOverview, Connection, SupplierOverview, ContractLibrary, DocumentText, Lookback, RunSummary, SavedDocument, SavedOverview, SavedRecords,
 )
 from api.routes.runs import account_or_404, latest_run_id
 from api import tenancy
@@ -107,3 +107,12 @@ def list_connections(account: str | None = None, who: Caller = Depends(current_s
 def account_contract(account_id: str, who: Caller = Depends(current_supplier)) -> ContractLibrary:
     """The deal and what changes it, with the terms the agents read in the latest run highlighted. Read-only."""
     return library.library(account_or_404(account_id, who))
+
+
+@router.get("/overview", response_model=SupplierOverview)
+def supplier_overview(who: Caller = Depends(current_supplier)) -> SupplierOverview:
+    """The signed-in supplier across its tracked distributors (api/supplier_overview.py): totals, what needs you,
+    open disputes, recent activity. Every amount is the API's, from engine values."""
+    from api import supplier_overview as so
+
+    return so.overview(who)

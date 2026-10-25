@@ -38,8 +38,7 @@ def look(monkeypatch):
 
 # ---------------------------------------------------------------- Peak Bar: value, owner text, deadlines, packet
 
-SUMMARY = ("Clawback checked Northmart's 6 deductions: $4,120 being recovered, $1,530 fair, 1 question for you. "
-           "6-month check: $933 still claimable.")  # data/accounts/peak-bar/history/expected-lookback.csv
+SUMMARY = "Clawback checked Northmart's 6 deductions: $4,120 disputed, awaiting reply, $1,530 fair, 1 question for you."  # data/accounts/peak-bar/history/expected-lookback.csv
 
 
 def test_peak_bar_value_owner_text_and_file_by(client):

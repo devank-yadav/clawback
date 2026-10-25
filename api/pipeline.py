@@ -473,18 +473,12 @@ def dollars(amount: Decimal) -> str:
 
 def _tell_owner_summary(run: Run, value: RunValue) -> None:
     """One text to the owner once the gate has decided what it can, before anything waits on people. Numbers come
-    from the run's value and the account's lookback only; it's plain code, not an AI call."""
+    from the run's value only; it's plain code, not an AI call."""
     if run.owner_message or run.replaced_by:
         return
-    try:
-        claimable = lookback.run(run.account).totals["claimable_now"]
-    except Exception as e:  # noqa: BLE001 - a bad history file mustn't stop the run; the text says less instead
-        log.warning("lookback for %s failed: %s", run.account.id, e)
-        claimable = None
-    q = value.questions
-    text = (f"Clawback checked {run.distributor}'s {value.charges} deductions: {dollars(value.disputed)} being "
-            f"recovered, {dollars(value.accepted)} fair, {q} question{'' if q == 1 else 's'} for you."
-            + (f" 6-month check: {dollars(claimable)} still claimable." if claimable is not None else ""))
+    q = value.questions  # facts only: nothing is "recovered" until the distributor agrees or credits it
+    text = (f"Clawback checked {run.distributor}'s {value.charges} deductions: {dollars(value.disputed)} disputed, "
+            f"awaiting reply, {dollars(value.accepted)} fair, {q} question{'' if q == 1 else 's'} for you.")
     status = sms.send("owner", text)
     run.owner_message = OwnerMessage(id=f"MSG-{run.id}", run_id=run.id, account_id=run.account.id, text=text,
                                      channel="sms" if status == "sent" else "inbox", sent_at=_now())

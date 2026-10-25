@@ -1026,7 +1026,7 @@
       "at": "2026-10-24T10:31:02-07:00",
       "type": "log",
       "data": {
-        "text": "Texted Dana: \"Clawback checked Northmart's 6 deductions: $4,120 being recovered, $1,530 fair, 1 question for you. 6-month check: $0 still claimable.\"",
+        "text": "Texted Dana: \"Clawback checked Northmart's 6 deductions: $4,120 disputed, awaiting reply, $1,530 fair, 1 question for you.\"",
         "level": "info",
         "actor": "gate",
         "charge_id": null

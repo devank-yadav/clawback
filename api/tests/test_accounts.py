@@ -345,7 +345,7 @@ def test_overview_before_the_payment_arrives(api):
         {"month": "2026-06", "invoiced": 10000.0, "paid": 0.0, "deducted": 0.0, "recovered": 0.0}]
     assert o["kpis"] == {"invoiced_6m": 27000.0, "collected_6m": 16100.0, "deducted_6m": 900.0, "recovered_6m": 250.0,
                          "recovery_rate": 0.2778, "open_disputes": 1, "open_balance": 10300.0,
-                         "wrongly_taken_6m": 0.0, "lost_past_window": 0.0, "claimable_now": 0.0}
+                         "wrongly_taken_6m": 0.0, "lost_past_window": 0.0, "claimable_now": 0.0, "disputed_awaiting_reply": 0.0}
     assert o["deductions_by_type"] == [
         {"code": "PA", "label": "Promotional allowance", "count": 1, "amount": 400.0},
         {"code": "SH", "label": "Shortage", "count": 1, "amount": 300.0},
@@ -535,8 +535,8 @@ def test_texts_name_the_accounts_people(two_accounts):
     run, _ = oat_run(answer_owner=False)
     (question, summary) = sms.outbox[-2:]  # the question went out mid-gate, the run's summary after the gate
     assert question[0] == "owner" and question[1].startswith("Eastway took $300")
-    assert summary == ("owner", "Clawback checked Eastway's 3 deductions: $100 being recovered, $500 fair, 1 question "
-                                "for you. 6-month check: $0 still claimable.")
+    assert summary == ("owner", "Clawback checked Eastway's 3 deductions: $100 disputed, awaiting reply, $500 fair, "
+                                "1 question for you.")
     assert moss.Outcome().matches == ()
 
 
