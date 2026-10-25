@@ -35,7 +35,7 @@ export default function CheckPayments({ account }: { account: string | null | un
   return (
     <span className="ck">
       {note && <span className="ck-note" role="status">{note}</span>}
-      <button className="cx-btn" onClick={() => void check()} disabled={busy}>
+      <button className="cx-btn is-blue" onClick={() => void check()} disabled={busy}>
         <RefreshCw aria-hidden="true" className={busy ? "is-spinning" : undefined} />
         {busy ? "Checking…" : "Check for new payments"}
       </button>

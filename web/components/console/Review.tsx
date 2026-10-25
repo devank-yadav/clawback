@@ -6,6 +6,7 @@
 
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
+import { SlideOver } from "@/components/ui/SlideOver";
 import { money, shortDate } from "@/lib/format";
 import { useChargeDetail } from "@/lib/useChargeDetail";
 import type { ChargeView } from "@/lib/workspace";
@@ -209,6 +210,8 @@ export function OwnerDecision({ charge }: { charge: ChargeView }) {
   const choices = choicesFor(charge.code);
   const [own, setOwn] = useState("");
   const [saveRule, setSaveRule] = useState(true);
+  const [showDetails, setShowDetails] = useState(false);
+  const closeDetails = () => setShowDetails(false);
   const picked = choice === "own" ? (own.trim() ? { id: "own", label: own, text: own.trim() } : null) : choices.find((c) => c.id === choice) ?? null;
   const q = view.question!;
   const risk = q.risk ?? null;
@@ -260,12 +263,12 @@ export function OwnerDecision({ charge }: { charge: ChargeView }) {
         </label>
         <button className="cx-btn" disabled={!picked} title={picked ? undefined : "Choose an option first"} onClick={() => picked && answerQuestion(q.id, picked.text, saveRule)}>{saveRule ? "Save policy" : "Decide this charge"}</button>
       </div>
-      <details className="dc-details">
-        <summary aria-label="Details" />
-        <dl>
+      <button className="dc-more" onClick={() => setShowDetails(true)}>Show details</button>
+      <SlideOver open={showDetails} onClose={closeDetails} title={charge.title}>
+        <dl className="dc-detail-list">
           {details.map((d) => <div key={d.label}><dt>{d.label}</dt><dd>{d.value}</dd></div>)}
         </dl>
-      </details>
+      </SlideOver>
     </aside>
   );
 }

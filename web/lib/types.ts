@@ -534,7 +534,7 @@ export type TraceStep = {
 export type TraceSummary = Record<string, unknown>;
 
 // ---- Suppliers: one brand tracking many distributors (GET /suppliers)
-export type RelationshipStatus = "waiting_for_payment" | "checking" | "needs_you" | "settled" | "stopped";
+export type RelationshipStatus = "waiting_for_payment" | "checking" | "needs_you" | "dispute_open" | "settled" | "stopped";
 export type DistributorItem = {
   account_id: string;
   distributor: Account["distributor"];

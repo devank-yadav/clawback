@@ -15,6 +15,8 @@ import * as api from "@/lib/api";
 import { ApiError } from "@/lib/api";
 import type { DisputeEmail, PortalMessage } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
+import { motion } from "framer-motion";
+import { SlideOver } from "@/components/ui/SlideOver";
 
 const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
@@ -138,20 +140,77 @@ export function ReviewAndSend({ disputeId, runId, onSent }: { disputeId: string;
     }
   }
 
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const close = useCallback(() => { setOpen(false); setEditing(false); }, []);
+
   if (!shown) {
     return fetched.error
       ? <p className="dm-problems" role="alert"><AlertTriangle aria-hidden="true" /> {fetched.error}</p>
       : <p className="dm-loading" role="status">Drafting the email from the dispute lines…</p>;
   }
-  if (shown.status === "sent" || shown.status === "outbox") return <SentLine email={shown} />;
+  const done = shown.status === "sent" || shown.status === "outbox";
+  if (done && !open) return <SentLine email={shown} />;
   return (
     <>
       {shown.status === "failed" && <SentLine email={shown} />}
-      <EmailEditor key={`${shown.id}-${shown.subject}-${shown.body.length}`} email={shown} busy={busy} problem={problem}
-        sendLabel={`Send to ${shown.to}`}
-        onSend={(s, b) => void act(async () => (await api.sendDispute(disputeId, runId, s, b)).email, true)}
-        onSave={(s, b) => void act(() => api.saveDisputeEmail(disputeId, runId, s, b), false)} />
+      {!done && (
+        <div className="cm-ready">
+          <span className="cm-ready-text"><Mail aria-hidden="true" /><span><strong>{shown.subject}</strong><small>To {shown.to} · {shown.attachments.length} attachment{shown.attachments.length === 1 ? "" : "s"}{shown.problems.length ? " · needs a fix before it can go" : ""}</small></span></span>
+          <button className="cm-send is-glow" onClick={() => setOpen(true)}><Send aria-hidden="true" />Review and send</button>
+        </div>
+      )}
+      <SlideOver open={open} onClose={close} title={done ? "Sent" : "Review and send"} wide>
+        {done ? (
+          <motion.div className="cm-done" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 22 }}>
+            <motion.span className="cm-check" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 420, damping: 16, delay: 0.05 }}><Check aria-hidden="true" /></motion.span>
+            <h3>{shown.status === "sent" ? `Sent to ${shown.to}` : "Saved, not sent"}</h3>
+            <SentLine email={shown} />
+            <button className="cx-btn is-ghost" onClick={close}>Done</button>
+          </motion.div>
+        ) : editing ? (
+          <EmailEditor key={`${shown.id}-${shown.subject}-${shown.body.length}`} email={shown} busy={busy} problem={problem}
+            sendLabel={`Send to ${shown.to}`}
+            onSend={(s, b) => void act(async () => (await api.sendDispute(disputeId, runId, s, b)).email, true)}
+            onSave={(s, b) => void act(async () => { const next = await api.saveDisputeEmail(disputeId, runId, s, b); setEditing(false); return next; }, false)} />
+        ) : (
+          <Letter email={shown} problem={problem} busy={busy}
+            onEdit={() => setEditing(true)}
+            onSend={() => void act(async () => (await api.sendDispute(disputeId, runId, shown.subject, shown.body)).email, true)} />
+        )}
+      </SlideOver>
     </>
+  );
+}
+
+/** The email as a letter: letterhead, subject, the body typing in the first time, the attachments, one blue Send. */
+function Letter({ email, problem, busy, onEdit, onSend }: { email: DisputeEmail; problem: string | null; busy: boolean; onEdit: () => void; onSend: () => void }) {
+  const typing = useTypeIn(email.id, email.body);
+  return (
+    <div className="cm-letter-wrap">
+      <article className="cm-letter" aria-label="The email">
+        <header className="cm-head">
+          <dl>
+            <div><dt>From</dt><dd>{email.from_addr}</dd></div>
+            <div><dt>To</dt><dd>{email.to}</dd></div>
+            {email.reply_to && <div><dt>Replies to</dt><dd>{email.reply_to}</dd></div>}
+          </dl>
+          <h3>{email.subject}</h3>
+        </header>
+        <div className="cm-body" aria-busy={typing !== null}>{typing ?? email.body}{typing !== null && <span className="cm-caret" aria-hidden="true" />}</div>
+        {email.attachments.length > 0 && (
+          <ul className="dm-attachments" aria-label="Attachments">{email.attachments.map((a) => <li key={a}><Paperclip aria-hidden="true" />{a}</li>)}</ul>
+        )}
+      </article>
+      {(problem || email.problems.length > 0) && (
+        <div className="dm-problems" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>Fix this before it can go out</strong><ul>{problem && <li>{problem}</li>}{email.problems.map((p) => <li key={p}>{p}</li>)}</ul></div></div>
+      )}
+      <div className="cm-actions">
+        <span className="dm-writer">{WRITER[email.written_by]}</span>
+        <button className="cx-btn is-ghost" onClick={onEdit} disabled={busy}>Edit</button>
+        <button className="cm-send is-glow" onClick={onSend} disabled={busy || typing !== null}><Send aria-hidden="true" />{busy ? "Sending…" : `Send to ${email.to}`}</button>
+      </div>
+    </div>
   );
 }
 

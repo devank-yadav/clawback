@@ -6,10 +6,11 @@
 // Every amount is the API's: "recovered" counts only what evidence shows came back, and each piece links to it.
 
 import Link from "next/link";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AlertTriangle, ArrowRight, CircleAlert, Clock, MinusCircle } from "lucide-react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
-import TopBar from "@/components/shell/TopBar";
+import TopBar, { DistributorMark } from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
 import { PageHeader } from "@/components/ui/kit";
 import CheckPayments from "./CheckPayments";
@@ -29,6 +30,26 @@ function hrefOf(account: string, link: OverviewLink): string {
   return withAccount("/", account, link.run_id ? { run: link.run_id } : undefined);
 }
 
+/** An amount that counts up from zero when it first appears (whole dollars on the way, the exact figure at the end).
+ * Reduced motion: the figure, at once. */
+function Count({ value }: { value: number }) {
+  const [shown, setShown] = useState<number | null>(null);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    const t0 = performance.now();
+    const step = (t: number) => {
+      const k = Math.min(1, (t - t0) / 700);
+      const eased = 1 - (1 - k) ** 3;
+      setShown(k < 1 ? Math.round(value * eased) : null);
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <>{money(shown ?? value)}</>;
+}
+
 function Level({ level }: { level: NeedsYou["risk_level"] }) {
   if (level === "high") return <span className="dc-level is-high"><AlertTriangle aria-hidden="true" />High</span>;
   if (level === "medium") return <span className="dc-level is-medium"><CircleAlert aria-hidden="true" />Medium</span>;
@@ -44,8 +65,15 @@ function DaysLeft({ days }: { days: number | null }) {
 
 export default function Dashboard() {
   const { account } = useRun();
+  const still = useReducedMotion();
+  const [tick, setTick] = useState(0);
+  // Home looks again every 15 seconds, so an answered item leaves and a new reply arrives without a reload.
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((n) => n + 1), 15_000);
+    return () => window.clearInterval(id);
+  }, []);
   const load = useCallback(() => api.fetchCompanyOverview(), []);
-  const fetched = useFetched(load);
+  const fetched = useFetched(load, String(tick));
   const o = fetched.data;
   const t = o?.totals;
   const evidence = t?.evidence ?? [];
@@ -65,16 +93,20 @@ export default function Dashboard() {
           {o && o.needs_you.length === 0 && <p className="hm-empty">Nothing needs you. When a contract leaves a charge to your judgment, the question lands here.</p>}
           {o && o.needs_you.length > 0 && (
             <ol className="hm-queue">
-              {o.needs_you.map((n, i) => (
-                <li key={`${n.kind}-${n.account_id}-${n.link.run_id ?? ""}-${n.link.dispute_id ?? i}`}>
-                  <Link href={hrefOf(n.account_id, n.link)} className="hm-item">
-                    <Level level={n.risk_level} />
-                    <span className="hm-what"><strong>{n.title}</strong><small>{n.distributor}{n.since ? ` · waiting since ${when(n.since)}` : ""}</small></span>
-                    {n.amount != null && <span className="hm-amt">{money(n.amount)}</span>}
-                    <span className="hm-go">{ACTION[n.kind] ?? "Open"}<ArrowRight aria-hidden="true" /></span>
-                  </Link>
-                </li>
-              ))}
+              {/* An answered item leaves the queue with a short slide, so it's clear it's done. */}
+              <AnimatePresence initial={false}>
+                {o.needs_you.map((n, i) => (
+                  <motion.li key={`${n.kind}-${n.account_id}-${n.link.run_id ?? ""}-${n.link.dispute_id ?? i}`}
+                    initial={still ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={still ? { opacity: 0 } : { opacity: 0, x: 40 }} transition={{ duration: 0.25 }}>
+                    <Link href={hrefOf(n.account_id, n.link)} className="hm-item">
+                      <Level level={n.risk_level} />
+                      <span className="hm-what"><strong>{n.title}</strong><small>{n.distributor}{n.since ? ` · waiting since ${when(n.since)}` : ""}</small></span>
+                      {n.amount != null && <span className="hm-amt">{money(n.amount)}</span>}
+                      <span className="hm-go">{ACTION[n.kind] ?? "Open"}<ArrowRight aria-hidden="true" /></span>
+                    </Link>
+                  </motion.li>
+                ))}
+              </AnimatePresence>
             </ol>
           )}
         </section>
@@ -82,12 +114,12 @@ export default function Dashboard() {
         <section className="hm-block" aria-labelledby="hm-money">
           <h2 id="hm-money">Money at a glance</h2>
           <dl className="hm-money">
-            <div><dt>Taken from payments</dt><dd>{t ? money(t.taken) : dash}</dd></div>
-            <div><dt><i className="is-dispute" aria-hidden="true" />Disputed, awaiting reply</dt><dd>{t ? money(t.disputed_awaiting_reply) : dash}</dd></div>
-            <div><dt><i className="is-fair" aria-hidden="true" />Fair, accepted</dt><dd>{t ? money(t.fair) : dash}</dd></div>
+            <div><dt>Taken from payments</dt><dd>{t ? <Count value={t.taken} /> : dash}</dd></div>
+            <div><dt><i className="is-dispute" aria-hidden="true" />Disputed, awaiting reply</dt><dd>{t ? <Count value={t.disputed_awaiting_reply} /> : dash}</dd></div>
+            <div><dt><i className="is-fair" aria-hidden="true" />Fair, accepted</dt><dd>{t ? <Count value={t.fair} /> : dash}</dd></div>
             <div>
               <dt>Recovered</dt>
-              <dd>{t ? money(t.recovered) : dash}</dd>
+              <dd>{t ? <Count value={t.recovered} /> : dash}</dd>
               {t && (evidence.length === 0
                 ? <small>No reply or credit yet</small>
                 : <small>
@@ -109,20 +141,19 @@ export default function Dashboard() {
           <h2 id="hm-disputes">Open disputes</h2>
           {o && o.open_disputes.length === 0 && <p className="hm-empty">No open disputes.</p>}
           {o && o.open_disputes.length > 0 && (
-            <table className="hm-table">
-              <thead><tr><th scope="col">Distributor</th><th scope="col">Dispute</th><th scope="col" className="num">Amount</th><th scope="col">Status</th><th scope="col">Days left to file</th></tr></thead>
-              <tbody>
-                {o.open_disputes.map((d) => (
-                  <tr key={`${d.run_id}-${d.dispute_id}`}>
-                    <td data-label="Distributor">{d.distributor}</td>
-                    <td data-label="Dispute"><Link href={withAccount("/disputes", d.account_id, { id: d.dispute_id, run: d.run_id })}>{d.dispute_id}</Link></td>
-                    <td data-label="Amount" className="num">{money(d.amount)}</td>
-                    <td data-label="Status">{STATUS[d.status] ?? d.status}</td>
-                    <td data-label="Days left to file"><DaysLeft days={d.days_left} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <ul className="hm-rows">
+              {o.open_disputes.map((d) => (
+                <li key={`${d.run_id}-${d.dispute_id}`}>
+                  <Link href={withAccount("/disputes", d.account_id, { id: d.dispute_id, run: d.run_id })} className="hm-row">
+                    <DistributorMark name={d.distributor} size={30} />
+                    <span className="hm-what"><strong>{d.distributor} · {d.dispute_id}</strong><small>{d.file_by ? `File by ${new Date(`${d.file_by}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "Dispute window not known"}</small></span>
+                    <span className={`hm-chip ${d.status === "ready_to_send" || d.status === "draft" ? "is-ready" : ""}`}>{STATUS[d.status] ?? d.status}</span>
+                    <DaysLeft days={d.days_left} />
+                    <span className="hm-amt">{money(d.amount)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           )}
         </section>
 

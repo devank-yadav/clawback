@@ -6,7 +6,8 @@
 //  done:  this tab's run finished and nobody is waiting.
 // A run started anywhere else (the Nessie deposit, another device) switches the page to it by itself.
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { SlideOver } from "@/components/ui/SlideOver";
 import { useRouter, useSearchParams } from "next/navigation";
 import { withAccount } from "@/lib/accounts";
 import SessionDialogs from "@/components/shell/SessionDialogs";
@@ -19,6 +20,7 @@ import { Elapsed, Meter, ACTOR } from "./parts";
 import { ReaderCard, Spotlight } from "./Spotlight";
 import { StageRail } from "./StageRail";
 import { StageHero } from "./StageHero";
+import { AgentTalk } from "./AgentTalk";
 import { AgentStrip } from "./AgentStrip";
 import { StartPanel } from "./StartPanel";
 import { buildStages, focusStage } from "./stages";
@@ -74,6 +76,7 @@ function FlowFor() {
   // away). A new payment then replaces that run, and its open question closes on the server.
   const [fresh, setFresh] = useState(false);
   const [drawer, setDrawer] = useState<string | null>(null);
+  const closeDrawer = useCallback(() => setDrawer(null), []);
   const [, setCleared] = useState(0); // a re-render after forgetting the watched run
 
   const mine = startedFrom !== undefined && runId !== startedFrom.run && gone.length === startedFrom.lost;
@@ -146,6 +149,7 @@ function FlowFor() {
             <div className="bw-frame">
               <AgentStrip state={state} view={view} owner={cast.owner} distributor={cast.distributor} />
               <StageHero stage={focus} stages={stages} feed={state.feed} done={status === "finished"} />
+              <AgentTalk />
               <Spotlight focus={focus} />
               <StageRail stages={stages} compact />
               <div className="fl-meters">
@@ -171,13 +175,9 @@ function FlowFor() {
         </main>
       )}
 
-      {charge && (
-        <div className="fl-overlay" onClick={() => setDrawer(null)} role="presentation">
-          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${charge.title}: how it was decided`}>
-            <ChargeDrawer charge={charge} onClose={() => setDrawer(null)} source="live" runId={state.run?.run_id} key={charge.id} />
-          </div>
-        </div>
-      )}
+      <SlideOver open={!!charge} onClose={closeDrawer} title={charge ? `${charge.id} · ${charge.title}` : ""} wide>
+        {charge && <ChargeDrawer charge={charge} onClose={closeDrawer} source="live" runId={state.run?.run_id} key={charge.id} />}
+      </SlideOver>
       <SessionDialogs account={account} />
     </div>
   );

@@ -5,7 +5,7 @@
 // (each opens how it was decided), the dispute, and the run's audit trail. Nothing else.
 
 import { motion, useReducedMotion } from "framer-motion";
-import { useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { Play, ScrollText } from "lucide-react";
 import { money } from "@/lib/format";
 import type { ChargeView } from "@/lib/workspace";
@@ -37,6 +37,7 @@ function Pile({ title, tone, total, charges, amount, onOpen }: { title: string; 
 export function DonePanel({ onOpen, onNew, onReplay, next, disputeInNext = false, failed }: { onOpen: (id: string) => void; onNew: () => void; onReplay?: () => void; rail?: ReactNode; next: ReactNode; disputeInNext?: boolean; failed: boolean }) {
   const { view, state, cast } = useRun();
   const [audit, setAudit] = useState(false);
+  const closeAudit = useCallback(() => setAudit(false), []);
   const t = view.totals;
   const v = view.value;
   const r = view.remittance;
@@ -111,7 +112,7 @@ export function DonePanel({ onOpen, onNew, onReplay, next, disputeInNext = false
         </span>
         <button className="cx-btn is-ghost" onClick={onNew}>Back to the start</button>
       </div>
-      {audit && state.run && <AuditDrawer runId={state.run.run_id} onClose={() => setAudit(false)} />}
+      {state.run && <AuditDrawer runId={state.run.run_id} open={audit} onClose={closeAudit} />}
     </>
   );
 }

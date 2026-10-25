@@ -4,6 +4,7 @@
 // work), what they're doing this second, their own last lines streaming in, and how far along they are. The rail of
 // all seven stages sits under it as context. Wording only: every line and count arrived in an event.
 
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { FeedLine } from "@/lib/useRunEvents";
 import type { Stage, StageKey } from "./stages";
 
@@ -18,6 +19,7 @@ const VERB: Partial<Record<StageKey, string>> = {
 };
 
 export function StageHero({ stage, stages, feed, done }: { stage: Stage | null; stages: Stage[]; feed: FeedLine[]; done: boolean }) {
+  const still = useReducedMotion();
   if (!stage) {
     return (
       <section className="sh is-done" aria-live="polite">
@@ -40,7 +42,11 @@ export function StageHero({ stage, stages, feed, done }: { stage: Stage | null; 
         <span className="sh-step">Step {index} of {stages.length}</span>
         <span className={`sh-badge ${waiting ? "is-amber" : ""}`}>{waiting ? (person ? "Waiting on you" : "Paused") : stage.state === "failed" ? "Stopped" : "Working now"}</span>
       </div>
-      <h2>{waiting && person ? "Your call" : VERB[stage.key] ?? stage.name}</h2>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.h2 key={`${stage.key}-${waiting}`} initial={still ? false : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={still ? { opacity: 0 } : { opacity: 0, y: -10 }} transition={{ duration: 0.32, ease: [0.2, 0.8, 0.2, 1] }}>
+          {waiting && person ? "Your call" : VERB[stage.key] ?? stage.name}
+        </motion.h2>
+      </AnimatePresence>
       <div className="sh-agents">
         {agents.map((a) => (
           <span key={a} className={`sh-agent ${stage.who === "CODE" ? "is-code" : person ? "is-person" : ""} ${!waiting && stage.state === "active" ? "is-on" : ""}`}>

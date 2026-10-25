@@ -11,8 +11,6 @@
 .page-heading { align-items: flex-end; margin-bottom: 22px; }
 
 /* list pages: no sky wash behind tables and cards */
-body:has(.sb) .bw-stage::before { display: none; }
-body:has(.sb) .bw-stage { padding-top: 0; }
 .bp { gap: 22px; }
 .fl-main { padding-top: 28px; }
 
@@ -29,7 +27,6 @@ body:has(.sb) .bw-stage { padding-top: 0; }
 .fl-pay { align-items: flex-start; text-align: left; padding-top: 4px; }
 .fl-pay-line { font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif; font-size: 22px; font-weight: 600; letter-spacing: -0.4px; max-width: none; }
 .fl-pay-line b { font-weight: 600; }
-.sh h2 { font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif; font-weight: 600; font-size: 22px; letter-spacing: -0.4px; }
 .fl-sum { align-items: flex-start; text-align: left; padding: 12px 0 0; }
 .fl-sum-text { align-items: flex-start; gap: 10px; }
 .fl-sum h1 { font-size: clamp(26px, 3vw, 36px); max-width: 26em; text-wrap: pretty; }

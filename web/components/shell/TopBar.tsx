@@ -48,7 +48,7 @@ function activeKey(path: string): string | null {
 const COMPANY_WIDE = new Set(["/app", "/app/distributors"]);
 
 export const STATUS_TONE: Record<RelationshipStatus, string> = {
-  waiting_for_payment: "is-idle", checking: "is-live", needs_you: "is-amber", settled: "is-green", stopped: "is-red",
+  waiting_for_payment: "is-idle", checking: "is-live", needs_you: "is-amber", dispute_open: "is-info", settled: "is-green", stopped: "is-red",
 };
 
 export function DistributorMark({ name, color, size = 28 }: { name: string; color?: string; size?: number }) {
@@ -299,10 +299,10 @@ function Notifications({ account, onPick }: { account: Account | null; onPick: (
   };
   return (
     <div className="sb-bell" ref={ref}>
-      <button className="sb-bell-btn" aria-haspopup="menu" aria-expanded={open} onClick={toggle}
+      <button className={`sb-bell-btn ${unread ? "is-ringing" : ""}`} aria-haspopup="menu" aria-expanded={open} onClick={toggle}
         aria-label={unread ? `Notifications, ${unread} new` : "Notifications"}>
-        <Bell aria-hidden="true" />
-        {unread > 0 && <span className="sb-bell-count" aria-hidden="true">{unread > 9 ? "9+" : unread}</span>}
+        <Bell key={`bell-${unread}`} aria-hidden="true" />
+        {unread > 0 && <span key={`count-${unread}`} className="sb-bell-count" aria-hidden="true">{unread > 9 ? "9+" : unread}</span>}
       </button>
       {open && (
         <div className="tb-menu sb-bell-menu" role="menu">

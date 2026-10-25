@@ -19,7 +19,7 @@ const WHY: Record<string, string> = {
 /** The words for a failed sign-in: wrong details, too many tries, or a server without sign-in set up. */
 function problemFor(e: unknown): string {
   if (e instanceof ApiError) {
-    if (e.status === 401) return "That email and password don’t match.";
+    if (e.status === 401) return "That email or username and password don’t match.";
     if (e.status === 429) return "Too many tries. Wait a few minutes, then try again.";
     if (e.status === 503) return "Sign-in isn’t set up on this server yet.";
     if (e.detail) return e.detail;
@@ -40,7 +40,7 @@ export default function SignInPage() {
 
   async function submit() {
     if (!email.trim() || !password) {
-      setProblem("Enter your email and password.");
+      setProblem("Enter your email or username, and your password.");
       return;
     }
     setBusy(true);
@@ -72,8 +72,8 @@ export default function SignInPage() {
             <form className="st-form" onSubmit={(event) => { event.preventDefault(); void submit(); }} noValidate>
               <p className="st-auth-sub">See what your distributors took, and what your agents did about it.</p>
               {(problem ?? why) && <p className={problem ? "st-alert" : "st-note"} role={problem ? "alert" : "status"}>{problem ?? why}</p>}
-              <label htmlFor="signin-email">Email</label>
-              <input id="signin-email" type="email" inputMode="email" autoComplete="username" autoFocus value={email}
+              <label htmlFor="signin-email">Email or username</label>
+              <input id="signin-email" type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} autoFocus value={email}
                 onChange={(event) => { setEmail(event.target.value); setProblem(null); }} />
               <label htmlFor="signin-password">Password</label>
               <input id="signin-password" type="password" autoComplete="current-password" value={password}
