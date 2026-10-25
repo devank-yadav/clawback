@@ -40,7 +40,11 @@ def prompt(account: accounts.Account | str | None = None) -> str:
 
 
 def gemini_configured() -> bool:
-    return bool(os.getenv("GEMINI_API_KEY"))
+    """Reader B is Gemini with its key, except while replaying the startup history, whose recordings are the second
+    Claude read (api/integrations/replay.replaying)."""
+    from api.integrations import replay
+
+    return bool(os.getenv("GEMINI_API_KEY")) and not replay.forced()
 
 
 def gemini_model() -> str:
