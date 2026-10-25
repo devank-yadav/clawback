@@ -214,6 +214,8 @@ a.bp-row:hover, .bp-row:has(> .bp-row-open:hover) { background: var(--card-2); }
 .bp-soon p.bp-fine { color: var(--faint); font-size: 12.5px; }
 
 /* ---------- small screens: tables become stacked rows, grids become one column ---------- */
+/* the sky wash reaches no further than the page's side gutter (32px, 16px on phones), so nothing scrolls sideways */
+@media (max-width: 1279px) { .bp .bw-stage::before { inset: -24px -32px -10px; } }
 @media (max-width: 1100px) {
   .bp-ct-grid { grid-template-columns: 220px minmax(0, 1fr); }
   .bp-terms { grid-column: 1 / -1; grid-row: 2; position: static; max-height: none; overflow: visible; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
@@ -236,6 +238,7 @@ a.bp-row:hover, .bp-row:has(> .bp-row-open:hover) { background: var(--card-2); }
   .bp { gap: 22px; }
   #add { scroll-margin-top: 150px; }
   .bp .bw-hero { padding-top: 20px; }
+  .bp .bw-stage::before { inset: -24px -16px -10px; }
   .bp-thead { display: none; }
   .bp-row, .bp-skel { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; padding: 14px 16px; }
   .bp-row > :first-child, .bp-row > .bp-row-open + * { grid-column: 1 / -1; }
