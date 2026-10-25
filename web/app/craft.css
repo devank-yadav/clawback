@@ -104,11 +104,12 @@ body.so-locked { overflow: hidden; }
 
 /* ---- the composer: the dispute as a letter ---- */
 .cm-ready { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: 14px 16px; border-radius: 16px; background: linear-gradient(135deg, color-mix(in srgb, var(--sky) 55%, var(--card)), var(--card)); border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line)); box-shadow: var(--depth-1); }
-.cm-ready-text { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+.cm-ready-text { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1 1 240px; }
 .cm-ready-text > svg { width: 20px; height: 20px; color: var(--accent-ink); flex: none; }
 .cm-ready-text span { display: flex; flex-direction: column; min-width: 0; }
 .cm-ready-text strong { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cm-ready-text small { font-size: 12.5px; color: var(--sub); }
+.cm-ready-text small { font-size: 12.5px; color: var(--sub); overflow-wrap: anywhere; }
+.cm-ready .cm-send { flex: none; }
 .cm-letter-wrap { display: flex; flex-direction: column; gap: 14px; }
 .cm-letter { position: relative; padding: 26px 28px 22px; border-radius: 18px; background: #fff; border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); box-shadow: var(--depth-2); }
 .cm-letter::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 5px; border-radius: 18px 18px 0 0; background: linear-gradient(90deg, var(--button-blue), color-mix(in srgb, var(--sky) 80%, var(--button-blue))); }
@@ -143,6 +144,8 @@ body.so-locked { overflow: hidden; }
 
 @media (max-width: 720px) {
   .hm > .ph::before { inset: -20px -16px -10px; }
+  /* the dispute ready to send: the subject and address on their own line, the button full width under them */
+  .cm-ready .cm-send { width: 100%; justify-content: center; }
 }
 
 /* A dispute is open and the distributor has the next move: the info tone, steady (not the live pulse). */

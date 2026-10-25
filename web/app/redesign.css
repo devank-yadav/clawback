@@ -188,3 +188,51 @@ h4.dr-h { font-size: 15px; font-weight: 600; color: var(--sub); }
 .dr-outline a:hover { background: var(--raised); color: var(--ink); }
 .dr-outline a.is-l3 { padding-left: 18px; font-size: 12px; }
 
+
+/* ---------- the agents page: a run and its result (components/flow/Flow.tsx, DonePanel.tsx) ----------
+   The seven steps sit on top from the payment to the result. During a run the totals and the charges come next, with
+   what's happening now beside them, all above the fold; the agents and the full activity follow. On a phone the
+   compact rail is a row of seven marks with the current step spelled out under it. */
+.fl-run { gap: 16px; }
+.fl-run .bw-stage { padding-top: 4px; }
+.fl-run .bw-frame { padding: 18px; gap: 14px; }
+.fl-run .fl-meter { padding: 10px 14px; gap: 2px; }
+.fl-run .fl-meter .cx-money { font-size: 22px; }
+.fl-now { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
+.fl-now-main, .fl-now-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+@media (min-width: 761px) {
+  .fl-now .fl-mhead, .fl-now .fl-row { grid-template-columns: minmax(0, 1.4fr) repeat(4, 62px) minmax(0, 1.1fr); padding: 9px 14px; }
+  .fl-now .fl-mhead { font-size: 10.5px; }
+}
+.fl-now .fl-nextstep { gap: 10px; }
+.sh.is-compact { padding: 18px 20px; gap: 10px; border-radius: 18px; }
+.sh.is-compact h2 { font-size: 24px; letter-spacing: -0.5px; }
+.sh.is-compact .sh-line { font-size: 14px; }
+.sh.is-compact .sh-agent { padding: 4px 10px; font-size: 12px; }
+.sh.is-compact .sh-ticker { padding: 10px 12px; font-size: 12px; }
+.sh.is-compact .sh-ticker li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl-now-side .at-line { font-size: 12.5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.fl-run > .fl-feed { position: static; max-height: 420px; }
+.fl-rail.is-compact .fl-stage-head { align-items: flex-start; }
+.fl-rail.is-compact .fl-stage-head strong { white-space: normal; line-height: 1.25; }
+.fl-rail.is-compact .fl-who { display: none; }
+.fl-rail-now { display: none; }
+.fl-done-rail { display: flex; flex-direction: column; gap: 8px; }
+@media (max-width: 1100px) {
+  .fl-now { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .fl-run .fl-pay-line { font-size: 17px; }
+  .fl-run .fl-meters { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .fl-run .fl-meter { flex-direction: column; justify-content: flex-start; align-items: flex-start; padding: 8px 10px; }
+  .fl-run .fl-meter span { font-size: 11px; line-height: 1.25; }
+  .fl-run .fl-meter .cx-money { font-size: 17px; }
+  .fl-rail.is-compact { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .fl-rail.is-compact .fl-stage { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0; border: 0; background: none; box-shadow: none; }
+  .fl-rail.is-compact .fl-stage-head { justify-content: center; }
+  .fl-rail.is-compact .fl-stage-head strong, .fl-rail.is-compact .fl-count, .fl-rail.is-compact .fl-who, .fl-rail.is-compact .fl-line { display: none; }
+  .fl-rail.is-compact .fl-bar { display: block; width: 100%; margin-top: 0; }
+  .fl-rail-now { display: flex; flex-direction: column; gap: 2px; margin: -4px 0 0; font-size: 13px; line-height: 1.4; color: var(--sub); }
+  .fl-rail-now b { font-weight: 600; color: var(--ink); }
+  .fl-rail-now.is-waiting b { color: var(--wait-ink); }
+}

@@ -1,10 +1,11 @@
 "use client";
 
-// The run's seven stages, left to right (top to bottom on a phone): each with who does it, a progress bar and one
-// plain line. Built by stages.ts from the events; nothing here decides anything.
+// The run's seven stages, left to right: each with who does it, a progress bar and one plain line. On a phone the
+// compact rail is a row of seven marks with the current stage spelled out under it. Built by stages.ts from the
+// events; nothing here decides anything.
 
 import { CHECK } from "./parts";
-import type { Stage } from "./stages";
+import { focusStage, type Stage } from "./stages";
 
 const WHO: Record<Stage["who"], string> = { AI: "AI", CODE: "Code", PERSON: "Person" };
 
@@ -20,21 +21,30 @@ function Bar({ stage }: { stage: Stage }) {
 }
 
 export function StageRail({ stages, compact = false }: { stages: Stage[]; compact?: boolean }) {
+  const now = compact ? focusStage(stages) : null;
   return (
-    <ol className={`fl-rail ${compact ? "is-compact" : ""}`} aria-label="What the agents are doing">
-      {stages.map((s) => (
-        <li key={s.key} className={`fl-stage is-${s.state}`} aria-current={s.state === "active" || s.state === "waiting" ? "step" : undefined}>
-          <div className="fl-stage-head">
-            <span className="fl-mark" aria-hidden="true">{s.state === "done" ? CHECK : s.state === "skipped" ? "–" : s.state === "failed" ? "!" : s.state === "waiting" ? "?" : null}</span>
-            <strong>{s.name}</strong>
-            {s.total ? <span className="fl-count">{s.state === "done" ? s.total : s.done ?? 0}/{s.total}</span> : null}
-          </div>
-          <span className="fl-who">{WHO[s.who]} · {s.agent}</span>
-          <span className="fl-line">{s.line}</span>
-          <Bar stage={s} />
-          <span className="sr-only"> · {s.state}</span>
-        </li>
-      ))}
-    </ol>
+    <>
+      <ol className={`fl-rail ${compact ? "is-compact" : ""}`} aria-label="What the agents are doing">
+        {stages.map((s) => (
+          <li key={s.key} className={`fl-stage is-${s.state}`} aria-current={s.state === "active" || s.state === "waiting" ? "step" : undefined}>
+            <div className="fl-stage-head">
+              <span className="fl-mark" aria-hidden="true">{s.state === "done" ? CHECK : s.state === "skipped" ? "–" : s.state === "failed" ? "!" : s.state === "waiting" ? "?" : null}</span>
+              <strong>{s.name}</strong>
+              {s.total ? <span className="fl-count">{s.state === "done" ? s.total : s.done ?? 0}/{s.total}</span> : null}
+            </div>
+            <span className="fl-who">{WHO[s.who]} · {s.agent}</span>
+            <span className="fl-line">{s.line}</span>
+            <Bar stage={s} />
+            <span className="sr-only"> · {s.state}</span>
+          </li>
+        ))}
+      </ol>
+      {now && (
+        <p className={`fl-rail-now is-${now.state}`} aria-hidden="true">
+          <b>Step {stages.indexOf(now) + 1} of {stages.length} · {now.name}</b>
+          {now.line}
+        </p>
+      )}
+    </>
   );
 }

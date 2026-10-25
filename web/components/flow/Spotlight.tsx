@@ -149,6 +149,18 @@ export function DisputeCard() {
   );
 }
 
+/** Every decision waiting on the admin, each as its own card (the question, the memo's approval, the dispute to send),
+ * so none hides behind another. */
+export function NeedsYou({ stages }: { stages: Stage[] }) {
+  if (!stages.length) return null;
+  return (
+    <section className="fl-nextstep" aria-labelledby="fl-next-h">
+      <h2 id="fl-next-h">Needs you{stages.length > 1 ? ` · ${stages.length}` : ""}</h2>
+      {stages.map((s) => <Spotlight key={s.key} focus={s} />)}
+    </section>
+  );
+}
+
 /** The card for the focused stage; the matrix speaks for the charges themselves. */
 export function Spotlight({ focus }: { focus: Stage | null }) {
   const { view } = useRun();

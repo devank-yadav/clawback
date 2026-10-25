@@ -1,8 +1,8 @@
 "use client";
 
 // A run's result, on the page the run played on. Facts only, never a forecast: what the distributor took and what
-// the deal didn't allow, where the money went, the one thing that needs the admin first, the charges in their piles
-// (each opens how it was decided), the dispute, and the run's audit trail. Nothing else.
+// the deal didn't allow, where the money went, the seven steps (so it shows where the payment stands), every decision
+// waiting on the admin, the charges in their piles (each opens how it was decided), the dispute, and the audit trail.
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useCallback, useState, type ReactNode } from "react";
@@ -38,7 +38,7 @@ function Pile({ title, tone, total, charges, amount, onOpen }: { title: string; 
   );
 }
 
-export function DonePanel({ onOpen, onNew, onReplay, next, disputeInNext = false, failed }: { onOpen: (id: string) => void; onNew: () => void; onReplay?: () => void; rail?: ReactNode; next: ReactNode; disputeInNext?: boolean; failed: boolean }) {
+export function DonePanel({ onOpen, onNew, onReplay, rail, next, disputeInNext = false, failed }: { onOpen: (id: string) => void; onNew: () => void; onReplay?: () => void; rail?: ReactNode; next: ReactNode; disputeInNext?: boolean; failed: boolean }) {
   const { view, state, cast } = useRun();
   const [audit, setAudit] = useState(false);
   const [sum, setSum] = useState<HTMLElement | null>(null);
@@ -100,12 +100,9 @@ export function DonePanel({ onOpen, onNew, onReplay, next, disputeInNext = false
         />
       )}
 
-      {next && (
-        <section className="fl-nextstep" aria-labelledby="fl-next-h">
-          <h2 id="fl-next-h">Needs you</h2>
-          {next}
-        </section>
-      )}
+      {rail && <div className="fl-done-rail">{rail}</div>}
+
+      {next}
 
       {!next && <BooksOutcome />}
 
