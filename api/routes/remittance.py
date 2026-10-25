@@ -9,6 +9,8 @@ from pydantic import ValidationError
 from api import remittance
 from api.auth import limit
 from api.contracts import StartRunResponse
+from api import tenancy
+from api.tenancy import Caller, current_supplier
 
 router = APIRouter(tags=["remittance"])
 
@@ -16,8 +18,8 @@ SAMPLES = remittance.documents.DATA / "samples" / "remittances"
 SAMPLE_FILES = {"peak-bar": {"northmart-march-2026.pdf": "application/pdf", "northmart-march-2026.txt": "text/plain"}}
 
 
-def _account(account: str) -> None:
-    if not remittance.known(account):
+def _account(account: str, who: Caller) -> None:
+    if not remittance.known(account) or not tenancy.can_see(who, account):
         raise HTTPException(404, f"unknown account {account}")
 
 
@@ -46,9 +48,9 @@ async def _upload(request: Request) -> tuple[str, str]:
 
 @router.post("/accounts/{account}/remittance", response_model=remittance.RemittanceRead,
              dependencies=[Depends(limit("ai"))])
-async def read_remittance(account: str, request: Request) -> remittance.RemittanceRead:
+async def read_remittance(account: str, request: Request, who: Caller = Depends(current_supplier)) -> remittance.RemittanceRead:
     """Claude reads the remittance and code checks every line. Starts nothing: the person confirms first."""
-    _account(account)
+    _account(account, who)
     try:
         text, kind = await _upload(request)
         return await asyncio.to_thread(remittance.read, account, text, kind)
@@ -58,9 +60,9 @@ async def read_remittance(account: str, request: Request) -> remittance.Remittan
 
 @router.post("/accounts/{account}/remittance/run", response_model=StartRunResponse,
              dependencies=[Depends(limit("runs"))])
-def run_remittance(account: str, req: remittance.RemittanceRunRequest) -> StartRunResponse:
+def run_remittance(account: str, req: remittance.RemittanceRunRequest, who: Caller = Depends(current_supplier)) -> StartRunResponse:
     """Start a run on the charges a read checked (by its read_id), with the account's documents and data."""
-    _account(account)
+    _account(account, who)
     try:
         return remittance.run_read(account, req.read_id)
     except KeyError as e:
@@ -74,9 +76,9 @@ def run_remittance(account: str, req: remittance.RemittanceRunRequest) -> StartR
 
 
 @router.get("/accounts/{account}/remittance/samples/{name}")
-def sample(account: str, name: str) -> FileResponse:
+def sample(account: str, name: str, who: Caller = Depends(current_supplier)) -> FileResponse:
     """The sample remittance for the account (data/samples/remittances/), as the distributor would send it."""
-    _account(account)
+    _account(account, who)
     media = SAMPLE_FILES.get(account, {}).get(name)
     if media is None:
         raise HTTPException(404, f"no sample {name}")

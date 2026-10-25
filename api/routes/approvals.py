@@ -9,10 +9,11 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from api import pipeline
+from api import accounts, pipeline, tenancy
 from api.auth import require_role
 from api.contracts import Approval, ApprovalDecisionRequest, ApprovalDecisionResponse, InboxResponse
 from api.stubs import fixtures
+from api.tenancy import Caller, current_supplier
 
 router = APIRouter(tags=["approvals"])
 
@@ -31,9 +32,14 @@ reset()
 
 @router.post("/approvals/{approval_id}", response_model=ApprovalDecisionResponse,
              dependencies=[Depends(require_role("owner"))])
-def decide(approval_id: str, req: ApprovalDecisionRequest) -> ApprovalDecisionResponse:
+def decide(approval_id: str, req: ApprovalDecisionRequest, who: Caller = Depends(current_supplier)) -> ApprovalDecisionResponse:
     """Approve posts the credit memo to QuickBooks; refuse posts nothing and keeps the note for the card."""
-    if pipeline.find_approval(approval_id):
+    found = pipeline.find_approval(approval_id)
+    if found and not tenancy.can_see(who, found[0].account):
+        raise HTTPException(404, f"unknown approval {approval_id}")
+    if not found and not tenancy.can_see(who, accounts.DEFAULT):  # the recorded fixture's AP-1 is Peak Bar's
+        raise HTTPException(404, f"unknown approval {approval_id}")
+    if found:
         try:
             approval, posts = pipeline.decide_approval(approval_id, req.approve, req.note, req.auto_post)
         except ValueError as e:
@@ -54,7 +60,8 @@ def decide(approval_id: str, req: ApprovalDecisionRequest) -> ApprovalDecisionRe
 
 
 @router.get("/inbox", response_model=InboxResponse)
-def inbox() -> InboxResponse:
+def inbox(who: Caller = Depends(current_supplier)) -> InboxResponse:
     """What waits on the admin (Dana) right now (the /inbox screen, and the fallback when texts don't arrive)."""
-    questions, approvals = pipeline.inbox()
-    return InboxResponse(questions=questions, approvals=approvals, messages=pipeline.owner_messages())
+    only = tenancy.supplier_filter(who)
+    questions, approvals = pipeline.inbox(only)
+    return InboxResponse(questions=questions, approvals=approvals, messages=pipeline.owner_messages(only))

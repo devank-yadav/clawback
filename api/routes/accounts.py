@@ -2,13 +2,15 @@
 months and its current payment (api/overview.py, computed by code from history/ and the current run), GET
 /accounts/{id}/lookback its past deductions checked by the engine (api/lookback.py)."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import Depends, APIRouter, HTTPException
 
 from api import accounts, history, library, lookback as lookback_mod, overview as overview_mod, suppliers
 from api.contracts import (
     AccountListItem, AccountOverview, Connection, ContractLibrary, DocumentText, Lookback, RunSummary, SavedDocument, SavedOverview, SavedRecords,
 )
 from api.routes.runs import account_or_404, latest_run_id
+from api import tenancy
+from api.tenancy import Caller, current_supplier
 
 router = APIRouter(tags=["accounts"])
 
@@ -19,28 +21,28 @@ def _item(a: accounts.Account) -> AccountListItem:
 
 
 @router.get("/accounts", response_model=list[AccountListItem])
-def list_accounts() -> list[AccountListItem]:
-    """Every account, Peak Bar first."""
-    return [_item(a) for a in accounts.every()]
+def list_accounts(who: Caller = Depends(current_supplier)) -> list[AccountListItem]:
+    """The caller's supplier's accounts, Peak Bar first (every account for scripts and an open laptop)."""
+    return [_item(a) for a in accounts.every() if tenancy.can_see(who, a)]
 
 
 @router.get("/accounts/{account_id}/overview", response_model=AccountOverview)
-def account_overview(account_id: str) -> AccountOverview:
-    a = account_or_404(account_id)
+def account_overview(account_id: str, who: Caller = Depends(current_supplier)) -> AccountOverview:
+    a = account_or_404(account_id, who)
     now = overview_mod.current_run(a)
     return overview_mod.overview(a, _item(a).model_copy(update={"latest_run_id": now.run_id}), now)
 
 
 @router.get("/accounts/{account_id}/lookback", response_model=Lookback)
-def account_lookback(account_id: str) -> Lookback:
+def account_lookback(account_id: str, who: Caller = Depends(current_supplier)) -> Lookback:
     """The six-month window's past deductions through the engine's math, and what can still be claimed."""
-    return lookback_mod.lookback(account_or_404(account_id))
+    return lookback_mod.lookback(account_or_404(account_id, who))
 
 
 @router.get("/accounts/{account_id}/runs", response_model=list[RunSummary])
-def account_runs(account_id: str) -> list[RunSummary]:
+def account_runs(account_id: str, who: Caller = Depends(current_supplier)) -> list[RunSummary]:
     """This distributor's runs of the agents, newest first, each summed up from its own events."""
-    return history.runs(account_or_404(account_id))
+    return history.runs(account_or_404(account_id, who))
 
 
 def _title(doc) -> str:
@@ -54,12 +56,12 @@ def _locked(doc) -> bool:
 
 
 @router.get("/accounts/{account_id}/saved", response_model=SavedOverview)
-def account_saved(account_id: str) -> SavedOverview:
+def account_saved(account_id: str, who: Caller = Depends(current_supplier)) -> SavedOverview:
     """What Clawback keeps for this distributor: the documents the agents read (signed ones locked), the rules you
     saved, and the records the checks use. Counts only; the records stay where they came from."""
     from api import account_rows, documents, pipeline, rows
 
-    a = account_or_404(account_id)
+    a = account_or_404(account_id, who)
     docs = []
     with accounts.using(a):
         for doc_id in a.docs:
@@ -82,11 +84,11 @@ def account_saved(account_id: str) -> SavedOverview:
 
 
 @router.get("/accounts/{account_id}/documents/{doc_id}", response_model=DocumentText)
-def account_document(account_id: str, doc_id: str) -> DocumentText:
+def account_document(account_id: str, doc_id: str, who: Caller = Depends(current_supplier)) -> DocumentText:
     """One document's text, read-only (there is no route that edits a document)."""
     from api import documents
 
-    a = account_or_404(account_id)
+    a = account_or_404(account_id, who)
     if doc_id not in a.docs:
         raise HTTPException(404, f"{doc_id} isn't one of {a.id}'s documents")
     with accounts.using(a):
@@ -95,13 +97,13 @@ def account_document(account_id: str, doc_id: str) -> DocumentText:
 
 
 @router.get("/connections", response_model=list[Connection])
-def list_connections(account: str | None = None) -> list[Connection]:
+def list_connections(account: str | None = None, who: Caller = Depends(current_supplier)) -> list[Connection]:
     """Where payments, records and contracts come from, as they really are on this server. With ?account=, the bank,
     QuickBooks and the remittance inbox say what they last saw for that account, and the inbox gives its address."""
-    return library.connections(account_or_404(account) if account else None)
+    return library.connections(account_or_404(account, who) if account else None)
 
 
 @router.get("/accounts/{account_id}/contract", response_model=ContractLibrary)
-def account_contract(account_id: str) -> ContractLibrary:
+def account_contract(account_id: str, who: Caller = Depends(current_supplier)) -> ContractLibrary:
     """The deal and what changes it, with the terms the agents read in the latest run highlighted. Read-only."""
-    return library.library(account_or_404(account_id))
+    return library.library(account_or_404(account_id, who))

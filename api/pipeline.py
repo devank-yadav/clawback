@@ -821,10 +821,16 @@ def find_approval(approval_id: str) -> tuple[Run, Approval] | None:
     return None
 
 
-def pending_approval(role: str = "owner") -> str | None:
+def _runs_of(only=None) -> list[Run]:
+    """Live runs, or just those whose account passes `only` (a supplier's, api/tenancy.supplier_filter)."""
+    return [r for r in RUNS.values() if only is None or only(r.account)]
+
+
+def pending_approval(role: str = "owner", only=None) -> str | None:
     """The newest approval still waiting on the admin, for an SMS reply that doesn't name one. A replaced run's
-    approvals don't count: a YES must not post an old run's memo while the newer run is still deciding."""
-    for run in reversed([r for r in RUNS.values() if r.replaced_by is None]):
+    approvals don't count: a YES must not post an old run's memo while the newer run is still deciding. `only` keeps
+    one supplier's runs (the texter's)."""
+    for run in reversed([r for r in _runs_of(only) if r.replaced_by is None]):
         ids = list(dict.fromkeys(e.data.id for e in run.events if e.type == "approval"))
         for approval_id in reversed(ids):
             _, a = find_approval(approval_id)
@@ -896,9 +902,9 @@ def _write_failed(run: Run, approval_id: str) -> bool:
     return any(p.status == "failed" for p in _ledger_posts(run, approval_id).values())
 
 
-def failed_approval() -> str | None:
+def failed_approval(only=None) -> str | None:
     """The newest approved memo whose QuickBooks write failed, for the admin's YES by text (it retries the write)."""
-    for run in reversed([r for r in RUNS.values() if r.replaced_by is None]):
+    for run in reversed([r for r in _runs_of(only) if r.replaced_by is None]):
         ids = list(dict.fromkeys(e.data.id for e in run.events if e.type == "approval"))
         for approval_id in reversed(ids):
             if find_approval(approval_id)[1].status == "approved" and _write_failed(run, approval_id):
@@ -996,11 +1002,12 @@ def _can_retry(run: Run) -> str:
     return f"{run.name('owner')} can approve again to retry."
 
 
-def inbox() -> tuple[list[Question], list[Approval]]:
-    """Open questions and approvals waiting on the admin, across live runs (a replaced run's don't wait)."""
-    questions = [q for run in RUNS.values() for q in run.questions.values() if is_open(q)]
+def inbox(only=None) -> tuple[list[Question], list[Approval]]:
+    """Open questions and approvals waiting on the admin, across live runs (a replaced run's don't wait); `only` keeps
+    one supplier's (api/tenancy.supplier_filter)."""
+    questions = [q for run in _runs_of(only) for q in run.questions.values() if is_open(q)]
     pending = []
-    for run in (r for r in RUNS.values() if r.replaced_by is None):
+    for run in (r for r in _runs_of(only) if r.replaced_by is None):
         latest: dict[str, Approval] = {}
         for e in run.events:
             if e.type == "approval":
@@ -1009,9 +1016,9 @@ def inbox() -> tuple[list[Question], list[Approval]]:
     return questions, pending
 
 
-def owner_messages() -> list[OwnerMessage]:
+def owner_messages(only=None) -> list[OwnerMessage]:
     """The run summaries sent to owners, newest first: the in-app copy of the text (GET /inbox)."""
-    found = [r.owner_message for r in RUNS.values() if r.owner_message and r.replaced_by is None]
+    found = [r.owner_message for r in _runs_of(only) if r.owner_message and r.replaced_by is None]
     return sorted(found, key=lambda m: m.sent_at, reverse=True)
 
 

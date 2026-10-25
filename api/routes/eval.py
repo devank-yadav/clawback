@@ -11,9 +11,10 @@ import sys
 from functools import cache
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import Depends, APIRouter, HTTPException
 
 from api.contracts import EvalReport
+from api.tenancy import Caller, current_supplier
 
 router = APIRouter(tags=["eval"])
 
@@ -44,7 +45,7 @@ def to_report(s: dict) -> EvalReport:
 
 
 @router.post("/eval/run", response_model=EvalReport)
-def run_eval() -> EvalReport:
+def run_eval(who: Caller = Depends(current_supplier)) -> EvalReport:
     ev = _harness()
     if not (ev.DEFAULT_DATA / "eval" / "charges-30.csv").exists():
         raise HTTPException(503, f"no eval set at {ev.DEFAULT_DATA / 'eval'}")
@@ -52,7 +53,7 @@ def run_eval() -> EvalReport:
 
 
 @router.get("/eval/latest", response_model=EvalReport)
-def latest() -> EvalReport:
+def latest(who: Caller = Depends(current_supplier)) -> EvalReport:
     """The agent-mode score when one has been saved (readers and agents in the loop: the real number), else
     engine mode's. `mode` on the report says which."""
     for path in (_harness().LATEST_AGENT, PUBLISHED / "agent.json", latest_path(), PUBLISHED / "engine.json"):

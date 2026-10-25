@@ -73,6 +73,12 @@ decision gate and approvals; Data model; API, live updates and integrations.
   and a discretion clause is searched against them; a match at or above `rule_match_similarity` (config/policy.yaml)
   with the same clause type and counterparty applies the rule, otherwise the exact match on type + counterparty does.
   `python -m api.integrations.moss` indexes Rule #1 and prints the similarity of a reworded clause (the Devpost proof).
+- Sign-in and tenancy (api/users.py, api/tenancy.py, api/routes/auth.py, migration 006): POST /auth/login {email,
+  password} sets the clawback_session cookie; GET /auth/me; POST /auth/logout. Users in config/users.yaml (passwords from
+  DEMO_USER_PASSWORD / DEMO_USER2_PASSWORD). Every account-data route takes `who: Caller = Depends(current_supplier)`
+  and checks ids with tenancy.account_or_404 / can_see_run: another supplier's ids are 404, signed out 401 once any
+  password is set; no password anywhere (laptops, tests) stays open. Tokens (OWNER_TOKEN, CLAWBACK_ADMIN_TOKEN) see
+  every supplier. api/tests/test_tenancy.py walks every Peak Bar route as Lantern Hill.
 - One admin (api/auth.py): the brand's owner answers every question and approves every credit memo, in the app or by
   text to OWNER_PHONE (there is no controller; account.yaml's brand.controller is still accepted and unused). With
   OWNER_TOKEN set, the in-app answer and approval need it as X-Clawback-Role-Token; POST /questions/{id}/answer takes

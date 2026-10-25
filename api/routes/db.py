@@ -8,11 +8,12 @@ Read-only. Without a database (no DATABASE_URL, or DEMO_MODE) or when it doesn't
 from datetime import date
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import Depends, APIRouter, HTTPException, Query
 
-from api import accounts
+from api import accounts, tenancy
 from api.contracts import Contract
 from api.db import conn, reads
+from api.tenancy import Caller, current_supplier
 
 router = APIRouter(tags=["db"])
 
@@ -34,7 +35,9 @@ class CapReport(Contract):
 
 
 @router.get("/db/cap", response_model=CapReport)
-def cap(promo_id: str = Query(default="SPRING-26"), account: str = Query(default=accounts.DEFAULT)) -> CapReport:
+def cap(promo_id: str = Query(default="SPRING-26"), account: str = Query(default=accounts.DEFAULT), who: Caller = Depends(current_supplier)) -> CapReport:
+    if not tenancy.can_see(who, account):
+        raise HTTPException(404, f"unknown account {account}")
     if not conn.enabled():
         raise HTTPException(503, "no database: DATABASE_URL isn't set, or DEMO_MODE is on")
 

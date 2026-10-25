@@ -1234,17 +1234,51 @@ class TrackRequest(Contract):
 
 
 class LoginRequest(Contract):
-    """POST /auth/login: the admin's ID and password."""
+    """POST /auth/login: a user's email (or the old admin ID in `username`) and password."""
 
-    username: str = Field(max_length=200)
+    email: str | None = Field(default=None, max_length=200)
+    username: str | None = Field(default=None, max_length=200)
     password: str = Field(max_length=200)
+
+    @property
+    def login(self) -> str:
+        return (self.email or self.username or "").strip()
+
+
+class SessionUser(Contract):
+    """The signed-in person (GET /auth/me, POST /auth/login)."""
+
+    id: str
+    email: str
+    name: str
+    role: str  # "admin": answers the questions and approves the memos for their supplier
+
+
+class SessionSupplier(Contract):
+    """The signed-in person's supplier: the brand workspace, and the accounts (distributors) it owns."""
+
+    id: str
+    name: str
+    account_ids: list[str] = Field(default_factory=list)
 
 
 class LoginResponse(Contract):
-    """The admin is signed in; `code` goes in the X-Clawback-Role-Token header (null where the site needs none)."""
+    """Signed in: the session cookie is set. `code` is OWNER_TOKEN for scripts' X-Clawback-Role-Token (null where the
+    site has none); the browser needs only the cookie."""
 
     role: Literal["owner"] = "owner"
     code: str | None = None
+    user: SessionUser | None = None
+    supplier: SessionSupplier | None = None
+
+
+class MeResponse(Contract):
+    """GET /auth/me. Signed in: user and supplier. Not signed in on an open laptop: both null and auth_required false
+    (a signed-out caller where sign-in is on gets 401 instead)."""
+
+    user: SessionUser | None = None
+    supplier: SessionSupplier | None = None
+    auth_required: bool = True
 
 
 class RunSummary(Contract):

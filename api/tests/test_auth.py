@@ -110,7 +110,8 @@ def test_a_laptop_with_no_password_signs_anyone_in(api, monkeypatch):
     client, _ = api
     _no_login_env(monkeypatch)
     r = client.post("/auth/login", json={"username": "anyone", "password": "anything"})
-    assert r.status_code == 200 and r.json() == {"role": "owner", "code": None}
+    assert r.status_code == 200 and r.json()["code"] is None
+    assert r.json()["user"]["email"] == "dana@peakbar.example" and r.json()["supplier"]["id"] == "peak-bar"
 
 
 def test_the_right_id_and_password_get_the_access_code(api, monkeypatch):
