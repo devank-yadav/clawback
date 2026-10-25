@@ -3,8 +3,10 @@
 // The card under the rail for the stage that needs the eye: the two readers at work, the admin's one question, the
 // admin's approval of the credit memo, or the dispute and the distributor's replies. People act here, on the same page as the run.
 
+import Link from "next/link";
 import { useState } from "react";
 import { money } from "@/lib/format";
+import { DisputeThread, ReviewAndSend } from "@/components/disputes/DisputeMail";
 import { OwnerDecision } from "@/components/console/Review";
 import { useRun } from "@/components/console/RunProvider";
 import { Money } from "@/components/console/ui";
@@ -90,27 +92,25 @@ export function DisputeCard() {
   const { state, account, cast, link } = useRun();
   const d = state.dispute;
   if (!d) return null;
-  const thread = state.portal.filter((m) => m.dispute_id === d.id);
+  const runId = state.run?.run_id ?? null;
+  const unsent = d.status === "ready_to_send" || d.status === "draft";
+  const replies = state.portal.filter((m) => m.dispute_id === d.id).length;
   return (
-    <section className="fl-card" aria-label={`Dispute ${d.id}`}>
+    <section className={`fl-card dm-card ${unsent ? "is-review" : ""}`} aria-label={`Dispute ${d.id}`}>
       <div className="cx-head" style={{ alignItems: "center" }}>
-        <h2>Dispute {d.id} · {money(d.total)}</h2>
-        <span className="cx-tiny">{d.lines.length} line{d.lines.length === 1 ? "" : "s"} · {d.status === "draft" ? `held for ${cast.owner}` : "filed with proof"}</span>
+        <h2>{unsent ? "Review and send" : "Dispute sent"} · {d.id} · {money(d.total)}</h2>
+        <span className="cx-tiny">{d.lines.length} line{d.lines.length === 1 ? "" : "s"}, each with the deal’s sentence, the data and the math</span>
       </div>
-      <p className="cx-small cx-muted">
-        Each line carries the deal’s sentence, the data rows and the math. Reply as {cast.distributor} on their portal and the Negotiator answers here, or concedes if you show a signed change.
-      </p>
-      {thread.length > 0 && (
-        <ul className="fl-thread" aria-live="polite">
-          {thread.slice(-4).map((m) => (
-            <li key={m.id} className={m.from_party === "clawback" ? "is-us" : ""}>
-              <b>{m.from_party === "clawback" ? "Negotiator" : cast.distributor}</b>
-              {m.text}
-            </li>
-          ))}
-        </ul>
+      {unsent ? (
+        <>
+          <p className="cx-small cx-muted">Nothing goes to {cast.distributor} until you send it. Edit anything; code checks every figure and quote again before it leaves.</p>
+          <ReviewAndSend disputeId={d.id} runId={runId} />
+        </>
+      ) : (
+        <DisputeThread disputeId={d.id} runId={runId} distributor={cast.distributor} refreshKey={`${d.status}:${replies}`} limit={4} />
       )}
-      <div>
+      <div className="dm-links">
+        <Link className="cx-btn is-ghost" href={link("/disputes", { id: d.id, ...(runId ? { run: runId } : {}) })}>Open the thread</Link>
         <a className="cx-btn is-ghost" href={link("/portal")} target="_blank" rel="noreferrer">Open {account?.distributor.portal_name ?? `${cast.distributor}’s portal`} ↗</a>
       </div>
     </section>

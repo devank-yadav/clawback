@@ -77,9 +77,11 @@ export function buildStages(state: RunState, view: WorkspaceView, cast: Cast, ar
   const lastReply = [...state.portal].reverse().find((m) => m.from_party !== "clawback") ?? null;
   const file: Stage = {
     key: "file", name: "File the dispute", agent: "Negotiator", who: "AI",
-    state: d ? (d.status === "draft" ? "waiting" : "done") : checked && valued && !disputedNow ? "skipped" : checked && disputedNow ? "active" : "todo",
+    state: d ? (d.status === "draft" || d.status === "ready_to_send" ? "waiting" : "done") : checked && valued && !disputedNow ? "skipped" : checked && disputedNow ? "active" : "todo",
     line: d
-      ? d.status === "draft"
+      ? d.status === "ready_to_send"
+        ? `${d.id} · ${money(d.total)} is drafted: review the email and send it`
+      : d.status === "draft"
         ? `${d.id} · ${money(d.total)} is over the limit ${cast.owner} set: held for ${cast.owner}`
         : lastReply
           ? `${cast.distributor} replied on ${d.id}: “${lastReply.text.slice(0, 90)}${lastReply.text.length > 90 ? "…" : ""}”`

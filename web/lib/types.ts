@@ -183,7 +183,9 @@ export type Dispute = {
   counterparty: string;
   lines: DisputeLine[];
   total: Money;
-  status: "draft" | "filed" | "answered" | "resolved" | "withdrawn";
+  /** ready_to_send: drafted, waiting for the admin's "Review and send", which files it; draft: an older run's
+   * over-limit dispute (sent the same way); filed: sent to the distributor. */
+  status: "ready_to_send" | "draft" | "filed" | "answered" | "resolved" | "withdrawn";
   approved_by: "policy" | "owner";
   filed_at: string | null;
 };
@@ -199,7 +201,44 @@ export type PortalMessage = {
   charge_ids: string[];
   evidence_ids: string[];
   created_at: string;
+  /** Where it was said: the distributor's portal, or an email. */
+  channel?: "portal" | "email";
+  email_message_id?: string | null;
 };
+
+/** One email about a dispute (api/contracts.py DisputeEmail): the dispute email itself, or a reply to the
+ * distributor. held: the checks failed, the admin edits it · ready: waiting to be sent · sent: Mailgun took it ·
+ * outbox: kept in the app instead (demo mode, or no mail keys) · failed: sending again retries. */
+export type DisputeEmail = {
+  id: string;
+  kind: "dispute" | "reply";
+  run_id: string;
+  account_id: string;
+  dispute_id: string;
+  to: string;
+  from_addr: string;
+  reply_to: string | null;
+  subject: string;
+  body: string;
+  attachments: string[];
+  in_reply_to: string | null;
+  status: "held" | "ready" | "sent" | "outbox" | "failed";
+  written_by: "claude" | "template" | "admin" | "negotiator" | "code";
+  problems: string[];
+  message_id: string | null;
+  sent_at: string | null;
+  detail: string | null;
+  portal_url: string | null;
+  charge_ids: string[];
+  evidence_ids: string[];
+  replying_to: string | null;
+};
+
+/** GET /disputes/{id}/thread: the dispute as it stands, every message on it (portal and email), and its emails. */
+export type DisputeThread = { dispute: Dispute; run_id: string; messages: PortalMessage[]; emails: DisputeEmail[] };
+
+/** GET /notifications: something the supplier should know, e.g. a distributor replied to a dispute. */
+export type SupplierNotification = { id: string; account_id: string; run_id: string | null; dispute_id: string | null; text: string; at: string };
 
 export type LedgerPost = {
   id: string;

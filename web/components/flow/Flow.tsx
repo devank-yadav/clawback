@@ -162,7 +162,7 @@ function FlowFor() {
       {phase === "done" && (
         <main className="fl-main">
           <AgentStrip state={state} view={view} owner={cast.owner} distributor={cast.distributor} />
-          <DonePanel onOpen={setDrawer} onNew={restart} rail={<StageRail stages={stages} compact />} next={focus && focus.state === "waiting" ? <Spotlight focus={focus} /> : null} failed={status === "failed"} />
+          <DonePanel onOpen={setDrawer} onNew={restart} rail={<StageRail stages={stages} compact />} next={focus && focus.state === "waiting" ? <Spotlight focus={focus} /> : null} disputeInNext={focus?.key === "file" && focus.state === "waiting"} failed={status === "failed"} />
         </main>
       )}
 

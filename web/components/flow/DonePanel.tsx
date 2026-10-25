@@ -36,7 +36,7 @@ function Pile({ title, tone, total, charges, amount, onOpen }: { title: string; 
 /** "<$0.01" for tiny costs, so a real number never reads as free. */
 const cost = (usd: number) => (usd > 0 && usd < 0.01 ? "<$0.01" : money(usd));
 
-export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: string) => void; onNew: () => void; rail: ReactNode; next: ReactNode; failed: boolean }) {
+export function DonePanel({ onOpen, onNew, rail, next, disputeInNext = false, failed }: { onOpen: (id: string) => void; onNew: () => void; rail: ReactNode; next: ReactNode; disputeInNext?: boolean; failed: boolean }) {
   const { view, state, cast, link } = useRun();
   const t = view.totals;
   const v = view.value;
@@ -46,7 +46,7 @@ export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: 
   const disputed = view.charges.filter((c) => (c.disputed ?? 0) > 0);
   const fair = view.charges.filter((c) => (c.accepted ?? 0) > 0);
   const waiting = view.charges.filter((c) => (c.waiting ?? 0) > 0);
-  const held = state.dispute?.status === "draft";
+  const held = state.dispute?.status === "draft" || state.dispute?.status === "ready_to_send";
   // Facts about what already happened, never a forecast.
   const facts = [
     t && t.questions ? `${t.questions} question${t.questions === 1 ? "" : "s"} for you` : t ? "No questions needed" : null,
@@ -54,7 +54,7 @@ export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: 
   const seconds = v && v.seconds_to_decided !== null && v.seconds_to_decided !== undefined ? Math.round(v.seconds_to_decided) : null;
   // The headline's second line: the one fact that matters most, already decided.
   const second = !t ? null
-    : t.disputed > 0 ? `${money(t.disputed)} of it ${held ? "is held for you to send." : "isn’t allowed by the deal."}`
+    : t.disputed > 0 ? `${money(t.disputed)} of it isn’t allowed by the deal.`
     : t.waiting > 0 ? `${money(t.waiting)} of it waits on your call.`
     : "Every charge matches the deal.";
   const posting = view.postingProblem ?? (view.approval ? view.postingLabel : (t?.accepted ?? 0) > 0 ? "Fair charges are waiting for your approval before anything posts" : "Nothing to post to QuickBooks");
@@ -84,7 +84,7 @@ export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: 
         <MoneyBar
           label={r ? `Where the ${money(r.taken)} went` : "Where the charges went"}
           parts={[
-            { tone: "dispute", label: held ? "Held for you" : "Disputed with proof", value: t.disputed },
+            { tone: "dispute", label: held ? "To dispute, ready to send" : "Disputed with proof", value: t.disputed },
             { tone: "fair", label: "Fair, accepted", value: t.accepted },
             { tone: "wait", label: "Waits on you", value: t.waiting },
           ]}
@@ -112,7 +112,7 @@ export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: 
         </div>
       )}
 
-      <DisputeCard />
+      {!disputeInNext && <DisputeCard />}
 
       <nav className="fl-next" aria-label="What next">
         {state.dispute && (

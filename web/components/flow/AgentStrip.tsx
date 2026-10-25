@@ -73,7 +73,7 @@ function build(state: RunState, view: WorkspaceView, owner: string, distributor:
     {
       key: "negotiate", name: "Negotiator", kind: "AI", actors: ["negotiator"],
       state: status(["negotiator"], !!d || rehearsals.length > 0),
-      conclusion: d ? `${d.id} ${d.status === "draft" ? "held for you" : "filed"} · ${money(d.total)}` : rehearsals.length ? `Prepared ${rehearsals.length} comebacks` : `Argues with ${distributor}`,
+      conclusion: d ? `${d.id} ${d.status === "draft" || d.status === "ready_to_send" ? "ready for you to send" : "sent"} · ${money(d.total)}` : rehearsals.length ? `Prepared ${rehearsals.length} comebacks` : `Argues with ${distributor}`,
       outputs: [
         ...rehearsals.map((x) => <span key={x.charge_id}><b>{x.charge_id}</b>Expects: “{x.predicted_rebuttal}” Answer: {x.answer}</span>),
         ...(d ? [<span key="d"><b>{d.id}</b>{d.lines.length} lines, {money(d.total)}, {d.status}</span>] : []),

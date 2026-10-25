@@ -3,7 +3,7 @@
 // `npm run dev:mock` serves the same shapes from web/mock/.
 
 import type {
-  Account, Approval, Lookback, AuditEntry, AuditVerify, ChargeDetail, CoachResponse, Dispute, EvalReport, Evidence, LedgerPost,
+  Account, Approval, Lookback, AuditEntry, AuditVerify, ChargeDetail, CoachResponse, Dispute, DisputeEmail, DisputeThread, SupplierNotification, EvalReport, Evidence, LedgerPost,
   Overview, PortalMessage, RunEvent, ScenarioExample, ScenarioRequest, ScenarioResponse, SupplierItem, RunSummary, SavedOverview, DocumentText, Connection, ContractLibrary, TraceStep, TraceSummary,
 } from "./types";
 import { adminToken } from "./tokens";
@@ -200,6 +200,26 @@ export const fetchPortalMessages = (id: string) => call<PortalMessage[]>(`/porta
 /** Returns the distributor's message and Clawback's reply (only theirs when the reply is held for the owner). */
 export const postPortalMessage = (id: string, text: string, attachmentDocId: string | null) =>
   call<PortalMessage[]>(`/portal/disputes/${q(id)}/messages`, { method: "POST", body: { text, attachment_doc_id: attachmentDocId }, timeoutMs: 40_000, admin: true });
+
+// ---- Dispute email (api/routes/dispute_mail.py): review and send, the thread, the Negotiator's reply drafts
+const runQ = (runId: string | null | undefined) => (runId ? `?run_id=${q(runId)}` : "");
+/** GET /disputes?account=: every dispute this account's runs filed (the newest version of each), newest run first. */
+export const fetchDisputes = (account: string) => call<DisputeThread[]>(`/disputes?account=${q(account)}`);
+export const fetchDisputeThread = (id: string, runId?: string | null) => call<DisputeThread>(`/disputes/${q(id)}/thread${runQ(runId)}`);
+/** GET /disputes/{id}/email: the dispute's email, drafted on the first look. The model may take a while. */
+export const fetchDisputeEmail = (id: string, runId?: string | null) => call<DisputeEmail>(`/disputes/${q(id)}/email${runQ(runId)}`, { timeoutMs: 45_000 });
+/** PUT /disputes/{id}/email (admin): saved as ready, or held with problems[] when the outbound filter blocks it. */
+export const saveDisputeEmail = (id: string, runId: string | null | undefined, subject: string, body: string) =>
+  call<DisputeEmail>(`/disputes/${q(id)}/email${runQ(runId)}`, { method: "PUT", body: { subject, body } });
+export const redraftDisputeEmail = (id: string, runId?: string | null) =>
+  call<DisputeEmail>(`/disputes/${q(id)}/email/redraft${runQ(runId)}`, { method: "POST", timeoutMs: 45_000 });
+/** POST /disputes/{id}/send (admin): emails it with its packet and files it. 409 when held or already sent. */
+export const sendDispute = (id: string, runId: string | null | undefined, subject: string, body: string) =>
+  call<{ dispute: Dispute; email: DisputeEmail }>(`/disputes/${q(id)}/send${runQ(runId)}`, { method: "POST", body: { subject, body }, timeoutMs: 30_000 });
+/** POST /disputes/{id}/replies/{email_id}/send (admin): sends the Negotiator's drafted answer, optionally edited. */
+export const sendDisputeReply = (id: string, emailId: string, runId: string | null | undefined, subject: string, body: string) =>
+  call<DisputeEmail>(`/disputes/${q(id)}/replies/${q(emailId)}/send${runQ(runId)}`, { method: "POST", body: { subject, body }, timeoutMs: 30_000 });
+export const fetchNotifications = () => call<SupplierNotification[]>("/notifications");
 
 // ---- Next month, coach, scenario, accuracy, audit
 /** POST /replay/april: next month's charges under the rules saved so far. */
