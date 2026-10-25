@@ -152,7 +152,7 @@ function usePresenter(account: Account | null) {
         await api.sendDispute(t.dispute.id, t.run_id, email.subject, email.body);
       }
       const presets = await api.fetchPortalPresets(account.id, t.dispute.id);
-      const pick = presets.find((p) => /cap/i.test(`${p.label} ${p.text}`)) ?? presets[0];
+      const pick = presets.find((p) => p.id === "no-cap") ?? presets.find((p) => /cap/i.test(`${p.label} ${p.text}`)) ?? presets[0];
       if (!pick) { setNote("No reply to post."); return; }
       await api.postPortalMessage(t.dispute.id, pick.text, pick.attachment_doc_id);
       setNote(null);

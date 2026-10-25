@@ -4,7 +4,7 @@
 
 import type {
   Account, Approval, Lookback, AuditEntry, AuditVerify, ChargeDetail, CoachResponse, CompanyOverview, Dispute, DisputeEmail, DisputeThread, SupplierNotification, EvalReport, Evidence, LedgerPost,
-  Overview, PortalMessage, RunEvent, ScenarioExample, ScenarioRequest, ScenarioResponse, SupplierItem, RunSummary, SavedOverview, DocumentText, Connection, ContractLibrary, TraceStep, TraceSummary,
+  Money, Overview, PortalMessage, RunEvent, ScenarioExample, ScenarioRequest, ScenarioResponse, SupplierItem, RunSummary, SavedOverview, DocumentText, Connection, ContractLibrary, TraceStep, TraceSummary,
 } from "./types";
 import { adminToken } from "./tokens";
 import { goSignIn } from "./signin-route";
@@ -127,19 +127,14 @@ export async function latestRun(account: string): Promise<StartedRun | null> {
   }
 }
 
-/** POST /payments/{account}: the "<Distributor> pays" button, the only thing that starts a run. run_id is null until Nessie's deposit is seen. */
-/** POST /payments/sync ("Check for new payments"): looks at the connected sources now. A payment it finds starts its
- * run; the answer names it (or several). Read defensively until the contract settles: run_id/account_id, or runs[]. */
-export type PaymentSync = {
-  found?: number | null;
-  run_id?: string | null;
-  account_id?: string | null;
-  runs?: { run_id: string; account_id: string; distributor?: string | null }[] | null;
-  message?: string | null;
-};
+/** POST /payments/sync ("Check for new payments", api/contracts.py PaymentSync): one look at the bank and QuickBooks
+ * now; each payment found starts its account's run. */
+export type FoundPayment = { source: string; account_id: string; distributor: string; amount: Money | null; invoice_id: string | null; run_id: string | null };
+export type PaymentSync = { checked: string[]; found: FoundPayment[]; message: string };
 export const syncPayments = () => call<PaymentSync>("/payments/sync", { method: "POST", timeoutMs: 30_000 });
 
-export const accountPays = (account: string) => call<PaymentStarted>(`/payments/${q(account)}`, { method: "POST", timeoutMs: 20_000, admin: true });
+/** POST /payments/{account}: the presenter's deposit; run_id is null until the bank's deposit is seen. */
+export const accountPays =(account: string) => call<PaymentStarted>(`/payments/${q(account)}`, { method: "POST", timeoutMs: 20_000, admin: true });
 
 /** The stream for a run the page already knows the id of. */
 export const runRef = (runId: string): StartedRun => ({ run_id: runId, events_url: `/runs/${q(runId)}/events` });

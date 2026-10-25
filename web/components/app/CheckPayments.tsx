@@ -19,12 +19,12 @@ export default function CheckPayments({ account }: { account: string | null | un
     setNote(null);
     try {
       const r = await api.syncPayments();
-      const found = r.runs?.[0] ?? (r.run_id ? { run_id: r.run_id, account_id: r.account_id ?? account ?? "" } : null);
+      const found = r.found.find((f) => f.run_id) ?? null;
       if (found?.run_id) {
         router.push(withAccount("/", found.account_id || account, { run: found.run_id }));
         return;
       }
-      setNote("No new payments");
+      setNote(r.message || "No new payments");
     } catch (e) {
       setNote(`Couldn’t check just now (${(e as Error).message}).`);
     } finally {
