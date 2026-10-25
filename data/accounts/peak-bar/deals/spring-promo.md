@@ -1,7 +1,5 @@
 # Promotional Allowance Agreement: Spring Promo 2026 (SPRING-26)
 
-> FICTIONAL. Peak Bar Co. and Northmart are invented for the Clawback demo. Not a real contract.
-
 **Agreement ID:** SPRING-26
 **Effective date:** February 20, 2026
 

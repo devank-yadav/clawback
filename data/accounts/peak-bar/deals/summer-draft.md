@@ -1,6 +1,5 @@
 # DRAFT: Promotional Allowance Agreement: Summer Promo 2026 (SUMMER-26)
 
-> FICTIONAL. Peak Bar Co. and Northmart are invented for the Clawback demo. Not a real contract.
 > DRAFT for review. Not signed.
 
 **Agreement ID:** SUMMER-26

@@ -1,4 +1,4 @@
-# Peak Bar Co. <- Northmart: the demo scenario in data/CLAUDE.md (all fictional). Loaded and checked by api/accounts.py;
+# Peak Bar Co. <- Northmart: the demo scenario in data/CLAUDE.md. Loaded and checked by api/accounts.py;
 # the shapes are AccountConfig and its parts in api/contracts.py ("# ---- accounts").
 id: peak-bar
 supplier: peak-bar

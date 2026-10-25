@@ -114,7 +114,7 @@ def check_deals():
         check(f"spring-promo.md has clause '{clause[:45]}...'", clause in spring)
     for label in ("3.1 Supplier will fund", "3.2 The promotional allowance", "5.4 Northmart may charge"):
         check(f"spring-promo.md numbers clause {label[:3]}", label in spring)
-    check("spring-promo.md labelled fictional", "FICTIONAL" in spring)
+    check("spring-promo.md carries no fictional label", "FICTIONAL" not in spring)
 
     amend = text("deals/amendment-1.md")
     check("amendment-1.md raises cap to 6,000", "maximum of 6,000 units" in amend)

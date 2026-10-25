@@ -3,9 +3,10 @@
 Peak Bar's files below live in data/accounts/peak-bar/ (account.yaml holds the invoice, people and senders; charges
 are charges/march.csv and charges/april.csv); other accounts sit next to it (api/accounts.py has the layout).
 Every number here must match this file to the cent. Never edit numbers by hand; change the prompt, regenerate,
-rerun `python scripts/check_data.py`. All names are fictional; label them fictional in any output.
+rerun `python scripts/check_data.py`. The names are invented, but app data carries no "fictional" or "simulated"
+label: documents read like real ones (no FICTIONAL banner, no X-Fictional header).
 
-## Cast (fictional)
+## Cast
 - Brand: Peak Bar Co. Owner Dana Okafor (dana@peakbar.example). Controller Sam Reyes (sam@peakbar.example).
 - Broker: Jordan Lee (jordan@peakbar-broker.example), an APPROVED amendment sender.
 - Distributor: Northmart (deductions desk: deductions@northmart.example), NOT an approved amendment sender.

@@ -1,7 +1,5 @@
 # Amendment No. 1 to Promotional Allowance Agreement SPRING-26
 
-> FICTIONAL. Peak Bar Co. and Northmart are invented for the Clawback demo. Not a real contract.
-
 **Amends:** Promotional Allowance Agreement SPRING-26, effective February 20, 2026 (the "Agreement")
 **Amendment date:** March 20, 2026
 

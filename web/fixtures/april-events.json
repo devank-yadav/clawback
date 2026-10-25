@@ -426,8 +426,8 @@
           "quote": {
             "doc_id": "spring-promo",
             "text": "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.",
-            "char_start": 1968,
-            "char_end": 2080,
+            "char_start": 1870,
+            "char_end": 1982,
             "context_before": "5.4 ",
             "context_after": ""
           },
@@ -447,8 +447,8 @@
           "quote": {
             "doc_id": "display-fee-2026-04-12",
             "text": "Northmart will charge a display fee of $1,200.00 for the month ending April 30, 2026, for secondary display placement of Peak Bar products.",
-            "char_start": 336,
-            "char_end": 475,
+            "char_start": 259,
+            "char_end": 398,
             "context_before": "",
             "context_after": " This notice is given 18 days before the end of the month."
           },
@@ -622,8 +622,8 @@
           "quote": {
             "doc_id": "spring-promo",
             "text": "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.",
-            "char_start": 1968,
-            "char_end": 2080,
+            "char_start": 1870,
+            "char_end": 1982,
             "context_before": "5.4 ",
             "context_after": ""
           },
@@ -643,8 +643,8 @@
           "quote": {
             "doc_id": "display-fee-2026-04-25",
             "text": "Northmart will charge an additional display fee of $800.00 for the month ending April 30, 2026, for end-cap display placement of Peak Bar products.",
-            "char_start": 336,
-            "char_end": 483,
+            "char_start": 259,
+            "char_end": 406,
             "context_before": "",
             "context_after": " This notice is given 5 days before the end of the month."
           },
@@ -803,8 +803,8 @@
       "quote": {
         "doc_id": "spring-promo",
         "text": "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.",
-        "char_start": 1968,
-        "char_end": 2080,
+        "char_start": 1870,
+        "char_end": 1982,
         "context_before": "5.4 ",
         "context_after": ""
       },
@@ -824,8 +824,8 @@
       "quote": {
         "doc_id": "display-fee-2026-04-12",
         "text": "Northmart will charge a display fee of $1,200.00 for the month ending April 30, 2026, for secondary display placement of Peak Bar products.",
-        "char_start": 336,
-        "char_end": 475,
+        "char_start": 259,
+        "char_end": 398,
         "context_before": "",
         "context_after": " This notice is given 18 days before the end of the month."
       },
@@ -851,8 +851,8 @@
       "quote": {
         "doc_id": "display-fee-2026-04-25",
         "text": "Northmart will charge an additional display fee of $800.00 for the month ending April 30, 2026, for end-cap display placement of Peak Bar products.",
-        "char_start": 336,
-        "char_end": 483,
+        "char_start": 259,
+        "char_end": 406,
         "context_before": "",
         "context_after": " This notice is given 5 days before the end of the month."
       },

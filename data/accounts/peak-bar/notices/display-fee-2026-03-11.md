@@ -1,7 +1,5 @@
 # Northmart notice: display fee
 
-> FICTIONAL. Peak Bar Co. and Northmart are invented for the Clawback demo.
-
 **From:** Northmart Deductions (deductions@northmart.example)
 **To:** Peak Bar Co., attn. Dana Okafor (dana@peakbar.example)
 **Notice date:** March 11, 2026

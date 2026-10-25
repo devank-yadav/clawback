@@ -364,8 +364,8 @@
           "quote": {
             "doc_id": "amendment-1",
             "text": "The promotional allowance applies to a maximum of 6,000 units in total.",
-            "char_start": 544,
-            "char_end": 615,
+            "char_start": 446,
+            "char_end": 517,
             "context_before": "> 3.2 ",
             "context_after": ""
           },
@@ -385,8 +385,8 @@
           "quote": {
             "doc_id": "spring-promo",
             "text": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
-            "char_start": 934,
-            "char_end": 1079,
+            "char_start": 836,
+            "char_end": 981,
             "context_before": "3.1 ",
             "context_after": ""
           },
@@ -551,8 +551,8 @@
           "quote": {
             "doc_id": "spring-promo",
             "text": "The promotional allowance applies to a maximum of 5,000 units in total.",
-            "char_start": 1085,
-            "char_end": 1156,
+            "char_start": 987,
+            "char_end": 1058,
             "context_before": "3.2 ",
             "context_after": ""
           },
@@ -576,8 +576,8 @@
       "quote": {
         "doc_id": "amendment-1",
         "text": "The promotional allowance applies to a maximum of 6,000 units in total.",
-        "char_start": 544,
-        "char_end": 615,
+        "char_start": 446,
+        "char_end": 517,
         "context_before": "> 3.2 ",
         "context_after": ""
       },
@@ -713,8 +713,8 @@
       "quote": {
         "doc_id": "spring-promo",
         "text": "Supplier will fund a promotional allowance of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 31, 2026.",
-        "char_start": 934,
-        "char_end": 1079,
+        "char_start": 836,
+        "char_end": 981,
         "context_before": "3.1 ",
         "context_after": ""
       },
@@ -734,8 +734,8 @@
       "quote": {
         "doc_id": "spring-promo",
         "text": "The promotional allowance applies to a maximum of 5,000 units in total.",
-        "char_start": 1085,
-        "char_end": 1156,
+        "char_start": 987,
+        "char_end": 1058,
         "context_before": "3.2 ",
         "context_after": ""
       },
@@ -755,8 +755,8 @@
       "quote": {
         "doc_id": "spring-promo",
         "text": "A unit may be claimed only once.",
-        "char_start": 1451,
-        "char_end": 1483,
+        "char_start": 1353,
+        "char_end": 1385,
         "context_before": "4.1 Each deduction must be supported by store sales data for the period claimed.\n4.2 ",
         "context_after": " Deductions already paid or credited may not be taken again.\n4.3 Supplier may dispute any deduction within 60 days of the remittance date by written notice to\ndeductions@northmart.example."
       },
