@@ -251,6 +251,14 @@ def load(run_id: str) -> list[Event] | None:
         return None
 
 
+def account_of(run_id: str) -> str | None:
+    """The account a run belongs to: one recorded by this process, else the events table's (None: unknown)."""
+    if run_id in _accounts:
+        return _accounts[run_id]
+    row = _read(lambda db: db.execute("SELECT account_id FROM events WHERE run_id = %s LIMIT 1", (run_id,)).fetchone())
+    return row[0] if row else None
+
+
 def latest_run(kind: str, account_id: str = accounts.DEFAULT) -> str | None:
     """An account's newest saved run of a kind that started after the last demo reset, if there is one."""
     row = _read(lambda db: db.execute(LATEST, (account_id, kind, _reset_at or EPOCH)).fetchone())

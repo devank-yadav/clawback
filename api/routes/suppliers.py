@@ -1,21 +1,24 @@
 """GET /suppliers: each supplier workspace with its distributors and their plain statuses (api/suppliers.py).
 POST /suppliers/{id}/tracking: track or untrack one of its distributors."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import Depends, APIRouter, HTTPException
 
 from api import accounts, suppliers
 from api.contracts import SupplierItem, TrackRequest
+from api.tenancy import Caller, current_supplier
 
 router = APIRouter(tags=["suppliers"])
 
 
 @router.get("/suppliers", response_model=list[SupplierItem])
-def list_suppliers() -> list[SupplierItem]:
-    return suppliers.items()
+def list_suppliers(who: Caller = Depends(current_supplier)) -> list[SupplierItem]:
+    return [s for s in suppliers.items() if who.everything or s.id == who.supplier_id]
 
 
 @router.post("/suppliers/{supplier_id}/tracking", response_model=SupplierItem)
-def track(supplier_id: str, req: TrackRequest) -> SupplierItem:
+def track(supplier_id: str, req: TrackRequest, who: Caller = Depends(current_supplier)) -> SupplierItem:
+    if not (who.everything or supplier_id == who.supplier_id):
+        raise HTTPException(404, f"unknown supplier {supplier_id}")
     try:
         a = accounts.get(req.account_id)
     except accounts.UnknownAccount:

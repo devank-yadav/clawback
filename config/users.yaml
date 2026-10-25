@@ -1,0 +1,20 @@
+# Who can sign in (api/users.py). No passwords here: each user's password comes from the env names in password_env
+# (the first one set wins). A user whose names are all unset can't sign in with a password; with no password set for
+# anyone (a laptop), sign-in stays open. phone_env names the env var holding the user's phone, so a text from it
+# answers that supplier's questions and approvals (POST /webhooks/twilio/sms).
+users:
+  - email: dana@peakbar.example
+    name: Dana Okafor
+    supplier: peak-bar
+    role: admin
+    password_env: [DEMO_USER_PASSWORD, ADMIN_PASSWORD]
+    phone_env: OWNER_PHONE
+    aliases: [admin]  # the ID the old sign-in used (ADMIN_USERNAME, default "admin")
+  # A second supplier, so isolation can be shown: signed in as Teresa, nothing of Peak Bar's is there.
+  - email: teresa@lanternhillsoda.example
+    name: Teresa Quan
+    supplier: lantern-hill
+    supplier_name: Lantern Hill Soda Co.
+    role: admin
+    password_env: [DEMO_USER2_PASSWORD]
+    phone_env: DEMO_USER2_PHONE

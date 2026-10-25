@@ -16,6 +16,7 @@ from api.auth import limit
 from api.contracts import PaymentResponse
 from api.integrations import nessie, replay
 from api.routes.runs import account_or_404
+from api.tenancy import Caller, current_supplier
 
 router = APIRouter(tags=["payments"])
 
@@ -31,17 +32,17 @@ def _poller_run(deposit_id: str) -> pipeline.Run | None:
 
 
 @router.post("/payments/northmart", response_model=PaymentResponse, dependencies=[Depends(limit("runs"))])
-def northmart_pays() -> PaymentResponse:
-    return _pays(accounts.DEFAULT)
+def northmart_pays(who: Caller = Depends(current_supplier)) -> PaymentResponse:
+    return _pays(accounts.DEFAULT, who)
 
 
 @router.post("/payments/{account}", response_model=PaymentResponse, dependencies=[Depends(limit("runs"))])
-def account_pays(account: str) -> PaymentResponse:
-    return _pays(account)
+def account_pays(account: str, who: Caller = Depends(current_supplier)) -> PaymentResponse:
+    return _pays(account, who)
 
 
-def _pays(account_id: str) -> PaymentResponse:
-    account = account_or_404(account_id)
+def _pays(account_id: str, who: Caller) -> PaymentResponse:
+    account = account_or_404(account_id, who)
     client = None if replay.demo_mode() else nessie.client()
     if client is None:
         run = pipeline.start(None, account=account)

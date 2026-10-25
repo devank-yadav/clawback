@@ -44,6 +44,7 @@ app = FastAPI(title="Clawback API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o for o in ["http://localhost:3000", os.getenv("PUBLIC_BASE_URL")] if o],
+    allow_credentials=True,  # the session cookie (api/routes/auth.py); origins stay explicit
     allow_methods=["*"],
     allow_headers=["*"],
 )

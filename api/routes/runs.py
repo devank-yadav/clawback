@@ -15,7 +15,8 @@ from fastapi.responses import StreamingResponse
 from api.contracts import (
     AnswerRequest, AnswerResponse, ChargeDetail, Evidence, RunFixture, StartRunRequest, StartRunResponse, Summary,
 )
-from api import accounts, pipeline
+from api import accounts, pipeline, tenancy
+from api.tenancy import Caller, current_supplier
 from api.auth import limit, require_role
 from api.db import events as saved_events
 from api.routes import portal
@@ -35,15 +36,14 @@ def _events(run: RunFixture) -> list:
     return run.events
 
 
-def account_or_404(account_id: str) -> accounts.Account:
-    try:
-        return accounts.get(account_id)
-    except accounts.UnknownAccount:
-        raise HTTPException(404, f"unknown account {account_id}") from None
+def account_or_404(account_id: str, who: Caller = tenancy.EVERYONE) -> accounts.Account:
+    """The account, if it exists and the caller's supplier owns it; 404 otherwise (api/tenancy.py)."""
+    return tenancy.account_or_404(who, account_id)
 
 
-def _start(kind: str | None, fixture: bool, account_id: str = accounts.DEFAULT) -> StartRunResponse:
-    account = account_or_404(account_id)
+def _start(kind: str | None, fixture: bool, account_id: str = accounts.DEFAULT,
+           who: Caller = tenancy.EVERYONE) -> StartRunResponse:
+    account = account_or_404(account_id, who)
     kind = kind or account.invoice.month
     if fixture:  # the recorded fake runs are Peak Bar's
         run_id = fixtures.MARCH_RUN if kind == "march" else fixtures.APRIL_RUN
@@ -56,20 +56,20 @@ def _start(kind: str | None, fixture: bool, account_id: str = accounts.DEFAULT) 
 
 
 @router.post("/runs", response_model=StartRunResponse, dependencies=[Depends(limit("runs"))])
-def start_run(req: StartRunRequest | None = None) -> StartRunResponse:
+def start_run(req: StartRunRequest | None = None, who: Caller = Depends(current_supplier)) -> StartRunResponse:
     """A live run of one of the account's months: {"account": "peak-bar", "kind": "march"} (both optional)."""
     req = req or StartRunRequest()
-    return _start(req.kind, req.fixture, req.account)
+    return _start(req.kind, req.fixture, req.account, who)
 
 
 @router.post("/replay/april", response_model=StartRunResponse, dependencies=[Depends(limit("runs"))])
-def replay_april(fixture: bool = Query(default=False)) -> StartRunResponse:
-    return _start("april", fixture)
+def replay_april(fixture: bool = Query(default=False), who: Caller = Depends(current_supplier)) -> StartRunResponse:
+    return _start("april", fixture, who=who)
 
 
-def _latest_live(has: str) -> pipeline.Run | None:
-    """The newest live run that holds this charge or evidence ID."""
-    for run in reversed(list(pipeline.RUNS.values())):
+def _latest_live(has: str, who: Caller = tenancy.EVERYONE) -> pipeline.Run | None:
+    """The newest live run this caller may see that holds this charge or evidence ID."""
+    for run in reversed(tenancy.visible_runs(who)):
         if has in run.charges or has in run.evidence:
             return run
     return None
@@ -83,7 +83,10 @@ async def run_events(
     after: int | None = Query(default=None, description="Same as Last-Event-ID, for curl and tests"),
     delay_ms: int = Query(default=400, ge=0, le=5000),
     keepalive: bool = Query(default=True, description="Hold the stream open after the last event"),
+    who: Caller = Depends(current_supplier),
 ) -> StreamingResponse:
+    if not tenancy.can_see_run(who, run_id):
+        raise HTTPException(404, f"unknown run {run_id}")
     live = pipeline.RUNS.get(run_id)
     run = live or _runs().get(run_id)
     saved = None if run else await asyncio.to_thread(saved_events.load, run_id)  # a run from before a restart
@@ -120,10 +123,15 @@ async def run_events(
 
 
 @router.get("/charges/{charge_id}", response_model=ChargeDetail)
-def charge_detail(charge_id: str, run_id: str | None = Query(default=None)) -> ChargeDetail:
-    live = pipeline.RUNS.get(run_id) if run_id else _latest_live(charge_id)
+def charge_detail(charge_id: str, run_id: str | None = Query(default=None),
+                  who: Caller = Depends(current_supplier)) -> ChargeDetail:
+    if run_id and not tenancy.can_see_run(who, run_id):
+        raise HTTPException(404, f"unknown charge {charge_id}")
+    live = pipeline.RUNS.get(run_id) if run_id else _latest_live(charge_id, who)
     if live and charge_id in live.charges:
         return live.detail(charge_id)
+    if not tenancy.can_see(who, accounts.DEFAULT):  # the recorded runs below are Peak Bar's
+        raise HTTPException(404, f"unknown charge {charge_id}")
     if portal.amendment_attached() and charge_id in fixtures.amendment_run().charges:
         return fixtures.amendment_run().charges[charge_id]
     for run in _runs().values():
@@ -133,10 +141,15 @@ def charge_detail(charge_id: str, run_id: str | None = Query(default=None)) -> C
 
 
 @router.get("/evidence/{evidence_id}", response_model=Evidence)
-def evidence(evidence_id: str, run_id: str | None = Query(default=None)) -> Evidence:
-    live = pipeline.RUNS.get(run_id) if run_id else _latest_live(evidence_id)
+def evidence(evidence_id: str, run_id: str | None = Query(default=None),
+             who: Caller = Depends(current_supplier)) -> Evidence:
+    if run_id and not tenancy.can_see_run(who, run_id):
+        raise HTTPException(404, f"unknown evidence {evidence_id}")
+    live = pipeline.RUNS.get(run_id) if run_id else _latest_live(evidence_id, who)
     if live and evidence_id in live.evidence:
         return live.evidence[evidence_id]
+    if not tenancy.can_see(who, accounts.DEFAULT):  # the recorded evidence below is Peak Bar's
+        raise HTTPException(404, f"unknown evidence {evidence_id}")
     ev = fixtures.EVIDENCE.get(evidence_id)
     if ev is None:
         raise HTTPException(404, f"unknown evidence {evidence_id}")
@@ -145,7 +158,10 @@ def evidence(evidence_id: str, run_id: str | None = Query(default=None)) -> Evid
 
 @router.post("/questions/{question_id}/answer", response_model=AnswerResponse,
              dependencies=[Depends(require_role("owner"))])
-def answer_question(question_id: str, req: AnswerRequest) -> AnswerResponse:
+def answer_question(question_id: str, req: AnswerRequest, who: Caller = Depends(current_supplier)) -> AnswerResponse:
+    in_run = pipeline.QUESTIONS.get(question_id)
+    if not (tenancy.can_see_run(who, in_run[0]) if in_run else tenancy.can_see(who, accounts.DEFAULT)):
+        raise HTTPException(404, f"no open question {question_id}")
     if question_id in pipeline.QUESTIONS:
         try:
             ans, rule = pipeline.answer(question_id, req.text, req.from_role, save_rule=req.save_rule)
@@ -187,10 +203,11 @@ def latest_run_id(account: accounts.Account, kind: str | None = None) -> str | N
 
 @router.get("/runs/latest", response_model=StartRunResponse)
 def latest_run(kind: str | None = Query(default=None, description="the account's invoice month if left out"),
-               account: str = Query(default=accounts.DEFAULT)) -> StartRunResponse:
+               account: str = Query(default=accounts.DEFAULT),
+               who: Caller = Depends(current_supplier)) -> StartRunResponse:
     """The account's newest live run (the payment screen finds the run Nessie's deposit started); with none in memory,
     the newest saved one (the API restarted)."""
-    found = account_or_404(account)
+    found = account_or_404(account, who)
     run_id = latest_run_id(found, kind)
     if run_id is None:
         raise HTTPException(404, f"no live {kind or found.invoice.month} run for {found.id} yet")

@@ -6,8 +6,8 @@ Twilio inbound SMS (F8, F10): the admin's answer and yes / no, the same way as a
 Also the WhatsApp Sandbox's "When a message comes in" URL (SMS_CHANNEL=whatsapp): the fields are the same and From
 is "whatsapp:+1555…", which matches on its digits like any other format.
 
-From is matched to OWNER_PHONE (the admin, the one person who decides); anyone else gets an empty reply and changes
-nothing. An open question takes the reply first; with none, a YES or NO (or anything while a memo waits) goes to the
+From is matched to a user's phone (config/users.yaml phone_env; Peak Bar's admin is OWNER_PHONE), and the reply
+reaches only that user's supplier's questions and memos; anyone else gets an empty reply and changes nothing. An open question takes the reply first; with none, a YES or NO (or anything while a memo waits) goes to the
 credit memo approval; anything else (UNDO, a late reply) goes to the newest question. The reply text goes through the same parser as the app
 (api/replies.py via api/pipeline.answer). What Clawback texts
 back (the rule echo, UNDO, the re-ask) is returned as TwiML, so Twilio sends it without an outbound API call.
@@ -27,7 +27,7 @@ from xml.sax.saxutils import escape
 
 from fastapi import APIRouter, HTTPException, Request, Response
 
-from api import inbound_email, pipeline, remittance, replies, sources
+from api import inbound_email, pipeline, remittance, replies, sources, tenancy, users
 
 router = APIRouter(tags=["webhooks"])
 
@@ -45,10 +45,19 @@ def _digits(phone: str) -> str:
     return d[1:] if len(d) == 11 and d.startswith("1") else d  # +1 555… and 555… are the same US number
 
 
-def _role(sender: str) -> str | None:
+def _sender(sender: str):
+    """The user this phone belongs to (config/users.yaml phone_env; Peak Bar's admin is OWNER_PHONE), or None.
+    Returns (role, `only`): the reply reaches only that user's supplier's runs."""
     if not _digits(sender):
-        return None
-    return "owner" if _digits(os.getenv("OWNER_PHONE", "")) == _digits(sender) else None
+        return None, None
+    user = users.by_phone(sender)
+    if user is None:
+        return None, None
+    return "owner", (lambda a: tenancy.supplier_of(a) == user.supplier_id)
+
+
+def _role(sender: str) -> str | None:
+    return _sender(sender)[0]
 
 
 def signature(url: str, form: dict[str, str], token: str) -> str:
@@ -67,21 +76,22 @@ def _check_signature(request: Request, form: dict[str, str]) -> None:
         raise HTTPException(403, "bad Twilio signature")
 
 
-def _open_question() -> str | None:
+def _open_question(only=None) -> str | None:
     """The newest unanswered owner question; else the newest one at all (so UNDO and late replies still land)."""
     qs = [(qid, pipeline.RUNS[rid].questions[qid]) for qid, (rid, _) in pipeline.QUESTIONS.items()
-          if rid in pipeline.RUNS and pipeline.RUNS[rid].questions[qid].to_role == "owner"]
+          if rid in pipeline.RUNS and pipeline.RUNS[rid].questions[qid].to_role == "owner"
+          and (only is None or only(pipeline.RUNS[rid].account))]
     open_ = [qid for qid, q in qs if pipeline.is_open(q)]
     return (open_ or [qid for qid, _ in qs] or [None])[-1]
 
 
-def _has_open_question() -> bool:
-    qid = _open_question()
+def _has_open_question(only=None) -> bool:
+    qid = _open_question(only)
     return qid is not None and pipeline.is_open(pipeline.RUNS[pipeline.QUESTIONS[qid][0]].questions[qid])
 
 
-def _owner(text: str) -> list[str]:
-    qid = _open_question()
+def _owner(text: str, only=None) -> list[str]:
+    qid = _open_question(only)
     if qid is None:
         return [NO_QUESTION_TEXT]
     run = pipeline.RUNS[pipeline.QUESTIONS[qid][0]]
@@ -93,16 +103,16 @@ def _owner(text: str) -> list[str]:
     return [t for role, t in run.texts[before:] if role == "owner"]
 
 
-def _waiting_approval(reply: replies.ApprovalReply) -> str | None:
-    approval_id = pipeline.pending_approval()
+def _waiting_approval(reply: replies.ApprovalReply, only=None) -> str | None:
+    approval_id = pipeline.pending_approval(only=only)
     if approval_id is None and reply.kind == "approve":
-        approval_id = pipeline.failed_approval()  # YES again after QuickBooks failed: retry the write
+        approval_id = pipeline.failed_approval(only)  # YES again after QuickBooks failed: retry the write
     return approval_id
 
 
-def _approval(text: str) -> list[str]:
+def _approval(text: str, only=None) -> list[str]:
     reply = replies.parse_approval_reply(text)
-    approval_id = _waiting_approval(reply)
+    approval_id = _waiting_approval(reply, only)
     if approval_id is None:
         return [NO_QUESTION_TEXT]
     if reply.kind == "unclear":
@@ -153,13 +163,13 @@ async def inbound_email_webhook(request: Request) -> inbound_email.InboundResult
 async def twilio_sms(request: Request) -> Response:
     form = {k: v[0] for k, v in parse_qs((await request.body()).decode(), keep_blank_values=True).items()}
     _check_signature(request, form)
-    role = _role(form.get("From", ""))
+    role, only = _sender(form.get("From", ""))
     if role is None:
-        return _twiml()  # not the admin: say nothing, change nothing
+        return _twiml()  # not a user's phone: say nothing, change nothing
     text = form.get("Body", "")
-    if _has_open_question():
-        return _twiml(*_owner(text))
+    if _has_open_question(only):
+        return _twiml(*_owner(text, only))
     reply = replies.parse_approval_reply(text)
     undo = reply.kind == "unclear" and replies.parse_owner_reply(text).kind == "undo"  # UNDO is about the rule
-    to_approval = not undo and (reply.kind != "unclear" or pipeline.pending_approval() is not None)
-    return _twiml(*(_approval(text) if to_approval else _owner(text)))
+    to_approval = not undo and (reply.kind != "unclear" or pipeline.pending_approval(only=only) is not None)
+    return _twiml(*(_approval(text, only) if to_approval else _owner(text, only)))
