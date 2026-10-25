@@ -29,11 +29,12 @@ from api import accounts, account_rows, adapters, audit, evidence as evidence_mo
 from api.agents import investigator, investigator_ops, negotiator, reader, readers, rule_writer
 from api.contracts import (
     Answer, Approval, ApprovalLine, AutoPost, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, DeliveryRow, Dispute, DisputeLine, Event,
-    EventAdapter, Evidence, Finding, LogLine, OpsTerm, OwnerMessage, PriceRow, Question, Rehearsal, Remittance, Rule, RunInfo,
+    EventAdapter, Evidence, Finding, LogLine, OpsTerm, OwnerMessage, PriceRow, Question, QuestionRisk, Rehearsal, Remittance,
+    RiskDetail, Rule, RunInfo,
     RunValue, StageInfo, Term, Totals,
 )
 from api.db import events as saved_events, state as saved_state
-from api.engine import gate, rules as rules_engine, totals, value as value_mod
+from api.engine import gate, question_risk, rules as rules_engine, totals, value as value_mod
 from api.engine import types as eng
 from api.engine.allowed import compute_allowed
 from api.engine.policy import load_policy
@@ -543,6 +544,31 @@ def _close_questions(run: Run) -> None:
                     q.charge_id)
 
 
+def _question_risk(run: Run, charge_id: str, term, split) -> tuple[QuestionRisk, list[RiskDetail]]:
+    """The question's level, kind, one-line reason and details (api/engine/question_risk.py), from the engine's numbers
+    and the clause. Plain code: no AI call, so recorded requests don't change."""
+    c, a = run.charges[charge_id], run.allowances[charge_id]
+    by_id = {t.id: t for t in run.terms}
+    clause = run.evidence.get(evidence_mod.clause_id(by_id[term.id])) if term and term.id in by_id else None
+    notice = next((t for t in a.terms if t.type.value == "notice_period"), None)
+    file_by, days_left = lookback.deadline(run.account, load_policy())
+    rules = rules_of(run.account)
+    facts = question_risk.Facts(
+        amount=c.amount, payment=run.account.invoice.received if run.kind == run.account.invoice.month else None,
+        what=re.sub(r"\s*\(.*?\)", "", c.description).strip().lower() or "charge", distributor=run.distributor,
+        clause_ref=clause.label if clause else None, quote=term.exact_quote if term else None,
+        term_type=term.type.value if term else None, discretionary=bool(term and term.discretion),
+        notice_period_days=int(notice.params["days"]) if notice and notice.params.get("days") is not None else None,
+        notice_date=c.notice_date, notice_days=a.facts.get("notice_days"), days_left=days_left, file_by=file_by,
+        readers_disagree=split is not None,
+        disagreement=run.disagreements.get(split.type.value) if split is not None else None,
+        rule_label=None if split is not None else f"Rule #{len(rules) + 1}",
+        discretion_words=tuple(sorted(load_policy().discretion_words, key=len, reverse=True)))
+    r = question_risk.assess(facts)
+    return (QuestionRisk(level=r.level, kind=r.kind, reason=r.reason),
+            [RiskDetail(label=k, value=v) for k, v in r.details])
+
+
 def _ask_owner(run: Run, charge_id: str) -> None:
     c, a = run.charges[charge_id], run.allowances[charge_id]
     term = next((t for t in a.terms if t.discretion or t.type == eng.TermType.FEE_DISCRETION), a.terms[0] if a.terms else None)
@@ -557,13 +583,14 @@ def _ask_owner(run: Run, charge_id: str) -> None:
                 + (f"The deal says: \"{term.exact_quote}\" " if term else "")
                 + (f"Notice came {days} days ahead. " if days is not None else "")
                 + "Accept or dispute? Tell me your rule and I'll remember it.")
+    risk, details = _question_risk(run, charge_id, term, split)
     with _state:
         _counter["question"] += 1
         qid = f"Q-{_counter['question']}"
         replaced_by = run.replaced_by
     if replaced_by:  # still deciding when a newer run started: the question is born closed and nobody is texted
         q = Question(id=qid, to_role="owner", charge_id=charge_id, text=text, channel="inbox", sent_at=_now(),
-                     closed_at=_now())
+                     closed_at=_now(), risk=risk, details=details)
         run.questions[qid] = q
         QUESTIONS[qid] = (run.id, charge_id)
         run.emit("question", q)
@@ -572,7 +599,7 @@ def _ask_owner(run: Run, charge_id: str) -> None:
         return
     status = sms.send("owner", text)
     q = Question(id=qid, to_role="owner", charge_id=charge_id, text=text, channel="sms" if status == "sent" else "inbox",
-                 sent_at=_now())
+                 sent_at=_now(), risk=risk, details=details)
     run.questions[qid] = q
     QUESTIONS[qid] = (run.id, charge_id)
     run.emit("question", q)

@@ -411,6 +411,21 @@ class Decision(Contract):
 
 # ---------------------------------------------------------------- people: questions, rules, approvals
 
+class QuestionRisk(Contract):
+    """How much a question matters, like a flagged risk in a code review (api/engine/question_risk.py, plain code)."""
+
+    level: Literal["high", "medium", "low"]
+    kind: Literal["financial", "legal", "deadline", "relationship"]
+    reason: str = Field(max_length=300)  # one sentence, 25 words or fewer
+
+
+class RiskDetail(Contract):
+    """One line of a question's expandable part: "Clause" / §5.4 "...", "Days of notice" / "20 days"."""
+
+    label: str
+    value: str
+
+
 class Question(Contract):
     id: str
     to_role: Role
@@ -422,6 +437,8 @@ class Question(Contract):
     answered_at: datetime | None = None
     rule_id: str | None = None
     closed_at: datetime | None = None  # a newer run of the same payment replaced this one; answer that run's question
+    risk: QuestionRisk | None = None  # None on a question from before risks were added
+    details: list[RiskDetail] = []
 
 
 class Answer(Contract):

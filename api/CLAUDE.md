@@ -93,6 +93,9 @@ decision gate and approvals; Data model; API, live updates and integrations.
   Promotions, Remittances, Correspondence, Sales data} by sha256; contracts and notices become account documents under
   DRIVE_DOCS_DIR (Account.drive, read by runs), a signed amendment under an open dispute concedes through
   disputes._new_document, a remittance starts a run; POST /drive/sync; the Drive card in library.connections().
+- Question risk (api/engine/question_risk.py, policy.yaml question_risk): each owner question carries risk {level,
+  kind, reason} and details [{label, value}], from the engine's numbers and the clause in code (no AI call), set in
+  pipeline._question_risk. Northmart's C6 is high / relationship. The fixture run's Q-1 carries the same.
 - One admin (api/auth.py): the brand's owner answers every question and approves every credit memo, in the app or by
   text to OWNER_PHONE (there is no controller; account.yaml's brand.controller is still accepted and unused). With
   OWNER_TOKEN set, the in-app answer and approval need it as X-Clawback-Role-Token; POST /questions/{id}/answer takes
