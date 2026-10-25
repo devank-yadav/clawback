@@ -17,6 +17,9 @@ const ago = (iso: string) => {
   return s < 60 ? "just now" : s < 3600 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} h ago`;
 };
 
+/** Fired when "Check for new payments" leaves a payment received, so it shows at once (not on the next look). */
+export const RECEIVED_EVENT = "clawback:payment-received";
+
 export type Received = {
   pending: api.PendingPayment[];
   runningId: string | null;
@@ -29,8 +32,10 @@ export function useReceivedPayments(): Received {
   const router = useRouter();
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    const t = window.setInterval(() => setTick((n) => n + 1), 4_000);
-    return () => window.clearInterval(t);
+    const bump = () => setTick((n) => n + 1);
+    const t = window.setInterval(bump, 4_000);
+    window.addEventListener(RECEIVED_EVENT, bump);
+    return () => { window.clearInterval(t); window.removeEventListener(RECEIVED_EVENT, bump); };
   }, []);
   const load = useCallback(() => api.fetchPendingPayments().catch(() => [] as api.PendingPayment[]), []);
   const pending = useFetched(load, String(tick)).data ?? [];
@@ -74,10 +79,10 @@ export function ReceivedList({ received }: { received: Received }) {
         <ul className="fl-received" aria-label="Payments received">
           {pending.map((p, i) => (
             <li key={p.id}>
-              <span className="fl-received-chip">Payment received</span>
+              <span className="fl-received-chip">New payment received</span>
               <span className="fl-received-text">
                 <strong>{p.distributor} paid {money(p.received)} of {money(p.expected)} on {p.invoice_id}</strong>
-                <small>Sent from {p.distributor}’s portal · {ago(p.received_at)} · the agents haven’t started</small>
+                <small>{p.source === "bank" ? "Deposited in the bank" : `Sent from ${p.distributor}’s portal`} · {ago(p.received_at)} · the agents haven’t started</small>
               </span>
               {i > 0 && <button className="cx-btn is-ghost" onClick={() => void run(p)} disabled={!!runningId}>{runningId === p.id ? "Starting…" : "Run the agents"}</button>}
             </li>

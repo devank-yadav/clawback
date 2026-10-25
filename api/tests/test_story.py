@@ -77,9 +77,13 @@ def test_check_for_new_payments_delivers_northmarts_march_payment(built, monkeyp
     (f,) = r["found"]
     assert (f["account_id"], f["distributor"], f["amount"], f["invoice_id"]) == ("peak-bar", "Northmart", 41350.0,
                                                                                  "INV-3102")
-    assert f["run_id"] and r["message"] == "Northmart paid $41,350.00 on INV-3102. The agents are checking it."
+    assert f["run_id"] is None and r["message"] == "Northmart paid $41,350.00 on INV-3102. New payment received."
     assert "demo" not in r["message"].lower() and "test" not in r["message"].lower()
-    run = pipeline.RUNS[f["run_id"]]
+    (p,) = client.get("/payments/pending").json()  # received, waiting for "Run the agents"
+    assert (p["account_id"], p["source"], p["received"]) == ("peak-bar", "bank", 41350.0)
+    started = client.post(f"/payments/pending/{p['id']}/run").json()
+    assert client.get("/payments/pending").json() == []
+    run = pipeline.RUNS[started["run_id"]]
     for _ in range(200):
         if any(e.type == "question" for e in run.events):
             break

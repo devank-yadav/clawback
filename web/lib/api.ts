@@ -135,7 +135,7 @@ export const syncPayments = () => call<PaymentSync>("/payments/sync", { method: 
 
 /** A payment the distributor sent from its portal, waiting for "Run the agents" (api/contracts.py PendingPayment).
  * The bank's and QuickBooks' pollers start their runs on their own; these wait for the admin. */
-export type PendingPayment = { id: string; account_id: string; distributor: string; invoice_id: string; expected: Money; received: Money; source: "portal"; received_at: string };
+export type PendingPayment = { id: string; account_id: string; distributor: string; invoice_id: string; expected: Money; received: Money; source: "portal" | "bank"; received_at: string };
 export const fetchPendingPayments = () => call<PendingPayment[]>("/payments/pending");
 /** POST /portal/payments/{account}: the distributor's "Send payment" (nothing runs; it waits as received). */
 export const sendPortalPayment = (account: string) => call<PendingPayment>(`/portal/payments/${q(account)}`, { method: "POST" });

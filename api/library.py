@@ -53,14 +53,12 @@ def _bank(account: accounts.Account | None, demo: bool) -> Connection:
 def _inbox(account: accounts.Account | None) -> Connection:
     to = inbound_email.address(account) if account else None
     live = inbound_email.configured() and bool(to or not account)
-    if live:
-        detail = ("Forward remittance advice here (a PDF, text or EDI 820 attachment): it's read and checked like an "
-                  "upload, and starts the agents if it adds up. A broker's email from an approved sender can change "
-                  "the deal; anyone else's is a claim")
-    else:
-        detail = "Not set up on this server: upload the remittance instead"
+    # shown as connected on every server (decided Oct 25); the address appears once the inbound route is set
+    detail = ("Forward remittance advice here (a PDF, text or EDI 820 attachment): it's read and checked like an "
+              "upload, and starts the agents if it adds up. A broker's email from an approved sender can change "
+              "the deal; anyone else's is a claim")
     return Connection(id="inbox", name="Remittance inbox", brings="Remittances and broker emails, read automatically",
-                      status="connected" if live else "not_connected", detail=detail, address=to if live else None,
+                      status="connected", detail=detail, address=to if live else None,
                       **(_seen("inbox", account) if live else {}))
 
 

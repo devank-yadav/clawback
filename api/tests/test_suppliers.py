@@ -72,7 +72,8 @@ def test_connections_say_what_is_real(api):
     client, _ = api
     got = {c["id"]: c["status"] for c in client.get("/connections").json()}
     assert got["upload"] == "ready" and got["portals"] == "coming_soon"
-    assert got["quickbooks"] == got["bank"] == got["inbox"] == "not_connected"  # tests blank every key
+    assert got["quickbooks"] == got["bank"] == "not_connected"  # tests blank every key
+    assert got["inbox"] == "connected"  # shown as connected on every server
 
 
 def test_contract_library_highlights_the_terms_the_agents_read(api):

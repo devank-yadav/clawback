@@ -49,9 +49,8 @@ def _poller_run(deposit_id: str) -> pipeline.Run | None:
 @router.post("/payments/sync", response_model=PaymentSync, dependencies=[Depends(limit("runs"))])
 def sync_payments(who: Caller = Depends(current_supplier)) -> PaymentSync:
     """"Check for new payments": one look at the bank (Nessie) and QuickBooks, as their pollers do every few
-    seconds. A payment found starts its account's run. When they have nothing new for this supplier, the next
-    payment due arrives the way a bank deposit does (its invoice's received amount on the account's own path), so
-    the button always shows the agents at work on the newest payment."""
+    seconds. A payment their pollers see starts its account's run. When they have nothing new for this supplier, the
+    next payment due arrives as received (its invoice's received amount) and waits for "Run the agents"."""
     from api import story
     from api.integrations import qbo_source
 
@@ -75,15 +74,17 @@ def sync_payments(who: Caller = Depends(current_supplier)) -> PaymentSync:
                                               invoice_id=run.account.invoice.id, run_id=run.id))
     if not found:
         due = _next_due(who, story.NEXT_PAYMENT)
-        if due is not None:
-            paid = _pays(due.id, who)
+        if due is not None:  # received, not started: it waits for "Run the agents" like a portal payment
+            _receive(due, "bank")
             found.append(FoundPayment(source="bank", account_id=due.id, distributor=due.distributor.name,
-                                      amount=due.invoice.received, invoice_id=due.invoice.id, run_id=paid.run_id))
+                                      amount=due.invoice.received, invoice_id=due.invoice.id, run_id=None))
     if not found:
         return PaymentSync(checked=checked, found=[], message="No new payments.")
     names = ", ".join(f"{f.distributor} paid ${f.amount:,.2f} on {f.invoice_id}" if f.amount is not None
                       else f"{f.distributor} paid {f.invoice_id}" for f in found)
-    return PaymentSync(checked=checked, found=found, message=f"{names}. The agents are checking it.")
+    started = any(f.run_id for f in found)
+    return PaymentSync(checked=checked, found=found,
+                       message=f"{names}. " + ("The agents are checking it." if started else "New payment received."))
 
 
 def _next_due(who: Caller, first: str) -> accounts.Account | None:
@@ -94,7 +95,8 @@ def _next_due(who: Caller, first: str) -> accounts.Account | None:
     mine = [a for a in accounts.every() if suppliers.supplier_of(a) == supplier and tenancy.can_see(who, a)
             and a.id not in suppliers._off(supplier)]
     mine.sort(key=lambda a: (a.id != first, a.id))
-    return next((a for a in mine if pipeline.latest(a.invoice.month, a) is None), None)
+    waiting = {p.account_id for p in _PENDING.values()}
+    return next((a for a in mine if pipeline.latest(a.invoice.month, a) is None and a.id not in waiting), None)
 
 
 @router.post("/payments/northmart", response_model=PaymentResponse, dependencies=[Depends(limit("runs"))])
@@ -135,15 +137,19 @@ def _pays(account_id: str, who: Caller) -> PaymentResponse:
 def portal_pays(account: str) -> PendingPayment:
     """The distributor's portal: "Send payment" on its invoice (the invoice's received amount, as the bank deposit
     would carry). Nothing runs: the supplier sees it as received. A second press while it waits returns the same one."""
+    return _receive(account_or_404(account), "portal")  # the portal is the distributor's side: no supplier sign-in
+
+
+def _receive(a: accounts.Account, source: str) -> PendingPayment:
+    """The account's payment, received and waiting for "Run the agents"; one already waiting is returned as is."""
     global _sent
-    a = account_or_404(account)  # the portal is the distributor's side: no supplier sign-in
     waiting = next((p for p in _PENDING.values() if p.account_id == a.id), None)
     if waiting is not None:
         return waiting
     _sent += 1
     p = PendingPayment(id=f"PAY-{a.id}-{_sent}", account_id=a.id, distributor=a.distributor.name,
                        invoice_id=a.invoice.id, expected=a.invoice.expected, received=a.invoice.received,
-                       source="portal", received_at=datetime.now(timezone.utc))
+                       source=source, received_at=datetime.now(timezone.utc))
     _PENDING[p.id] = p
     return p
 

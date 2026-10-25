@@ -79,7 +79,7 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
           title="Agents"
           line={<>
             {pending.length > 0
-              ? <>{pending.length} payment{pending.length === 1 ? "" : "s"} received. Run the agents to check {pending.length === 1 ? "it" : "them"} against the deal.</>
+              ? <>New payment{pending.length === 1 ? "" : "s"} received. Run the agents to check {pending.length === 1 ? "it" : "them"} against the contract.</>
               : elsewhere.length > 0
                 ? <>The agents are checking {elsewhere.map((d) => `${d.distributor.name}’s`).join(" and ")} payment now. <Link className="ph-link" href={withAccount("/", elsewhere[0].account_id, elsewhere[0].latest_run_id ? { run: elsewhere[0].latest_run_id } : undefined)}>Watch it</Link></>
                 : <>No new payment from {cast.distributor}. New payments show up here; once the bank or QuickBooks is connected, they start the agents on their own.</>}

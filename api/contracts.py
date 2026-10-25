@@ -1583,7 +1583,7 @@ class PendingPayment(Contract):
     invoice_id: str
     expected: Money  # the invoice
     received: Money  # what the distributor paid on it
-    source: Literal["portal"]
+    source: Literal["portal", "bank"]  # bank: found by "Check for new payments"
     received_at: datetime
 
 
