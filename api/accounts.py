@@ -122,6 +122,15 @@ def _months(config: AccountConfig, folder: Path) -> tuple[str, ...]:
     return (config.invoice.month, *later)
 
 
+def _desk_override(config: AccountConfig) -> AccountConfig:
+    """DESK_EMAIL_<ACCOUNT_ID> (e.g. DESK_EMAIL_PEAK_BAR) on a server points the distributor's deductions desk at a real
+    inbox, so dispute emails reach someone, without putting that address in the repo."""
+    desk = (os.getenv(f"DESK_EMAIL_{config.id.upper().replace('-', '_')}") or "").strip()
+    if not desk:
+        return config
+    return config.model_copy(update={"distributor": config.distributor.model_copy(update={"desk_email": desk})})
+
+
 def _load() -> tuple[dict[str, Account], list[str]]:
     accounts: dict[str, Account] = {}
     problems: list[str] = []
@@ -134,6 +143,7 @@ def _load() -> tuple[dict[str, Account], list[str]]:
         except (ValidationError, yaml.YAMLError) as e:
             problems.append(f"{where}: {e}")
             continue
+        config = _desk_override(config)
         mine: list[str] = []
         if config.id != folder.name:
             mine.append(f"id {config.id!r} isn't the folder's name {folder.name!r}")
