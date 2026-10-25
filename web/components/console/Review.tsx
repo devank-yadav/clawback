@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
-import { shortDate } from "@/lib/format";
+import { money, shortDate } from "@/lib/format";
 import { useChargeDetail } from "@/lib/useChargeDetail";
 import type { ChargeView } from "@/lib/workspace";
 import { agentSteps, doneCount } from "./agents";
@@ -211,31 +211,33 @@ export function OwnerDecision({ charge }: { charge: ChargeView }) {
   const [saveRule, setSaveRule] = useState(true);
   const picked = choice === "own" ? (own.trim() ? { id: "own", label: own, text: own.trim() } : null) : choices.find((c) => c.id === choice) ?? null;
   const q = view.question!;
+  const risk = q.risk ?? null;
+  const level = risk ? LEVEL[String(risk.level).toLowerCase()] ?? null : null;
+  const kind = risk ? KIND[String(risk.kind).toLowerCase()] ?? String(risk.kind) : null;
+  const disagree = !!finding && !finding.readers_agree;
+  // One sentence of why: the risk's reason, else what the agents concluded.
+  const reason = risk?.reason ?? (disagree ? "Two readers read this term differently, so the agents won’t pick one." : "The deal leaves this to judgment, so the agents won’t guess your policy.");
+  // Everything else waits behind "Show details": the API's own details when it sends them, else what the card used to say.
+  const details: { label: string; value: string }[] = [
+    { label: "Charge", value: `${charge.title} · ${money(charge.amount)}, held out of posting until you decide` },
+    ...(q.details ?? []),
+    ...(!q.details?.length ? [{ label: "What the agents found", value: finding?.finding ?? charge.finding ?? "" }] : []),
+    ...(clause ? [{ label: `Signed deal ${clause.label}`, value: `“${clause.quote?.text ?? clause.summary}”` }] : []),
+    { label: "Your answer", value: saveRule ? "Saved as a rule for this distributor, so you’re never asked twice. It guides the agents; it doesn’t change the contract." : "Settles this charge only; the next one like it asks again." },
+    { label: "Who decides", value: `${CAST.ownerFull}, admin. This isn’t the accounting approval, which comes after.` },
+  ].filter((d) => d.value);
 
   return (
-    <aside className="cx-drawer" aria-label="Owner policy needed">
-      <span className="cx-eyebrow">Owner policy needed</span>
-      <div className="cx-head" style={{ alignItems: "center" }}>
-        <h2>{charge.title}</h2>
-        <Pill tone="amber">Ask owner</Pill>
+    <aside className={`dc ${level ? `is-${level.tone}` : ""}`} aria-label="A decision for you">
+      <div className="dc-top">
+        {level && <span className={`dc-level is-${level.tone}`}>{level.icon}{level.word}</span>}
+        {kind && <span className="dc-kind">{kind}</span>}
+        {!level && <span className="dc-kind">Your decision</span>}
+        <span className="dc-charge">{charge.title} · <Money value={charge.amount} /></span>
       </div>
-      <div className="cx-head" style={{ alignItems: "flex-end" }}>
-        <div><span className="cx-tiny">Entire charge unresolved</span><br /><Money value={charge.amount} className="cx-big" /></div>
-        <span className="cx-tiny">Excluded from posting</span>
-      </div>
-      {clause && (
-        <div className="cx-quote is-marked">
-          <div className="cx-head"><span className="cx-tiny">Signed deal</span><span className="cx-tiny" style={{ color: "var(--accent)" }}>{clause.label}</span></div>
-          <blockquote>“{clause.quote?.text ?? clause.summary}”</blockquote>
-        </div>
-      )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <strong style={{ fontWeight: 500, fontSize: 13 }}>{finding && !finding.readers_agree ? "Two readers. Different interpretations." : "The deal leaves this to judgment."}</strong>
-        <p className="cx-small cx-muted">{finding?.finding ?? charge.finding}</p>
-        <p className="cx-small" style={{ color: "var(--accent-ink)" }}>The agents won’t guess your policy. You decide once, and it becomes a rule.</p>
-      </div>
-      <fieldset style={{ border: 0, padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-        <legend style={{ fontSize: 17, marginBottom: 10 }}>How should Clawback handle charges like this?</legend>
+      <p className="dc-reason">{reason}</p>
+      <fieldset className="dc-choices">
+        <legend>How should Clawback handle charges like this?</legend>
         {choices.map((c) => (
           <span key={c.id} role="radio" tabIndex={0} className="cx-choice" aria-checked={choice === c.id}
             onClick={() => setChoice(c.id)}
@@ -251,18 +253,26 @@ export function OwnerDecision({ charge }: { charge: ChargeView }) {
             onFocus={() => setChoice("own")} onChange={(e) => setOwn(e.target.value)} aria-label="Your own rule" />
         </span>
       </fieldset>
-      <label className="cx-check">
-        <input type="checkbox" checked={saveRule} onChange={(e) => setSaveRule(e.target.checked)} />
-        <span>Save as a rule for next time</span>
-      </label>
-      <p className="cx-small cx-muted">{saveRule
-        ? "Saved as a rule for this distributor, so you’re never asked twice. This guides your agents; it doesn’t change the contract."
-        : "Settles this charge only. Nothing is saved, so the next charge like it asks you again."}</p>
-      <div className="cx-head" style={{ alignItems: "center" }}>
-        <button className="cx-btn" disabled={!picked} onClick={() => picked && answerQuestion(q.id, picked.text, saveRule)}>{saveRule ? "Save policy" : "Decide this charge"}</button>
-        {!picked && <span className="cx-tiny">Choose an option first</span>}
+      <div className="dc-actions">
+        <label className="cx-check">
+          <input type="checkbox" checked={saveRule} onChange={(e) => setSaveRule(e.target.checked)} />
+          <span>Save as a rule</span>
+        </label>
+        <button className="cx-btn" disabled={!picked} title={picked ? undefined : "Choose an option first"} onClick={() => picked && answerQuestion(q.id, picked.text, saveRule)}>{saveRule ? "Save policy" : "Decide this charge"}</button>
       </div>
-      <p className="cx-tiny">For {CAST.ownerFull}, admin. This is not the accounting approval: the charge stays open until it’s decided under your policy.</p>
+      <details className="dc-details">
+        <summary>Show details</summary>
+        <dl>
+          {details.map((d) => <div key={d.label}><dt>{d.label}</dt><dd>{d.value}</dd></div>)}
+        </dl>
+      </details>
     </aside>
   );
 }
+
+const LEVEL: Record<string, { word: string; tone: "high" | "medium" | "low"; icon: React.ReactNode }> = {
+  high: { word: "High", tone: "high", icon: <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 15 14H1z" fill="currentColor" /><path d="M8 6v3.5M8 11.4v.1" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" /></svg> },
+  medium: { word: "Medium", tone: "medium", icon: <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="currentColor" /><path d="M8 4.6v4M8 11v.1" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" /></svg> },
+  low: { word: "Low", tone: "low", icon: <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M5.3 8h5.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg> },
+};
+const KIND: Record<string, string> = { financial: "Financial", legal: "Legal", deadline: "Deadline", relationship: "Relationship" };

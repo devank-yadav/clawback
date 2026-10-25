@@ -121,9 +121,19 @@ export type Question = {
   rule_id: string | null;
   /** Set when a newer run of the same payment replaced this one; a closed question can't be answered. */
   closed_at?: string | null;
+  /** How much the question matters, like a code-review risk flag (branch question-severity). Absent on older runs. */
+  risk?: QuestionRisk | null;
+  /** The supporting facts the card keeps behind "Show details". */
+  details?: { label: string; value: string }[] | null;
 };
 
-export type Answer = { question_id: string; from_role: Role; text: string; answered_at: string; rule_id: string | null };
+export type QuestionRisk = {
+  level: "high" | "medium" | "low" | (string & {});
+  kind: "financial" | "legal" | "deadline" | "relationship" | (string & {});
+  reason: string;
+};
+
+export type Answer ={ question_id: string; from_role: Role; text: string; answered_at: string; rule_id: string | null };
 
 export type Rule = {
   id: string;

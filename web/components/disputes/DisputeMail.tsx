@@ -27,14 +27,41 @@ const WRITER: Record<DisputeEmail["written_by"], string> = {
 
 /** What happened to an email that left (or tried to). */
 export function SentLine({ email }: { email: DisputeEmail }) {
-  if (email.status === "sent") return <p className="dm-sent"><Check aria-hidden="true" /> Sent to {email.to} {email.sent_at ? `at ${when(email.sent_at)}` : ""}</p>;
-  if (email.status === "outbox") return <p className="dm-sent is-outbox"><Mail aria-hidden="true" /> Saved to the outbox (demo mode){email.sent_at ? ` · ${when(email.sent_at)}` : ""}. Nothing left this server.</p>;
+  if (email.status === "sent") return <div className="dm-sent"><Check aria-hidden="true" /><span>Sent to {email.to} {email.sent_at ? `at ${when(email.sent_at)}` : ""}{email.detail && <small>{email.detail}</small>}</span></div>;
+  if (email.status === "outbox") return <div className="dm-sent is-outbox"><Mail aria-hidden="true" /><span>Saved to the outbox{email.sent_at ? ` · ${when(email.sent_at)}` : ""}<small>{email.detail ? `Not sent: ${email.detail}` : "Nothing left this server."}</small></span></div>;
   if (email.status === "failed") return <p className="dm-problems" role="alert"><AlertTriangle aria-hidden="true" /> Couldn’t send{email.detail ? `: ${email.detail}` : ""}. Send again to retry.</p>;
   return null;
 }
 
 const failure = (e: unknown) =>
   e instanceof ApiError && e.status === 409 ? (e.detail || "This email can’t go out as it is.") : e instanceof ApiError && e.status === 401 ? null : `That didn’t go through (${(e as Error).message}).`;
+
+/** Drafts this page has already typed in, so a draft types in once and later renders whole. */
+const typedIn = new Set<string>();
+
+/** The finished draft typed into the box over about 1.5 s the first time it appears (the API doesn't stream it).
+ * Returns the text so far while typing, then null. Off with reduced motion. */
+function useTypeIn(id: string, text: string): string | null {
+  const [shown, setShown] = useState<number | null>(null);
+  useEffect(() => {
+    if (typedIn.has(id)) return;
+    typedIn.add(id);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || !text) return;
+    const start = performance.now();
+    let frame = 0;
+    let done = false;
+    const step = (now: number) => {
+      const n = Math.min(text.length, Math.round((text.length * (now - start)) / 1500));
+      setShown(n >= text.length ? null : n);
+      if (n < text.length) frame = requestAnimationFrame(step);
+      else done = true;
+    };
+    frame = requestAnimationFrame(step);
+    // Unmounted before it finished (or a dev double mount): it types in again next time.
+    return () => { cancelAnimationFrame(frame); if (!done) typedIn.delete(id); setShown(null); };
+  }, [id, text]);
+  return shown === null ? null : text.slice(0, shown);
+}
 
 /** The editor shared by the dispute email and a reply draft: subject, body, attachments, problems, Send. */
 function EmailEditor({ email, sendLabel, onSend, onSave, busy, problem }: {
@@ -48,17 +75,19 @@ function EmailEditor({ email, sendLabel, onSend, onSave, busy, problem }: {
   const [subject, setSubject] = useState(email.subject);
   const [body, setBody] = useState(email.body);
   const edited = subject !== email.subject || body !== email.body;
+  const typing = useTypeIn(email.id, email.body);
   const id = email.id.replace(/[^a-zA-Z0-9-]/g, "-");
   return (
     <form className="dm-editor" onSubmit={(e) => { e.preventDefault(); onSend(subject, body); }}>
       <dl className="dm-meta">
+        <div><dt>From</dt><dd>{email.from_addr}</dd></div>
         <div><dt>To</dt><dd>{email.to}</dd></div>
         {email.reply_to && <div><dt>Replies go to</dt><dd>{email.reply_to}</dd></div>}
       </dl>
       <label htmlFor={`dm-subject-${id}`}>Subject</label>
       <input id={`dm-subject-${id}`} value={subject} onChange={(e) => setSubject(e.target.value)} />
       <label htmlFor={`dm-body-${id}`}>Message</label>
-      <textarea id={`dm-body-${id}`} value={body} onChange={(e) => setBody(e.target.value)} rows={Math.min(18, Math.max(8, body.split("\n").length + 1))} />
+      <textarea id={`dm-body-${id}`} value={typing ?? body} readOnly={typing !== null} aria-busy={typing !== null} onChange={(e) => setBody(e.target.value)} rows={Math.min(18, Math.max(8, body.split("\n").length + 1))} />
       {email.attachments.length > 0 && (
         <ul className="dm-attachments" aria-label="Attachments">
           {email.attachments.map((a) => <li key={a}><Paperclip aria-hidden="true" />{a}</li>)}
@@ -74,7 +103,7 @@ function EmailEditor({ email, sendLabel, onSend, onSave, busy, problem }: {
         </div>
       )}
       <div className="dm-actions">
-        <button className="cx-btn is-blue" type="submit" disabled={busy || !body.trim()}><Send aria-hidden="true" />{busy ? "Sending…" : sendLabel}</button>
+        <button className="cx-btn is-blue" type="submit" disabled={busy || typing !== null || !body.trim()}><Send aria-hidden="true" />{busy ? "Sending…" : sendLabel}</button>
         {onSave && edited && <button className="cx-btn is-ghost" type="button" disabled={busy} onClick={() => onSave(subject, body)}>Save edit</button>}
         <span className="dm-writer">{WRITER[email.written_by]}</span>
       </div>
