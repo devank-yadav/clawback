@@ -21,9 +21,11 @@
 .bw-section-head h2 { font-size: 24px; font-weight: 600; letter-spacing: -0.6px; line-height: 1.15; }
 .bw-section-head h2 span { display: block; color: var(--faint); }
 
-/* the floating product frame on a sky wash: the run sits in it like billow's cockpit */
+/* the floating product frame on a sky wash: the run sits in it like billow's cockpit. The wash reaches up to 10vw
+   past the stage, but never past the page's side gutter, so nothing scrolls sideways: the gutter is half of what the
+   viewport has beyond the stage ((100vw - 100%) / 2, less 8px for a classic scrollbar), and at least the page's 32px */
 .bw-stage { position: relative; isolation: isolate; padding: 28px 0 8px; }
-.bw-stage::before { content: ""; position: absolute; z-index: -1; inset: -30px -10vw -60px; background:
+.bw-stage::before { content: ""; position: absolute; z-index: -1; inset: -30px calc(-1 * min(10vw, max(32px, (100vw - 100%) / 2 - 8px))) -60px; background:
   radial-gradient(34% 52% at 12% 70%, #a9dcff, transparent 72%),
   radial-gradient(34% 52% at 88% 66%, #a9dcff, transparent 72%),
   radial-gradient(46% 44% at 50% 104%, #c4e8ff, transparent 72%),
