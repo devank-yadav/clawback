@@ -12,6 +12,7 @@ import "../shell.css";
 import "../app-pages.css";
 import "../redesign.css";
 import "../craft.css";
+import "../claw.css";
 
 export const metadata: Metadata = {
   title: "Clawback — agents that win back what distributors wrongly took",

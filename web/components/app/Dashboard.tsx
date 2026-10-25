@@ -6,13 +6,14 @@
 // Every amount is the API's: "recovered" counts only what evidence shows came back, and each piece links to it.
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AlertTriangle, ArrowRight, CircleAlert, Clock, MinusCircle } from "lucide-react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar, { DistributorMark } from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
 import { PageHeader } from "@/components/ui/kit";
+import { Claw, landPulse } from "@/components/ui/Claw";
 import CheckPayments from "./CheckPayments";
 import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
@@ -30,24 +31,35 @@ function hrefOf(account: string, link: OverviewLink): string {
   return withAccount("/", account, link.run_id ? { run: link.run_id } : undefined);
 }
 
-/** An amount that counts up from zero when it first appears (whole dollars on the way, the exact figure at the end).
+/** An amount that counts up when it first appears (whole dollars on the way, the exact figure at the end). `from` is
+ * where it starts; `hold` keeps it there until the moment it should move (the claw's coin landing).
  * Reduced motion: the figure, at once. */
-function Count({ value }: { value: number }) {
+function Count({ value, from = 0, hold = false }: { value: number; from?: number; hold?: boolean }) {
   const [shown, setShown] = useState<number | null>(null);
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (hold || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let raf = 0;
     const t0 = performance.now();
     const step = (t: number) => {
       const k = Math.min(1, (t - t0) / 700);
       const eased = 1 - (1 - k) ** 3;
-      setShown(k < 1 ? Math.round(value * eased) : null);
+      setShown(k < 1 ? Math.round(from + (value - from) * eased) : null);
       if (k < 1) raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [value]);
-  return <>{money(shown ?? value)}</>;
+  }, [value, from, hold]);
+  return <>{money(hold ? from : shown ?? value)}</>;
+}
+
+// What Recovered showed the last time this browser saw Home, so the claw drops a coin only when it has gone up.
+const SEEN = "clawback:recovered-seen";
+const noSub = () => () => {};
+function readSeen(): string | null {
+  try { return window.localStorage.getItem(SEEN); } catch { return null; }
+}
+function writeSeen(v: number) {
+  try { window.localStorage.setItem(SEEN, String(v)); } catch { /* private window: the claw just plays again next time */ }
 }
 
 function Level({ level }: { level: NeedsYou["risk_level"] }) {
@@ -78,6 +90,13 @@ export default function Dashboard() {
   const t = o?.totals;
   const evidence = t?.evidence ?? [];
   const dash = <span className="hm-none">–</span>;
+  const seenRaw = useSyncExternalStore(noSub, readSeen, () => "server");
+  const seen = seenRaw === "server" ? null : Number(seenRaw ?? 0) || 0;
+  const [moneyEl, setMoneyEl] = useState<HTMLElement | null>(null);
+  const [landed, setLanded] = useState(false);
+  const rising = !!t && seen !== null && t.recovered > seen + 0.005;
+  // When it went down (a demo reset), remember the lower figure so the next rise plays.
+  useEffect(() => { if (t && seen !== null && t.recovered < seen - 0.005) writeSeen(t.recovered); }, [t, seen]);
 
   return (
     <div className="fl">
@@ -111,7 +130,12 @@ export default function Dashboard() {
           )}
         </section>
 
-        <section className="hm-block" aria-labelledby="hm-money">
+        <section className="hm-block cw-host" aria-labelledby="hm-money" ref={setMoneyEl}>
+          {rising && t && seen !== null && (
+            <Claw host={moneyEl} mode="drop" to=".hm-recovered" label={`+${money(t.recovered - seen)}`} tone="good" delay={0.5} maxWait={1.5}
+              onLand={() => { setLanded(true); landPulse(document.querySelector(".hm-recovered")); }}
+              onDone={() => { writeSeen(t.recovered); setLanded(false); }} />
+          )}
           <h2 id="hm-money">Money at a glance</h2>
           <dl className="hm-money">
             <div><dt>Taken from payments</dt><dd>{t ? <Count value={t.taken} /> : dash}</dd></div>
@@ -119,7 +143,7 @@ export default function Dashboard() {
             <div><dt><i className="is-fair" aria-hidden="true" />Fair, accepted</dt><dd>{t ? <Count value={t.fair} /> : dash}</dd></div>
             <div>
               <dt>Recovered</dt>
-              <dd>{t ? <Count value={t.recovered} /> : dash}</dd>
+              <dd className="hm-recovered">{t ? (rising && seen !== null ? <Count value={t.recovered} from={seen} hold={!landed} /> : <Count value={t.recovered} />) : dash}</dd>
               {t && (evidence.length === 0
                 ? <small>No reply or credit yet</small>
                 : <small>

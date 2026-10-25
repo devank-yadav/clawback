@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { fontVars } from "../fonts";
 import "../theme.css";
 import "./site.css";
+import "../claw.css";
 
 // The public pages: the landing page (/) and sign-in (/signin). No account, no run, no API calls until you sign in.
 

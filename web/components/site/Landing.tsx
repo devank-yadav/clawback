@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowRight, BadgeCheck, Calculator, FileCheck2, Landmark, MessageSquareReply, Scale, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/console/ui";
 import RequestAccess from "./RequestAccess";
+import { LandingClaw } from "./LandingClaw";
 
 const STEPS = [
   {
@@ -86,10 +87,11 @@ function TopNav() {
 function Example() {
   return (
     <div className="st-stage">
-      <figure className="st-frame" aria-label="Example: two charges from one payment, checked against the deal">
+      <figure className="st-frame cw-host" aria-label="Example: two charges from one payment, checked against the deal">
         <figcaption className="st-frame-head">
-          <span>Example · a payment from a distributor, $6,850 short</span>
+          <span>Example · a payment from a distributor, <span className="st-short">$6,850</span> short</span>
         </figcaption>
+        <LandingClaw />
         <div className="st-check is-dispute">
           <div className="st-check-top">
             <strong>Promo allowance, week 4</strong>
