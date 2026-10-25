@@ -1,6 +1,6 @@
 /* Clawback's one theme: light and calm, in billow.so's design language (navy ink on near-white, hairline borders,
-   pill buttons, a serif display face for headlines, a sky wash behind the product frame). Both route groups import
-   this last; `html:root` outranks the `:root` blocks in base.css, so these values win in any stylesheet order. */
+   pill buttons, one font (Inter) with heavier, tighter headlines, a sky wash behind the product frame). Both route
+   groups import this last; `html:root` outranks the `:root` blocks in base.css, so these values win in any order. */
 
 html:root {
   color-scheme: light;
@@ -32,7 +32,7 @@ html:root {
   --radius: 10px; --radius-card: 16px; --radius-frame: 28px;
   --shadow-frame: 0 1px 2px rgba(0, 28, 46, 0.04), 0 30px 70px -28px rgba(0, 28, 46, 0.22);
   --shadow-pop: 0 2px 6px rgba(0, 28, 46, 0.06), 0 16px 40px rgba(0, 28, 46, 0.12);
-  --font-display: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 
   /* names the workspace screens (app.css, workspace.css) and the Tailwind base use */
   --violet: var(--accent); --violet-soft: var(--accent-soft); --green-soft: var(--green-bg); --amber-soft: var(--amber-bg);
@@ -46,5 +46,5 @@ html, body { background: var(--bg); color: var(--ink); }
 ::selection { background: var(--sky); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* the display face: page headlines, the stage title and the result headline only */
-.display { font-family: var(--font-display); font-weight: 400; letter-spacing: -0.035em; line-height: 1.04; font-optical-sizing: auto; }
+/* headlines: the same Inter, heavier and tighter (page headlines, the stage title and the result headline) */
+.display { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.035em; line-height: 1.05; }
