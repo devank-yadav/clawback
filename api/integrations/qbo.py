@@ -13,6 +13,10 @@ the approval id. Every call goes through replay.call_outside, so DEMO_MODE repla
   payment Clawback writes has a PrivateNote starting "Clawback ", so the reset finds them, deletes them and clears
   the invoice note.
 
+The read side (invoice, customer_payments, record_payment, delete_payment) is for api/integrations/qbo_source.py,
+which watches for payments recorded against each account's invoice and starts its run; those calls are never
+recorded as fixtures.
+
 Stand-in (no QBO keys yet, or DEMO_MODE): answers with the same shapes and ids starting "sim-". It's never
 recorded as a fixture, and every ledger post it backs says it was simulated and why. DEMO_MODE uses it even with the
 keys set: every write carries the run's approval id and today's date, so a recorded response could never match a
@@ -25,6 +29,7 @@ import itertools
 import logging
 import os
 import re
+import threading
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -89,7 +94,7 @@ class LiveBooks:
         self._ids: dict[str, str] = {}
 
     def _call(self, method: str, path: str, *, params: dict | None = None, body: Any = None,
-              request_id: str | None = None) -> dict:
+              request_id: str | None = None, record: bool | None = None) -> dict:
         q = {"minorversion": MINOR, **(params or {}), **({"requestid": request_id} if request_id else {})}
         request = {"method": method, "path": path, "params": q, "body": body}  # no token: it's never recorded
 
@@ -108,13 +113,39 @@ class LiveBooks:
             return r.json()
 
         try:
-            return replay.call_outside("qbo", request, live).response
+            return replay.call_outside("qbo", request, live, record=record).response
         except replay.OutsideCallFailed as e:
             raise BooksError(str(e)) from e
 
-    def _query(self, entity: str, where: str) -> list[dict]:
-        found = self._call("GET", "/query", params={"query": f"select * from {entity} where {where}"})
+    def _query(self, entity: str, where: str, record: bool | None = None) -> list[dict]:
+        found = self._call("GET", "/query", params={"query": f"select * from {entity} where {where}"}, record=record)
         return found.get("QueryResponse", {}).get(entity, [])
+
+    # ---- the read side (api/integrations/qbo_source.py): never recorded as fixtures, so polling while `make record`
+    # runs writes nothing to data/fixtures/
+
+    def invoice(self, invoice_no: str) -> dict | None:
+        """The invoice with this DocNumber (its Id, CustomerRef, Balance), or None if the sandbox has none."""
+        rows = self._query("Invoice", f"DocNumber = '{_quoted(invoice_no)}'", record=False)
+        return rows[0] if rows else None
+
+    def customer_payments(self, customer_id: str) -> list[dict]:
+        """Every payment recorded for this customer: the same query the reset uses (CustomerRef, MAXRESULTS 1000)."""
+        return self._query("Payment", f"CustomerRef = '{_quoted(customer_id)}' MAXRESULTS 1000", record=False)
+
+    def record_payment(self, request_id: str, invoice: dict, amount: Decimal, note: str) -> dict:
+        """A customer payment applied to the invoice, as scripts/seed_quickbooks.py records the seed's (the demo's
+        "the distributor paid" in QuickBooks: python -m api.integrations.qbo_source pay <account>)."""
+        body = {"CustomerRef": invoice["CustomerRef"], "TotalAmt": _money(amount), "TxnDate": date.today().isoformat(),
+                "PrivateNote": note,
+                "Line": [{"Amount": _money(amount), "LinkedTxn": [{"TxnId": invoice["Id"], "TxnType": "Invoice"}]}]}
+        return self._call("POST", "/payment", body=body, request_id=request_id, record=False)["Payment"]
+
+    def delete_payment(self, payment: dict) -> None:
+        """Intuit's delete operation (POST /payment?operation=delete with Id and SyncToken), as undo_demo_writes."""
+        self._call("POST", "/payment", params={"operation": "delete"},
+                   body={"Id": payment["Id"], "SyncToken": payment["SyncToken"]},
+                   request_id=f"undo-payment-{payment['Id']}-{payment['SyncToken']}", record=False)
 
     def _find(self, entity: str, where: str) -> dict:
         rows = self._query(entity, where)
@@ -295,8 +326,13 @@ def _refreshing_token() -> Callable[[], str]:
     from intuitlib.client import AuthClient
 
     cache: dict[str, str] = {}
+    lock = threading.Lock()  # the payments poller and a write can both need one: refresh (and rotate) only once
 
     def token() -> str:
+        with lock:
+            return _fresh()
+
+    def _fresh() -> str:
         if "access" not in cache:
             kept = _token_file()
             saved = dotenv_values(kept).get("QBO_REFRESH_TOKEN") if kept and kept.exists() else None

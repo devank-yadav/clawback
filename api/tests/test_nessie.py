@@ -1,14 +1,16 @@
-"""F15: Northmart's $41,350 deposit in Nessie starts the run; GET /summary reads live runs."""
+"""F15: Northmart's $41,350 deposit in Nessie starts the run (and each of Peak Bar Co.'s other distributors' deposits
+starts theirs); GET /summary reads live runs; the Connections page shows what the poller saw."""
 
 import json
 import time
 from decimal import Decimal as D
+from types import SimpleNamespace
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from api import pipeline
+from api import accounts, pipeline, sources
 from api.agents import claude as claude_mod
 from api.integrations import nessie, replay
 from api.tests.test_pipeline import ScenarioClaude
@@ -206,3 +208,100 @@ def test_summary_reads_the_live_run(api, monkeypatch):
     api.post(f"/questions/{s['pending_question']['id']}/answer", json={"text": "accept if notice is at least 14 days"})
     s = api.get("/summary", headers=headers).json()
     assert s["pending_question"] is None and [a["amount"] for a in s["pending_approvals"]] == [2730.0]
+
+
+# ---------------------------------------------------------------- every distributor of Peak Bar Co.
+
+PEAK_BAR = ("peak-bar", "peak-bar-kehe", "peak-bar-walmart", "peak-bar-five-below")
+
+
+def stub_start(started):
+    """pipeline.start without the agents: the run is registered for its account and nothing is processed, so a fee
+    account's routing is tested without its readers' recordings."""
+    def start(kind=None, client=None, background=True, deposit=None, account=None, charges=None):
+        a = accounts.resolve(account)
+        run = pipeline.Run(id=f"run-{a.invoice.month}-{a.id}-{len(started)}", kind=kind or a.invoice.month, account=a,
+                           deposit=deposit, charges={c.id: c for c in charges or ()})
+        pipeline.RUNS[run.id] = run
+        started.append(run)
+        return run
+    return start
+
+
+def test_each_peak_bar_distributor_has_its_own_deposit(every_account):
+    found = {a.id: a for a in every_account}
+    for account_id in PEAK_BAR:
+        a = found[account_id]
+        assert a.brand.name == "Peak Bar Co." and accounts.for_deposit(a.config.nessie_description).id == account_id
+    assert {found[i].config.nessie_description for i in PEAK_BAR} == {
+        "Northmart remittance INV-3102", "KeHE Distributors remittance PBK-2603", "Walmart remittance PBW-2603",
+        "Five Below remittance PBF-2603"}
+
+
+def test_the_poller_starts_each_distributors_run(every_account, monkeypatch):
+    started = []
+    monkeypatch.setattr(pipeline, "start", stub_start(started))
+    fake = FakeNessie([OLD])
+    poller = nessie.Poller(client_for(fake), pipeline.start_for_deposit)
+    poller.tick()
+    for account_id in PEAK_BAR:
+        a = accounts.get(account_id)
+        fake.deposits.append({"_id": f"dep-{account_id}", "amount": float(a.invoice.received),
+                              "description": a.config.nessie_description, "transaction_date": "2026-04-10"})
+    assert [d.id for d in poller.tick()] == [f"dep-{i}" for i in PEAK_BAR]
+    assert [r.account.id for r in started] == list(PEAK_BAR)
+    assert [r.deposit.amount for r in started] == [accounts.get(i).invoice.received for i in PEAK_BAR]
+    for run in started:  # the Connections page: each account's deposit and the run it started
+        seen = sources.last("bank", run.account.id)
+        assert seen.run_id == run.id and f"started run {run.id}" in seen.text
+    assert poller.tick() == [] and len(started) == 4
+
+
+@pytest.mark.parametrize("account_id", PEAK_BAR)
+def test_send_a_test_payment_posts_that_distributors_deposit(every_account, monkeypatch, account_id):
+    from api.main import app
+
+    started = []
+    monkeypatch.setattr(pipeline, "start", stub_start(started))
+    fake = FakeNessie()
+    monkeypatch.setattr(nessie, "client", lambda: client_for(fake))
+    r = TestClient(app).post(f"/payments/{account_id}").json()
+    a = accounts.get(account_id)
+    body = json.loads(fake.requests[-1].content)
+    assert (body["amount"], body["description"]) == (float(a.invoice.received), a.config.nessie_description)
+    assert (r["via"], r["deposit_id"], r["run_id"]) == ("nessie", "dep-1", started[0].id)
+    assert started[0].account.id == account_id and started[0].deposit.id == "dep-1"
+    assert sources.last("bank", account_id).run_id == started[0].id
+
+
+def test_connections_show_the_last_poll_and_deposit(monkeypatch):
+    from api.main import app
+
+    monkeypatch.setenv("NESSIE_API_KEY", "test-nessie-key")
+    monkeypatch.setenv("NESSIE_ACCOUNT_ID", "acct-1")
+    fake = FakeNessie([OLD])
+    nessie.poller = nessie.Poller(client_for(fake), starter(ScenarioClaude()), interval=60)
+    nessie.poller.tick()
+    fake.deposits.append(NORTHMART)
+    nessie.poller.tick()
+    nessie.poller._thread = SimpleNamespace(is_alive=lambda: True)  # as if its loop were running
+    bank = next(c for c in TestClient(app).get("/connections?account=peak-bar").json() if c["id"] == "bank")
+    run = pipeline.latest("march")
+    assert bank["status"] == "connected" and bank["checked_at"] and bank["problem"] is None
+    assert bank["run_id"] == run.id and bank["last_seen"].startswith("Deposit dep-new of $41,350.00")
+    assert "Checked every 5 seconds" in bank["detail"]
+    fake.fail = 2
+    nessie.poller.tick()
+    bank = next(c for c in TestClient(app).get("/connections?account=peak-bar").json() if c["id"] == "bank")
+    assert "503" in bank["problem"] and bank["run_id"] == run.id  # what it last found stays
+
+
+def test_a_deposit_that_cant_start_a_run_never_stops_the_poller():
+    def broken(d):
+        raise RuntimeError("no charges file")
+
+    fake = FakeNessie([OLD])
+    poller = nessie.Poller(client_for(fake), broken)
+    poller.tick()
+    fake.deposits.append(NORTHMART)
+    assert poller.tick() == [] and "couldn't start the run" in sources.last("bank", "peak-bar").text

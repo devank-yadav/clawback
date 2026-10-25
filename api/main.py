@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api import pipeline
 from api.db import events as saved_events, state as saved_state
-from api.integrations import nessie, replay
+from api.integrations import nessie, qbo_source, replay
 from api.routes import accounts, approvals, suppliers, audit, db, demo, eval, payments, portal, runs, scenario, trace, webhooks
 from api.routes import remittance as remittance_routes
 from api.routes import auth as auth_routes
@@ -21,17 +21,22 @@ log = logging.getLogger("clawback")
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """Bring back the saved rules and audit chain (api/db/state.py), and start the Nessie poller (F15) when it can run:
-    keys set, not DEMO_MODE, NESSIE_POLL not "off"."""
+    """Bring back the saved rules and audit chain (api/db/state.py), and start the pollers that can run: Nessie's (F15;
+    keys set, not DEMO_MODE, NESSIE_POLL not "off") and QuickBooks' payments (api/integrations/qbo_source.py; the QBO_*
+    keys, not DEMO_MODE, QBO_POLL not "off"). The remittance inbox is a webhook (POST /webhooks/inbound-email)."""
     saved_state.restore()
     client = nessie.client()
     if client and not replay.demo_mode() and os.getenv("NESSIE_POLL", "on").lower() != "off":
         nessie.poller = nessie.Poller(client, pipeline.start_for_deposit)
         nessie.poller.start()
         log.info("nessie poller started")
+    if qbo_source.start_poller(lambda p: pipeline.start_for_deposit(p, account=p.account_id)):
+        log.info("quickbooks payments poller started")
     yield
     if nessie.poller:
         nessie.poller.stop()
+    if qbo_source.poller:
+        qbo_source.poller.stop()
     saved_events.flush(timeout=5)  # the last events reach the table before a restart
 
 
@@ -51,4 +56,5 @@ app.include_router(auth_routes.router)  # the admin's sign-in
 
 @app.get("/health")
 def health() -> dict:
-    return {"ok": True, "demo_mode": replay.demo_mode(), "nessie_poller": bool(nessie.poller and nessie.poller.running)}
+    return {"ok": True, "demo_mode": replay.demo_mode(), "nessie_poller": bool(nessie.poller and nessie.poller.running),
+            "qbo_poller": bool(qbo_source.poller and qbo_source.poller.running)}

@@ -1307,6 +1307,13 @@ class Connection(Contract):
     brings: str  # what it brings in
     status: Literal["connected", "not_connected", "ready", "coming_soon"]
     detail: str
+    # What a source that starts runs (bank, QuickBooks, remittance inbox) has seen on this server (api/sources.py):
+    checked_at: datetime | None = None  # its last poll, or the last email that reached it
+    problem: str | None = None  # the last look's error, until a look works
+    last_seen: str | None = None  # the newest thing it found for the account in view, in words
+    last_seen_at: datetime | None = None
+    run_id: str | None = None  # the run that started from it (or that it matched)
+    address: str | None = None  # the remittance inbox's address for the account in view
 
 
 class LibraryTerm(Contract):

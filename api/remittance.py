@@ -458,13 +458,17 @@ def saved(read_id: str) -> RemittanceRead | None:
 
 
 def start_with_charges(slug: str, charges: list[Charge], client: anthropic.Anthropic | None = None,
-                       background: bool = True) -> pipeline.Run:
+                       background: bool = True, arrival=None) -> pipeline.Run:
     """A run of the account's payment on these charges, with the account's documents and data, through the
-    pipeline's public start(). Raises NotWired until start() takes charges (HOOK)."""
+    pipeline's public start(). Raises NotWired until start() takes charges (HOOK). `arrival` is the email it came in
+    (api/inbound_email.py): then it's started once per email, and a run another source already started for the same
+    payment is returned instead (pipeline.start_for_deposit)."""
     acct = account(slug)
     params = inspect.signature(pipeline.start).parameters
     if "charges" not in params:
         raise NotWired(HOOK)
+    if arrival is not None:
+        return pipeline.start_for_deposit(arrival, client, background, account=slug, charges=list(charges))
     extra = {"account": slug} if "account" in params else {}  # the multi-account pipeline, once it has one
     return pipeline.start(kind=acct.kind, client=client, background=background, charges=list(charges), **extra)
 

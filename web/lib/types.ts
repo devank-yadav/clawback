@@ -479,7 +479,12 @@ export type SavedOverview = { documents: SavedDocument[]; rules: Rule[]; records
 export type DocumentText = { id: string; title: string; kind: string; locked: boolean; text: string };
 
 // ---- Connections and the contract library (GET /connections, /accounts/{id}/contract)
-export type Connection = { id: string; name: string; brings: string; status: "connected" | "not_connected" | "ready" | "coming_soon"; detail: string };
+export type Connection = {
+  id: string; name: string; brings: string; status: "connected" | "not_connected" | "ready" | "coming_soon"; detail: string;
+  // What the bank, QuickBooks and the remittance inbox have seen on this server, for the account in view (api/sources.py)
+  checked_at?: string | null; problem?: string | null; last_seen?: string | null; last_seen_at?: string | null;
+  run_id?: string | null; address?: string | null;
+};
 export type LibraryTerm = { type: string; quote: string; char_start: number; char_end: number; status: string; discretion: boolean; label: string };
 export type LibraryDocument = { id: string; title: string; kind: string; locked: boolean; sender: string | null; approved_sender: boolean; text: string; terms: LibraryTerm[] };
 export type ContractLibrary = { read_in_run: string | null; documents: LibraryDocument[] };
