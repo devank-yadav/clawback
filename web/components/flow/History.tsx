@@ -7,14 +7,16 @@
 import Link from "next/link";
 import { useCallback } from "react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
-import TopBar from "@/components/shell/TopBar";
+import TopBar, { DistributorMark } from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
+import { EmptyState, HeroPill, PageHero } from "@/components/ui/kit";
 import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
 import { money } from "@/lib/format";
 import { useFetched } from "@/lib/useFetched";
 
 const STATUS = { started: "Agents working", waiting: "Waiting on you", finished: "Finished", failed: "Stopped" } as const;
+const TONE = { started: "is-live", waiting: "is-amber", finished: "is-green", failed: "is-red" } as const;
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 export default function History() {
@@ -28,40 +30,58 @@ export default function History() {
   return (
     <div className="fl">
       <TopBar account={account} active="history" />
-      <main className="fl-main hs">
-        <header className="ds-head">
-          <span className="cx-eyebrow">{account ? `${account.brand.name} · ${cast.distributor}` : " "}</span>
-          <h1>{list.length ? `${list.length} run${list.length === 1 ? "" : "s"} of the agents` : "No runs yet"}</h1>
-          <p>Every time a payment from {cast.distributor} arrives, the agents run. Open any run to see what each agent did and what it concluded.</p>
-        </header>
+      <main className="fl-main bp bp-hs">
+        <PageHero
+          pill={<HeroPill>{account ? `${account.brand.name} · ${cast.distributor}` : "History"}</HeroPill>}
+          title={!runs.data ? <>Every run<em>of the agents.</em></> : list.length ? <>{list.length} run{list.length === 1 ? "" : "s"} of the agents.<em>Every payment, checked.</em></> : <>No runs yet.<em>The first payment starts one.</em></>}
+          sub={`Every time a payment from ${cast.distributor} arrives, the agents run. Open any run to see what each agent did and what it concluded.`}
+        />
         {runs.error && <div className="fl-problem" role="alert">{runs.error}</div>}
-        {!runs.data && !runs.error && <p className="cx-small cx-muted">Loading…</p>}
-        {runs.data && list.length === 0 && (
-          <div className="hs-empty">
-            <strong>The agents haven’t run for {cast.distributor} yet.</strong>
-            <span>Results appear here once a payment has been checked.</span>
-            <Link className="cx-btn" href={withAccount("/", account?.id)}>Go to the agents</Link>
+
+        {runs.data && list.length === 0 ? (
+          <EmptyState
+            title={`The agents haven’t run for ${cast.distributor} yet.`}
+            line="Results appear here once a payment has been checked."
+            action={<Link className="cx-btn" href={withAccount("/", account?.id)}>Go to the agents</Link>}
+          />
+        ) : (
+          <div className="bw-stage">
+            <section className="bp-frame" aria-label="Runs of the agents">
+              <div className="bp-frame-bar"><span className="bp-tab">Runs <b>{runs.data ? list.length : "–"}</b></span></div>
+              <div className="bp-thead" aria-hidden="true"><span>Date</span><span>Distributor</span><span>Result</span><span>Status</span><span /></div>
+              {!runs.data && !runs.error && [0, 1, 2].map((i) => <div key={i} className="bp-skel" aria-hidden="true"><i /><i /><i /><i /><i /></div>)}
+              <ol className="bp-rows">
+                {list.map((r, i) => (
+                  <li key={r.run_id}>
+                    <Link className={`bp-row ${r.replaced ? "is-replaced" : ""}`} href={withAccount("/", account?.id, { run: r.run_id })}>
+                      <span className="bp-when"><strong>{when(r.started_at)}</strong><small>{r.kind} payment{r.invoice_id ? ` · ${r.invoice_id}` : ""}</small></span>
+                      <span className="bp-who">
+                        <DistributorMark name={cast.distributor} color={account?.distributor.colors.primary} size={26} />
+                        <span><strong>{cast.distributor}</strong></span>
+                      </span>
+                      <span className="bp-cell bp-result">
+                        {r.taken !== null && <span>Kept <b className="is-amber">{money(r.taken)}</b></span>}
+                        {r.disputed !== null && r.disputed > 0 && <span>Disputed <b className="is-dispute">{money(r.disputed)}</b></span>}
+                        {r.accepted !== null && r.accepted > 0 && <span>Fair <b className="is-fair">{money(r.accepted)}</b></span>}
+                        {r.questions > 0 && <span>{r.questions} question{r.questions === 1 ? "" : "s"}</span>}
+                        {r.taken === null && !r.disputed && !r.accepted && r.questions === 0 && <span className="is-none">No totals yet</span>}
+                      </span>
+                      <span className="bp-status">
+                        <span className={`bp-chip ${r.replaced ? "is-swap" : TONE[r.status]}`}>{r.replaced ? "Replaced by a newer run" : i === 0 && r.status === "waiting" ? "Waiting on you" : STATUS[r.status]}</span>
+                      </span>
+                      <span className="bp-go">Open →</span>
+                    </Link>
+                  </li>
+                ))}
+              </ol>
+            </section>
           </div>
         )}
-        <ol className="hs-list">
-          {list.map((r, i) => (
-            <li key={r.run_id}>
-              <Link className={`hs-row ${r.replaced ? "is-replaced" : ""}`} href={withAccount("/", account?.id, { run: r.run_id })}>
-                <span className="hs-when"><strong>{when(r.started_at)}</strong><small>{r.kind} payment{r.invoice_id ? ` · ${r.invoice_id}` : ""}</small></span>
-                <span className="hs-facts">
-                  {r.taken !== null && <span>Kept <b className="is-amber">{money(r.taken)}</b></span>}
-                  {r.disputed !== null && r.disputed > 0 && <span>Disputed <b className="is-dispute">{money(r.disputed)}</b></span>}
-                  {r.accepted !== null && r.accepted > 0 && <span>Fair <b className="is-fair">{money(r.accepted)}</b></span>}
-                  {r.questions > 0 && <span>{r.questions} question{r.questions === 1 ? "" : "s"}</span>}
-                </span>
-                <span className={`hs-status is-${r.replaced ? "replaced" : r.status}`}>{r.replaced ? "Replaced by a newer run" : i === 0 && r.status === "waiting" ? "Waiting on you" : STATUS[r.status]}</span>
-                <span className="hs-open">Open →</span>
-              </Link>
-            </li>
-          ))}
-        </ol>
+
         {score.data?.status === "done" && (
-          <p className="cx-small cx-muted">How accurate are the agents? On a 30-case test set with a key written first: {score.data.correct} of {score.data.cases} correct, {score.data.wrong_automatic} wrong automatic actions. <Link href={withAccount("/results", account?.id)}>Details</Link></p>
+          <p className="bp-score">
+            <span>How accurate are the agents? On a 30-case test set with a key written first: <strong>{score.data.correct} of {score.data.cases} correct</strong>, <strong>{score.data.wrong_automatic} wrong automatic actions</strong>. <Link className="bp-link" href={withAccount("/results", account?.id)}>Details</Link></span>
+          </p>
         )}
       </main>
       <SessionDialogs account={account} />
