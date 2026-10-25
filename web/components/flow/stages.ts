@@ -136,7 +136,7 @@ export function buildStages(state: RunState, view: WorkspaceView, cast: Cast, ar
   return [payment, readStage, checkStage, file, owner, approval, books];
 }
 
-/** The stage the eye should go to: the first one waiting on a person, else the one working, else the last done. */
+/** The stage the eye should go to: the first one waiting on a person, else the one working or stopped; none when all are done. */
 export function focusStage(stages: Stage[]): Stage | null {
   return stages.find((s) => s.state === "waiting") ?? stages.find((s) => s.state === "active" || s.state === "failed") ?? null;
 }

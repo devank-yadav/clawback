@@ -29,7 +29,7 @@ export function AgentTalk() {
   const shown = lines.slice(-3);
   if (!shown.length) return null;
   return (
-    <div className="at" aria-live="polite" aria-label="The agents talking">
+    <div className="at" aria-label="The agents talking">
       <AnimatePresence initial={false}>
         {shown.map((l) => (
           <motion.p key={l.id} className="at-line" layout={!still}

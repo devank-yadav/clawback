@@ -8,7 +8,7 @@ import { money } from "@/lib/format";
 import type { RunState } from "@/lib/useRunEvents";
 import type { ChargeView, WorkspaceView } from "@/lib/workspace";
 import { Pill } from "@/components/console/ui";
-import { ACTOR, CHECK } from "./parts";
+import { CHECK } from "./parts";
 
 type Cell = "todo" | "active" | "done" | "skipped" | "warn" | "person";
 
@@ -59,7 +59,6 @@ export function ChargeMatrix({ state, view, owner, onOpen }: { state: RunState; 
   const currentId = check ? (check.status === "done" ? null : check.charge_id) : working ? state.order.filter((id) => !state.decisions[id]).at(-1) ?? null : null;
   const queued = Math.max(0, total - state.order.length);
   const byId = new Map(view.charges.map((c) => [c.id, c]));
-  const live = [...state.feed].reverse().find((l) => ["reader", "investigator", "negotiator", "gate"].includes(l.actor));
 
   return (
     <section className="fl-matrix" aria-label="Each charge, step by step">
@@ -76,17 +75,18 @@ export function ChargeMatrix({ state, view, owner, onOpen }: { state: RunState; 
           const row = cells(id, state, view_, current);
           return (
             <li key={id}>
-              <button className={`fl-row ${current ? "is-current" : ""}`} onClick={() => onOpen(id)} aria-label={`${id} ${charge.description}: open how it was decided`}>
+              <button className={`fl-row ${current ? "is-current" : ""}`} onClick={() => onOpen(id)}>
                 <span className="fl-ctitle">
                   <strong>{id} · {charge.description}</strong>
                   <small>{money(charge.amount)} taken</small>
                 </span>
                 {row.map((cell, k) => (
-                  <span key={COLS[k].name} className={`fl-cell is-${cell}`} title={`${COLS[k].name}: ${LABEL[cell]}`} aria-label={`${COLS[k].name}: ${LABEL[cell]}`}>
+                  <span key={COLS[k].name} className={`fl-cell is-${cell}`} title={`${COLS[k].name}: ${LABEL[cell]}`} role="img" aria-label={`${COLS[k].name}: ${LABEL[cell]}`}>
                     {cell === "done" ? CHECK : cell === "skipped" ? "–" : cell === "warn" ? "!" : cell === "person" ? "?" : null}
                   </span>
                 ))}
                 <span className="fl-result"><Result c={view_} owner={owner} /></span>
+                <span className="sr-only">Open how it was decided</span>
               </button>
             </li>
           );
@@ -99,12 +99,6 @@ export function ChargeMatrix({ state, view, owner, onOpen }: { state: RunState; 
           </li>
         ))}
       </ul>
-      {live && working && (
-        <div className="fl-live" aria-live="polite">
-          <b>{ACTOR[live.actor] ?? live.actor}</b>
-          <span>{live.text}</span>
-        </div>
-      )}
     </section>
   );
 }

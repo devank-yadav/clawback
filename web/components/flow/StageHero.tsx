@@ -14,6 +14,10 @@ const ACTORS: Record<StageKey, string[]> = {
   owner: ["owner", "gate", "policy"], approval: ["owner", "bookkeeper"], books: ["bookkeeper"],
 };
 
+/** Each agent's own kind, so a code agent in an AI stage (the Calculator, the Rules) never reads as AI. */
+const CODE_AGENTS = new Set(["Calculator", "Rules", "Bank deposit", "Bookkeeper"]);
+const kindOf = (agent: string, stage: Stage) => stage.who === "PERSON" ? "you" : CODE_AGENTS.has(agent) || stage.who === "CODE" ? "code" : "AI";
+
 const VERB: Partial<Record<StageKey, string>> = {
   payment: "Receiving the payment", read: "Reading the deal", check: "Checking every charge", file: "Filing the dispute",
   books: "Posting to QuickBooks",
@@ -50,8 +54,8 @@ export function StageHero({ stage, stages, feed, done, compact = false }: { stag
       </AnimatePresence>
       <div className="sh-agents">
         {agents.map((a) => (
-          <span key={a} className={`sh-agent ${stage.who === "CODE" ? "is-code" : person ? "is-person" : ""} ${!waiting && stage.state === "active" ? "is-on" : ""}`}>
-            <i aria-hidden="true" />{a}<em>{stage.who === "CODE" ? "code" : person ? "you" : "AI"}</em>
+          <span key={a} className={`sh-agent ${kindOf(a, stage) === "code" ? "is-code" : person ? "is-person" : ""} ${!waiting && stage.state === "active" ? "is-on" : ""}`}>
+            <i aria-hidden="true" />{a}<em>{kindOf(a, stage)}</em>
           </span>
         ))}
       </div>

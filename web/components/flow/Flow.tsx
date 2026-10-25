@@ -67,8 +67,11 @@ export default function Flow() {
 
 function FlowFor() {
   const run = useRun();
-  const { state, view, account, cast, runId, starting, gone, replay, replaying, skipReplay } = run;
+  const { state, view, account, cast, runId, starting, gone, replay, replaying, skipReplay, error } = run;
   const openLatest = useOpenLatest();
+  const wantedRun = useSearchParams().get("run");
+  // A run opened by its link while its events load: say so instead of flashing the start screen.
+  const opening = !!wantedRun && wantedRun !== "latest" && !state.run && !gone.includes(wantedRun) && !error && !starting;
   // The logo opens ?home=1: the start screen, whatever this tab last watched. "Agents" opens the latest run.
   const home = useSearchParams().get("home") === "1";
   const router = useRouter();
@@ -128,7 +131,13 @@ function FlowFor() {
     <div className="fl">
       <TopBar account={account} active={phase === "start" && home ? undefined : "agents"} />
 
-      {phase === "start" && (
+      {phase === "start" && opening && (
+        <main className="fl-main">
+          <p className="fl-opening" role="status"><span className="cx-pill is-live">Opening the run…</span></p>
+        </main>
+      )}
+
+      {phase === "start" && !opening && (
         <main className="fl-main" style={{ paddingTop: 0, paddingBottom: 0 }}>
           <StartPanel onStart={() => (home ? router.replace(withAccount("/", account?.id)) : setStartedFrom({ run: runId ?? null, lost: gone.length }))} onOpenLast={() => { setOpened(true); setFresh(false); }} />
         </main>
@@ -143,7 +152,7 @@ function FlowFor() {
                 : state.run ? `${cast.distributor}’s charges` : `Waiting for ${cast.distributor}’s payment…`}
             </p>
             {replaying ? (
-              <span className="fl-replay" role="status"><span className="bw-pill">Replay</span><button className="cx-btn is-ghost" onClick={skipReplay}>Skip to the result</button></span>
+              <span className="fl-replay" role="status"><span className="fl-replay-tag">Replaying the run</span><button className="cx-btn is-ghost" onClick={skipReplay}>Skip to the result</button></span>
             ) : (
               <Elapsed from={r?.received_at ?? state.feed[0]?.at ?? null} running={status === "started"} decidedIn={view.value?.seconds_to_decided ?? null} />
             )}
@@ -154,9 +163,9 @@ function FlowFor() {
             <div className="bw-frame">
               <StageRail stages={stages} compact details={stageAgents} />
               <div className="fl-meters">
-                <Meter label="Disputing, with proof" value={t?.disputed ?? 0} tone="dispute" />
+                <Meter label="Disputed, with proof" value={t?.disputed ?? 0} tone="dispute" />
                 <Meter label="Fair, accepted" value={t?.accepted ?? 0} tone="fair" />
-                <Meter label={`Waiting on ${cast.owner}`} value={(t?.waiting ?? 0) + (view.stage === "approval" ? view.approval?.amount ?? 0 : 0)} tone="wait" />
+                <Meter label="Waits on you" value={t?.waiting ?? 0} tone="wait" />
               </div>
               <div className="fl-now">
                 <div className="fl-now-main">
@@ -201,7 +210,7 @@ function Feed() {
         <strong style={{ fontWeight: 500, fontSize: 13 }}>Activity</strong>
         {state.feed.length > 10 && <button className="cx-btn is-ghost" style={{ minHeight: 28, padding: "0 10px", fontSize: 11 }} onClick={() => setAll((v) => !v)}>{all ? "Recent" : `All ${state.feed.length}`}</button>}
       </div>
-      <ol aria-live="polite">
+      <ol>
         {lines.map((l) => (
           <li key={l.id} className={l.level}>
             <b>{ACTOR[l.actor] ?? l.actor}</b>

@@ -61,7 +61,7 @@ function build(state: RunState, view: WorkspaceView, owner: string, distributor:
     {
       key: "investigate", name: "Investigator", kind: "AI", actors: ["investigator"],
       state: status(["investigator"], findings.length > 0 && view.reviewed),
-      conclusion: findings.length ? `Explained ${findings.length} of ${view.charges.length} charges with evidence` : "Matching sales, emails and past payments",
+      conclusion: findings.length ? `Explained ${findings.length} of ${state.stages.check?.total ?? r?.charge_count ?? view.charges.length} charges with evidence` : "Matching sales, emails and past payments",
       outputs: findings.map((f) => <span key={f.charge_id}><b>{f.charge_id}</b>{f.finding} <em>{Math.round(f.confidence * 100)}% sure</em></span>),
     },
     {
@@ -114,7 +114,7 @@ export function StageAgents({ stage }: { stage: StageKey }) {
         const lines = state.feed.filter((l) => agent.actors.includes(l.actor));
         return (
           <section key={agent.key} className={`as-agentcol is-${agent.state}`} aria-label={`${agent.name}: what it did`}>
-            <span className="as-top"><i aria-hidden="true" /><strong>{agent.name}</strong><em>{agent.kind === "YOU" ? "you" : agent.kind === "CODE" ? "code" : "AI"}</em></span>
+            <span className="as-top"><i aria-hidden="true" /><strong>{agent.name}</strong><em>{agent.kind === "YOU" ? "You" : agent.kind === "CODE" ? "Code" : "AI"}</em></span>
             <p className="as-concl">{agent.conclusion}</p>
             <h4>What it concluded</h4>
             {agent.outputs.length ? <div className="as-outputs">{agent.outputs}</div> : <p className="cx-small cx-muted">Nothing yet.</p>}

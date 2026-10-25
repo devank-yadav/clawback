@@ -9,7 +9,7 @@ import { useState, type ReactNode } from "react";
 import { CHECK } from "./parts";
 import { focusStage, type Stage, type StageKey } from "./stages";
 
-const WHO: Record<Stage["who"], string> = { AI: "AI", CODE: "Code", PERSON: "Person" };
+const WHO: Record<Stage["who"], string> = { AI: "AI", CODE: "Code", PERSON: "You" };
 
 function Bar({ stage }: { stage: Stage }) {
   if (stage.state === "done") return <div className="fl-bar"><i style={{ width: "100%" }} /></div>;

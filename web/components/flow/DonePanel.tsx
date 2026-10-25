@@ -29,7 +29,7 @@ function Pile({ title, tone, total, charges, amount, onOpen }: { title: string; 
           <motion.li key={c.id} initial={still ? false : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: k * 0.08 }}>
             <button className="fl-pcard" onClick={() => onOpen(c.id)}>
               <span><strong style={{ fontWeight: 500 }}>{c.id} · {c.title}</strong><span>{money(amount(c))}</span></span>
-              <small>{(c.disputed ?? 0) > 0 && (c.accepted ?? 0) > 0 ? `Split: ${money(c.disputed ?? 0)} disputed, ${money(c.accepted ?? 0)} fair · ` : ""}{c.ruleId ? `${c.ruleId.replace("rule-", "Rule #")} · ` : ""}{c.reason}</small>
+              <small>{(c.disputed ?? 0) > 0 && (c.accepted ?? 0) > 0 ? `Split: ${money(c.disputed ?? 0)} disputed, ${money(c.accepted ?? 0)} fair · ` : ""}{c.ruleId && !c.reason.includes(c.ruleId.replace("rule-", "Rule #")) ? `${c.ruleId.replace("rule-", "Rule #")} · ` : ""}{c.reason}</small>
             </button>
           </motion.li>
         ))}
@@ -112,7 +112,7 @@ export function DonePanel({ onOpen, onNew, onReplay, rail, next, disputeInNext =
         <div className="fl-piles">
           <Pile title={disputedLabel} tone="dispute" total={t?.disputed ?? 0} charges={disputed} amount={(c) => c.disputed ?? 0} onOpen={onOpen} />
           <Pile title="Fair, accepted" tone="fair" total={t?.accepted ?? 0} charges={fair} amount={(c) => c.accepted ?? 0} onOpen={onOpen} />
-          <Pile title="Waiting on your decision" tone="wait" total={t?.waiting ?? 0} charges={waiting} amount={(c) => c.waiting ?? 0} onOpen={onOpen} />
+          <Pile title="Waits on you" tone="wait" total={t?.waiting ?? 0} charges={waiting} amount={(c) => c.waiting ?? 0} onOpen={onOpen} />
         </div>
       )}
 
