@@ -1644,6 +1644,25 @@
             ],
             "default": null,
             "title": "Closed At"
+          },
+          "risk": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/QuestionRisk"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "details": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/RiskDetail"
+            },
+            "title": "Details",
+            "type": "array"
           }
         },
         "required": [
@@ -1689,6 +1708,43 @@
           "data"
         ],
         "title": "QuestionEvent",
+        "type": "object"
+      },
+      "QuestionRisk": {
+        "additionalProperties": false,
+        "description": "How much a question matters, like a flagged risk in a code review (api/engine/question_risk.py, plain code).",
+        "properties": {
+          "level": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "financial",
+              "legal",
+              "deadline",
+              "relationship"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 300,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "kind",
+          "reason"
+        ],
+        "title": "QuestionRisk",
         "type": "object"
       },
       "Quote": {
@@ -1878,6 +1934,26 @@
           "charge_count"
         ],
         "title": "Remittance",
+        "type": "object"
+      },
+      "RiskDetail": {
+        "additionalProperties": false,
+        "description": "One line of a question's expandable part: \"Clause\" / §5.4 \"...\", \"Days of notice\" / \"20 days\".",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "RiskDetail",
         "type": "object"
       },
       "Rule": {
@@ -4179,6 +4255,25 @@
             ],
             "default": null,
             "title": "Closed At"
+          },
+          "risk": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/QuestionRisk"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "details": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/RiskDetail"
+            },
+            "title": "Details",
+            "type": "array"
           }
         },
         "required": [
@@ -4189,6 +4284,63 @@
           "sent_at"
         ],
         "title": "Question",
+        "type": "object"
+      },
+      "QuestionRisk": {
+        "additionalProperties": false,
+        "description": "How much a question matters, like a flagged risk in a code review (api/engine/question_risk.py, plain code).",
+        "properties": {
+          "level": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "financial",
+              "legal",
+              "deadline",
+              "relationship"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 300,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "kind",
+          "reason"
+        ],
+        "title": "QuestionRisk",
+        "type": "object"
+      },
+      "RiskDetail": {
+        "additionalProperties": false,
+        "description": "One line of a question's expandable part: \"Clause\" / §5.4 \"...\", \"Days of notice\" / \"20 days\".",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "RiskDetail",
         "type": "object"
       },
       "RunValue": {
@@ -6347,6 +6499,25 @@
             ],
             "default": null,
             "title": "Closed At"
+          },
+          "risk": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/QuestionRisk"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "details": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/RiskDetail"
+            },
+            "title": "Details",
+            "type": "array"
           }
         },
         "required": [
@@ -6357,6 +6528,63 @@
           "sent_at"
         ],
         "title": "Question",
+        "type": "object"
+      },
+      "QuestionRisk": {
+        "additionalProperties": false,
+        "description": "How much a question matters, like a flagged risk in a code review (api/engine/question_risk.py, plain code).",
+        "properties": {
+          "level": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "financial",
+              "legal",
+              "deadline",
+              "relationship"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 300,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "kind",
+          "reason"
+        ],
+        "title": "QuestionRisk",
+        "type": "object"
+      },
+      "RiskDetail": {
+        "additionalProperties": false,
+        "description": "One line of a question's expandable part: \"Clause\" / §5.4 \"...\", \"Days of notice\" / \"20 days\".",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "RiskDetail",
         "type": "object"
       }
     },

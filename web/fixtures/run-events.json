@@ -948,7 +948,38 @@
         "answer": null,
         "answered_at": null,
         "rule_id": null,
-        "closed_at": null
+        "closed_at": null,
+        "risk": {
+          "level": "high",
+          "kind": "relationship",
+          "reason": "$1,200 display fee rests on §5.4 'at its discretion' with written notice; your answer becomes a rule for every future fee."
+        },
+        "details": [
+          {
+            "label": "Clause",
+            "value": "§5.4 \"Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.\""
+          },
+          {
+            "label": "Notice date",
+            "value": "Mar 11, 2026"
+          },
+          {
+            "label": "Days of notice",
+            "value": "20 days"
+          },
+          {
+            "label": "Amount",
+            "value": "$1,200.00 of a $41,350.00 payment"
+          },
+          {
+            "label": "Dispute window",
+            "value": "90 days left, file by Jul 19, 2026"
+          },
+          {
+            "label": "What your answer does",
+            "value": "Becomes Rule #1: applied to every future display fee from Northmart, without asking again"
+          }
+        ]
       }
     },
     {

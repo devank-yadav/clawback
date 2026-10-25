@@ -148,10 +148,41 @@
       "answer": null,
       "answered_at": null,
       "rule_id": null,
-      "closed_at": null
+      "closed_at": null,
+      "risk": {
+        "level": "high",
+        "kind": "relationship",
+        "reason": "$1,200 display fee rests on §5.4 'at its discretion' with written notice; your answer becomes a rule for every future fee."
+      },
+      "details": [
+        {
+          "label": "Clause",
+          "value": "§5.4 \"Northmart may charge a display fee of up to $1,500 per month at its discretion, with written notice to Supplier.\""
+        },
+        {
+          "label": "Notice date",
+          "value": "Mar 11, 2026"
+        },
+        {
+          "label": "Days of notice",
+          "value": "20 days"
+        },
+        {
+          "label": "Amount",
+          "value": "$1,200.00 of a $41,350.00 payment"
+        },
+        {
+          "label": "Dispute window",
+          "value": "90 days left, file by Jul 19, 2026"
+        },
+        {
+          "label": "What your answer does",
+          "value": "Becomes Rule #1: applied to every future display fee from Northmart, without asking again"
+        }
+      ]
     },
     "prev_hash": "c1aa058bbebc67c41205ba89c5cf51dab2f30ddd45fd820c74f004cd9419b38a",
-    "hash": "f59cf78d4d1203394fb3beec559e9a8807ccc33ffcab11d2065df416e096cd48"
+    "hash": "c51d9c77aa63b3a71e01959336b8db762026578104073aecdefc7cba6971de78"
   },
   {
     "id": 8,
@@ -239,8 +270,8 @@
       "approved_by": "policy",
       "filed_at": "2026-10-24T10:31:03-07:00"
     },
-    "prev_hash": "f59cf78d4d1203394fb3beec559e9a8807ccc33ffcab11d2065df416e096cd48",
-    "hash": "a98c7d8875b204b19d97cfdf06c9511563b1bd97af6453b96211f2b2f51c3cf1"
+    "prev_hash": "c51d9c77aa63b3a71e01959336b8db762026578104073aecdefc7cba6971de78",
+    "hash": "31b6a44eb48cc3b1f36fc4ce6c2d68fd96dacda25fff2756cbec63229b17c316"
   },
   {
     "id": 9,
@@ -256,8 +287,8 @@
       "answered_at": "2026-10-24T10:31:16-07:00",
       "rule_id": "rule-1"
     },
-    "prev_hash": "a98c7d8875b204b19d97cfdf06c9511563b1bd97af6453b96211f2b2f51c3cf1",
-    "hash": "fa781290b08509f01abb98e85718fbe0aed1a167dbed158437695ab6a086a810"
+    "prev_hash": "31b6a44eb48cc3b1f36fc4ce6c2d68fd96dacda25fff2756cbec63229b17c316",
+    "hash": "ae956511a35aba910c40a1a9073e650027025f588da3283fcd172abd758b12c9"
   },
   {
     "id": 10,
@@ -282,8 +313,8 @@
       "source_question_id": "Q-1",
       "status": "active"
     },
-    "prev_hash": "fa781290b08509f01abb98e85718fbe0aed1a167dbed158437695ab6a086a810",
-    "hash": "db30765380bf06326b913d4f8221824165f6db2879c90463995bf36d282ec3f5"
+    "prev_hash": "ae956511a35aba910c40a1a9073e650027025f588da3283fcd172abd758b12c9",
+    "hash": "eab9f3bfdb470942c19b5ffe96204ea0396f8501357aebfd917ddcfb701d5000"
   },
   {
     "id": 11,
@@ -304,8 +335,8 @@
       "decided_at": "2026-10-24T10:31:19-07:00",
       "reason": "Rule #1: 20 days' notice is at least 14, so accept."
     },
-    "prev_hash": "db30765380bf06326b913d4f8221824165f6db2879c90463995bf36d282ec3f5",
-    "hash": "d6fa62b34d0aa0ee99de8e056701903a61657bf556ae5920936866d26b4fb9e0"
+    "prev_hash": "eab9f3bfdb470942c19b5ffe96204ea0396f8501357aebfd917ddcfb701d5000",
+    "hash": "6812e8e410f0e9dd7ed6cea73238780b541f685cd8eb06cf1347454adfab3e1a"
   },
   {
     "id": 12,
@@ -342,8 +373,8 @@
       "sets_auto_post": null,
       "posted_by_auto_post": null
     },
-    "prev_hash": "d6fa62b34d0aa0ee99de8e056701903a61657bf556ae5920936866d26b4fb9e0",
-    "hash": "c8f308fde44c91f303dcb83373106c27649467a2b44cfc02e1dcf1c45240dc36"
+    "prev_hash": "6812e8e410f0e9dd7ed6cea73238780b541f685cd8eb06cf1347454adfab3e1a",
+    "hash": "d62f832983b51a6d555d8659ea67bdd942c60fdc361a6148aa1657976769fb05"
   },
   {
     "id": 13,
@@ -380,8 +411,8 @@
       "sets_auto_post": null,
       "posted_by_auto_post": null
     },
-    "prev_hash": "c8f308fde44c91f303dcb83373106c27649467a2b44cfc02e1dcf1c45240dc36",
-    "hash": "b2563d5c16471b771b39cbf65beca5b76ebb852c3c5055f6c8a8f0a0303e6024"
+    "prev_hash": "d62f832983b51a6d555d8659ea67bdd942c60fdc361a6148aa1657976769fb05",
+    "hash": "9efcd883787210fd84f426f100e0a03df72d02f51835a5885a6e3d31952f09e4"
   },
   {
     "id": 14,
@@ -418,8 +449,8 @@
       "note": "Credit memo applied to INV-3102.",
       "posted_at": "2026-10-24T10:31:30-07:00"
     },
-    "prev_hash": "b2563d5c16471b771b39cbf65beca5b76ebb852c3c5055f6c8a8f0a0303e6024",
-    "hash": "a62d534522618aa34a680cd5b06705518871dcb3249ca4454c734a8ee4265c27"
+    "prev_hash": "9efcd883787210fd84f426f100e0a03df72d02f51835a5885a6e3d31952f09e4",
+    "hash": "d85d40df1cbaf72ab846a7e3c3d4d99f7da3ce0305cce661bfcb4c4d49a29c7f"
   },
   {
     "id": 15,
@@ -461,8 +492,8 @@
       "note": "$4,120 left open on INV-3102, disputed under D-0417.",
       "posted_at": "2026-10-24T10:31:32-07:00"
     },
-    "prev_hash": "a62d534522618aa34a680cd5b06705518871dcb3249ca4454c734a8ee4265c27",
-    "hash": "eeaecaed4a91aee6cebb44535364ed6e5ce46f02adc6265d559cf0b7839ee21c"
+    "prev_hash": "d85d40df1cbaf72ab846a7e3c3d4d99f7da3ce0305cce661bfcb4c4d49a29c7f",
+    "hash": "e6ec664137d0c1a2b4eefb11b8ca60b373254142066b1afdc8fbe04667c6079b"
   },
   {
     "id": 16,
@@ -486,8 +517,8 @@
       "channel": "portal",
       "email_message_id": null
     },
-    "prev_hash": "eeaecaed4a91aee6cebb44535364ed6e5ce46f02adc6265d559cf0b7839ee21c",
-    "hash": "d1db8007a82018b2a64baecec07ebc0929e7804b87c67b3ec583ed55df7f2bfe"
+    "prev_hash": "e6ec664137d0c1a2b4eefb11b8ca60b373254142066b1afdc8fbe04667c6079b",
+    "hash": "05b560710877147c405a21cff57705be1e641a688afe662b3ff2c64216604d89"
   },
   {
     "id": 17,
@@ -517,7 +548,7 @@
       "channel": "portal",
       "email_message_id": null
     },
-    "prev_hash": "d1db8007a82018b2a64baecec07ebc0929e7804b87c67b3ec583ed55df7f2bfe",
-    "hash": "52b9412b6d801662afa8cf93cbb4eb5471efa8cb04920b7a11503ac6664a1436"
+    "prev_hash": "05b560710877147c405a21cff57705be1e641a688afe662b3ff2c64216604d89",
+    "hash": "a8e12124708cdc2ec38ceab87d9e83ed6562b57860c736afba6919ae7b84aa21"
   }
 ]

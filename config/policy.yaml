@@ -21,4 +21,9 @@ approved_amendment_senders:          # only these (or a document signed by both 
   - "jordan@peakbar-broker.example"  # broker (fictional)
 auto_send: false                    # true: a dispute within auto_dispute_limit_usd is emailed without the admin's
                                     # review (api/dispute_email.py); false: every dispute waits for "Review and send"
+question_risk:                      # how much a question to the admin matters (api/engine/question_risk.py)
+  high_usd: 1000                    # high at or above this amount at stake,
+  high_pct_of_payment: 5            # or at or above this % of the payment
+  medium_usd: 250                   # medium at or above this; low below
+  deadline_days: 14                 # a dispute window this close raises the level a step and makes it a deadline
 dispute_window_warn_days: 14        # a dispute window closing this soon puts "file by <date>" on the decision

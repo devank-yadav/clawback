@@ -19,9 +19,19 @@ from api.engine import audit_chain
 from api.contracts import (
     Answer, Approval, ApprovalLine, AuditEntry, Charge, ChargeDetail, CoachResponse, Decision, Dispute,
     DisputeLine, EvalReport, EventAdapter, Evidence, Finding, LedgerLine, LedgerPost, LogLine, MathPart,
-    PortalMessage, Question, Quote, Redline, Rehearsal, Remittance, Rule, RunFixture, RunInfo, RunValue,
-    Summary, Totals,
+    PortalMessage, Question, QuestionRisk, Quote, Redline, Rehearsal, Remittance, RiskDetail, Rule, RunFixture, RunInfo,
+    RunValue, Summary, Totals,
 )
+
+C6_RISK_DETAILS = [
+    ("Clause", '§5.4 "Northmart may charge a display fee of up to $1,500 per month at its discretion, with written '
+               'notice to Supplier."'),
+    ("Notice date", "Mar 11, 2026"),
+    ("Days of notice", "20 days"),
+    ("Amount", "$1,200.00 of a $41,350.00 payment"),
+    ("Dispute window", "90 days left, file by Jul 19, 2026"),
+    ("What your answer does", "Becomes Rule #1: applied to every future display fee from Northmart, without asking again"),
+]
 
 PDT = timezone(timedelta(hours=-7))
 REPO = Path(__file__).resolve().parents[2]
@@ -388,7 +398,12 @@ def _march(run_id: str, owner_approves: bool) -> RunFixture:
 
     q = Question(id="Q-1", to_role="owner", charge_id="C6", channel="sms", sent_at=run.now() + run.step,
                  text="Northmart took a $1,200 display fee for March. The deal allows up to $1,500 'at its discretion'. "
-                      "Notice came 20 days ahead. Accept or dispute? Tell me your rule and I'll remember it.")
+                      "Notice came 20 days ahead. Accept or dispute? Tell me your rule and I'll remember it.",
+                 # What the live run computes for C6 (api/engine/question_risk.py; test_question_risk.py checks it)
+                 risk=QuestionRisk(level="high", kind="relationship",
+                                   reason="$1,200 display fee rests on §5.4 'at its discretion' with written notice; "
+                                          "your answer becomes a rule for every future fee."),
+                 details=[RiskDetail(label=k, value=v) for k, v in C6_RISK_DETAILS])
     run.add("question", q)
     run.log("Texted Dana one question about C6.", actor="gate", charge_id="C6")
     value = RunValue(disputed=_m(4120), accepted=_m(1530), questions=1, charges=6,
