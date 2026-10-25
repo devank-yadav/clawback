@@ -1,0 +1,50 @@
+/* Clawback's one theme: light and calm, in billow.so's design language (navy ink on near-white, hairline borders,
+   pill buttons, a serif display face for headlines, a sky wash behind the product frame). Both route groups import
+   this last; `html:root` outranks the `:root` blocks in base.css, so these values win in any stylesheet order. */
+
+html:root {
+  color-scheme: light;
+
+  /* surfaces */
+  --bg: #fcfdff; --side: #f6f8fb; --card: #ffffff; --card-2: #f7f9fc; --raised: #f1f4f8; --raised-2: #e8edf3;
+  --selected: #eaf2fe; --sky: #dbf3ff;
+  --line: rgba(0, 28, 46, 0.09); --line-strong: rgba(0, 28, 46, 0.18);
+
+  /* text */
+  --ink: #001c2e; --sub: #4a5d6b; --faint: #61737f;
+
+  /* actions: the dark pill for most buttons, blue for links, focus and the one hero button per page */
+  --accent: #1f6fe5; --accent-ink: #1a5fc8; --accent-soft: #eaf2fe;
+  --button: #1c1c1c; --button-hover: #333333; --button-blue: #1f6fe5; --button-blue-hover: #1a5fc8;
+
+  /* the three piles (validated for colorblind readers: red / blue / amber, never red next to green) */
+  --dispute: #e34948; --dispute-ink: #c22f2e; --dispute-bg: #fdeceb;
+  --fair: #2a78d6; --fair-ink: #1d5fb0; --fair-bg: #e8f1fc;
+  --wait: #eda100; --wait-ink: #8a5a00; --wait-bg: #fdf3dc;
+
+  /* states that aren't piles: done or connected (green), waiting (amber), stopped (red) */
+  --green: #0d7150; --green-bg: #e6f6ef; --green-line: rgba(13, 113, 80, 0.28);
+  --amber: #8a5a00; --amber-bg: #fdf3dc; --amber-fill: #eda100;
+  --red: #c22f2e; --red-bg: #fdeceb;
+  --hl: #fff1b8;
+
+  /* shape, depth, type */
+  --radius: 10px; --radius-card: 16px; --radius-frame: 28px;
+  --shadow-frame: 0 1px 2px rgba(0, 28, 46, 0.04), 0 30px 70px -28px rgba(0, 28, 46, 0.22);
+  --shadow-pop: 0 2px 6px rgba(0, 28, 46, 0.06), 0 16px 40px rgba(0, 28, 46, 0.12);
+  --font-display: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
+
+  /* names the workspace screens (app.css, workspace.css) and the Tailwind base use */
+  --violet: var(--accent); --violet-soft: var(--accent-soft); --green-soft: var(--green-bg); --amber-soft: var(--amber-bg);
+  --red-soft: var(--red-bg); --surface: var(--card); --canvas: var(--bg);
+  --background: var(--bg); --foreground: var(--ink); --card-foreground: var(--ink); --popover: var(--card);
+  --popover-foreground: var(--ink); --muted: var(--raised); --muted-foreground: var(--sub); --border: var(--line);
+  --input: var(--line-strong);
+}
+
+html, body { background: var(--bg); color: var(--ink); }
+::selection { background: var(--sky); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* the display face: page headlines, the stage title and the result headline only */
+.display { font-family: var(--font-display); font-weight: 400; letter-spacing: -0.035em; line-height: 1.04; font-optical-sizing: auto; }

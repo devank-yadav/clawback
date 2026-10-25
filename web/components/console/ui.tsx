@@ -16,15 +16,15 @@ export function Money({ value, className = "" }: { value: number; className?: st
   );
 }
 
-export function Pill({ tone = "", live = false, children }: { tone?: "accent" | "green" | "amber" | ""; live?: boolean; children: ReactNode }) {
+export function Pill({ tone = "", live = false, children }: { tone?: "accent" | "green" | "amber" | "dispute" | "fair" | ""; live?: boolean; children: ReactNode }) {
   return <span className={`cx-pill ${tone ? `is-${tone}` : ""} ${live ? "is-live" : ""}`}>{children}</span>;
 }
 
-const STATUS: Record<ChargeStatus, { label: string; tone: "accent" | "green" | "amber" | "" }> = {
+const STATUS: Record<ChargeStatus, { label: string; tone: "accent" | "green" | "amber" | "dispute" | "fair" | "" }> = {
   Reviewing: { label: "Checking", tone: "" },
-  "Split decision": { label: "Split", tone: "accent" },
-  Disputed: { label: "Dispute", tone: "accent" },
-  Accepted: { label: "Fair", tone: "" },
+  "Split decision": { label: "Split", tone: "dispute" },
+  Disputed: { label: "Dispute", tone: "dispute" },
+  Accepted: { label: "Fair", tone: "fair" },
   "Needs your input": { label: "Ask owner", tone: "amber" },
   "Can’t verify": { label: "Can’t verify", tone: "" },
 };

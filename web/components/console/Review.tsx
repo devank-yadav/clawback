@@ -134,8 +134,8 @@ export function ChargeDrawer({ charge, onClose, source, runId }: { charge: Charg
         <span className="cx-small">How the {<Money value={charge.amount} />} deduction splits</span>
         <div className="cx-split-row">
           <div><small>Taken</small><Money value={charge.amount} /><small>By the distributor</small></div>
-          <div className="is-green"><small>Fair</small>{decided ? <Money value={charge.accepted ?? 0} /> : <span>…</span>}<small>Keep as a charge</small></div>
-          <div className="is-accent"><small>{charge.waiting ? "Waiting on owner" : "To dispute"}</small>{decided ? <Money value={(charge.waiting || charge.disputed) ?? 0} /> : <span>…</span>}<small>{charge.waiting ? "Not decided" : "Proposed"}</small></div>
+          <div className="is-fair"><small>Fair</small>{decided ? <Money value={charge.accepted ?? 0} /> : <span>…</span>}<small>Keep as a charge</small></div>
+          <div className="is-dispute"><small>{charge.waiting ? "Waiting on owner" : "To dispute"}</small>{decided ? <Money value={(charge.waiting || charge.disputed) ?? 0} /> : <span>…</span>}<small>{charge.waiting ? "Not decided" : "Proposed"}</small></div>
         </div>
       </div>
 

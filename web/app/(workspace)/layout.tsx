@@ -1,14 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { fontVars } from "../fonts";
 import "./base.css";
 import "./workspace.css";
 import "./app.css";
 import "../(console)/console.css";
 import "../(console)/flow.css";
 import "./unify.css";
+import "../theme.css";
+import "../billow.css";
+import "../billow-pages.css";
+import "../billow-tools.css";
 
-// One app with the agents' flow at `/`: the same tokens (console.css), the same parts (flow.css) and the same type.
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+// One app with the agents' flow at `/`: the same tokens (theme.css), the same parts (flow.css) and the same type.
 
 export const metadata: Metadata = {
   title: "Clawback · Deductions, checked against the deal",
@@ -16,14 +19,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  colorScheme: "dark",
-  themeColor: "#16171f",
+  colorScheme: "light",
+  themeColor: "#fcfdff",
 };
 
 export default function WorkspaceLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.variable} antialiased`}>{children}</body>
+    <html lang="en" className={fontVars}>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }

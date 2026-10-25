@@ -40,11 +40,11 @@ function Result({ c, owner }: { c: ChargeView | undefined; owner: string }) {
   const rule = c.ruleId ? <span className="cx-tag is-rule">{c.ruleId.replace("rule-", "Rule #")}</span> : null;
   switch (c.status) {
     case "Disputed":
-      return <><Pill tone="accent">Dispute</Pill>{money(c.disputed ?? 0)}{rule}</>;
+      return <><Pill tone="dispute">Dispute</Pill>{money(c.disputed ?? 0)}{rule}</>;
     case "Split decision":
-      return <><Pill tone="accent">Split</Pill>{money(c.disputed ?? 0)} / {money(c.accepted ?? 0)}{rule}</>;
+      return <><Pill tone="dispute">Split</Pill>{money(c.disputed ?? 0)} / {money(c.accepted ?? 0)}{rule}</>;
     case "Accepted":
-      return <><Pill tone="green">Fair</Pill>{money(c.accepted ?? 0)}{rule}</>;
+      return <><Pill tone="fair">Fair</Pill>{money(c.accepted ?? 0)}{rule}</>;
     case "Needs your input":
       return <><Pill tone="amber">Ask {owner}</Pill>{money(c.waiting ?? c.amount)}</>;
     default:

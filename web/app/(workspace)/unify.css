@@ -1,21 +1,8 @@
-/* One app with the agents' flow: the workspace and tool screens in the flow's design language (console.css tokens,
+/* One app with the agents' flow: the workspace and tool screens in the flow's design language (theme.css tokens,
    flow.css parts). workspace.css and app.css keep their structure; their light colors were mapped to these tokens.
    This file holds what a color map can't: the flow's top bar instead of the sidebar, the flow's type and a few fixes. */
 
 
-/* Pinned above every other :root / .dark block (base.css's Tailwind tokens share names such as --card and --accent),
-   so the flow's tokens win whatever order the build puts the stylesheets in. */
-html.dark:root {
-  color-scheme: dark;
-  --bg: #16171f; --side: #13141b; --card: #20212c; --card-2: #22232e; --raised: #282a37; --selected: #2b2d49;
-  --line: #333542; --ink: #f0f0f4; --sub: #a1a3b4; --faint: #8b8ea3;
-  --accent: #777cff; --accent-ink: #b6b6ff; --accent-soft: #282944; --button: #6268f1;
-  --green: #9cd9bc; --green-bg: #1c2c29; --amber: #ebc28c; --amber-bg: #302a26; --radius: 10px;
-  --violet: #777cff; --violet-soft: #282944; --green-soft: #1c2c29; --amber-soft: #302a26;
-  --red: #b6b6ff; --red-soft: #282944; --surface: #20212c; --canvas: #16171f;
-  --background: #16171f; --foreground: #f0f0f4; --card-foreground: #f0f0f4; --popover: #20212c;
-  --popover-foreground: #f0f0f4; --muted: #282a37; --muted-foreground: #a1a3b4; --border: #333542; --input: #333542;
-}
 
 body { font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif; background: var(--bg); color: var(--ink); }
 h1, h2, h3 { font-weight: 500; letter-spacing: -0.4px; }
@@ -38,7 +25,7 @@ h1 { font-size: clamp(26px, 3vw, 34px); letter-spacing: -0.9px; }
 .workspace { padding: 5px 8px; background: var(--card); border-radius: 8px; font-weight: 500; font-size: 13px; gap: 8px; }
 .workspace small { display: none; }
 .workspace-avatar { width: 24px; height: 24px; font-size: 12px; border-radius: 6px; }
-.workspace-menu { background: var(--card); box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45); }
+.workspace-menu { background: var(--card); box-shadow: var(--shadow-pop); }
 .nav-label, .quiet-note { display: none; }
 .sidebar nav { order: 3; width: 100%; flex-direction: row; gap: 2px; overflow-x: auto; scrollbar-width: none; margin: 0 -6px; }
 .sidebar nav::-webkit-scrollbar { display: none; }
@@ -65,10 +52,12 @@ h1 { font-size: clamp(26px, 3vw, 34px); letter-spacing: -0.9px; }
 .status { border-radius: 999px; font-weight: 500; }
 .charge-filters button { border-radius: 999px; }
 .charge-filters button.active { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent); }
-.accepted-allocation, .accepted-dot { background: var(--green); }
+.disputed-allocation, .disputed-dot { background: var(--dispute); }
+.accepted-allocation, .accepted-dot { background: var(--fair); }
+.pending-allocation, .pending-dot { background: var(--wait); }
 .charge-row { background: transparent; }
 .charge-row:hover, .charge-row.selected { background: var(--selected); }
-.dialog-backdrop { background: rgba(5, 6, 10, 0.6); }
+.dialog-backdrop { background: rgba(0, 28, 46, 0.28); }
 input, textarea, select { background: var(--bg); color: var(--ink); border-color: var(--line); }
 
 /* ---------- the run's stages inside the workspace (the flow's rail) ---------- */
@@ -82,10 +71,10 @@ input, textarea, select { background: var(--bg); color: var(--ink); border-color
 }
 
 /* Status pills and the value strip as the flow draws them: a dark tint with the color in the text. */
-.status.accepted { background: var(--green-bg); color: var(--green); }
-.status.disputed { background: var(--accent-soft); color: var(--accent-ink); }
-.status.split { background: var(--selected); color: var(--accent-ink); }
-.status.pending { background: var(--amber-bg); color: var(--amber); }
+.status.accepted { background: var(--fair-bg); color: var(--fair-ink); }
+.status.disputed { background: var(--dispute-bg); color: var(--dispute-ink); }
+.status.split { background: var(--dispute-bg); color: var(--dispute-ink); }
+.status.pending { background: var(--wait-bg); color: var(--wait-ink); }
 .status.skipped, .status.reviewing { background: var(--raised); color: var(--sub); }
 .value-strip { background: var(--green-bg); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 30%, transparent); }
 .value-strip strong { color: var(--green); }

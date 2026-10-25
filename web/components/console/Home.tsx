@@ -30,15 +30,15 @@ function Chart({ months }: { months: Overview["months"] }) {
     <svg className="cx-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Money deducted and money recovered by month, last six months">
       {ticks.map((v) => (
         <g key={v}>
-          <line x1={P} x2={W - P} y1={y(v)} y2={y(v)} stroke="#333542" />
-          <text x={0} y={y(v) + 4} fill="#8b8ea3" fontSize="10">{k(v)}</text>
+          <line x1={P} x2={W - P} y1={y(v)} y2={y(v)} stroke="#e3e8ee" />
+          <text x={0} y={y(v) + 4} fill="#61737f" fontSize="10">{k(v)}</text>
         </g>
       ))}
-      <path d={`${line(back)} L${x(months.length - 1)},${y(0)} L${x(0)},${y(0)} Z`} fill="#777cff" opacity="0.12" />
-      <path d={line(taken)} fill="none" stroke="#a1a3b4" strokeWidth="2" />
-      <path d={line(back)} fill="none" stroke="#777cff" strokeWidth="2" />
+      <path d={`${line(back)} L${x(months.length - 1)},${y(0)} L${x(0)},${y(0)} Z`} fill="#1f6fe5" opacity="0.1" />
+      <path d={line(taken)} fill="none" stroke="#8a9aa6" strokeWidth="2" />
+      <path d={line(back)} fill="none" stroke="#1f6fe5" strokeWidth="2" />
       {months.map((m, i) => (
-        <text key={m.month} x={x(i)} y={H - 4} fill="#8b8ea3" fontSize="10" textAnchor="middle">{monthName(m.month)}</text>
+        <text key={m.month} x={x(i)} y={H - 4} fill="#61737f" fontSize="10" textAnchor="middle">{monthName(m.month)}</text>
       ))}
     </svg>
   );
@@ -76,8 +76,8 @@ export default function Home() {
         {o ? (
           <>
             <div className="cx-legend">
-              <div><span><i style={{ background: "#a1a3b4" }} />Deducted from payments</span><Money value={Number(o.kpis.deducted_6m)} /></div>
-              <div><span><i style={{ background: "#777cff" }} />Recovered to date</span><Money value={Number(o.kpis.recovered_6m)} /></div>
+              <div><span><i style={{ background: "#8a9aa6" }} />Deducted from payments</span><Money value={Number(o.kpis.deducted_6m)} /></div>
+              <div><span><i style={{ background: "#1f6fe5" }} />Recovered to date</span><Money value={Number(o.kpis.recovered_6m)} /></div>
               {o.kpis.claimable_now !== undefined && (
                 <div><span><i style={{ background: "var(--amber)" }} />Still claimable now</span><Money value={Number(o.kpis.claimable_now)} /></div>
               )}

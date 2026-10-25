@@ -11,6 +11,7 @@ import type { ChargeView } from "@/lib/workspace";
 import { useRun } from "@/components/console/RunProvider";
 import { Money } from "@/components/console/ui";
 import { DisputeCard } from "./Spotlight";
+import { HeroPill, MoneyBar, StatTile } from "@/components/ui/kit";
 
 function Pile({ title, tone, total, charges, amount, onOpen }: { title: string; tone: "dispute" | "fair" | "wait"; total: number; charges: ChargeView[]; amount: (c: ChargeView) => number; onOpen: (id: string) => void }) {
   const still = useReducedMotion();
@@ -48,24 +49,27 @@ export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: 
   const held = state.dispute?.status === "draft";
   // Facts about what already happened, never a forecast.
   const facts = [
-    t && t.questions ? `${t.questions} question${t.questions === 1 ? "" : "s"} for you` : t ? "no questions needed" : null,
-    v && v.seconds_to_decided !== null && v.seconds_to_decided !== undefined ? `decided in ${Math.round(v.seconds_to_decided)} s` : null,
-    v ? `${v.ai_calls} AI calls${v.ai_cost_usd ? ` · ${cost(v.ai_cost_usd)}` : ""}` : null,
+    t && t.questions ? `${t.questions} question${t.questions === 1 ? "" : "s"} for you` : t ? "No questions needed" : null,
   ].filter(Boolean) as string[];
+  const seconds = v && v.seconds_to_decided !== null && v.seconds_to_decided !== undefined ? Math.round(v.seconds_to_decided) : null;
+  // The headline's second line: the one fact that matters most, already decided.
+  const second = !t ? null
+    : t.disputed > 0 ? `${money(t.disputed)} of it ${held ? "is held for you to send." : "isn’t allowed by the deal."}`
+    : t.waiting > 0 ? `${money(t.waiting)} of it waits on your call.`
+    : "Every charge matches the deal.";
   const posting = view.postingProblem ?? (view.approval ? view.postingLabel : (t?.accepted ?? 0) > 0 ? "Fair charges are waiting for your approval before anything posts" : "Nothing to post to QuickBooks");
 
   return (
     <>
       <section className="fl-sum" aria-live="polite">
         <div className="fl-sum-text">
+          {r && <HeroPill>Payment of {money(r.received)} from {distributor}, checked</HeroPill>}
           {failed ? (
             <h1>The agents stopped before finishing</h1>
           ) : (
             <h1>
-              {r ? <>{distributor} kept <b>{money(r.taken)}</b></> : <>{distributor}’s charges</>}
-              {t && t.disputed > 0 && <> · <span className="is-dispute">{money(t.disputed)} {held ? "held for you" : "disputed"}</span></>}
-              {t && t.accepted > 0 && <> · <span className="is-fair">{money(t.accepted)} fair</span></>}
-              {t && t.waiting > 0 && <> · <span className="is-wait">{money(t.waiting)} waits on you</span></>}
+              {r ? <>{distributor} kept {money(r.taken)}.</> : <>{distributor}’s charges.</>}
+              {second && <em>{second}</em>}
             </h1>
           )}
           <div className="fl-facts">
@@ -74,10 +78,27 @@ export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: 
             <span>{posting}</span>
           </div>
         </div>
-        <button className="cx-btn" onClick={onNew}>Check a new payment</button>
       </section>
 
-      {next && <section className="fl-nextstep" aria-label="Your next step"><span className="cx-eyebrow">Your next step</span>{next}</section>}
+      {!failed && t && (
+        <MoneyBar
+          label={r ? `Where the ${money(r.taken)} went` : "Where the charges went"}
+          parts={[
+            { tone: "dispute", label: held ? "Held for you" : "Disputed with proof", value: t.disputed },
+            { tone: "fair", label: "Fair, accepted", value: t.accepted },
+            { tone: "wait", label: "Waits on you", value: t.waiting },
+          ]}
+        />
+      )}
+
+      <div className={`fl-result ${next ? "" : "is-solo"}`}>
+        {next && <section className="fl-nextstep" aria-label="Your next step"><span className="cx-eyebrow">Your next step</span>{next}</section>}
+        <div className="bw-stats">
+          <StatTile label="Charges checked" value={view.charges.length} />
+          <StatTile label="Decided in" value={seconds !== null ? `${seconds} s` : "—"} hint="From the payment landing to every charge decided" />
+          <StatTile label="AI calls" value={v ? v.ai_calls : "—"} hint={v?.ai_cost_usd ? `${cost(v.ai_cost_usd)} in model costs` : undefined} />
+        </div>
+      </div>
 
       {rail}
 
@@ -122,7 +143,7 @@ export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: 
         <span className="cx-small cx-muted">
           Every decision is traceable: <a href={link("/workspace", { view: "payments" })}>every charge</a> · <a href={link("/audit")}>audit trail</a>
         </span>
-        <button className="cx-btn is-ghost" onClick={onNew}>Check a new payment</button>
+        <button className="cx-btn" onClick={onNew}>Check a new payment</button>
       </div>
     </>
   );

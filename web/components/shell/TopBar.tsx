@@ -36,7 +36,7 @@ export const STATUS_TONE: Record<RelationshipStatus, string> = {
 };
 
 export function DistributorMark({ name, color, size = 28 }: { name: string; color?: string; size?: number }) {
-  const bg = color ?? "#2b2d49";
+  const bg = color ?? "#eaf2fe";
   return <span className="tb-mark" style={{ background: bg, color: inkOn(bg), width: size, height: size, fontSize: size * 0.46 }} aria-hidden>{name.charAt(0)}</span>;
 }
 

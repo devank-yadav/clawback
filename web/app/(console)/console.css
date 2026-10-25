@@ -1,28 +1,5 @@
-/* Clawback console: the dark screens designed in Figma Make (Figma file "Clawback — Product Design",
-   page "02 Clawback — dark workspace exploration"). Colors are the ones used in those frames. */
-
-:root {
-  color-scheme: dark;
-  --bg: #16171f;
-  --side: #13141b;
-  --card: #20212c;
-  --card-2: #22232e;
-  --raised: #282a37;
-  --selected: #2b2d49;
-  --line: #333542;
-  --ink: #f0f0f4;
-  --sub: #a1a3b4;
-  --faint: #8b8ea3;
-  --accent: #777cff;
-  --accent-ink: #b6b6ff;
-  --accent-soft: #282944;
-  --button: #6268f1;
-  --green: #9cd9bc;
-  --green-bg: #1c2c29;
-  --amber: #ebc28c;
-  --amber-bg: #302a26;
-  --radius: 10px;
-}
+/* Clawback console: the screens first designed in Figma Make (Figma file "Clawback — Product Design"), now in the
+   light theme (app/theme.css holds every color token). */
 
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--ink); }
@@ -84,13 +61,15 @@ svg { flex-shrink: 0; }
 .cx-pill.is-accent { background: var(--accent-soft); color: var(--accent-ink); }
 .cx-pill.is-green { background: var(--green-bg); color: var(--green); }
 .cx-pill.is-amber { background: var(--amber-bg); color: var(--amber); }
+.cx-pill.is-dispute { background: var(--dispute-bg); color: var(--dispute-ink); }
+.cx-pill.is-fair { background: var(--fair-bg); color: var(--fair-ink); }
 .cx-pill.is-live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: cx-pulse 1.4s ease-in-out infinite; }
 @keyframes cx-pulse { 50% { opacity: 0.25; } }
 
 .cx-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 18px; border-radius: 999px; border: 0; background: var(--button); color: #fff; font-size: 13px; font-weight: 500; }
-.cx-btn:hover { background: #7378f5; color: #fff; }
+.cx-btn:hover { background: var(--button-hover); color: #fff; }
 .cx-btn.is-ghost { background: var(--raised); color: var(--ink); }
-.cx-btn.is-ghost:hover { background: #313342; }
+.cx-btn.is-ghost:hover { background: var(--raised-2); }
 .cx-btn svg { width: 15px; height: 15px; }
 
 .cx-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
@@ -110,7 +89,7 @@ svg { flex-shrink: 0; }
 .cx-review { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 450px); gap: 20px; align-items: start; }
 .cx-list { display: flex; flex-direction: column; gap: 8px; }
 .cx-charge { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; padding: 14px 16px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--line); transition: background 0.15s, border-color 0.15s; }
-.cx-charge:hover { background: var(--card-2); border-color: #44465a; }
+.cx-charge:hover { background: var(--card-2); border-color: var(--line-strong); }
 .cx-charge[aria-pressed="true"] { background: var(--selected); border-color: var(--accent); }
 .cx-charge:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .cx-charge-title { font-size: 13px; }
@@ -130,8 +109,8 @@ svg { flex-shrink: 0; }
 .cx-split-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .cx-split-row > div { border-radius: 8px; padding: 9px 10px; background: var(--raised); display: flex; flex-direction: column; gap: 3px; }
 .cx-split-row .cx-money { font-size: 20px; }
-.cx-split-row .is-green { background: var(--green-bg); color: var(--green); }
-.cx-split-row .is-accent { background: var(--accent-soft); color: var(--accent-ink); }
+.cx-split-row .is-fair { background: var(--fair-bg); color: var(--fair-ink); }
+.cx-split-row .is-dispute { background: var(--dispute-bg); color: var(--dispute-ink); }
 .cx-split-row small { font-size: 10px; opacity: 0.85; }
 
 .cx-quote { background: var(--bg); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
@@ -160,7 +139,7 @@ svg { flex-shrink: 0; }
 
 /* owner decision */
 .cx-choice { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--line); font-size: 13px; }
-.cx-choice:hover { border-color: #4a4c60; }
+.cx-choice:hover { border-color: var(--line-strong); }
 .cx-choice[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .cx-choice[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 /* "Save as a rule for next time" and "Post fair charges like these automatically from now on". */
@@ -226,7 +205,7 @@ svg { flex-shrink: 0; }
 .cx-wave { position: absolute; inset: 0 0 0 30%; z-index: 1; }
 .cx-wave canvas { width: 100%; height: 100%; display: block; }
 .cx-wave-label { position: absolute; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink); white-space: nowrap; pointer-events: none; will-change: transform; }
-.cx-wave-label i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(119, 124, 255, 0.18), 0 0 14px 2px rgba(119, 124, 255, 0.55); }
+.cx-wave-label i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(31, 111, 229, 0.16), 0 0 14px 2px rgba(31, 111, 229, 0.45); }
 
 /* ---------- small screens ---------- */
 @media (max-width: 1100px) {
@@ -248,18 +227,18 @@ svg { flex-shrink: 0; }
   .cx-pill.is-live::before, .cx-step.is-waiting .cx-step-dot { animation: none; }
 }
 
-/* The admin's sign-in (components/shell/SessionDialogs.tsx), in the console's dark look. */
-.dialog-backdrop{position:fixed;inset:0;background:rgba(5,6,10,.6);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
-.brand-dialog{position:relative;width:min(450px,100%);padding:24px;background:#1d1f29;color:#e9eaf2;border:1px solid #333542;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.5);display:grid;grid-template-columns:1fr;gap:14px}
+/* The admin's sign-in (components/shell/SessionDialogs.tsx). */
+.dialog-backdrop{position:fixed;inset:0;background:rgba(0,28,46,.28);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+.brand-dialog{position:relative;width:min(450px,100%);padding:24px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:0 24px 60px rgba(0,28,46,.14);display:grid;grid-template-columns:1fr;gap:14px}
 .brand-dialog h2{margin:4px 0;font-size:18px;font-weight:500}
-.brand-dialog p{font-size:13px;color:#a1a3b4;margin:0}
+.brand-dialog p{font-size:13px;color:var(--sub);margin:0}
 .brand-dialog .attention-icon{display:none}
-.brand-dialog .dialog-close{position:absolute;top:10px;right:10px;border:0;background:transparent;color:#a1a3b4;padding:6px;cursor:pointer}
+.brand-dialog .dialog-close{position:absolute;top:10px;right:10px;border:0;background:transparent;color:var(--sub);padding:6px;cursor:pointer}
 .brand-dialog .dialog-close svg{width:16px;height:16px}
-.brand-dialog .note-label{display:block;font-size:12px;color:#a1a3b4;margin:0}
-.brand-dialog .note-label span{color:#8b8ea3}
-.brand-dialog input{width:100%;border:1px solid #333542;border-radius:9px;padding:11px 12px;min-height:44px;background:#16171f;color:#e9eaf2}
-.brand-dialog .primary{min-height:44px;border:0;border-radius:9px;background:#777cff;color:#fff;font-weight:500;cursor:pointer}
-.brand-dialog .field-error{color:#f2b552;font-size:12px}
+.brand-dialog .note-label{display:block;font-size:12px;color:var(--sub);margin:0}
+.brand-dialog .note-label span{color:var(--faint)}
+.brand-dialog input{width:100%;border:1px solid var(--line);border-radius:9px;padding:11px 12px;min-height:44px;background:var(--bg);color:var(--ink)}
+.brand-dialog .primary{min-height:44px;border:0;border-radius:9px;background:var(--accent);color:#fff;font-weight:500;cursor:pointer}
+.brand-dialog .field-error{color:var(--amber);font-size:12px}
 .cx-org select{background:transparent;color:inherit;border:0;font:inherit;max-width:100%;min-width:0;flex:1;cursor:pointer}
-.cx-org select option{color:#16171f}
+.cx-org select option{color:var(--bg)}
