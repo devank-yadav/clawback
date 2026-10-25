@@ -246,6 +246,7 @@ function UserMenu({ account }: { account: Account | null }) {
               <div><dt>Role</dt><dd>Admin: answers the questions and approves what posts</dd></div>
             </dl>
           )}
+          <button role="menuitem" className="tb-row" onClick={() => { close(false); void presenter.reset(); }}><RotateCcw aria-hidden="true" /><span><strong>Reset the demo</strong><small>Every distributor back to the start, ready for the next payment</small></span></button>
           {!presenting && (
             <button role="menuitem" className="tb-row" onClick={() => { close(false); askAdminToken("Enter the presenter key. This tab then shows the presenter controls in your menu.", () => { setPresenting(true); setOpen(true); }); }}><KeyRound aria-hidden="true" /><span><strong>Presenter mode…</strong><small>Asks for the presenter key</small></span></button>
           )}
@@ -253,7 +254,6 @@ function UserMenu({ account }: { account: Account | null }) {
             <>
               <button role="menuitem" className="tb-row" onClick={() => { close(false); void presenter.simulate(); }}><Landmark aria-hidden="true" /><span><strong>Presenter: simulate {account.distributor.name}’s payment</strong><small>Posts the bank deposit; the agents start on their own</small></span></button>
               <button role="menuitem" className="tb-row" onClick={() => { close(false); void presenter.reply(); }}><MessagesSquare aria-hidden="true" /><span><strong>Presenter: {account.distributor.name} replies to the dispute</strong><small>Posts their reply on the portal; you’re notified and the Negotiator answers</small></span></button>
-              <button role="menuitem" className="tb-row" onClick={() => { close(false); void presenter.reset(); }}><RotateCcw aria-hidden="true" /><span><strong>Presenter: reset every distributor</strong></span></button>
             </>
           )}
           {status === "in" && <button role="menuitem" className="tb-row" onClick={() => void signOut().then(() => router.push("/"))}><LogOut aria-hidden="true" /><span><strong>Sign out</strong></span></button>}

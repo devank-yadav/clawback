@@ -10,10 +10,10 @@ import hmac
 import os
 from dataclasses import asdict
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 
 from api import pipeline
-from api import auth, drive, story
+from api import auth, drive, story, tenancy
 from api.db import events as saved_events, state as saved_state
 from api.integrations import qbo, qbo_source
 from api.routes import approvals, payments, portal
@@ -22,9 +22,10 @@ router = APIRouter(tags=["demo"])
 
 
 @router.post("/demo/reset")
-def reset(authorization: str | None = Header(default=None)) -> dict:
+def reset(request: Request, authorization: str | None = Header(default=None)) -> dict:
     token = os.getenv("CLAWBACK_ADMIN_TOKEN")
-    if token and not hmac.compare_digest(authorization or "", f"Bearer {token}"):
+    signed_in = (who := tenancy.caller(request)) is not None and who.via == "session"  # the admin's own "Reset the demo"
+    if token and not signed_in and not hmac.compare_digest(authorization or "", f"Bearer {token}"):
         raise HTTPException(401, "this reset needs the admin token: Authorization: Bearer <CLAWBACK_ADMIN_TOKEN>")
     try:
         undone, error = qbo.books().undo_demo_writes(), None  # before pipeline.reset(), which drops the books
