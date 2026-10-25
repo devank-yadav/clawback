@@ -410,8 +410,8 @@ def _march(run_id: str, owner_approves: bool) -> RunFixture:
                      seconds_to_decided=(run.now() - start).total_seconds(), ai_calls=AI_CALLS, ai_cost_usd=0.0,
                      manual_minutes=None, manual_minutes_per_charge=None)
     run.totals(4120, 1530, 1200, 0, 1, value=value)
-    run.log("Texted Dana: \"Clawback checked Northmart's 6 deductions: $4,120 being recovered, $1,530 fair, 1 question "
-            "for you. 6-month check: $0 still claimable.\"", actor="gate", gap=0)
+    run.log("Texted Dana: \"Clawback checked Northmart's 6 deductions: $4,120 disputed, awaiting reply, $1,530 fair, "
+            "1 question for you.\"", actor="gate", gap=0)
 
     run.add("dispute", _dispute("filed", run.now() + run.step, DISPUTE_LINES), gap=2)
     run.log("Filed dispute D-0417 on Northmart's portal: 4 lines, $4,120. Within the $5,000 limit Dana set.",

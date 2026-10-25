@@ -1172,13 +1172,16 @@ class AccountKpis(Contract):
     invoiced_6m: Money
     collected_6m: Money
     deducted_6m: Money
-    recovered_6m: Money
+    recovered_6m: Money  # credits recorded against past deductions (history/deductions.csv, each row with its ref)
     recovery_rate: float  # recovered_6m / deducted_6m, 0 to 1 (4 places); 0 when nothing was deducted
     open_disputes: int  # deductions still in dispute: history rows with an open outcome, plus this run's lines
     open_balance: Money  # still owed: open history deductions not yet recovered, plus the current invoice's balance
     wrongly_taken_6m: Money  # the lookback (api/lookback.py): past deductions the math says were wrongly taken
-    lost_past_window: Money  # of those, still owed but the dispute window closed
-    claimable_now: Money  # of those, still owed and still claimable (in dispute, or inside the window)
+    # Deprecated: forecasts, not facts. Still computed so older screens don't break; don't show them.
+    lost_past_window: Money = Field(json_schema_extra={"deprecated": True})
+    claimable_now: Money = Field(json_schema_extra={"deprecated": True})
+    # This payment's disputed lines with no agreement from the distributor yet (never called "recovered")
+    disputed_awaiting_reply: Money = Decimal("0.00")
 
 
 class MonthTotals(Contract):
@@ -1239,8 +1242,9 @@ class LookbackRow(Contract):
 
 class LookbackTotals(Contract):
     wrongly_taken: Money
-    lost_past_window: Money  # still owed (wrongly_taken - recovered) on past_window rows
-    claimable_now: Money  # still owed on claimable rows
+    # Deprecated: forecasts, not facts. Still computed so older screens don't break; don't show them.
+    lost_past_window: Money = Field(json_schema_extra={"deprecated": True})  # still owed (wrongly_taken - recovered) on past_window rows
+    claimable_now: Money = Field(json_schema_extra={"deprecated": True})  # still owed on claimable rows
     checked: int
     not_checked: int
 
@@ -1474,3 +1478,78 @@ class ContractLibrary(Contract):
 
     read_in_run: str | None  # the run whose readers produced the terms (None until the agents have read it)
     documents: list[LibraryDocument]
+
+
+# ---- supplier overview (GET /overview): the signed-in supplier across its tracked distributors
+
+class RecoveredEvidence(Contract):
+    """Why an amount counts as recovered: the distributor agreed in a dispute thread (dispute_id + message_id), or a
+    later remittance credited it back (remittance_ref)."""
+
+    dispute_id: str | None = None
+    message_id: str | None = None
+    remittance_ref: str | None = None
+    charge_id: str | None = None
+    amount: Money
+
+
+class OverviewTotals(Contract):
+    """Over each tracked distributor's newest run of each month, from the runs' own totals events.
+    taken = disputed + fair + waiting (+ undecided); recovered is the part of disputed with evidence, never more."""
+
+    taken: Money
+    disputed: Money
+    fair: Money
+    waiting: Money
+    recovered: Money
+    disputed_awaiting_reply: Money  # disputed minus recovered: filed or drafted, no agreement or credit yet
+    evidence: list[RecoveredEvidence]
+
+
+class OverviewLink(Contract):
+    page: Literal["run", "dispute", "approval", "question"]
+    run_id: str | None = None
+    dispute_id: str | None = None
+
+
+class NeedsYou(Contract):
+    kind: Literal["question", "dispute_email", "reply_email", "approval"]
+    account_id: str
+    distributor: str
+    title: str
+    amount: Money | None = None
+    risk_level: Literal["high", "medium", "low"]
+    since: datetime | None = None  # when it started waiting (the oldest first within a level)
+    link: OverviewLink
+
+
+class OpenDispute(Contract):
+    dispute_id: str
+    account_id: str
+    distributor: str
+    run_id: str
+    amount: Money
+    status: str
+    filed_at: datetime | None = None
+    file_by: date | None = None  # the deal's dispute window (api/lookback.deadline), as on the question's details
+    days_left: int | None = None
+
+
+class RecentItem(Contract):
+    at: datetime
+    kind: Literal["run_decided", "reply", "sent"]
+    account_id: str
+    distributor: str
+    text: str
+    link: OverviewLink
+
+
+class SupplierOverview(Contract):
+    """GET /overview. Every amount is computed by the API from engine values; the web shows them as given."""
+
+    supplier: str | None  # the signed-in supplier (null for scripts and an open laptop: every supplier)
+    distributors: int  # tracked distributors counted
+    totals: OverviewTotals
+    needs_you: list[NeedsYou]
+    open_disputes: list[OpenDispute]
+    recent: list[RecentItem]

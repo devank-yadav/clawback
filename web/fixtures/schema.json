@@ -7041,11 +7041,18 @@
             "type": "number"
           },
           "lost_past_window": {
+            "deprecated": true,
             "title": "Lost Past Window",
             "type": "number"
           },
           "claimable_now": {
+            "deprecated": true,
             "title": "Claimable Now",
+            "type": "number"
+          },
+          "disputed_awaiting_reply": {
+            "default": 0.0,
+            "title": "Disputed Awaiting Reply",
             "type": "number"
           }
         },
@@ -7643,10 +7650,12 @@
             "type": "number"
           },
           "lost_past_window": {
+            "deprecated": true,
             "title": "Lost Past Window",
             "type": "number"
           },
           "claimable_now": {
+            "deprecated": true,
             "title": "Claimable Now",
             "type": "number"
           },

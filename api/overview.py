@@ -13,8 +13,10 @@ engine's total_of (api/engine/totals.py); this module only picks rows and groups
 - deductions_by_type: history deductions in the window plus the current run's charges (a history row with the same
   ref as one of them counts once), by code.
 - recent_remittances: the newest six payments, the current one included once it arrived.
-- kpis also carry the lookback's totals (api/lookback.py): wrongly_taken_6m, lost_past_window, claimable_now; and
-  current carries the run's value (api/engine/value.py) once the gate's first pass is done.
+- kpis also carry the lookback's wrongly_taken_6m (api/lookback.py); lost_past_window and claimable_now are
+  deprecated forecasts, still computed for older screens. disputed_awaiting_reply is this payment's open dispute
+  lines minus the ones the distributor agreed to (api/supplier_overview.recovered): disputed is never "recovered"
+  until there's evidence. current carries the run's value (api/engine/value.py) once the gate's first pass is done.
 """
 
 from __future__ import annotations
@@ -104,6 +106,14 @@ class Current:
         self.credited = _sum(p.amount for p in posts.values() if p.qbo_entity == "credit_memo" and p.status == "posted")
 
 
+def _awaiting(now: Current):
+    """This payment's open dispute lines minus those the distributor agreed to (each agreement has its evidence)."""
+    from api.supplier_overview import recovered_in
+
+    got = recovered_in(now.events)
+    return total_of([*(ln.amount for ln in now.open_lines), *(-ev.amount for ev in got)])
+
+
 def current_run(account: accounts.Account) -> Current:
     from api import pipeline
     from api.db import events as saved_events
@@ -171,7 +181,7 @@ def overview(account: accounts.Account, item: AccountListItem, now: Current | No
                        open_disputes=len(still_open) + len(now.open_lines),
                        open_balance=total_of([*(total_of([r.amount, -r.recovered]) for r in still_open), balance]),
                        wrongly_taken_6m=checked["wrongly_taken"], lost_past_window=checked["lost_past_window"],
-                       claimable_now=checked["claimable_now"])
+                       claimable_now=checked["claimable_now"], disputed_awaiting_reply=_awaiting(now))
 
     recent = [RemittanceRow(date=r.date, invoice=r.invoice, paid=r.paid, deducted=r.deducted) for r in remittances]
     if now.paid and not current_in_history:

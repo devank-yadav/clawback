@@ -96,6 +96,11 @@ decision gate and approvals; Data model; API, live updates and integrations.
 - Question risk (api/engine/question_risk.py, policy.yaml question_risk): each owner question carries risk {level,
   kind, reason} and details [{label, value}], from the engine's numbers and the clause in code (no AI call), set in
   pipeline._question_risk. Northmart's C6 is high / relationship. The fixture run's Q-1 carries the same.
+- Supplier overview (api/supplier_overview.py, GET /overview): totals over each tracked distributor's newest run per
+  month (taken, disputed, fair, waiting, recovered + its evidence, disputed_awaiting_reply), needs_you (questions,
+  unsent dispute emails, reply emails, approvals; high to low then oldest), open_disputes, recent. "Recovered" only
+  with evidence (the distributor agreed in the thread); a concession is not a recovery. Nothing says "being
+  recovered" or "still claimable"; lost_past_window / claimable_now are deprecated.
 - One admin (api/auth.py): the brand's owner answers every question and approves every credit memo, in the app or by
   text to OWNER_PHONE (there is no controller; account.yaml's brand.controller is still accepted and unused). With
   OWNER_TOKEN set, the in-app answer and approval need it as X-Clawback-Role-Token; POST /questions/{id}/answer takes
