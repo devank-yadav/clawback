@@ -9,10 +9,26 @@ import { useCallback, useState } from "react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
+import { EmptyState, HeroPill, PageHero } from "@/components/ui/kit";
 import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
-import type { LibraryDocument } from "@/lib/types";
+import type { LibraryDocument, LibraryTerm } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
+
+const TERM_STATE: Record<string, { tone: string; word: string }> = {
+  verified: { tone: "is-green", word: "Found word for word" },
+  disputed: { tone: "is-amber", word: "Readers disagree" },
+  rejected: { tone: "is-red", word: "Quote not found" },
+};
+const termState = (t: LibraryTerm) => TERM_STATE[t.status] ?? { tone: "is-idle", word: t.status };
+
+/** Where a document comes from: the words under its title in the stack. */
+function source(d: LibraryDocument) {
+  if (d.locked) return d.kind === "amendment" ? "Signed by both sides" : "Signed";
+  if (d.kind === "draft") return "Draft · editable through the Deal coach";
+  if (d.sender) return `from ${d.sender}${d.approved_sender ? " · approved sender" : " · a claim, can’t change the deal"}`;
+  return d.kind;
+}
 
 function Highlighted({ doc, active, onPick }: { doc: LibraryDocument; active: number | null; onPick: (i: number) => void }) {
   const parts: React.ReactNode[] = [];
@@ -28,7 +44,7 @@ function Highlighted({ doc, active, onPick }: { doc: LibraryDocument; active: nu
     at = t.char_end;
   });
   parts.push(doc.text.slice(at));
-  return <pre className="ct-text">{parts}</pre>;
+  return <div className="bp-text">{parts}</div>;
 }
 
 export default function Contracts() {
@@ -39,49 +55,78 @@ export default function Contracts() {
   const [term, setTerm] = useState<number | null>(null);
   const docs = lib.data?.documents ?? [];
   const doc = docs.find((d) => d.id === pick) ?? docs[0] ?? null;
+  const groups = [
+    { key: "base", title: "The signed deal", docs: docs.filter((d) => d.kind === "deal") },
+    { key: "changes", title: "What changes it, with its source", docs: docs.filter((d) => d.kind !== "deal" && d.kind !== "draft") },
+    { key: "next", title: "The next deal", docs: docs.filter((d) => d.kind === "draft") },
+  ].filter((g) => g.docs.length > 0);
 
   return (
     <div className="fl">
       <TopBar account={account} active="contracts" />
-      <main className="fl-main">
-        <header className="ds-head">
-          <span className="cx-eyebrow">{account ? `${account.brand.name} · ${cast.distributor}` : " "}</span>
-          <h1>The deal with {cast.distributor}</h1>
-          <p>{lib.data?.read_in_run ? "Highlighted: every term the two deal readers agreed on, found word for word. Click one to see what the agents took from it." : "The terms light up here once the agents have read the deal (run them from Agents)."}</p>
-        </header>
+      <main className="fl-main bp bp-ct">
+        <PageHero
+          pill={<HeroPill>{account ? `${account.brand.name} · ${cast.distributor}` : "Contracts"}</HeroPill>}
+          title={<>The deal with {cast.distributor},<em>and what changes it.</em></>}
+          sub={lib.data?.read_in_run ? "Highlighted: every term the two deal readers agreed on, found word for word. Click one to see what the agents took from it." : "The terms light up here once the agents have read the deal (run them from Agents)."}
+        />
         {lib.error && <div className="fl-problem" role="alert">{lib.error}</div>}
-        <div className="ct">
-          <aside className="ct-list">
-            {docs.map((d) => (
-              <button key={d.id} className={`ct-doc ${doc?.id === d.id ? "is-on" : ""}`} onClick={() => { setPick(d.id); setTerm(null); }}>
-                <strong>{d.title}</strong>
-                <small>
-                  {d.locked ? "Locked" : d.kind === "draft" ? "Draft · editable through the Deal coach" : d.sender ? `from ${d.sender}${d.approved_sender ? " · approved sender" : " · a claim, can’t change the deal"}` : d.kind}
-                  {d.terms.length ? ` · ${d.terms.length} term${d.terms.length === 1 ? "" : "s"}` : ""}
-                </small>
-              </button>
-            ))}
-          </aside>
-          {doc && (
-            <section className="ct-view">
-              <header>
-                <strong>{doc.title}</strong>
-                {doc.locked && <em className="sv-lock">Locked · nobody edits it, agents included</em>}
-                {doc.kind === "draft" && <Link className="cx-btn" href={withAccount("/coach", account?.id)}>Get redlines from the Deal coach</Link>}
-              </header>
-              {doc.terms.length > 0 && (
-                <div className="ct-terms">
-                  {doc.terms.map((t, i) => (
-                    <button key={i} className={`ct-term is-${t.status} ${term === i ? "is-on" : ""}`} onClick={() => setTerm(i)}>
-                      <b>{t.type.replace(/_/g, " ")}</b>{t.label}{t.discretion ? " · left to judgment" : ""}
+
+        {lib.data && docs.length === 0 && <EmptyState title={`No contract on file for ${cast.distributor} yet.`} line="Once the signed deal is uploaded, the agents read it before they check a payment." />}
+
+        {!lib.data && !lib.error && (
+          <div className="bp-ct-grid" aria-hidden="true">
+            <div className="bp-stack">{[0, 1, 2].map((i) => <div key={i} className="bp-doc"><i className="bp-skel-block" style={{ width: "70%" }} /><i className="bp-skel-block" style={{ width: "50%" }} /></div>)}</div>
+            <div className="bp-paper"><div className="bp-paper-skel">{Array.from({ length: 9 }, (_, i) => <i key={i} className="bp-skel-block" />)}</div></div>
+          </div>
+        )}
+
+        {doc && (
+          <div className="bp-ct-grid">
+            <nav className="bp-stack" aria-label="Documents">
+              {groups.map((g) => (
+                <div key={g.key} className={`bp-stack-group is-${g.key}`}>
+                  <h2>{g.title}</h2>
+                  {g.docs.map((d) => (
+                    <button key={d.id} className={`bp-doc ${doc.id === d.id ? "is-on" : ""}`} aria-current={doc.id === d.id ? "true" : undefined} onClick={() => { setPick(d.id); setTerm(null); }}>
+                      <strong>{d.title}</strong>
+                      <small>{source(d)}{d.terms.length ? ` · ${d.terms.length} term${d.terms.length === 1 ? "" : "s"}` : ""}</small>
+                      {d.locked && <span className="bp-chip is-lock">Locked</span>}
                     </button>
                   ))}
                 </div>
-              )}
+              ))}
+            </nav>
+
+            <article className="bp-paper">
+              <header>
+                <h2>{doc.title}</h2>
+                <div>
+                  {doc.locked && <span className="bp-chip is-lock">Locked · nobody edits it, agents included</span>}
+                  {!doc.locked && doc.kind !== "draft" && <span className={`bp-chip ${doc.approved_sender ? "is-green" : "is-amber"}`}>{source(doc)}</span>}
+                  {doc.kind === "draft" && <Link className="cx-btn" href={withAccount("/coach", account?.id)}>Get redlines from the Deal coach</Link>}
+                </div>
+              </header>
               <Highlighted doc={doc} active={term} onPick={setTerm} />
-            </section>
-          )}
-        </div>
+            </article>
+
+            <aside className="bp-terms" aria-label="Terms the agents read">
+              <h2>Terms the agents read <small>{doc.terms.length}</small></h2>
+              {doc.terms.length === 0 && <p>{lib.data?.read_in_run ? "No terms highlighted in this document." : "None yet: the agents haven’t read the deal."}</p>}
+              {doc.terms.map((t, i) => (
+                <button key={i} className={`bp-term is-${t.status} ${term === i ? "is-on" : ""}`} onClick={() => setTerm(i)}>
+                  <span className="bp-term-type">{t.type.replace(/_/g, " ")}</span>
+                  <strong>{t.label}</strong>
+                  <q>{t.quote}</q>
+                  <span className="bp-meta">
+                    <span className={`bp-chip ${termState(t).tone}`}>{termState(t).word}</span>
+                    {t.discretion && <span className="bp-chip is-ask">Left to judgment</span>}
+                  </span>
+                </button>
+              ))}
+            </aside>
+          </div>
+        )}
       </main>
       <SessionDialogs account={account} />
     </div>
