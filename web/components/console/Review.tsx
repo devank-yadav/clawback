@@ -186,7 +186,7 @@ function nextTitle(c: ChargeView) {
 }
 function nextLine(c: ChargeView, disputeLabel: string) {
   if (c.status === "Reviewing") return "Each step fills in as its agent finishes.";
-  if (c.status === "Accepted") return "Goes into your accounting approval. Nothing posts until you say yes.";
+  if (c.status === "Accepted") return "Goes into the credit memo. Credit memos over $1,000 wait for your approval.";
   return `${disputeLabel}. Fair parts go to your accounting approval separately.`;
 }
 

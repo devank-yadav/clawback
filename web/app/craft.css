@@ -148,3 +148,6 @@ body.so-locked { overflow: hidden; }
 /* A dispute is open and the distributor has the next move: the info tone, steady (not the live pulse). */
 .tb-dot.is-info { background: var(--accent); }
 .bp-chip.is-info { --icon: var(--i-clock); background: var(--accent-soft); color: var(--accent-ink); }
+
+/* An open dispute the distributor partly agreed to: what still awaits a reply, then the agreed part under it. */
+.hm-amt small { display: block; font-size: 12px; font-weight: 500; color: var(--green); text-align: right; }

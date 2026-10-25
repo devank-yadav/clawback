@@ -198,7 +198,7 @@ def _recent(runs: list[pipeline.Run]) -> list[RecentItem]:
             elif e.type == "dispute" and d.status == "filed" and d.id not in sent:
                 sent.add(d.id)
                 out.append(RecentItem(at=e.at, kind="sent", account_id=a.id, distributor=them,
-                                      text=f"Dispute {d.id} sent to {them}, ${d.total:,.2f}",
+                                      text=f"Dispute {d.id} filed with {them}, ${d.total:,.2f}",
                                       link=OverviewLink(page="dispute", run_id=run.id, dispute_id=d.id)))
     return sorted(out, key=lambda r: r.at, reverse=True)[:RECENT]
 
