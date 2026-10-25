@@ -61,13 +61,14 @@ export default function Flow() {
 
 function FlowFor() {
   const run = useRun();
-  const { state, view, account, cast, runId, starting } = run;
+  const { state, view, account, cast, runId, starting, gone } = run;
   const openLatest = useOpenLatest();
   // The logo opens ?home=1: the start screen, whatever this tab last watched. "Agents" opens the latest run.
   const home = useSearchParams().get("home") === "1";
   const router = useRouter();
-  // The run this tab was following when it started one; any newer run is "ours" from then on.
-  const [startedFrom, setStartedFrom] = useState<string | null | undefined>(undefined);
+  // The run this tab was following when it started one; any newer run is "ours" from then on, unless the API has
+  // lost a run since (a deploy): then no run is ours and the page falls back to the latest run or the start.
+  const [startedFrom, setStartedFrom] = useState<{ run: string | null; lost: number } | undefined>(undefined);
   const [opened, setOpened] = useState(false);
   // "Check a new payment" pressed: the start screen shows even while an older run waits on you (it stays one click
   // away). A new payment then replaces that run, and its open question closes on the server.
@@ -75,7 +76,7 @@ function FlowFor() {
   const [drawer, setDrawer] = useState<string | null>(null);
   const [, setCleared] = useState(0); // a re-render after forgetting the watched run
 
-  const mine = startedFrom !== undefined && runId !== startedFrom;
+  const mine = startedFrom !== undefined && runId !== startedFrom.run && gone.length === startedFrom.lost;
   const status = state.run?.status;
   const waitingOnPerson = view.approval?.status === "pending" || view.stage === "owner";
   // The agents are still working until every charge has a decision. After that the result shows, even while a decision
@@ -95,6 +96,10 @@ function FlowFor() {
   useEffect(() => {
     if (runId && (mine || (live && !fresh))) writeFollowed(account?.id, runId);
   }, [runId, live, mine, fresh, account?.id]);
+  // A watched run the API no longer has (404) is forgotten, so a reload doesn't ask for it again.
+  useEffect(() => {
+    if (followed && gone.includes(followed)) writeFollowed(account?.id, null);
+  }, [followed, gone, account?.id]);
 
   /** Back to the start screen: forget the watched run for this tab. */
   const restart = () => {
@@ -117,7 +122,7 @@ function FlowFor() {
 
       {phase === "start" && (
         <main className="fl-main" style={{ paddingTop: 0, paddingBottom: 0 }}>
-          <StartPanel onStart={() => (home ? router.replace(withAccount("/", account?.id)) : setStartedFrom(runId ?? null))} onOpenLast={() => { setOpened(true); setFresh(false); }} />
+          <StartPanel onStart={() => (home ? router.replace(withAccount("/", account?.id)) : setStartedFrom({ run: runId ?? null, lost: gone.length }))} onOpenLast={() => { setOpened(true); setFresh(false); }} />
         </main>
       )}
 

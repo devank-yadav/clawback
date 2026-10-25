@@ -110,6 +110,18 @@ export const accountPays = (account: string) => call<PaymentStarted>(`/payments/
 /** The stream for a run the page already knows the id of. */
 export const runRef = (runId: string): StartedRun => ({ run_id: runId, events_url: `/runs/${q(runId)}/events` });
 
+/** The HTTP status of one quick read of a run's events (0 when the API can't be reached). The browser's EventSource
+ * never says why a stream closed; this tells a run the API no longer has (404) from a restart still in progress. */
+export async function runEventsStatus(eventsUrl: string, after: number): Promise<number> {
+  try {
+    const res = await fetch(apiUrl(`${eventsUrl}${eventsUrl.includes("?") ? "&" : "?"}keepalive=false&delay_ms=0&after=${after}`), { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    void res.body?.cancel().catch(() => undefined);
+    return res.status;
+  } catch {
+    return 0;
+  }
+}
+
 /** Every event a run has so far, read once (no live follow). For screens that need one fact from a run, like its dispute id. */
 export async function runEventsOnce(runId: string): Promise<RunEvent[]> {
   const res = await fetch(apiUrl(`/runs/${q(runId)}/events?keepalive=false&delay_ms=0`), { signal: AbortSignal.timeout(TIMEOUT_MS) });

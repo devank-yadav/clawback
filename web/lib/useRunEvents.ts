@@ -149,13 +149,22 @@ function reduce(state: RunState, action: Action): RunState {
   }
 }
 
+/** Said when the run a screen asked for by id is gone and the screen doesn't fall back to the latest one. */
+export const RUN_GONE = "That run is no longer on the server. Start it again.";
+
+class RunGone extends Error {}
+
 /**
  * Folds one account's run into screen state. Attaches to GET /runs/latest?account= (or the run id given) and follows
  * GET /runs/{id}/events, resuming from the last event id. Only startPayment() ("<Distributor> pays") starts a run, so a
  * reload re-attaches instead of repeating the work. The actions POST to the API and their results come back as
  * events, so the screen never claims something happened before the API says so.
+ *
+ * A run the API answers 404 for (one from before the last deploy, or a stale ?run= link) is forgotten for the life of
+ * the page and never asked for again: the hook looks up the account's latest run instead, or the start screen when
+ * there is none. With `fallback: false` (a screen that follows one particular run) it stops and says so.
  */
-export function useRunEvents(account: string | null, runId: string = "latest") {
+export function useRunEvents(account: string | null, runId: string = "latest", { fallback = true }: { fallback?: boolean } = {}) {
   const [state, dispatch] = useReducer(reduce, initial);
   const [epoch, setEpoch] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -164,29 +173,36 @@ export function useRunEvents(account: string | null, runId: string = "latest") {
   const [starting, setStarting] = useState(false);
   /** The site's per-visitor limit refused the payment (a 429): friendly words, not an error. */
   const [limited, setLimited] = useState<string | null>(null);
+  /** Runs the API answered 404 for, in the order they were lost. */
+  const [gone, setGone] = useState<string[]>([]);
   const paying = useRef(false);
-  const key = `${account}:${runId}:${epoch}`;
+  const key = `${account}:${runId}:${epoch}:${gone.length}`;
 
-  // Find the run to follow. "latest" means the account's newest run; any other id is that run.
+  // Find the run to follow. "latest" means the account's newest run; any other id is that run, unless it is gone.
   useEffect(() => {
     if (!account) return;
     let cancelled = false;
-    const resolve = runId === "latest" ? api.latestRun(account) : Promise.resolve(api.runRef(runId));
+    const lost = runId !== "latest" && gone.includes(runId);
+    const resolve: Promise<api.StartedRun | null> =
+      runId === "latest" || (lost && fallback)
+        ? api.latestRun(account).then((run) => (run && gone.includes(run.run_id) ? null : run))
+        : lost ? Promise.reject(new RunGone()) : Promise.resolve(api.runRef(runId));
     resolve.then(
       (run) => {
         if (cancelled) return;
         setTarget({ key, run });
         setError(null);
       },
-      (e: Error) => !cancelled && setError(api.unreachable(e)),
+      (e: Error) => !cancelled && setError(e instanceof RunGone ? RUN_GONE : api.unreachable(e)),
     );
     return () => {
       cancelled = true;
     };
-  }, [account, runId, key]);
+  }, [account, runId, key, gone, fallback]);
 
   const followed = target?.key === key ? target.run : undefined;
   const eventsUrl = followed?.events_url;
+  const followedId = followed?.run_id;
   useEffect(() => {
     dispatch({ kind: "reset" });
     lastSeen.current = 0;
@@ -194,6 +210,7 @@ export function useRunEvents(account: string | null, runId: string = "latest") {
     let stream: EventSource | null = null;
     let retry: number | undefined;
     let cancelled = false;
+    let failures = 0;
     const connect = () => {
       // The browser resends Last-Event-ID by itself when it reconnects. If it gives up, or on a fresh page, ask from the last id we hold.
       const url = `${eventsUrl}${eventsUrl.includes("?") ? "&" : "?"}after=${lastSeen.current}`;
@@ -208,10 +225,30 @@ export function useRunEvents(account: string | null, runId: string = "latest") {
           /* a malformed frame must not wipe the board */
         }
       };
-      es.onopen = () => setError(null);
+      es.onopen = () => {
+        failures = 0;
+        setError(null);
+      };
       es.onerror = () => {
-        setError("Lost the connection to Clawback. Reconnecting…");
-        if (es.readyState === EventSource.CLOSED && !cancelled) retry = window.setTimeout(connect, 2000);
+        // While the browser retries by itself (a dropped network) the stream stays CONNECTING. CLOSED means the API
+        // answered with something other than a stream: ask once why before trying again.
+        if (es.readyState !== EventSource.CLOSED || cancelled) {
+          setError("Lost the connection to Clawback. Reconnecting…");
+          return;
+        }
+        es.close();
+        void api.runEventsStatus(eventsUrl, lastSeen.current).then((status) => {
+          if (cancelled) return;
+          if (status === 404 || status === 410) {
+            // The API no longer has this run: forget it for good and look again (the effect above re-resolves).
+            if (followedId) setGone((g) => (g.includes(followedId) ? g : [...g, followedId]));
+            return;
+          }
+          // Anything else (the API restarting behind the proxy, a timeout) is worth another try, a little later each time.
+          setError("Lost the connection to Clawback. Reconnecting…");
+          failures += 1;
+          retry = window.setTimeout(connect, Math.min(30_000, 2000 * 2 ** (failures - 1)));
+        });
       };
     };
     connect();
@@ -221,7 +258,7 @@ export function useRunEvents(account: string | null, runId: string = "latest") {
       window.clearTimeout(retry);
       stream?.close();
     };
-  }, [eventsUrl, key]);
+  }, [eventsUrl, key, followedId]);
 
   const fail = useCallback((e: Error) => setError(`Clawback didn't accept that action (${e.message}).`), []);
 
@@ -280,5 +317,5 @@ export function useRunEvents(account: string | null, runId: string = "latest") {
   const awaitingPayment = !!account && followed === null && !error;
   const runId_ = followed?.run_id ?? null;
 
-  return { state, runId: runId_, answerQuestion, decideApproval, startPayment, follow, starting, limited, awaitingPayment, refresh, error };
+  return { state, runId: runId_, answerQuestion, decideApproval, startPayment, follow, starting, limited, awaitingPayment, refresh, error, gone };
 }

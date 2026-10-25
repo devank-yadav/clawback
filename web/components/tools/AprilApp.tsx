@@ -13,7 +13,8 @@ import { ChargeList } from "@/components/workspace/charge-workspace";
 
 /** Follows one next-month run, started by POST /replay/april. */
 function NextMonthRun({ account, runId }: { account: Account; runId: string }) {
-  const { state, error } = useRunEvents(account.id, runId);
+  // This run or nothing: if the API lost it, the screen says so instead of showing this month's run.
+  const { state, error } = useRunEvents(account.id, runId, { fallback: false });
   const view = useMemo(() => selectWorkspace(state, account), [state, account]);
   const rules = Object.values(state.rules).filter((r) => r.status === "active");
   const asked = state.totals?.questions ?? Object.keys(state.questions).length;
