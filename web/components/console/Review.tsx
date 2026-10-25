@@ -222,7 +222,7 @@ export function OwnerDecision({ charge }: { charge: ChargeView }) {
     { label: "Charge", value: `${charge.title} · ${money(charge.amount)}, held out of posting until you decide` },
     ...(q.details ?? []),
     ...(!q.details?.length ? [{ label: "What the agents found", value: finding?.finding ?? charge.finding ?? "" }] : []),
-    ...(clause ? [{ label: `Signed deal ${clause.label}`, value: `“${clause.quote?.text ?? clause.summary}”` }] : []),
+    ...(clause && !q.details?.length ? [{ label: `Signed deal ${clause.label}`, value: `“${clause.quote?.text ?? clause.summary}”` }] : []),
     { label: "Your answer", value: saveRule ? "Saved as a rule for this distributor, so you’re never asked twice. It guides the agents; it doesn’t change the contract." : "Settles this charge only; the next one like it asks again." },
     { label: "Who decides", value: `${CAST.ownerFull}, admin. This isn’t the accounting approval, which comes after.` },
   ].filter((d) => d.value);
@@ -261,7 +261,7 @@ export function OwnerDecision({ charge }: { charge: ChargeView }) {
         <button className="cx-btn" disabled={!picked} title={picked ? undefined : "Choose an option first"} onClick={() => picked && answerQuestion(q.id, picked.text, saveRule)}>{saveRule ? "Save policy" : "Decide this charge"}</button>
       </div>
       <details className="dc-details">
-        <summary>Show details</summary>
+        <summary aria-label="Details" />
         <dl>
           {details.map((d) => <div key={d.label}><dt>{d.label}</dt><dd>{d.value}</dd></div>)}
         </dl>
