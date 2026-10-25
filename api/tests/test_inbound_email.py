@@ -274,3 +274,85 @@ def test_connections_show_the_address_and_the_last_email(inbox, reader):
     card = next(c for c in client.get("/connections?account=peak-bar").json() if c["id"] == "inbox")
     assert card["status"] == "connected" and card["address"] == f"peak-bar@{DOMAIN}"
     assert card["checked_at"] and card["run_id"] == inbox[0].id and "started run" in card["last_seen"]
+
+
+# ---------------------------------------------------------------- hardening
+
+EDI_820 = (documents.DATA / "samples" / "remittances" / "northmart-march-2026-820.txt").read_bytes()
+
+
+def test_signature_tokens_are_bounded(monkeypatch):
+    monkeypatch.setattr(inbound_email, "MAX_TOKENS", 3)
+    t0 = time.time()
+    for n in range(5):
+        inbound_email.verify(signed({}, ts=t0), f"email-{n}", now=t0)
+    assert len(inbound_email._tokens) == 3  # the oldest went first
+    old = signed({}, ts=t0)
+    inbound_email.verify(old, "email-old", now=t0)
+    later = t0 + inbound_email.MAX_AGE_S + 60
+    inbound_email.verify(signed({}, ts=later), "email-new", now=later)
+    assert old["token"] not in inbound_email._tokens and len(inbound_email._tokens) == 1  # too old to replay anyway
+    with pytest.raises(inbound_email.Refused) as e:
+        inbound_email.verify(old, "email-forged", now=later)  # and its age still refuses it
+    assert e.value.status == 403
+
+
+def test_a_background_read_that_fails_is_marked_failed_not_reading(inbox, monkeypatch):
+    monkeypatch.setattr(inbound_email, "BACKGROUND", True)
+
+    def broken(*a, **k):
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(inbound_email, "read_and_run", broken)
+    msg = inbound_email.parse(REMIT, {"attachment-1": ("r.txt", "text/plain", SAMPLE.encode())})
+    assert post(signed(REMIT), remittance_file()).json()["status"] == "reading"
+    t0 = time.monotonic()
+    while getattr(inbound_email.handled(msg.key), "status", "reading") == "reading" and time.monotonic() - t0 < 5:
+        time.sleep(0.02)
+    done = inbound_email.handled(msg.key)
+    assert (done.status, done.detail) == ("failed", "handling failed: RuntimeError")
+    assert "couldn't be handled (RuntimeError)" in sources.last("inbox", "peak-bar").text
+    assert post(signed(REMIT), remittance_file()).json()["detail"] == "already handled: failed"
+
+
+def test_a_result_that_cant_be_saved_is_still_known(inbox, reader, monkeypatch, tmp_path):
+    blocked = tmp_path / "a-file"
+    blocked.write_text("not a folder")
+    monkeypatch.setattr(inbound_email, "_handled_dir", lambda: blocked / "handled")
+    msg = inbound_email.parse(REMIT, {"attachment-1": ("r.txt", "text/plain", SAMPLE.encode())})
+    inbound_email._background(msg, msg.key, accounts.get("peak-bar"), "address", None)
+    assert inbound_email.handled(msg.key).status == "started" and len(inbox) == 1
+
+
+def test_approved_senders_and_forwarders_are_compared_without_case(inbox, reader, monkeypatch):
+    a = accounts.get("peak-bar")
+    shouty = a.config.model_copy(update={"approved_senders": ["Jordan@PeakBar-Broker.example"]})  # no validator
+    loud = accounts.Account(config=shouty, dir=a.dir, docs=a.docs, months=a.months)
+    msg = inbound_email.parse(BROKER, {})
+    assert inbound_email.approved(loud, "JORDAN@peakbar-broker.EXAMPLE") and inbound_email.trusted(msg, loud, True)
+    assert documents._approved("Jordan@PEAKBAR-broker.example ", loud)
+    monkeypatch.setenv("INBOUND_EMAIL_FORWARDERS", " Dana.Real@Gmail.example ")
+    fwd = email("Dana <DANA.REAL@gmail.example>", f"peak-bar@{DOMAIN}", "Fwd: Remittance advice INV-3102",
+                "See attached.", "<fwd-case@gmail.example>")
+    assert post(signed(fwd), remittance_file()).json()["status"] == "started"
+
+
+def test_only_an_attachment_the_reader_takes_as_a_remittance_makes_it_one(inbox, reader):
+    sales = "week_start,product,promo_units\n2026-03-01,Original,700\n2026-03-01,Chocolate,500\n"
+    broker = {**BROKER, "message-headers": headers("<broker-sales@peakbar-broker.example>"), "attachment-count": "2"}
+    r = post(signed(broker), {"attachment-1": ("sell-through.csv", sales.encode(), "text/csv"),
+                              "attachment-2": ("amendment.pdf", b"%PDF-1.4 not really a pdf", "application/pdf")}).json()
+    assert (r["status"], r["account"]) == ("kept", "peak-bar") and not reader.calls and not inbox
+
+
+def test_an_emailed_edi_820_starts_the_run_without_claude(inbox, monkeypatch):
+    unused = FakeClaude()  # no answers: any call to Claude would fail the read
+    monkeypatch.setattr(anthropic, "Anthropic", lambda *a, **k: unused)
+    edi = {**REMIT, "message-headers": headers("<remit-820@northmart.example>")}
+    r = post(signed(edi), {"attachment-1": ("NM-820-0410.edi", EDI_820, "application/edi-x12")}).json()
+    assert (r["status"], r["detail"]) == ("started", "6 charges read and checked"), r
+    run = inbox[0]
+    csv = [c.model_copy(update={"remittance_id": "REM-INV-3102"}) for c in rows.charges_from_files("march")]
+    assert [c.model_dump(exclude={"notice_date"}) for c in run.charges.values()] == \
+        [c.model_dump(exclude={"notice_date"}) for c in csv]
+    assert run.deposit.amount == Decimal("41350.00") and not unused.calls

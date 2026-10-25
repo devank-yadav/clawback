@@ -13,7 +13,8 @@ deposit (with the account and the run it started) is noted for the Connections p
 
 The poller checks every 5 seconds. Deposits already on the account when it starts are history, not triggers (so
 the test deposit Manasv posted while setting up never starts a run).
-It's off in DEMO_MODE, without keys, or with NESSIE_POLL=off; the button covers those.
+It's off in DEMO_MODE, without keys, or with NESSIE_POLL=off; the button covers those. A deposit that can't start its
+run (the run raised) is tried once more, RETRY_AFTER_S later; a second failure is left to a person.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
@@ -35,6 +37,8 @@ log = logging.getLogger("clawback.nessie")
 DEFAULT_BASE = "https://api.nessieisreal.com"  # the live API is HTTPS only
 TIMEOUT_S = 10
 POLL_S = 5.0
+RETRY_AFTER_S = 60.0  # a deposit that couldn't start its run is tried once more, this long after
+FAILED = object()  # what _start returns when the run couldn't start (on_deposit itself may return None)
 AMOUNT = Decimal("41350.00")  # Peak Bar's (data/CLAUDE.md): the short remittance for INV-3102
 DESCRIPTION = "Northmart remittance INV-3102"  # Peak Bar's nessie_description
 
@@ -119,8 +123,11 @@ class Poller:
     """Every POLL_S seconds, look for a new deposit that pays an account and hand it to `on_deposit` (once per
     deposit; pipeline.start_for_deposit finds the account again from the description)."""
 
-    def __init__(self, nessie: Nessie, on_deposit: Callable[[Deposit], object], interval: float = POLL_S):
-        self.nessie, self.on_deposit, self.interval = nessie, on_deposit, interval
+    def __init__(self, nessie: Nessie, on_deposit: Callable[[Deposit], object], interval: float = POLL_S,
+                 retry_after: float = RETRY_AFTER_S, clock: Callable[[], float] = time.monotonic):
+        self.nessie, self.on_deposit, self.interval, self.retry_after = nessie, on_deposit, interval, retry_after
+        self.clock = clock
+        self._retry: dict[str, tuple[Deposit, float]] = {}  # deposit id -> (the deposit, when to try it once more)
         self.seen: set[str] | None = None  # filled on the first successful look: those deposits are history
         self.errors = 0
         self._stop = threading.Event()
@@ -152,15 +159,42 @@ class Poller:
                 sources.saw("bank", f"{describe(d)}: it names no distributor's invoice, so it isn't a payment to check")
                 continue
             log.info("nessie: %s deposit %s of $%s arrived", account.id, d.id, d.amount)
-            try:
-                run = self.on_deposit(d)
-            except Exception as e:  # noqa: BLE001 - one deposit that can't start a run never stops the poller
-                log.exception("nessie: deposit %s couldn't start %s's run", d.id, account.id)
-                sources.saw("bank", f"{describe(d)}: couldn't start the run ({type(e).__name__})", account.id)
+            run = self._start(d, account.id, again=False)
+            if run is FAILED:
                 continue
             note(d, account.id, run)
             started.append(d)
-        return started
+        return started + self._retry_due()
+
+    def _start(self, d: Deposit, account_id: str, again: bool) -> object:
+        """Hand one deposit to on_deposit. A first failure is tried once more later; a second is left to a person."""
+        try:
+            return self.on_deposit(d)
+        except Exception as e:  # noqa: BLE001 - one deposit that can't start a run never stops the poller
+            log.exception("nessie: deposit %s couldn't start %s's run", d.id, account_id)
+            if again:
+                sources.saw("bank", f"{describe(d)}: still couldn't start the run ({type(e).__name__}); use “Send a "
+                            "test payment” on Agents or upload the remittance", account_id)
+            else:
+                self._retry[d.id] = (d, self.clock() + self.retry_after)
+                sources.saw("bank", f"{describe(d)}: couldn't start the run ({type(e).__name__}); trying once more in "
+                            f"{self.retry_after:.0f} s", account_id)
+            return FAILED
+
+    def _retry_due(self) -> list[Deposit]:
+        now, done = self.clock(), []
+        for dep_id, (d, when) in list(self._retry.items()):
+            if now < when:
+                continue
+            del self._retry[dep_id]
+            account = account_of(d)
+            if account is None:
+                continue
+            run = self._start(d, account.id, again=True)
+            if run is not FAILED:
+                note(d, account.id, run)
+                done.append(d)
+        return done
 
     def start(self) -> None:
         def loop():

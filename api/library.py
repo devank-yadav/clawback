@@ -52,13 +52,25 @@ def _inbox(account: accounts.Account | None) -> Connection:
     to = inbound_email.address(account) if account else None
     live = inbound_email.configured() and bool(to or not account)
     if live:
-        detail = ("Forward remittance advice here: it's read and checked like an upload, and starts the agents if it "
-                  "adds up. A broker's email from an approved sender can change the deal; anyone else's is a claim")
+        detail = ("Forward remittance advice here (a PDF, text or EDI 820 attachment): it's read and checked like an "
+                  "upload, and starts the agents if it adds up. A broker's email from an approved sender can change "
+                  "the deal; anyone else's is a claim")
     else:
         detail = "Not set up on this server: upload the remittance instead"
     return Connection(id="inbox", name="Remittance inbox", brings="Remittances and broker emails, read automatically",
                       status="connected" if live else "not_connected", detail=detail, address=to if live else None,
                       **(_seen("inbox", account) if live else {}))
+
+
+def _edi(account: accounts.Account | None) -> Connection:
+    """The 820 needs no keys: it comes in through the upload or the inbox, and plain code reads it (api/edi820.py)."""
+    inbox = " or email it to the remittance inbox" if inbound_email.configured() and (
+        account is None or inbound_email.address(account)) else ""
+    return Connection(id="edi", name="EDI 820", brings="Remittance advice lines straight from the distributor",
+                      status="ready",
+                      detail=f"Upload the 820 file{inbox}: plain code reads its RMR and ADX segments (no AI), then "
+                             "every line is checked like any remittance and the run starts if they add up. A direct "
+                             "VAN or AS2 feed isn't connected")
 
 
 def connections(account: accounts.Account | None = None) -> list[Connection]:
@@ -69,15 +81,14 @@ def connections(account: accounts.Account | None = None) -> list[Connection]:
         _quickbooks(account, demo),
         _bank(account, demo),
         Connection(id="upload", name="Upload", brings="Remittance advice, contracts and records as files",
-                   status="ready", detail="PDF, CSV or text; the Payment reader checks every line adds up"),
+                   status="ready", detail="PDF, CSV, text or an EDI 820; the Payment reader checks every line adds up"),
         Connection(id="texts", name="Texts to you", brings="Your one question and approvals by WhatsApp or SMS",
                    status="connected" if sms.configured("owner") else "not_connected",
                    detail="A reply answers it" if sms.configured("owner") else "Not connected: decisions wait in the app"),
         _inbox(account),
+        _edi(account),
         Connection(id="portals", name="Distributor portals", brings="Walmart Retail Link, KeHE CONNECT, UNFI",
                    status="coming_soon", detail="Deduction exports pulled on a schedule"),
-        Connection(id="edi", name="EDI 820", brings="Remittance advice lines straight from the distributor",
-                   status="coming_soon", detail="The standard payment-and-remittance message"),
         Connection(id="drive", name="Google Drive / DocuSign", brings="Signed contracts",
                    status="coming_soon", detail="Import once; the signed original stays locked"),
     ]

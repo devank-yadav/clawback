@@ -64,7 +64,15 @@ decision gate and approvals; Data model; API, live updates and integrations.
   from a trusted, SPF-authenticated sender is read and checked like an upload and starts the run on its lines; any
   other email becomes a document of the account (accounts.inbound_root(), Account.inbound) that its next run reads
   after the deal_docs (pipeline.documents_of): an authenticated approved sender's can change the deal, anyone else's is
-  a claim.
+  a claim. Only an attachment remittance.extract_text accepts and that reads as a remittance makes the email one; a
+  background read that fails is marked `failed`; signature tokens are bounded (MAX_TOKENS, MAX_AGE_S). A payment or
+  deposit that can't start its run is tried once more RETRY_AFTER_S later; the QuickBooks poller looks invoices up again
+  every REFRESH_INVOICES_S and right after POST /demo/reset (Poller.forget_invoices).
+- EDI 820 (api/edi820.py): remittance.read() sends an X12 820 (ISA or ST*820) to plain code, not Claude: each ADX
+  under the account's RMR becomes a line (ADX04 the deduction number, NTE the description, REF03 the code wording,
+  DTM the period, IT1 units / price / item ids), then remittance.check() checks it like any read. Works through the
+  upload and the inbox; data/samples/remittances/northmart-march-2026-820.txt is Northmart's March payment
+  (test_edi820.py: the CSV's charges to the field, and the whole demo offline).
 - Deployed site (docs/deploy.md): the VM is the single live instance (DEMO_MODE=false). POST /demo/reset needs
   `Authorization: Bearer $CLAWBACK_ADMIN_TOKEN` when that's set; QBO_TOKEN_FILE keeps the rotated QuickBooks refresh
   token in the mounted state/ folder; GET /eval/latest falls back to eval/published/ (`make publish-score`).

@@ -1,7 +1,8 @@
 """Bring in the remittance advice a brand actually received, instead of a clean CSV.
 
 Input: pasted text, a .txt / .csv file, or a PDF (text from pypdf; a scan with no text layer is refused). Claude reads
-it into lines (api/agents/remittance_reader.py); then plain code checks every line before anything becomes a charge:
+it into lines (api/agents/remittance_reader.py), except an EDI 820, which plain code reads (api/edi820.py: its RMR and
+ADX segments); then plain code checks every line before anything becomes a charge, whichever read it:
 
 1. the line's exact_quote is found in the text (spaces and hyphens normalized, api/engine/quote_check.py), once;
 2. every number on the line (units, rate, amount) appears in that quote, and so do its deduction number, its code
@@ -37,8 +38,9 @@ from typing import Literal
 
 import anthropic
 import pypdf
+from pydantic import ValidationError
 
-from api import documents, pipeline, rows
+from api import documents, edi820, pipeline, rows
 from api.agents import remittance_reader
 from api.agents.remittance_reader import ReadLine, ReadRemittance
 from api.contracts import CENT, Charge, Contract, Money, Rate, StartRunResponse
@@ -175,7 +177,7 @@ class RemittanceRead(Contract):
     account: str
     brand: str
     distributor: str
-    input: Literal["text", "pdf"]
+    input: Literal["text", "pdf", "edi"]
     source: Literal["live", "fixture"]
     ok: bool  # every line verified, totals add up, nothing to look at
     can_run: bool  # totals add up and there are charges: confirming starts a run
@@ -186,6 +188,7 @@ class RemittanceRead(Contract):
     totals: RemittanceTotals | None
     unclear: list[str] = []
     text: str  # the text that was read (from the PDF, when it was one), for highlighting each quote
+    reader: Literal["claude", "edi820"] = "claude"  # who listed the lines: Claude, or plain code for an EDI 820
 
 
 class RemittanceRunRequest(Contract):
@@ -247,16 +250,19 @@ def account(slug: str) -> Account:
 
 def read(slug: str, text: str, input_kind: Literal["text", "pdf"] = "text",
          client: anthropic.Anthropic | None = None) -> RemittanceRead:
-    """Claude reads the remittance, code checks it, and the read waits (by read_id) for the person to confirm it."""
+    """Claude reads the remittance (plain code reads an EDI 820), code checks it, and the read waits (by read_id) for
+    the person to confirm it."""
     acct = account(slug)
     if not text.strip():
         raise InputError("The remittance is empty. Paste its text or upload the PDF.")
     if len(text) > MAX_CHARS:
         raise InputError(f"That's {len(text):,} characters; a remittance advice is far shorter.")
+    read_id = f"RR-{uuid.uuid4().hex[:8]}"
+    if edi820.looks_like(text):
+        return _keep(read_edi(acct, text, read_id))
     ans = remittance_reader.read(text, brand=acct.brand, distributor=acct.distributor, products=list(acct.products),
                                  invoice_id=acct.invoice_id, expected=acct.expected, received=acct.received,
                                  client=client)
-    read_id = f"RR-{uuid.uuid4().hex[:8]}"
     if ans.value is None:
         why = ans.errors[-1] if ans.errors else "no answer"
         result = RemittanceRead(read_id=read_id, account=slug, brand=acct.brand, distributor=acct.distributor,
@@ -266,16 +272,40 @@ def read(slug: str, text: str, input_kind: Literal["text", "pdf"] = "text",
                                                   f"failed twice: {why[:300]}). A person needs to look at it.")])
     else:
         result = check(acct, text, ans.value, read_id=read_id, input_kind=input_kind, source=ans.source)
+    return _keep(result)
+
+
+def _keep(result: RemittanceRead) -> RemittanceRead:
+    """The read waits (by read_id) for the person to confirm it."""
     with _reads_lock:
-        _READS[read_id] = result
+        _READS[result.read_id] = result
         while len(_READS) > KEEP_READS:
             _READS.popitem(last=False)
     return result
 
 
+def read_edi(acct: Account, text: str, read_id: str = "RR-check") -> RemittanceRead:
+    """An EDI 820, read by plain code (api/edi820.py) and then checked like every other read. One that can't be read
+    as an 820 can't run and says why."""
+    try:
+        out, flagged = edi820.read(text, acct.invoice_id, list(acct.products))
+    except (edi820.EdiError, ValidationError) as e:
+        why = str(e).splitlines()[0][:300]
+        return RemittanceRead(read_id=read_id, account=acct.slug, brand=acct.brand, distributor=acct.distributor,
+                              input="edi", source="live", ok=False, can_run=False, header=None, lines=[], charges=[],
+                              totals=None, text=text, reader="edi820",
+                              problems=[Problem(kind="read", text=f"This EDI 820 can't be read ({why}). A person "
+                                                "needs to look at it.")])
+    return check(acct, text, out, read_id=read_id, input_kind="edi", source="live", line_problems=flagged,
+                 reader="edi820")
+
+
 def check(acct: Account, text: str, out: ReadRemittance, read_id: str = "RR-check",
-          input_kind: Literal["text", "pdf"] = "text", source: Literal["live", "fixture"] = "live") -> RemittanceRead:
-    """The code checks after the read (module docstring). Plain code; the amounts come from api/engine/totals.py."""
+          input_kind: Literal["text", "pdf", "edi"] = "text", source: Literal["live", "fixture"] = "live",
+          line_problems: dict[int, list[str]] | None = None,
+          reader: Literal["claude", "edi820"] = "claude") -> RemittanceRead:
+    """The code checks after the read (module docstring). Plain code; the amounts come from api/engine/totals.py.
+    `line_problems` (by line number) are what a code reader (the EDI 820's) found a person must look at."""
     policy = load_policy()
     problems: list[Problem] = []
     lines: list[RemittanceLine] = []
@@ -292,7 +322,7 @@ def check(acct: Account, text: str, out: ReadRemittance, read_id: str = "RR-chec
             problems.append(Problem(kind="quote", line=n, text=f"{name}: rejected, {why}. It isn't a charge."))
             continue
         used.append(span)
-        found = _line_checks(ln)
+        found = _line_checks(ln) + [("read", why) for why in (line_problems or {}).get(n, [])]
         code, code_problem = _code(ln)
         if code_problem:
             found.append(("code", code_problem))
@@ -332,7 +362,8 @@ def check(acct: Account, text: str, out: ReadRemittance, read_id: str = "RR-chec
     ok = can_run and not problems and not out.unclear and all(ln.status == "verified" for ln in lines)
     return RemittanceRead(read_id=read_id, account=acct.slug, brand=acct.brand, distributor=acct.distributor,
                           input=input_kind, source=source, ok=ok, can_run=can_run, header=header, lines=lines,
-                          charges=charges, problems=problems, totals=sums, unclear=out.unclear, text=text)
+                          charges=charges, problems=problems, totals=sums, unclear=out.unclear, text=text,
+                          reader=reader)
 
 
 def _locate(text: str, quote: str, after: int, used: list[tuple[int, int]]) -> tuple[int, int] | None:
@@ -352,9 +383,9 @@ def _norm(s: str) -> str:
 
 
 def _date_on(quote: str, d: date) -> bool:
-    """The date is printed in the quote: 2026-03-01, 03/01, 3/1/26, 03/01/2026, Mar 1 or March 1."""
+    """The date is printed in the quote: 2026-03-01, 03/01, 3/1/26, 03/01/2026, Mar 1, March 1 or (EDI) 20260301."""
     forms = [rf"{d.year}-{d.month:02d}-{d.day:02d}", rf"(?<!\d)0?{d.month}/0?{d.day}(?!\d)",
-             rf"\b{_MONTHS[d.month - 1]}[a-z]*\.?\s+0?{d.day}(?!\d)"]
+             rf"\b{_MONTHS[d.month - 1]}[a-z]*\.?\s+0?{d.day}(?!\d)", rf"(?<!\d){d.year}{d.month:02d}{d.day:02d}(?!\d)"]
     return any(re.search(f, quote, re.I) for f in forms)
 
 
@@ -502,7 +533,7 @@ def main(argv: list[str]) -> int:
     path = Path(argv[1])
     text, kind = extract_text(path.read_bytes(), path.name)
     r = read(argv[0], text, kind)
-    print(f"{path.name} ({kind}, {r.source})  ok={r.ok}  can_run={r.can_run}")
+    print(f"{path.name} ({r.input}, {r.reader}, {r.source})  ok={r.ok}  can_run={r.can_run}")
     for ln in r.lines:
         print(f"  {ln.charge_id or '--':3} {ln.status:12} {ln.ref or '':9} {ln.code:7} {ln.amount:>10,.2f}  {ln.description}")
         for why in ln.reasons:
