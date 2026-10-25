@@ -331,7 +331,7 @@ def test_get_accounts_lists_peak_bar_first(api):
     assert got[0]["brand"]["name"] == "Peak Bar Co." and got[0]["distributor"]["name"] == "Northmart"
     assert got[0]["invoice"] == {"id": "INV-3102", "expected": 48200.0, "received": 41350.0, "month": "march",
                                  "period_start": "2026-03-01", "period_end": "2026-03-31"}
-    assert set(got[0]) == {"id", "brand", "distributor", "invoice", "latest_run_id"} and got[1]["latest_run_id"] is None
+    assert set(got[0]) == {"id", "brand", "distributor", "invoice", "latest_run_id", "supplier"} and got[1]["latest_run_id"] is None
     run, _ = oat_run(answer_owner=False)
     assert api.get("/accounts").json()[1]["latest_run_id"] == run.id
 

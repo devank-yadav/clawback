@@ -6,19 +6,18 @@
 //  done:  this tab's run finished and nobody is waiting.
 // A run started anywhere else (the Nessie deposit, another device) switches the page to it by itself.
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
-import { NAV } from "@/components/shell/nav";
+import TopBar from "@/components/shell/TopBar";
 import { ChargeDrawer } from "@/components/console/Review";
 import { useRun } from "@/components/console/RunProvider";
-import { Logo } from "@/components/console/ui";
 import { DonePanel } from "./DonePanel";
 import { ChargeMatrix } from "./ChargeMatrix";
 import { Elapsed, Meter, ACTOR } from "./parts";
 import { ReaderCard, Spotlight } from "./Spotlight";
 import { StageRail } from "./StageRail";
+import { StageHero } from "./StageHero";
+import { AgentStrip } from "./AgentStrip";
 import { StartPanel } from "./StartPanel";
 import { buildStages, focusStage } from "./stages";
 import { money } from "@/lib/format";
@@ -26,7 +25,7 @@ import { money } from "@/lib/format";
 const noop = () => () => {};
 /** ?run=latest opens the account's last run instead of the start screen. */
 function useOpenLatest() {
-  return useSyncExternalStore(noop, () => new URLSearchParams(window.location.search).get("run") === "latest", () => false);
+  return useSyncExternalStore(noop, () => !!new URLSearchParams(window.location.search).get("run"), () => false);
 }
 
 // The run this tab watched while it worked, kept for the session: once it finishes the page shows its result, even
@@ -58,38 +57,44 @@ export default function Flow() {
 
 function FlowFor() {
   const run = useRun();
-  const { state, view, account, accounts, cast, link, runId, starting } = run;
-  const path = usePathname();
-  const router = useRouter();
+  const { state, view, account, cast, runId, starting } = run;
   const openLatest = useOpenLatest();
   // The run this tab was following when it started one; any newer run is "ours" from then on.
   const [startedFrom, setStartedFrom] = useState<string | null | undefined>(undefined);
   const [opened, setOpened] = useState(false);
+  // "Check a new payment" pressed: the start screen shows even while an older run waits on you (it stays one click
+  // away). A new payment then replaces that run, and its open question closes on the server.
+  const [fresh, setFresh] = useState(false);
   const [drawer, setDrawer] = useState<string | null>(null);
   const [, setCleared] = useState(0); // a re-render after forgetting the watched run
 
   const mine = startedFrom !== undefined && runId !== startedFrom;
   const status = state.run?.status;
   const waitingOnPerson = view.approval?.status === "pending" || view.stage === "owner";
-  const live = status === "started" || status === "waiting" || waitingOnPerson;
+  // The agents are still working until every charge has a decision. After that the result shows, even while a decision
+  // of yours is waiting: it appears on the result as your next step. A stopped run shows its result too.
+  const working = status === "started" && !view.reviewed;
+  const live = working || waitingOnPerson;
   const followed = useSyncExternalStore(noop, () => readFollowed(account?.id), () => null);
   const watched = !!runId && followed === runId;
   const phase: "start" | "run" | "done" =
     starting || (mine && !state.run) ? "run"
+      : fresh && !mine ? "start"
       : !state.run ? "start"
-        : live ? "run"
-          : mine || opened || openLatest || watched ? (status === "failed" ? "run" : "done")
+        : working ? "run"
+          : mine || opened || openLatest || watched || waitingOnPerson ? "done"
             : "start";
 
   useEffect(() => {
-    if (runId && (live || mine)) writeFollowed(account?.id, runId);
-  }, [runId, live, mine, account?.id]);
+    if (runId && (mine || (live && !fresh))) writeFollowed(account?.id, runId);
+  }, [runId, live, mine, fresh, account?.id]);
 
   /** Back to the start screen: forget the watched run for this tab. */
   const restart = () => {
     writeFollowed(account?.id, null);
     setStartedFrom(undefined);
     setOpened(false);
+    setFresh(true);
     setCleared((n) => n + 1);
   };
 
@@ -101,44 +106,33 @@ function FlowFor() {
 
   return (
     <div className="fl">
-      <header className="fl-top">
-        <Link href={link("/")} className="cx-logo" onClick={restart}><Logo /> clawback</Link>
-        {accounts && accounts.length > 1 && (
-          <select aria-label="Account" value={account?.id ?? ""} onChange={(e) => router.push(`${path}?account=${encodeURIComponent(e.target.value)}`)}>
-            {accounts.map((a) => <option key={a.id} value={a.id}>{a.brand.name} ← {a.distributor.name}</option>)}
-          </select>
-        )}
-        <nav aria-label="Clawback">
-          {NAV.map((n) => (
-            <Link key={n.label} href={link(n.href, n.view && n.view !== "overview" ? { view: n.view } : undefined)} aria-current={n.href === "/" ? "page" : undefined}>{n.label}</Link>
-          ))}
-          <a href={link("/portal")} target="_blank" rel="noreferrer">{cast.distributor} portal ↗</a>
-        </nav>
-      </header>
+      <TopBar account={account} active="agents" />
 
       {phase === "start" && (
         <main className="fl-main" style={{ paddingTop: 0, paddingBottom: 0 }}>
-          <StartPanel onStart={() => setStartedFrom(runId ?? null)} onOpenLast={() => setOpened(true)} />
+          <StartPanel onStart={() => setStartedFrom(runId ?? null)} onOpenLast={() => { setOpened(true); setFresh(false); }} />
         </main>
       )}
 
       {phase === "run" && (
         <main className="fl-main">
           <div className="fl-pay">
-            <h1>
+            <p className="fl-pay-line">
               {r
-                ? <>{r.counterparty} paid {money(r.received)} of {money(r.expected)} and <b>took {money(r.taken)}</b> in {r.charge_count} charges</>
+                ? <>{r.counterparty} paid {money(r.received)} of {money(r.expected)} and <b>kept {money(r.taken)}</b> in {r.charge_count} charges</>
                 : state.run ? `${cast.distributor}’s charges` : `Waiting for ${cast.distributor}’s payment…`}
-            </h1>
+            </p>
             <Elapsed from={r?.received_at ?? state.feed[0]?.at ?? null} running={status === "started"} decidedIn={view.value?.seconds_to_decided ?? null} />
           </div>
+          <AgentStrip state={state} view={view} owner={cast.owner} distributor={cast.distributor} />
+          <StageHero stage={focus} stages={stages} feed={state.feed} done={status === "finished"} />
+          <Spotlight focus={focus} />
+          <StageRail stages={stages} compact />
           <div className="fl-meters">
             <Meter label="Disputing, with proof" value={t?.disputed ?? 0} tone="dispute" />
             <Meter label="Fair, accepted" value={t?.accepted ?? 0} tone="fair" />
             <Meter label={`Waiting on ${view.stage === "controller" ? cast.controller : cast.owner}`} value={(t?.waiting ?? 0) + (view.stage === "controller" ? view.approval?.amount ?? 0 : 0)} tone="wait" />
           </div>
-          <StageRail stages={stages} />
-          <Spotlight focus={focus} />
           {state.order.length > 0 || state.stages.check ? (
             <div className="fl-work">
               <ChargeMatrix state={state} view={view} owner={cast.owner} onOpen={setDrawer} />
@@ -151,7 +145,8 @@ function FlowFor() {
 
       {phase === "done" && (
         <main className="fl-main">
-          <DonePanel onOpen={setDrawer} onNew={restart} rail={<StageRail stages={stages} compact />} />
+          <AgentStrip state={state} view={view} owner={cast.owner} distributor={cast.distributor} />
+          <DonePanel onOpen={setDrawer} onNew={restart} rail={<StageRail stages={stages} compact />} next={focus && focus.state === "waiting" ? <Spotlight focus={focus} /> : null} failed={status === "failed"} />
         </main>
       )}
 

@@ -6648,6 +6648,11 @@
               }
             ],
             "title": "Latest Run Id"
+          },
+          "supplier": {
+            "default": "",
+            "title": "Supplier",
+            "type": "string"
           }
         },
         "required": [

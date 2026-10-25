@@ -4,7 +4,7 @@
 
 import type {
   Account, Approval, Lookback, AuditEntry, AuditVerify, ChargeDetail, CoachResponse, Dispute, EvalReport, Evidence, LedgerPost,
-  Overview, PortalMessage, RunEvent, ScenarioExample, ScenarioRequest, ScenarioResponse, TraceStep, TraceSummary,
+  Overview, PortalMessage, RunEvent, ScenarioExample, ScenarioRequest, ScenarioResponse, SupplierItem, RunSummary, SavedOverview, DocumentText, TraceStep, TraceSummary,
 } from "./types";
 import { adminToken } from "./tokens";
 
@@ -65,6 +65,12 @@ export const unreachable = (e: Error) => `Can't reach Clawback right now (${e.me
 
 // ---- Accounts
 export const fetchAccounts = () => call<Account[]>("/accounts");
+export const fetchSuppliers = () => call<SupplierItem[]>("/suppliers");
+export const fetchRuns = (account: string) => call<RunSummary[]>(`/accounts/${q(account)}/runs`);
+export const fetchSaved = (account: string) => call<SavedOverview>(`/accounts/${q(account)}/saved`);
+export const fetchDocument = (account: string, doc: string) => call<DocumentText>(`/accounts/${q(account)}/documents/${q(doc)}`);
+export const setTracked = (supplier: string, accountId: string, tracked: boolean) =>
+  call<SupplierItem>(`/suppliers/${q(supplier)}/tracking`, { method: "POST", body: { account_id: accountId, tracked } });
 export const fetchOverview = (account: string) => call<Overview>(`/accounts/${q(account)}/overview`);
 
 /** GET /accounts/{id}/lookback, or null when this API doesn't have it yet (404), so the card can hide. */

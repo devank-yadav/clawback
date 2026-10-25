@@ -6,6 +6,7 @@
 // Nothing here computes money: amounts and decisions arrive in events (see lib/workspace.ts).
 
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import { firstName, useCurrentAccount, withAccount } from "@/lib/accounts";
 import type { Account } from "@/lib/types";
 import { useRunEvents } from "@/lib/useRunEvents";
@@ -30,7 +31,9 @@ const RunContext = createContext<Run | null>(null);
 
 export function RunProvider({ children }: { children: ReactNode }) {
   const { account, accounts, error: accountsError } = useCurrentAccount();
-  const run = useRunEvents(account?.id ?? null);
+  // ?run=<id> opens that run (a row on History); otherwise the account's newest run.
+  const wanted = useSearchParams().get("run");
+  const run = useRunEvents(account?.id ?? null, wanted && wanted !== "latest" ? wanted : "latest");
   const view = useMemo(() => selectWorkspace(run.state, account), [run.state, account]);
   const cast = useMemo<Cast>(() => ({
     brand: account?.brand.name ?? "",

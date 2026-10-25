@@ -1015,7 +1015,6 @@ class AccountConfig(Contract):
     dispute numbers must not clash across accounts)."""
 
     id: str  # the folder name, "peak-bar"
-    supplier: str | None = None  # the supplier workspace it belongs to: the brand's account id, "peak-bar"
     brand: Brand
     distributor: Distributor
     invoice: AccountInvoice
@@ -1023,6 +1022,9 @@ class AccountConfig(Contract):
     # Real contracts this account's deal is, under data/contracts/ (file names, read unedited); each is a document
     # whose id is its stem, e.g. KeHE's vendor policies for Lantern Hill.
     contracts: list[str] = []
+    # The supplier (the user's brand workspace) this distributor relationship belongs to; one supplier tracks many
+    # distributors. Unset: the account is its own supplier.
+    supplier: str | None = None
     approved_senders: list[str]  # only these (or a document signed by both parties) can change the deal
     dispute_start: int = Field(ge=1)  # the invoice month files D-<start>; each later month starts 10 higher
     qbo: QboConfig
@@ -1049,6 +1051,7 @@ class AccountListItem(Contract):
     distributor: Distributor
     invoice: AccountInvoice
     latest_run_id: str | None  # the newest run of the invoice month (live, or saved before a restart)
+    supplier: str = ""  # the supplier workspace this relationship belongs to (AccountConfig.supplier or its own id)
 
 
 class AccountKpis(Contract):
@@ -1179,3 +1182,82 @@ class FeeBackupRow(Contract):
     @classmethod
     def _zero(cls, v: Any) -> Any:
         return 0 if isinstance(v, str) and not v.strip() else v
+
+
+# ---- suppliers: one brand (the user) tracking many distributors
+
+RelationshipStatus = Literal["waiting_for_payment", "checking", "needs_you", "settled", "stopped"]
+
+
+class DistributorItem(Contract):
+    """One distributor a supplier sells through: its plain status, never a money figure (the workflow has those)."""
+
+    account_id: str  # the relationship's account (data/accounts/<id>/)
+    distributor: Distributor
+    tracked: bool
+    status: RelationshipStatus
+    status_label: str  # "Agents are checking a payment", "1 decision for you", ...
+    latest_run_id: str | None
+
+
+class SupplierItem(Contract):
+    """GET /suppliers: a supplier workspace and the distributors it sells through, tracked ones first."""
+
+    id: str
+    brand: Brand
+    distributors: list[DistributorItem]
+
+
+class TrackRequest(Contract):
+    account_id: str
+    tracked: bool
+
+
+class RunSummary(Contract):
+    """GET /accounts/{id}/runs: one past or current run of the agents, from its own events (newest first)."""
+
+    run_id: str
+    kind: str  # the month: "march", "april"
+    status: Literal["started", "waiting", "finished", "failed"]
+    started_at: datetime
+    replaced: bool  # a newer run of the same payment replaced it (its open questions closed)
+    invoice_id: str | None
+    taken: Money | None  # what the distributor kept from the payment
+    charges: int
+    disputed: Money | None
+    accepted: Money | None
+    waiting: Money | None
+    questions: int
+
+
+class SavedDocument(Contract):
+    """A document the agents read for this distributor. The signed deal and real contracts are locked: nobody edits
+    them, agents included."""
+
+    id: str
+    kind: DocumentKind
+    title: str
+    sender: str | None
+    locked: bool
+    chars: int
+
+
+class SavedRecords(Contract):
+    label: str  # "Store sales", "Past payments", ...
+    rows: int
+
+
+class SavedOverview(Contract):
+    """GET /accounts/{id}/saved: everything Clawback keeps for this distributor."""
+
+    documents: list[SavedDocument]
+    rules: list[Rule]
+    records: list[SavedRecords]
+
+
+class DocumentText(Contract):
+    id: str
+    title: str
+    kind: DocumentKind
+    locked: bool
+    text: str
