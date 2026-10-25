@@ -107,7 +107,8 @@ def test_the_signed_amendment_dropped_into_contracts_concedes_1000():
     claude = EmailClaude()
     run = finished_march(claude)
     fake = FakeDrive()
-    dispute_email.send_dispute(run, [e.data for e in run.events if e.type == "dispute"][-1], client=claude)
+    _, e = dispute_email.draft_dispute(run, [e.data for e in run.events if e.type == "dispute"][-1], client=claude)
+    dispute_email.mark_sent(e.id)  # the person sent it from Gmail
     drive.sync(fake, run_client=claude)  # the first look: nothing in the folder yet
     text = accounts.get("peak-bar").docs["amendment-1"].read_bytes()
     fake.put("amd", "amendment-1.md", "con", text)

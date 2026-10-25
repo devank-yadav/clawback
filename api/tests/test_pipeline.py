@@ -90,7 +90,7 @@ def test_march_first_pass_asks_one_question_and_files_d0417():
     t = last_totals(run)
     assert (t.taken, t.disputed, t.accepted, t.waiting, t.undecided, t.questions) == (D(6850), D(4120), D(1530), D(1200), D(0), 1)
     dispute = next(e.data for e in run.events if e.type == "dispute")
-    # Drafted for the admin to review and send (Phase E; policy.yaml auto_send is off)
+    # Drafted for the admin to review and send (policy.yaml auto_draft is off)
     assert (dispute.id, dispute.total, dispute.status, dispute.approved_by) == ("D-0417", D(4120), "ready_to_send", "owner")
     assert [ln.charge_id for ln in dispute.lines] == ["C1", "C2", "C4", "C5"]
     assert [q.charge_id for q in run.questions.values()] == ["C6"]

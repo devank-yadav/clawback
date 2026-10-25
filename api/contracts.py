@@ -565,8 +565,10 @@ class DisputeEmail(Contract):
     """One email about a dispute (Phase E): the dispute email itself, or a reply to the distributor.
 
     held: the drafter's checks failed twice, or the admin's edit failed the outbound filter; the admin edits it.
-    ready: checked, waiting for the admin to send. sent: Mailgun took it. outbox: recorded in the app instead of sent
-    (no Mailgun keys, or DEMO_MODE). failed: Mailgun refused it; sending again retries."""
+    ready: checked, waiting for the admin's "Create Gmail draft". drafted: in the supplier's Gmail Drafts, for a
+    person to send. outbox: kept in the app instead (no Gmail keys, or DEMO_MODE), for a person to send by hand.
+    sent: Gmail shows it in Sent, or the admin said "I sent it". failed: Gmail didn't take the draft; try again.
+    Clawback never sends an email itself."""
 
     id: str  # "EM-<run id>-D-0417" for the dispute email; "-R<n>" for a reply
     kind: Literal["dispute", "reply"]
@@ -580,12 +582,13 @@ class DisputeEmail(Contract):
     body: str
     attachments: list[str] = []
     in_reply_to: str | None = None
-    status: Literal["held", "ready", "sent", "outbox", "failed"]
+    status: Literal["held", "ready", "drafted", "outbox", "sent", "failed"]
     written_by: Literal["claude", "template", "admin", "negotiator", "code"]
     problems: list[str] = []
     message_id: str | None = None
-    sent_at: datetime | None = None
-    detail: str | None = None  # how the send went ("Queued. Thank you.", "in the outbox (DEMO_MODE)", the error)
+    drafted_at: datetime | None = None  # when it went to Gmail Drafts (or the outbox)
+    sent_at: datetime | None = None  # when it was seen in Sent, or marked sent
+    detail: str | None = None  # how the draft went ("Queued. Thank you.", "in the outbox (DEMO_MODE)", the error)
     portal_url: str | None = None
     charge_ids: list[str] = []
     evidence_ids: list[str] = []
@@ -600,7 +603,7 @@ class DisputeEmailEdit(Contract):
 
 
 class DisputeSendRequest(Contract):
-    """POST /disputes/{id}/send and POST /disputes/{id}/replies/{email_id}/send: optionally the edit to send."""
+    """POST /disputes/{id}/draft and POST /disputes/{id}/replies/{email_id}/draft: optionally the edit to draft."""
 
     subject: str | None = Field(default=None, max_length=300)
     body: str | None = Field(default=None, max_length=20000)
@@ -616,7 +619,7 @@ class DisputeThread(Contract):
 
 
 class DisputeSendResponse(Contract):
-    """POST /disputes/{id}/send: the dispute (filed once the email went) and its email (sent, outbox or failed)."""
+    """POST /disputes/{id}/draft and /sent: the dispute (filed once its email is sent) and its email."""
 
     dispute: Dispute
     email: DisputeEmail

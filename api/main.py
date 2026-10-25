@@ -16,7 +16,7 @@ from api.routes import remittance as remittance_routes
 from api.routes import auth as auth_routes
 from api.routes import dispute_mail
 from api.routes import drive as drive_routes
-from api import drive
+from api import dispute_email, drive
 
 load_dotenv()
 log = logging.getLogger("clawback")
@@ -37,7 +37,11 @@ async def lifespan(_app: FastAPI):
         log.info("quickbooks payments poller started")
     if drive.start_poller():
         log.info("google drive poller started")
+    if dispute_email.start_poller():
+        log.info("gmail poller started (dispute replies and Sent)")
     yield
+    if dispute_email.poller:
+        dispute_email.poller.stop()
     if drive.poller:
         drive.poller.stop()
     if nessie.poller:

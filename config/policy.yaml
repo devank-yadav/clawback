@@ -19,6 +19,7 @@ discretion_words:
 approved_amendment_senders:          # only these (or a document signed by both parties) can change a deal
   - "dana@peakbar.example"           # owner (fictional)
   - "jordan@peakbar-broker.example"  # broker (fictional)
-auto_send: false                    # true: a dispute within auto_dispute_limit_usd is emailed without the admin's
-                                    # review (api/dispute_email.py); false: every dispute waits for "Review and send"
+auto_draft: false                   # true: a dispute within auto_dispute_limit_usd goes to the supplier's Gmail
+                                    # Drafts without the admin's review (api/dispute_email.py); false: every dispute
+                                    # waits for "Create Gmail draft". Clawback never sends: a person does, from Gmail
 dispute_window_warn_days: 14        # a dispute window closing this soon puts "file by <date>" on the decision
