@@ -43,12 +43,13 @@ def _tracked(who: tenancy.Caller) -> list[accounts.Account]:
 
 
 def _runs(tracked: list[accounts.Account]) -> list[pipeline.Run]:
-    """Each tracked account's newest live run of each month, oldest first."""
+    """Each tracked account's newest live run (not replaced), oldest first: the same run the Distributors page shows
+    for it (GET /accounts/{id}/runs, its first run not replaced), so Home's totals are those rows added up."""
     ids = {a.id for a in tracked}
-    newest: dict[tuple[str, str], pipeline.Run] = {}
+    newest: dict[str, pipeline.Run] = {}
     for run in pipeline.RUNS.values():
         if run.account.id in ids and run.replaced_by is None:
-            newest[(run.account.id, run.kind)] = run
+            newest[run.account.id] = run
     return sorted(newest.values(), key=lambda r: r.started_at)
 
 
@@ -170,8 +171,10 @@ def _open_disputes(runs: list[pipeline.Run]) -> list[OpenDispute]:
             if d.status in ("withdrawn", "resolved"):
                 continue
             line = next((ln for ln in d.lines if ln.file_by), None)
+            agreed = totals_mod.total_of(ev.amount for ev in recovered(run) if ev.dispute_id == d.id)
             out.append(OpenDispute(dispute_id=d.id, account_id=run.account.id, distributor=run.distributor,
-                                   run_id=run.id, amount=d.total, status=d.status, filed_at=d.filed_at,
+                                   run_id=run.id, amount=totals_mod.total_of([d.total, -agreed]), total=d.total,
+                                   agreed=agreed, status=d.status, filed_at=d.filed_at,
                                    file_by=line.file_by if line else None, days_left=line.days_left if line else None))
     return out
 
