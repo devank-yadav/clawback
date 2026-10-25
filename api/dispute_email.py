@@ -414,23 +414,34 @@ def on_reply(run: pipeline.Run, dispute: Dispute, msg, client=None) -> list[Port
                                  channel="email", email_message_id=msg.message_id)
     for m in got:
         _save_message(run, m)
-    theirs = got[0] if got else None
+    notify_reply(run, dispute, got, "email", drafted=True)
+    return got
+
+
+def notify_reply(run: pipeline.Run, dispute: Dispute, got: list[PortalMessage], via: str,
+                 drafted: bool = False) -> SupplierNotification | None:
+    """Tell the supplier what the distributor said and what the agents did about it."""
+    theirs = next((m for m in got if m.from_party == "northmart"), None)
+    if theirs is None:
+        return None
+    answered = any(m.from_party == "clawback" for m in got)
     now = latest(run, dispute.id) or dispute
-    if theirs and theirs.classification == "new_document" and now.total != dispute.total:
+    if theirs.classification == "new_document" and now.total != dispute.total:
         what = f"sent a signed document; {dispute.id} now totals ${now.total:,.0f}"
-    elif theirs and theirs.classification == "agrees":
+    elif theirs.classification == "agrees":
         what = f"agree on {', '.join(theirs.charge_ids) or 'a line'}"
-    elif theirs and theirs.classification == "claim_without_document":
-        what = "pushed back without a document; an answer is drafted for you to send"
+    elif theirs.classification == "claim_without_document":
+        what = ("pushed back without a document; " + ("an answer is drafted for you to send" if drafted else
+                "the agents answered with the evidence" if answered else "it needs your answer"))
     else:
         what = "need a person to answer"
-    notify(run, dispute.id, f"{run.distributor} replied to {dispute.id} by email: they {what}.")
-    return got
+    return notify(run, dispute.id, f"{run.distributor} replied to {dispute.id} by {via}: they {what}.",
+                  log_it=via != "the portal")
 
 
 # ---------------------------------------------------------------- 4. telling the supplier
 
-def notify(run: pipeline.Run, dispute_id: str | None, text: str) -> SupplierNotification:
+def notify(run: pipeline.Run, dispute_id: str | None, text: str, log_it: bool = True) -> SupplierNotification:
     n = SupplierNotification(id=f"N-{secrets.token_hex(4)}", account_id=run.account.id, run_id=run.id,
                              dispute_id=dispute_id, text=text, at=_now())
     with _lock:
@@ -438,8 +449,9 @@ def notify(run: pipeline.Run, dispute_id: str | None, text: str) -> SupplierNoti
     _save("INSERT INTO supplier_notifications (id, account_id, at, data) VALUES (%s, %s, %s, %s) "
           "ON CONFLICT (id) DO NOTHING", (n.id, n.account_id, n.at, _json(n)))
     status = sms.send("owner", text)
-    where = "Texted" if status == "sent" else f"In the app (text {status}) for"
-    run.log(f"{where} {run.name('owner')}: \"{text}\"", "info", "negotiator")
+    if log_it:  # the portal's replies already stream on the run; the notification needn't add a log line
+        where = "Texted" if status == "sent" else f"In the app (text {status}) for"
+        run.log(f"{where} {run.name('owner')}: \"{text}\"", "info", "negotiator")
     return n
 
 

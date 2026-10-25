@@ -76,7 +76,7 @@ def post_message(dispute_id: str, req: PortalReplyRequest) -> list[PortalMessage
     """Adds Northmart's message and Clawback's reply; returns both (or only Northmart's when it's held)."""
     global _amendment_attached
     if disputes.find(dispute_id):
-        return disputes.post(dispute_id, req.text, req.attachment_doc_id)
+        return disputes.post(dispute_id, req.text, req.attachment_doc_id, agree_charge_ids=req.agree_charge_ids)
     thread = _thread(dispute_id)
     now = datetime.now(timezone.utc)
     ids = {"id": f"PM-{len(thread) + 1}"}, {"id": f"PM-{len(thread) + 2}"}

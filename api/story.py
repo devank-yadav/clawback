@@ -5,12 +5,13 @@ network, and the same every time. Runs at startup when Peak Bar has no runs yet,
 background thread, so /health answers at once. DEMO_STORY=off turns it off (the tests).
 
 The month it shows:
-- KeHE, Walmart and Five Below: last month's payments checked; their questions answered for those charges only,
-  the fair-charge memos approved, the disputes sent.
-- UNFI: checked, dispute sent, and UNFI's desk replied agreeing to one line (a recorded reply), so recovered is
-  real, with its evidence.
-- Sam's Club: checked; its discretionary sampling fee is a question waiting on the admin, and its dispute and memo
-  wait too.
+- Five Below: last month's payment checked; its questions answered for those charges only, the fair-charge memo
+  approved, the dispute sent. (KeHE and Walmart aren't fully recorded, so they wait for their payment: SETTLED.)
+- UNFI: checked, dispute sent, and UNFI's desk replied agreeing to one line, so recovered is real, with its
+  evidence. The Negotiator's reading of that reply must be recorded (scripts/record_missing.py --story); until it
+  is, the replay holds the reply for the owner and recovered stays 0.
+- Sam's Club: checked; its discretionary sampling fee is a question waiting on the admin, and so is its memo. Its
+  dispute went out and Sam's desk pushed back without a document; the admin was told.
 - Northmart: not run. Its March payment is the next one to arrive (POST /payments/sync delivers it).
 
 Each step uses the product's own paths (pipeline.start, pipeline.answer, pipeline.decide_approval,
@@ -30,14 +31,20 @@ from api.integrations import replay
 
 log = logging.getLogger("clawback.story")
 
-SETTLED = ("peak-bar-kehe", "peak-bar-walmart", "peak-bar-five-below")
+# Only accounts whose whole run is recorded: a replay with a missing answer would send that charge to Ask, and the
+# history would show the admin "accepting" what the agents never checked. KeHE has no recordings and Walmart's stop
+# where the recording budget ran out, so both wait for their payment instead (POST /payments/sync delivers them
+# after Northmart's, live).
+SETTLED = ("peak-bar-five-below",)
 REPLIED = "peak-bar-unfi"
 WAITING = "peak-bar-sams"
 NEXT_PAYMENT = accounts.DEFAULT  # Northmart's March payment: the live moment
-AGREEMENT = {  # the desk's reply, as recorded (the Negotiator's answer to it is in data/fixtures/)
-    REPLIED: ("Agreed, Peak Bar Peanut Butter wasn't part of the MCB deal. We'll credit deduction 60412326 back on the "
-              "next remittance."),
-}
+# UNFI's desk accepts one line with its portal's Accept action (read by code, no AI): recovered, with evidence.
+AGREEMENT = {REPLIED: (["U5"], "Accepted: Peak Bar Peanut Butter wasn't part of the MCB deal. Deduction 60412326 will "
+                              "be credited on the next remittance.")}
+# Sam's Club's desk pushes back on a line without a document. The Negotiator answers it from a recording when one
+# exists for this exact reply; without one the replay holds it for the admin, who is told either way.
+CLAIM = {WAITING: "There was no cap on that promo. The deduction stands."}
 
 _lock = threading.Lock()
 status = {"state": "not_built", "seconds": None, "detail": None}
@@ -96,14 +103,18 @@ def steps(client=None) -> list[str]:
             continue
         run = pipeline.start(a.invoice.month, client, background=False, account=a)
         made.append(run.id)
-        if aid == WAITING:
-            continue  # its question, dispute and memo wait on the admin
-        _settle(run)
+        if aid == WAITING:  # its question and memo wait on the admin; its dispute went out and got pushback
+            _settle(run, answer=False, approve=False)
+        else:
+            _settle(run)
+        d = next((e.data for e in reversed(run.events) if e.type == "dispute"), None)
+        if d is None:
+            continue
         if aid in AGREEMENT:
-            d = next((e.data for e in reversed(run.events) if e.type == "dispute"), None)
-            if d is not None:
-                with accounts.using(a):
-                    disputes.post(d.id, AGREEMENT[aid], client=client)
+            cids, text = AGREEMENT[aid]
+            disputes.post(d.id, text, client=client, agree_charge_ids=cids)
+        if aid in CLAIM:
+            disputes.post(d.id, CLAIM[aid], client=client)
     return made
 
 

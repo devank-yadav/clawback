@@ -885,6 +885,9 @@ class AnswerResponse(Contract):
 class PortalReplyRequest(Contract):
     text: str
     attachment_doc_id: str | None = None  # "amendment-1" when the judge attaches the signed amendment
+    # The portal's line-level "Accept" action: the desk accepts these dispute lines (charge ids). Read by code, not
+    # by the Negotiator: the click says what it agrees to.
+    agree_charge_ids: list[str] = []
 
 
 class PortalPreset(Contract):
