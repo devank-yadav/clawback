@@ -86,7 +86,7 @@ def _parse(client: anthropic.Anthropic, req: dict, output_format: type[BaseModel
 
 def ask(service: str, system: str, user: str, output_format: type[BaseModel], check: Callable[[dict], T],
         client: anthropic.Anthropic | None = None, live_first: bool = False, timeout: float | None = None,
-        **extra) -> Answer[T]:
+        equivalent=None, **extra) -> Answer[T]:
     """`check` turns the JSON into the result or raises ValueError / ValidationError with the problem.
     `timeout` overrides replay's default for one long call (a 16-page policy read); it isn't part of the request.
     `live_first` (the judge's portal replies) tries live even in DEMO_MODE, then the saved answer.
@@ -97,7 +97,7 @@ def ask(service: str, system: str, user: str, output_format: type[BaseModel], ch
                                                  f"{result.errors[-1]}\nReturn the complete answer again, fixed.")
         request = {"model": model_for(service), "system": system, "user": prompt, **extra}
         try:
-            res = replay.call_outside(service, request, live_first=live_first, timeout=timeout,
+            res = replay.call_outside(service, request, live_first=live_first, timeout=timeout, equivalent=equivalent,
                                       fn=lambda req, timeout: _parse(client or anthropic.Anthropic(), req, output_format, timeout))
         except replay.OutsideCallFailed as e:  # live failed twice and nothing saved
             result.errors.append(str(e))

@@ -538,6 +538,11 @@ def _close_questions(run: Run) -> None:
                     q.charge_id)
 
 
+def _lower_first(text: str) -> str:
+    """"Club sampling fee, March" -> "club sampling fee, March": lower case for the sentence, names kept."""
+    return text[:1].lower() + text[1:] if text[:2] != text[:2].upper() else text
+
+
 def _question_risk(run: Run, charge_id: str, term, split) -> tuple[QuestionRisk, list[RiskDetail]]:
     """The question's level, kind, one-line reason and details (api/engine/question_risk.py), from the engine's numbers
     and the clause. Plain code: no AI call, so recorded requests don't change."""
@@ -549,7 +554,7 @@ def _question_risk(run: Run, charge_id: str, term, split) -> tuple[QuestionRisk,
     rules = rules_of(run.account)
     facts = question_risk.Facts(
         amount=c.amount, payment=run.account.invoice.received if run.kind == run.account.invoice.month else None,
-        what=re.sub(r"\s*\(.*?\)", "", c.description).strip().lower() or "charge", distributor=run.distributor,
+        what=_lower_first(re.sub(r"\s*\(.*?\)", "", c.description).strip()) or "charge", distributor=run.distributor,
         clause_ref=clause.label if clause else None, quote=term.exact_quote if term else None,
         term_type=term.type.value if term else None, discretionary=bool(term and term.discretion),
         notice_period_days=int(notice.params["days"]) if notice and notice.params.get("days") is not None else None,

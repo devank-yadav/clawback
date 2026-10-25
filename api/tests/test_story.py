@@ -119,3 +119,29 @@ def test_the_portal_accept_action_is_read_by_code(monkeypatch):
     assert ours.text == "Thank you for accepting NM-2237 (C5), $1,000.00 of D-0417."
     assert supplier_overview.overview(tenancy.EVERYONE).totals.recovered == D(1000)
     pipeline.reset(), disputes.reset()
+
+
+def test_the_story_has_one_closing_window_and_honest_statuses(built):
+    from api import suppliers
+
+    o = supplier_overview.overview(PEAK)
+    windows = {d.dispute_id: d.days_left for d in o.open_disputes}
+    assert windows["D-1020"] == 10 and windows["D-1030"] == 90  # filed 80 days ago; the 90-day window is the deal's
+    (peak,) = [s for s in suppliers.items() if s.id == "peak-bar"]
+    unfi = next(r for r in peak.distributors if r.account_id == "peak-bar-unfi")
+    assert (unfi.status, unfi.status_label) == ("dispute_open", "Dispute D-1030 open, awaiting reply")
+    q = next(n for n in o.needs_you if n.kind == "question")
+    assert "March" in q.title and "march" not in q.title
+    assert all("march" not in r.text for r in o.recent)
+
+
+def test_no_cap_replays_its_answer_even_before_danas_answer(monkeypatch):
+    """The recordings were made after Dana answered C6; the same reply before her answer finds the same recording."""
+    monkeypatch.setenv("DEMO_MODE", "true")
+    pipeline.reset(), disputes.reset()
+    run = pipeline.start("march", background=False)
+    assert any(pipeline.is_open(q) for q in run.questions.values())
+    p = next(x for x in disputes.PRESETS if x.id == "no-cap")
+    theirs, ours = disputes.post("D-0417", p.text)
+    assert theirs.classification == "claim_without_document" and "5,000 units" in ours.text
+    pipeline.reset(), disputes.reset()

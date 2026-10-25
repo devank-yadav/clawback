@@ -186,7 +186,7 @@ def _recent(runs: list[pipeline.Run]) -> list[RecentItem]:
             if e.type == "run" and d.status in ("waiting", "finished") and not decided:
                 decided = True  # once per run: when the gate first decided it
                 out.append(RecentItem(at=e.at, kind="run_decided", account_id=a.id, distributor=them,
-                                      text=f"Agents decided {them}'s {run.kind} payment",
+                                      text=f"Agents decided {them}'s {run.kind.capitalize()} payment",
                                       link=OverviewLink(page="run", run_id=run.id)))
             elif e.type == "portal_message" and d.from_party == "northmart":
                 out.append(RecentItem(at=e.at, kind="reply", account_id=a.id, distributor=them,

@@ -1307,7 +1307,7 @@ class FeeBackupRow(Contract):
 
 # ---- suppliers: one brand (the user) tracking many distributors
 
-RelationshipStatus = Literal["waiting_for_payment", "checking", "needs_you", "settled", "stopped"]
+RelationshipStatus = Literal["waiting_for_payment", "checking", "needs_you", "dispute_open", "settled", "stopped"]
 
 
 class DistributorItem(Contract):

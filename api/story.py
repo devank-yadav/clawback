@@ -45,6 +45,9 @@ AGREEMENT = {REPLIED: (["U5"], "Accepted: Peak Bar Peanut Butter wasn't part of 
 # Sam's Club's desk pushes back on a line without a document. The Negotiator answers it from a recording when one
 # exists for this exact reply; without one the replay holds it for the admin, who is told either way.
 CLAIM = {WAITING: "There was no cap on that promo. The deduction stands."}
+# Five Below's dispute went out about 80 days before today, so its 90-day window has 10 days left: the deadline Home
+# shows in amber. The window is the deal's; only the dates move.
+AGED = {"peak-bar-five-below": 80}
 
 _lock = threading.Lock()
 status = {"state": "not_built", "seconds": None, "detail": None}
@@ -92,6 +95,23 @@ def _settle(run: pipeline.Run, answer: bool = True, approve: bool = True, send: 
                     log.warning("story: %s not sent (%s)", dispute_id, err)
 
 
+def _age(run: pipeline.Run, dispute_id: str, days_ago: int) -> None:
+    """The dispute as filed `days_ago` days ago: filed_at and each line's file-by date move back, the window doesn't."""
+    from datetime import timedelta
+
+    from api import dispute_email, lookback
+
+    d = dispute_email.latest(run, dispute_id)
+    if d is None or d.filed_at is None:
+        return
+    window = lookback.window_days(run.account)
+    filed = d.filed_at - timedelta(days=days_ago)
+    file_by = filed.date() + timedelta(days=window)
+    left = window - days_ago
+    lines = [ln.model_copy(update={"file_by": file_by, "days_left": left}) for ln in d.lines]
+    run.emit("dispute", d.model_copy(update={"filed_at": filed, "lines": lines}))
+
+
 def steps(client=None) -> list[str]:
     """The history, in order. Returns the run ids it made."""
     from api import disputes
@@ -110,6 +130,8 @@ def steps(client=None) -> list[str]:
         d = next((e.data for e in reversed(run.events) if e.type == "dispute"), None)
         if d is None:
             continue
+        if aid in AGED:
+            _age(run, d.id, AGED[aid])
         if aid in AGREEMENT:
             cids, text = AGREEMENT[aid]
             disputes.post(d.id, text, client=client, agree_charge_ids=cids)

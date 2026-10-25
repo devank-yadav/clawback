@@ -128,4 +128,13 @@ def answer_reply(dispute: Dispute, text: str, evidence: dict[str, Evidence], ter
         return ReplyDraft(r.classification, r.charge_ids, r.claim, r.answer.strip(), r.answer_evidence_ids)
 
     return claude.ask(REPLY_SERVICE, prompts.render("portal_reply", account), user, LLMReply, check, client,
-                      live_first=True, dispute_id=dispute.id).value
+                      live_first=True, equivalent=without_saved_rules, dispute_id=dispute.id).value
+
+
+def without_saved_rules(request: dict) -> dict:
+    """A reply request with the saved rules' evidence taken out: the same reply about the same dispute reads the
+    same whether or not the owner has answered another charge's question yet. Used only to find a recording."""
+    user = request["user"].split("\n\nYour previous answer")[0]
+    body = json.loads(user)
+    body["evidence"] = [e for e in body.get("evidence", []) if e.get("kind") != "rule"]
+    return {**request, "user": json.dumps(body, sort_keys=True)}
