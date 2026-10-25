@@ -94,7 +94,7 @@ function Workspace({ account, accounts, view }: { account: Account; accounts: Ac
     <AppShell account={account} accounts={accounts} active={view} crumb={CRUMB[view]} approvalsWaiting={ws.stage === 'approval' && ws.approval?.status === 'pending'} onReset={onReset}>
       <main className={`main-content ${selected ? 'with-panel' : ''}`}>
         <div className="page-heading">
-          <div><div className="eyebrow">{account.brand.name}</div><h1>{heading.title}</h1><p>{heading.line}</p></div>
+          <div className="ph-text"><h1>{heading.title}</h1><p>{heading.line}</p></div>
           {(view === 'overview' || view === 'payments') && (awaitingPayment || starting ? payButton : view === 'overview' && <Link className="primary" href={reviewHref}>Open analysis <ArrowRight /></Link>)}
         </div>
 

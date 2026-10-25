@@ -8,7 +8,7 @@ import { useState, type DragEvent } from "react";
 import { useRun } from "@/components/console/RunProvider";
 import { readRemittance, runRemittance } from "@/components/upload/api";
 import { money } from "@/lib/format";
-import { PageHero } from "@/components/ui/kit";
+import { PageHeader } from "@/components/ui/kit";
 
 const CREW: { name: string; tag: "AI" | "CODE" | "PERSON" }[] = [
   { name: "Payment reader", tag: "AI" },
@@ -67,30 +67,28 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
   return (
     <div className="fl-hero">
       <section className="fl-start" aria-label="Start a payment check">
-        <PageHero
-          title={<>Your agents are watching <em>{cast.distributor}’s payments.</em></>}
-          sub={<>When a payment lands, they read the deal, check every deduction, <mark>dispute the wrong ones with proof</mark> and accept the fair ones. You’re asked only when the deal is unclear.</>}
-        >
-          <div className="bw-actions">
-            {reading ? (
-              <div className="fl-drop is-busy">
-                <span className="fl-reading" aria-live="polite">
-                  <span className="cx-pill is-live">Payment reader · AI</span>
-                  <strong>Reading {reading}…</strong>
-                  <small>Listing every deduction line, then checking each one is printed word for word and that they add up.</small>
-                  <span className="fl-bar is-indeterminate"><i /></span>
-                </span>
-              </div>
-            ) : (
-              <>
-                <button className="cx-btn is-blue fl-go" onClick={pay} disabled={busy || !account}>
-                  {starting ? "The payment is landing…" : `Send a test payment from ${cast.distributor}`}
-                </button>
-                <span className="bw-fine">or <button onClick={() => setPasting((v) => !v)} disabled={busy} aria-expanded={pasting}>upload the remittance they sent</button></span>
-              </>
-            )}
+        <PageHeader
+          title={`Agents · ${cast.distributor}`}
+          line="No payment in progress. A payment from the bank, QuickBooks or the remittance inbox starts the agents."
+          actions={!reading && (
+            <>
+              <button className="cx-btn is-ghost" onClick={() => setPasting((v) => !v)} disabled={busy} aria-expanded={pasting}>Upload a remittance</button>
+              <button className="cx-btn fl-go" onClick={pay} disabled={busy || !account}>
+                {starting ? "The payment is landing…" : "Send a test payment"}
+              </button>
+            </>
+          )}
+        />
+        {reading && (
+          <div className="fl-drop is-busy">
+            <span className="fl-reading" aria-live="polite">
+              <span className="cx-pill is-live">Payment reader · AI</span>
+              <strong>Reading {reading}…</strong>
+              <small>Listing every deduction line, then checking each one is printed word for word and that they add up.</small>
+              <span className="fl-bar is-indeterminate"><i /></span>
+            </span>
           </div>
-        </PageHero>
+        )}
 
         {pasting && !reading && (
           <div className="fl-paste">
@@ -130,20 +128,19 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
           </div>
         ) : null)}
 
-        <div className="bw-stage">
-          <div className="bw-frame">
+        <section className="ap-card" aria-label="Sources and agents">
+          <h2>Sources</h2>
             <div className="fl-watch" aria-label="What the agents are watching">
               {[["Bank", "Deposits from " + cast.distributor], ["QuickBooks", "Invoices and payments"], ["Remittance inbox", "Payment advice and broker emails"]].map(([n, d]) => (
                 <span key={n} className="fl-watch-item"><i className="tb-dot is-live" /><span><strong>{n}</strong><small>{d}</small></span></span>
               ))}
             </div>
+            <h2>Agents</h2>
             <div className="fl-crew" aria-label="The agents">
               {CREW.map((c) => <span key={c.name} className={`fl-chip ${c.tag === "CODE" ? "is-code" : ""}`}><i>{c.tag === "CODE" ? "CODE" : "AI"}</i>{c.name}</span>)}
               <span className="fl-chip is-person"><i>YOU</i>{cast.owner}</span>
             </div>
-            <p className="cx-tiny">AI reads and writes. Tested code does every calculation. You decide only what the deal leaves open.</p>
-          </div>
-        </div>
+        </section>
       </section>
     </div>
   );

@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
-import { EmptyState, HeroPill, PageHero, SectionHead } from "@/components/ui/kit";
+import { EmptyState, PageHeader, SectionHead } from "@/components/ui/kit";
 import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
 import type { Connection } from "@/lib/types";
@@ -79,11 +79,7 @@ export default function Connections() {
     <div className="fl">
       <TopBar account={account} active="connections" />
       <main className="fl-main bp bp-cn">
-        <PageHero
-          pill={<HeroPill>{account?.brand.name ?? "Connections"}</HeroPill>}
-          title={<>Where the agents get<em>their information.</em></>}
-          sub={`Payments, records and contracts come in through these. When a payment from ${cast.distributor} arrives, the agents start on their own.`}
-        />
+        <PageHeader title="Connections" line={`Where payments, records and contracts come in. A payment from ${cast.distributor} starts the agents on its own.`} />
         {conns.error && <div className="fl-problem" role="alert">{conns.error}</div>}
         {conns.data && conns.data.length === 0 && <EmptyState title="No sources on this server." line="Upload a remittance, a contract or records as a file and the agents read it." />}
 

@@ -1,0 +1,88 @@
+/* App pages read data: a compact left-aligned header (PageHeader in components/ui/kit.tsx), sans titles, no sky
+   wash, no serif pitch. Fraunces stays on the public site; the run's result heading keeps it, smaller, as a report
+   heading. Loaded last by the console and workspace layouts. */
+
+/* the page header */
+.ph { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; padding: 8px 0 4px; }
+.ph-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ph h1, .page-heading h1, .cx-h1 { margin: 0; font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif; font-size: 26px; font-weight: 600; letter-spacing: -0.6px; line-height: 1.2; color: var(--ink); }
+.ph p, .page-heading p { margin: 0; font-size: 14px; color: var(--sub); max-width: 52em; }
+.ph-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.page-heading { align-items: flex-end; margin-bottom: 22px; }
+
+/* list pages: no sky wash behind tables and cards */
+body:has(.sb) .bw-stage::before { display: none; }
+body:has(.sb) .bw-stage { padding-top: 0; }
+.bp { gap: 22px; }
+.fl-main { padding-top: 28px; }
+
+/* the agents' start: header, then the last payment, then sources and agents */
+.fl-hero .fl-start { max-width: none; align-items: stretch; text-align: left; padding: 0 0 40px; gap: 18px; }
+.fl-start .fl-last, .fl-start .fl-paste, .fl-start .fl-problem { width: 100%; margin: 0; }
+.fl-start .fl-last { border-radius: var(--radius-card); padding: 12px 14px 12px 18px; }
+.ap-card { display: flex; flex-direction: column; gap: 12px; padding: 20px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); }
+.ap-card h2 { margin: 0; font-size: 13px; font-weight: 600; color: var(--sub); }
+.ap-card .fl-watch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.ap-card .fl-crew { justify-content: flex-start; }
+
+/* the run: its heading and the result's, as report headings */
+.fl-pay { align-items: flex-start; text-align: left; padding-top: 4px; }
+.fl-pay-line { font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif; font-size: 22px; font-weight: 600; letter-spacing: -0.4px; max-width: none; }
+.fl-pay-line b { font-weight: 600; }
+.sh h2 { font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif; font-weight: 600; font-size: 22px; letter-spacing: -0.4px; }
+.fl-sum { align-items: flex-start; text-align: left; padding: 12px 0 0; }
+.fl-sum-text { align-items: flex-start; gap: 10px; }
+.fl-sum h1 { font-size: clamp(26px, 3vw, 36px); max-width: 26em; text-wrap: pretty; }
+.fl-sum h1 em { display: block; }
+.fl-sum .fl-facts { justify-content: flex-start; }
+.fl-sum-meta { margin: 0; font-size: 13px; color: var(--sub); }
+
+/* /app: the supplier's home */
+.ap { gap: 20px; }
+.ap-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.ap-tiles > div { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.ap-tiles span { font-size: 12.5px; color: var(--sub); }
+.ap-tiles strong { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.ap-tiles strong.is-wait { color: var(--wait-ink); }
+.ap-table { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); overflow: hidden; }
+.ap-table ul { list-style: none; margin: 0; padding: 0; }
+.ap-head, .ap-row { display: grid; grid-template-columns: minmax(160px, 1.2fr) minmax(220px, 1.5fr) minmax(110px, 0.9fr) repeat(3, minmax(80px, 0.7fr)) minmax(90px, 0.7fr); gap: 12px; align-items: center; padding: 12px 18px; }
+.ap-head { padding-top: 10px; padding-bottom: 10px; background: var(--card-2); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--sub); }
+.ap-row { border-bottom: 1px solid var(--line); color: var(--ink); font-size: 14px; }
+.ap-table li:last-child .ap-row { border-bottom: 0; }
+.ap-row:hover { background: var(--card-2); }
+.ap-row.is-current { box-shadow: inset 3px 0 var(--accent); }
+.ap-row > span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ap-row small { font-size: 12px; color: var(--faint); }
+.ap-who { flex-direction: row !important; align-items: center; gap: 10px !important; }
+.ap-who strong { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ap-head .num, .ap-row .num { text-align: right; align-items: flex-end; font-variant-numeric: tabular-nums; }
+.ap-row .num.is-dispute { color: var(--dispute-ink); }
+.ap-row .num.is-wait { color: var(--wait-ink); }
+.db-none { color: var(--faint); }
+.ap-row.is-skel { height: 56px; }
+.ap-row.is-skel i { height: 12px; border-radius: 6px; background: var(--raised); }
+.ap-empty { margin: 0; padding: 18px; font-size: 14px; color: var(--sub); }
+.ap-empty a { color: var(--accent-ink); text-decoration: underline; }
+.ap-recent h2 { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+.ap-recent ol { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.ap-recent a { display: flex; justify-content: space-between; gap: 16px; padding: 10px 2px; border-bottom: 1px solid var(--line); font-size: 13.5px; color: var(--sub); }
+.ap-recent a:hover { color: var(--ink); }
+.ap-recent strong { color: var(--ink); font-weight: 600; }
+.ap-recent time { flex: none; color: var(--faint); font-size: 12.5px; }
+
+@media (max-width: 1100px) {
+  .ap-head { display: none; }
+  .ap-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+  .ap-row > .ap-who { grid-column: 1 / -1; }
+  .ap-row > span[data-label]::before { content: attr(data-label); font-size: 11.5px; color: var(--faint); }
+  .ap-row .num { text-align: left; align-items: flex-start; }
+}
+@media (max-width: 720px) {
+  .ap-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ap-card .fl-watch { grid-template-columns: minmax(0, 1fr); }
+  .ph h1, .page-heading h1, .cx-h1 { font-size: 22px; }
+  .ph-actions { width: 100%; }
+  .ap-recent a { flex-direction: column; gap: 2px; }
+  .fl-main { padding-top: 18px; }
+}

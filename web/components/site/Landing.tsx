@@ -48,37 +48,22 @@ const TRUST = [
   },
 ];
 
-/** Public reporting and filings on two supplier suits against UNFI. Allegations, not findings: both cases are open. */
-const CASES = [
-  {
-    name: "NYSM Organics v. United Natural Foods",
-    when: "Filed Nov 3, 2024 · Rhode Island Superior Court · putative class action",
-    points: [
-      "A natural-foods supplier from Vineyard Haven, Massachusetts says UNFI takes prompt-pay discounts on invoices it pays after the discount window.",
-      "The complaint describes “opaque and constant deductions”, including charges for breaking down cases and for out-of-stocks.",
-      "It says disputing them costs too much for all but the largest suppliers.",
-    ],
-    status: "Pending. The court dismissed the Massachusetts consumer-protection claim on June 5, 2025; the contract claims continue.",
-    sources: [
-      { label: "Grocery Dive", href: "https://www.grocerydive.com/news/unfi-class-action-lawsuit-payment-discounts-grocery-natural-foods/732132/" },
-      { label: "New Hope", href: "https://www.newhope.com/industry-news/massachusetts-organic-food-supplier-accuses-unfi-deceptive-practices-breach-of-contract" },
-      { label: "UNFI 10-Q, Nov 2025", href: "https://www.sec.gov/Archives/edgar/data/1020859/000102085925000065/unfi-20251101.htm" },
-    ],
-  },
-  {
-    name: "Omaha Industries v. United Natural Foods",
-    when: "Filed January 2024",
-    points: [
-      "UNFI charged back $268,816.94 on more than $326,780 of pet food it sold to Giant Food, about 82%, according to Omaha.",
-      "Omaha says UNFI leaned on broad language in the supply agreement and never gave a full accounting.",
-    ],
-    status: "Omaha seeks more than $250,000 in damages.",
-    sources: [
-      { label: "Grocery Dive", href: "https://www.grocerydive.com/news/omaha-sues-grocery-distributor-unfi-chargebacks-giant-food/705044/" },
-      { label: "Supply Chain Dive", href: "https://www.supplychaindive.com/news/omaha-sues-grocery-distributor-unfi-chargebacks-giant-food/704810" },
-    ],
-  },
+/** Sources for two supplier suits against UNFI. The figures on the page are as reported (Omaha's own numbers; the
+ * 82% is Omaha's). Allegations, not findings: both cases are open. The NYSM timeline is a schematic, with no dates. */
+type Source = { label: string; href: string };
+const NYSM_SOURCES: Source[] = [
+  { label: "Grocery Dive", href: "https://www.grocerydive.com/news/unfi-class-action-lawsuit-payment-discounts-grocery-natural-foods/732132/" },
+  { label: "New Hope", href: "https://www.newhope.com/industry-news/massachusetts-organic-food-supplier-accuses-unfi-deceptive-practices-breach-of-contract" },
+  { label: "UNFI 10-Q, Nov 2025", href: "https://www.sec.gov/Archives/edgar/data/1020859/000102085925000065/unfi-20251101.htm" },
 ];
+const OMAHA_SOURCES: Source[] = [
+  { label: "Grocery Dive", href: "https://www.grocerydive.com/news/omaha-sues-grocery-distributor-unfi-chargebacks-giant-food/705044/" },
+  { label: "Supply Chain Dive", href: "https://www.supplychaindive.com/news/omaha-sues-grocery-distributor-unfi-chargebacks-giant-food/704810" },
+];
+
+function Sources({ list }: { list: Source[] }) {
+  return <p className="st-sources">Sources: {list.map((s, i) => <span key={s.href}>{i > 0 && " · "}<a href={s.href} target="_blank" rel="noreferrer">{s.label}</a></span>)}</p>;
+}
 
 function TopNav() {
   return (
@@ -104,7 +89,6 @@ function Example() {
       <figure className="st-frame" aria-label="Example: two charges from one payment, checked against the deal">
         <figcaption className="st-frame-head">
           <span>Example · a payment from a distributor, $6,850 short</span>
-          <small>Fictional brand</small>
         </figcaption>
         <div className="st-check is-dispute">
           <div className="st-check-top">
@@ -146,15 +130,37 @@ export default function Landing() {
             <h2>Distributors take money out of every payment.<span>Small brands rarely have the time to check it.</span></h2>
           </div>
           <div className="st-cases">
-            {CASES.map((c) => (
-              <article key={c.name} className="st-case">
-                <h3>{c.name}</h3>
-                <p className="st-case-when">{c.when}</p>
-                <ul>{c.points.map((p) => <li key={p}>{p}</li>)}</ul>
-                <p className="st-case-status">{c.status}</p>
-                <p className="st-sources">Sources: {c.sources.map((s, i) => <span key={s.href}>{i > 0 && " · "}<a href={s.href} target="_blank" rel="noreferrer">{s.label}</a></span>)}</p>
-              </article>
-            ))}
+            <article className="st-case">
+              <p className="st-case-when">Omaha Industries v. United Natural Foods · filed January 2024</p>
+              <p className="st-case-figure display">$268,816.94</p>
+              <p className="st-case-label">charged back</p>
+              <figure className="st-share" aria-label="About 82% of more than $326,780 in sales charged back, according to Omaha">
+                <div className="st-share-track"><span style={{ width: "82%" }} /></div>
+                <figcaption><span>About 82% taken back</span><span>of more than $326,780 of pet food sold to Giant Food</span></figcaption>
+              </figure>
+              <p className="st-case-text">Omaha says UNFI leaned on broad language in the supply agreement to charge back the product, and never gave a full accounting.</p>
+              <Sources list={OMAHA_SOURCES} />
+            </article>
+            <article className="st-case">
+              <p className="st-case-when">NYSM Organics v. United Natural Foods · filed Nov 3, 2024 · R.I. Superior Court</p>
+              <p className="st-case-figure display is-words">Paid late. Discount kept.</p>
+              <figure className="st-tl" aria-label="Schematic: the invoice, the prompt-pay discount window, and a payment made after the window closed that still took the discount">
+                <div className="st-tl-track">
+                  <span className="st-tl-window" />
+                  <i className="st-tl-mark is-start" style={{ left: "0%" }} />
+                  <i className="st-tl-mark" style={{ left: "38%" }} />
+                  <i className="st-tl-mark is-paid" style={{ left: "80%" }} />
+                </div>
+                <figcaption className="st-tl-labels">
+                  <span style={{ left: "0%" }}>Invoice</span>
+                  <span style={{ left: "38%" }}>Discount window closes</span>
+                  <span className="is-paid" style={{ left: "80%" }}>Paid, discount still taken</span>
+                </figcaption>
+              </figure>
+              <p className="st-case-text">A natural-foods supplier says UNFI takes prompt-pay discounts on invoices it pays after the window, among “opaque and constant deductions” that cost too much to dispute.</p>
+              <p className="st-case-status">Pending. The consumer-protection claim was dismissed on June 5, 2025; the contract claims continue.</p>
+              <Sources list={NYSM_SOURCES} />
+            </article>
           </div>
           <p className="st-fine">Allegations as reported in public filings and the trade press; neither case has been decided.</p>
         </section>

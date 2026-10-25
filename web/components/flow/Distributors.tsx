@@ -8,7 +8,7 @@ import { useCallback, useState } from "react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar, { DistributorMark, STATUS_TONE } from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
-import { EmptyState, PageHero, SectionHead } from "@/components/ui/kit";
+import { EmptyState, PageHeader, SectionHead } from "@/components/ui/kit";
 import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
 import type { DistributorItem, SupplierItem } from "@/lib/types";
@@ -51,10 +51,7 @@ export default function Distributors() {
     <div className="fl">
       <TopBar account={account} active="distributors" />
       <main className="fl-main bp bp-ds">
-        <PageHero
-          title={supplier ? <>You sell through {tracked.length} distributor{tracked.length === 1 ? "" : "s"}.<em>The agents watch every payment.</em></> : <>Loading your<em>distributors…</em></>}
-          sub="The agents watch each one’s payments and check every deduction against its deal. Open one to see its whole workflow."
-        />
+        <PageHeader title="Distributors" line={supplier ? `${tracked.length} tracked. Open one to see its payments and the agents’ work.` : undefined} actions={<a className="cx-btn" href="#add">Add a distributor</a>} />
 
         {waiting.length > 0 && (
           <Link className="bp-next" href={withAccount("/", waiting[0].account_id)}>
@@ -69,7 +66,6 @@ export default function Distributors() {
           <section className="bp-frame" aria-label="Distributors you track">
             <div className="bp-frame-bar">
               <span className="bp-tab">Tracked <b>{supplier ? tracked.length : "–"}</b></span>
-              <a className="cx-btn" href="#add">Add a distributor</a>
             </div>
             <div className="bp-thead" aria-hidden="true"><span>Distributor</span><span>Status</span><span>Last payment</span><span>Contract</span><span /></div>
             {!supplier && !fetched.error && [0, 1, 2].map((i) => <div key={i} className="bp-skel" aria-hidden="true"><i /><i /><i /><i /><i /></div>)}

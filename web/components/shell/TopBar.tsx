@@ -11,7 +11,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  Bell, Bookmark, CalendarClock, ChevronsUpDown, Gavel, ExternalLink, FileText, FlaskConical, History as HistoryIcon, LayoutDashboard,
+  Bell, Bookmark, House, CalendarClock, ChevronsUpDown, Gavel, ExternalLink, FileText, FlaskConical, History as HistoryIcon, LayoutDashboard,
   LogIn, LogOut, Menu, PenLine, Plug, ShieldCheck, Truck, Workflow, X,
 } from "lucide-react";
 import { Logo } from "@/components/console/ui";
@@ -25,6 +25,7 @@ import { useFetched } from "@/lib/useFetched";
 type Item = { key: string; href: string; label: string; icon: ReactNode; view?: string };
 
 const MAIN: Item[] = [
+  { key: "home", href: "/app", label: "Home", icon: <House /> },
   { key: "agents", href: "/", label: "Agents", icon: <Workflow /> },
   { key: "distributors", href: "/distributors", label: "Distributors", icon: <Truck /> },
   { key: "history", href: "/history", label: "History", icon: <HistoryIcon /> },
@@ -44,7 +45,7 @@ const TOOLS: Item[] = [
 
 /** Which sidebar item the address is: /app → agents, /app/history → history, /app/results → history. */
 function activeKey(path: string): string | null {
-  if (path === "/app") return "agents";
+  if (path === "/app") return "home";
   const seg = path.replace(/^\/app\/?/, "").split("/")[0];
   if (seg === "results") return "history";
   if (seg === "upload") return "workspace";
@@ -239,13 +240,13 @@ export default function TopBar({ account, extra }: { account: Account | null; ac
     <>
       <header className="sb-mobile">
         <button className="sb-menu-btn" aria-label="Open the menu" aria-expanded={open} aria-controls="sb" onClick={() => setOpen(true)}><Menu /></button>
-        <Link href={withAccount("/", account?.id, { home: "1" })} className="sb-logo" aria-label="Clawback, start screen"><Logo /> clawback</Link>
+        <Link href={withAccount("/app", account?.id)} className="sb-logo" aria-label="Clawback home"><Logo /> clawback</Link>
         <span className="sb-mobile-who">{account?.distributor.name ?? ""}</span>
       </header>
       {open && <div className="sb-backdrop" onClick={close} role="presentation" />}
       <aside id="sb" className={`sb ${open ? "is-open" : ""}`} aria-label="App">
         <div className="sb-head">
-          <Link href={withAccount("/", account?.id, { home: "1" })} className="sb-logo" aria-label="Clawback, start screen" onClick={close}><Logo /> clawback</Link>
+          <Link href={withAccount("/app", account?.id)} className="sb-logo" aria-label="Clawback home" onClick={close}><Logo /> clawback</Link>
           <span className="sb-head-right">
             <Notifications account={account} onPick={close} />
             <button className="sb-close" aria-label="Close the menu" onClick={close}><X /></button>

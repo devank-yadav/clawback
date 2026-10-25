@@ -11,6 +11,7 @@ import "../billow.css";
 import "../billow-pages.css";
 import "../billow-tools.css";
 import "../shell.css";
+import "../app-pages.css";
 
 // One app with the agents' flow at `/`: the same tokens (theme.css), the same parts (flow.css) and the same type.
 

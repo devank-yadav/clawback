@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { Info } from "lucide-react";
 import AppShell from "@/components/shell/AppShell";
+import { PageHeader } from "@/components/ui/kit";
 import { useCurrentAccount } from "@/lib/accounts";
 import type { Account } from "@/lib/types";
 
@@ -12,7 +13,7 @@ export default function ToolFrame({ href, title, lead, children }: { href: strin
   return (
     <AppShell account={account} accounts={accounts} active={href} crumb={title}>
       <main className="main-content tool-main">
-        <div className="page-heading"><div><div className="eyebrow">{account?.brand.name ?? " "}</div><h1>{title}</h1>{account && <p>{lead(account)}</p>}</div></div>
+        <PageHeader title={title} line={account ? lead(account) : undefined} />
         {error && <div className="feedback error" role="alert"><Info />{error}</div>}
         {!account && !error && <p className="muted" role="status">Loading your accounts…</p>}
         {account && <div key={account.id} className="tool-body">{children(account)}</div>}

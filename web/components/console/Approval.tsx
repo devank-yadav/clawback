@@ -25,7 +25,7 @@ export default function Approval() {
     <Shell crumbs={["Accounting", "Your approval", a?.id ?? "—"]} right={`${CAST.ownerFull} · admin`}>
       <div className="cx-head">
         <div>
-          <h1 className="cx-h1">Fair charges ready for accounting approval</h1>
+          <h1 className="cx-h1">Your approval</h1>
           <p className="cx-meta">You approve the accounting entry for the fair charges. Disputed money stays open.</p>
         </div>
         <Pill tone={pending ? "accent" : a?.status === "approved" ? "green" : ""}>{a ? (pending ? "Awaiting your yes" : a.status === "approved" ? "Approved" : "Held") : "Not ready yet"}</Pill>

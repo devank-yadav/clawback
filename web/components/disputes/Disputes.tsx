@@ -10,7 +10,7 @@ import { useCallback } from "react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
-import { EmptyState, PageHero } from "@/components/ui/kit";
+import { EmptyState, PageHeader } from "@/components/ui/kit";
 import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
 import { money } from "@/lib/format";
@@ -46,11 +46,7 @@ export default function Disputes() {
     <div className="fl">
       <TopBar account={account} />
       <main className="fl-main bp dm-page">
-        <PageHero
-          align="left"
-          title={<>Disputes<em>{open ? `with ${cast.distributor}.` : "and their replies."}</em></>}
-          sub={`What was sent to ${cast.distributor}, every reply from their portal or by email, and the answers waiting for you.`}
-        />
+        <PageHeader title="Disputes" line={`What was sent to ${cast.distributor}, and every reply from their portal or by email.`} />
         {list.error && <div className="fl-problem" role="alert">{list.error}</div>}
         {list.data && threads.length === 0 ? (
           <EmptyState

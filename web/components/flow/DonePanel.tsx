@@ -11,7 +11,7 @@ import type { ChargeView } from "@/lib/workspace";
 import { useRun } from "@/components/console/RunProvider";
 import { Money } from "@/components/console/ui";
 import { DisputeCard } from "./Spotlight";
-import { HeroPill, MoneyBar, StatTile } from "@/components/ui/kit";
+import { MoneyBar, StatTile } from "@/components/ui/kit";
 
 function Pile({ title, tone, total, charges, amount, onOpen }: { title: string; tone: "dispute" | "fair" | "wait"; total: number; charges: ChargeView[]; amount: (c: ChargeView) => number; onOpen: (id: string) => void }) {
   const still = useReducedMotion();
@@ -63,7 +63,7 @@ export function DonePanel({ onOpen, onNew, rail, next, disputeInNext = false, fa
     <>
       <section className="fl-sum" aria-live="polite">
         <div className="fl-sum-text">
-          {r && <HeroPill>Payment of {money(r.received)} from {distributor}, checked</HeroPill>}
+          {r && <p className="fl-sum-meta">Payment of {money(r.received)} from {distributor}, checked</p>}
           {failed ? (
             <h1>The agents stopped before finishing</h1>
           ) : (

@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
       { source: "/board/:path*", destination: "/app/workspace?view=payments", permanent: false },
       { source: "/", has: [{ type: "query", key: "view" }], destination: "/app/workspace", permanent: false },
       { source: "/", has: [{ type: "query", key: "charge" }], destination: "/app/workspace", permanent: false },
-      ...["account", "run", "home"].map((key) => ({ source: "/", has: [{ type: "query" as const, key }], destination: "/app", permanent: false })),
+      ...["account", "run", "home"].map((key) => ({ source: "/", has: [{ type: "query" as const, key }], destination: "/app/agents", permanent: false })),
       ...moved.map((m) => ({ source: `/${m}`, destination: `/app/${m}`, permanent: false })),
       { source: "/welcome", destination: "/", permanent: false },
     ];

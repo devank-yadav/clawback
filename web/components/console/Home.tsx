@@ -55,15 +55,13 @@ export default function Home() {
   const approving = view.approval?.status === "pending" ? 1 : 0;
   const disputes = view.charges.filter((c) => (c.disputed ?? 0) > 0).length;
   const status = asking ? "Needs your decision" : approving ? "Needs your approval" : view.reviewed ? "Review ready" : r ? "Agents checking" : "Waiting for payment";
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const range = o?.months.length ? `${monthName(o.months[0].month)}–${monthName(o.months[o.months.length - 1].month)}` : "";
 
   return (
     <Shell crumbs={["Overview"]}>
       <div className="cx-head">
         <div>
-          <h1 className="cx-h1">{greeting}, {cast.owner}</h1>
+          <h1 className="cx-h1">Summary</h1>
           <p className="cx-meta">Your recovery overview · {cast.brand}</p>
         </div>
         <Link className="cx-btn" href={link("/review")}>Review latest payment</Link>

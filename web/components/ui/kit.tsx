@@ -24,6 +24,20 @@ export function PageHero({ pill, title, sub, children, align = "center" }: { pil
   );
 }
 
+/** An app page's header: a plain title, one line of context when it helps, and the page's actions on the right.
+ * App pages read data; the serif hero (PageHero) belongs to the public site. */
+export function PageHeader({ title, line, actions }: { title: ReactNode; line?: ReactNode; actions?: ReactNode }) {
+  return (
+    <header className="ph">
+      <div className="ph-text">
+        <h1>{title}</h1>
+        {line && <p>{line}</p>}
+      </div>
+      {actions && <div className="ph-actions">{actions}</div>}
+    </header>
+  );
+}
+
 /** Billow's two-line section head: the claim, then a muted second line. */
 export function SectionHead({ title, muted, aside }: { title: ReactNode; muted?: ReactNode; aside?: ReactNode }) {
   return (

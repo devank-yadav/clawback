@@ -57,8 +57,8 @@ export function useCurrentAccount(): AccountsState & { account: Account | null; 
 const APP_SCREENS = new Set(["/", "/distributors", "/history", "/saved", "/contracts", "/connections", "/home", "/review", "/approval",
   "/activity", "/workspace", "/results", "/april", "/coach", "/scenario", "/upload", "/audit", "/disputes"]);
 
-/** Where an app screen lives: appPath("/history") → "/app/history", appPath("/") → "/app". Other paths are unchanged. */
-export const appPath = (path: string) => (APP_SCREENS.has(path) ? (path === "/" ? "/app" : `/app${path}`) : path);
+/** Where an app screen lives: appPath("/history") → "/app/history", appPath("/") → "/app/agents" (the agents' flow; the home is /app). Other paths are unchanged. */
+export const appPath = (path: string) => (APP_SCREENS.has(path) ? (path === "/" ? "/app/agents" : `/app${path}`) : path);
 
 /** A link that keeps the account: withAccount("/results", "peak-bar") → "/app/results?account=peak-bar". Screens are
  * named by their short paths and land under /app (appPath); /portal, /signin and the rest stay as they are. */

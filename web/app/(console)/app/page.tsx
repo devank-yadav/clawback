@@ -1,6 +1,8 @@
-import Flow from "@/components/flow/Flow";
+import Dashboard from "@/components/app/Dashboard";
 
-/** `/`: drop in a payment and watch the agents work (components/flow). The full workspace is at /workspace. */
-export default function Home() {
-  return <Flow />;
+export const metadata = { title: "Home · Clawback" };
+
+/** `/app`: the supplier's home, starting with the distributors table. A row opens /app/agents for that distributor. */
+export default function Page() {
+  return <Dashboard />;
 }
