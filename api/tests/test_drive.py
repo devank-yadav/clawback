@@ -77,6 +77,7 @@ def test_the_folder_tree_maps_to_accounts():
 
 def test_versions_by_sha256_and_changes_since_the_token(tmp_path):
     fake = FakeDrive()
+    drive.sync(fake)  # the first look is a baseline: what's already there is history
     fake.put("f1", "Store visit notes.md", "cor", b"Week 3 endcap confirmed.")
     first = drive.sync(fake)
     assert first.ok and [(o.doc_id, o.version, o.did) for o in first.outcomes] == [
@@ -129,6 +130,7 @@ def test_an_unsent_dispute_is_recomputed_and_its_email_redrafted():
     d = [e.data for e in run.events if e.type == "dispute"][-1]
     assert "$4,120.00" in dispute_email.email_for(run, d, claude).subject
     fake = FakeDrive()
+    drive.sync(fake)  # the first look is a baseline: what's already there is history
     fake.put("amd", "amendment-1.md", "con", accounts.get("peak-bar").docs["amendment-1"].read_bytes())
     drive.sync(fake, run_client=claude)
     now = dispute_email.latest(run, "D-0417")
@@ -141,6 +143,7 @@ def test_a_document_the_run_already_read_changes_nothing():
     claude = EmailClaude()
     run = finished_march(claude)
     fake = FakeDrive()
+    drive.sync(fake)  # the first look is a baseline: what's already there is history
     fake.put("sp", "spring-promo.md", "con", accounts.get("peak-bar").docs["spring-promo"].read_bytes())
     (o,) = drive.sync(fake, run_client=claude).outcomes
     assert o.did == "Added · v1" and not dispute_email.emails_of(run.id, "D-0417")
@@ -153,6 +156,7 @@ def test_a_remittance_in_remittances_starts_a_run(monkeypatch):
     monkeypatch.setattr(remittance, "start_with_charges", lambda slug, charges, client, background, arrival:
                         seen.append((slug, charges, arrival)) or SimpleNamespace(id="run-x"))
     fake = FakeDrive()
+    drive.sync(fake)  # the first look is a baseline: what's already there is history
     fake.put("r1", "Northmart remittance INV-3102.csv", "rem", b"ref,amount\nNM-2229,1800", mime="text/csv")
     (o,) = drive.sync(fake).outcomes
     assert (o.kind, o.run_id, o.did) == ("remittances", "run-x", "started run run-x")

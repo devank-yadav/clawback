@@ -34,6 +34,7 @@ import logging
 import os
 import re
 import threading
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -50,7 +51,13 @@ FOLDER_MIME = "application/vnd.google-apps.folder"
 GOOGLE_DOC = "application/vnd.google-apps.document"
 GOOGLE_SHEET = "application/vnd.google-apps.spreadsheet"
 KINDS = {"contracts": "deals", "promotions": "deals", "correspondence": "notices", "remittances": "remittances",
-         "sales data": "sales", "sales": "sales"}
+         "sales data": "sales", "sales": "sales", "deductions & backup": "notices", "deductions and backup": "notices",
+         "deductions": "notices", "orders & shipping": "orders", "orders and shipping": "orders", "orders": "orders"}
+
+
+def kind_of(folder_name: str) -> str | None:
+    """A kind folder's meaning, plain ("Contracts") or numbered the way people keep Drive tidy ("01 Contracts")."""
+    return KINDS.get(re.sub(r"^\s*\d+[\s._-]+", "", folder_name).strip().lower())
 FIELDS = "id, name, mimeType, modifiedTime, parents, trashed"
 
 
@@ -215,9 +222,17 @@ def _account_for(supplier_name: str, distributor_name: str) -> accounts.Account 
         home = next((x for x in accounts.every() if x.id == sid), a)
         if _norm(supplier_name) not in {_norm(sid), _norm(home.brand.name), _norm(a.brand.name)}:
             continue
-        if _norm(distributor_name) in {_norm(a.id), _norm(a.distributor.name)}:
+        if _norm(distributor_name) in _names(a, sid):
             return a
     return None
+
+
+def _names(a: accounts.Account, supplier_id: str) -> set[str]:
+    """What a distributor's folder may be called: its name ("KeHE Distributors"), its first word ("KeHE"), the
+    account id, or the account id without the supplier's prefix ("kehe" for peak-bar-kehe)."""
+    name = a.distributor.name
+    short = a.id.removeprefix(f"{supplier_id}-")
+    return {_norm(x) for x in (a.id, name, name.split()[0] if name.split() else name, short) if _norm(x)}
 
 
 def map_folders(client: Client, root: str) -> dict[str, tuple[str, str]]:
@@ -229,7 +244,7 @@ def map_folders(client: Client, root: str) -> dict[str, tuple[str, str]]:
             if a is None:
                 continue
             for k in (f for f in client.children(dist.id) if f.is_folder):
-                if (kind := KINDS.get(k.name.strip().lower())) is not None:
+                if (kind := kind_of(k.name)) is not None:
                     found[k.id] = (a.id, kind)
     return found
 
@@ -245,6 +260,19 @@ class Outcome:
     kind: str
     did: str  # what happened, in words
     run_id: str | None = None
+
+
+def _is_remittance(f: DriveFile) -> bool:
+    """A remittance advice (PDF, text, EDI 820, a payment CSV), not a history or balance export kept beside it."""
+    name = f.name.lower()
+    if re.search(r"history|prior|balances|lines\.csv", name):
+        return False
+    return _is_document(f) or name.endswith((".csv", ".edi", ".820"))
+
+
+def _is_document(f: DriveFile) -> bool:
+    """A file the readers can read as a document; spreadsheets and exports are kept as versions."""
+    return f.mime_type in (GOOGLE_DOC,) or f.name.lower().endswith((".pdf", ".md", ".txt", ".eml", ".docx"))
 
 
 def _text(data: bytes, f: DriveFile) -> str:
@@ -265,9 +293,35 @@ def _save_version(v: Version) -> None:
                         v.modified_time, v.seen_at))
 
 
+_PAGE = re.compile(r"^\s*(page\s+\d+(\s*(of|/)\s*\d+)?|\d+\s*(of|/)\s*\d+)\s*$", re.IGNORECASE | re.MULTILINE)
+
+
+def canon(text: str) -> str:
+    """Text as words only, for "is this the same document": page numbers, markdown and spacing don't count, so a
+    PDF printed from a document matches the document."""
+    text = _PAGE.sub(" ", unicodedata.normalize("NFKC", text or ""))  # NFKC: a printed "ﬁ" ligature is "fi"
+    return " ".join(re.findall(r"[a-z0-9$%]+", text.lower()))
+
+
+def same_document(account: accounts.Account, text: str) -> str | None:
+    """The account's own document with this text, if it has one."""
+    want = canon(text)
+    if not want:
+        return None
+    for doc_id, path in account.docs.items():
+        try:
+            if canon(path.read_text(errors="ignore")) == want:
+                return doc_id
+        except OSError:
+            continue
+    return None
+
+
 def process(client: Client, f: DriveFile, account_id: str, kind: str, run_client=None,
-            background: bool = True) -> Outcome | None:
-    """One new or changed file: a new version if its bytes changed, then what its folder means."""
+            background: bool = True, baseline: bool = False) -> Outcome | None:
+    """One new or changed file: a new version if its bytes changed, then what its folder means.
+    baseline (the first look at a folder): keep the version and its hash only. What was in Drive before Clawback
+    looked is history: nothing is read again, no run starts, no AI is called."""
     data = client.content(f)
     sha = hashlib.sha256(data).hexdigest()
     key = (account_id, f.id)
@@ -276,7 +330,9 @@ def process(client: Client, f: DriveFile, account_id: str, kind: str, run_client
         if before and before[-1].sha256 == sha:
             return None
     account = accounts.get(account_id)
-    doc_id = slug(f.name)
+    text = _text(data, f) if not baseline or kind in ("deals", "notices") else ""
+    same = same_document(account, text) if kind in ("deals", "notices") else None
+    doc_id = same or slug(f.name)
     known = doc_id in account.docs and doc_id not in account.drive  # data/'s copy stays the original
     if not known and kind in ("deals", "notices") and not doc_id.startswith(account.id):
         doc_id = f"drive-{account.id}-{doc_id}"
@@ -286,16 +342,23 @@ def process(client: Client, f: DriveFile, account_id: str, kind: str, run_client
     with _lock:
         VERSIONS.setdefault(key, []).append(v)
     _save_version(v)
-    text = _text(data, f)
+    if baseline:
+        why = f"the same as the account's {doc_id}" if same else "kept as it was when Clawback first looked"
+        return Outcome(account_id, f.name, doc_id, v.version, kind, f"baseline · {why}")
+    text = text or _text(data, f)
     root = accounts.drive_root()
     if root:
         keep = root / account_id / "versions" / f"{doc_id}.v{v.version}.txt"
         keep.parent.mkdir(parents=True, exist_ok=True)
         keep.write_text(text)
+    if kind == "remittances" and not _is_remittance(f):
+        return Outcome(account_id, f.name, doc_id, v.version, kind, "kept as a new version")
     if kind == "remittances":
         return _remittance(account, f, text, v, run_client, background)
     if kind == "sales":
         return Outcome(account_id, f.name, doc_id, v.version, kind, "kept as a new version (sales rows aren't read from Drive yet)")
+    if kind == "orders" or not _is_document(f):
+        return Outcome(account_id, f.name, doc_id, v.version, kind, "kept as a new version")
     if not known:
         if root is None:
             return Outcome(account_id, f.name, doc_id, v.version, kind, "kept as a version; DRIVE_DOCS_DIR isn't set")
@@ -350,6 +413,15 @@ def _open_disputes(account, doc_id: str, run_client) -> str:
              if (d := dispute_email.latest(run, i)) and d.status not in ("withdrawn", "resolved")]
     if not open_ or doc_id in {t.source_doc_id for t in run.terms}:  # nothing open, or a document it already read
         return ""
+    from api import documents
+
+    try:
+        with accounts.using(account):
+            kind = documents.load(doc_id)[0].kind
+    except Exception:  # noqa: BLE001 - a document that can't be loaded can't change a dispute
+        return ""
+    if kind != "amendment":  # only a signed amendment changes the deal under an open dispute; the rest wait for a run
+        return ""
     run.account = account  # the reloaded account, which has the new document
     dispute = open_[-1]
     before = dispute.total
@@ -396,7 +468,8 @@ def sync(client: Client | None = None, full: bool = False, run_client=None, back
     outcomes: list[Outcome] = []
     with _lock:
         try:
-            if full or STATUS.token is None or STATUS.folder_id != root:
+            first = STATUS.token is None or STATUS.folder_id != root
+            if full or first:
                 token = client.start_token()  # first, so nothing that changes during the walk is missed
                 STATUS.folders, STATUS.folder_id = map_folders(client, root), root
                 todo = [(f, *STATUS.folders[fid]) for fid in STATUS.folders for f in client.children(fid)
@@ -417,7 +490,7 @@ def sync(client: Client | None = None, full: bool = False, run_client=None, back
                         todo.append((f, *STATUS.folders[parent]))
             for f, account_id, kind in todo:
                 try:
-                    if (o := process(client, f, account_id, kind, run_client, background)) is not None:
+                    if (o := process(client, f, account_id, kind, run_client, background, baseline=first)) is not None:
                         outcomes.append(o)
                 except Exception as e:  # noqa: BLE001 - one file that fails doesn't stop the others
                     log.warning("drive: %s failed (%s)", f.name, type(e).__name__)
