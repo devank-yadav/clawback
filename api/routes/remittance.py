@@ -13,7 +13,8 @@ from api.contracts import StartRunResponse
 router = APIRouter(tags=["remittance"])
 
 SAMPLES = remittance.documents.DATA / "samples" / "remittances"
-SAMPLE_FILES = {"peak-bar": {"northmart-march-2026.pdf": "application/pdf", "northmart-march-2026.txt": "text/plain"}}
+SAMPLE_FILES = {"peak-bar": {"northmart-march-2026.pdf": "application/pdf", "northmart-march-2026.txt": "text/plain",
+                              "northmart-march-2026-820.txt": "text/plain"}}  # the last is an EDI 820
 
 
 def _account(account: str) -> None:
@@ -47,7 +48,8 @@ async def _upload(request: Request) -> tuple[str, str]:
 @router.post("/accounts/{account}/remittance", response_model=remittance.RemittanceRead,
              dependencies=[Depends(limit("ai"))])
 async def read_remittance(account: str, request: Request) -> remittance.RemittanceRead:
-    """Claude reads the remittance and code checks every line. Starts nothing: the person confirms first."""
+    """Claude reads the remittance (plain code reads an EDI 820) and code checks every line. Starts nothing: the
+    person confirms first."""
     _account(account)
     try:
         text, kind = await _upload(request)

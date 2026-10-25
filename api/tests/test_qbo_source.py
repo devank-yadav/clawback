@@ -261,3 +261,83 @@ def test_connections_show_the_last_sync(monkeypatch):
     assert card["status"] == "connected" and card["checked_at"] and card["run_id"] == run.id
     assert "INV-3102 starts the agents" in card["detail"] and card["last_seen"].startswith("Payment 200 of $41,350.00")
     qbo.reset()
+
+
+def test_a_payment_that_couldnt_start_a_run_is_tried_once_more_later():
+    calls, clock = [], [0.0]
+    start = starter(ScenarioClaude())
+
+    def flaky(p):
+        calls.append(p.id)
+        if len(calls) == 1:
+            raise RuntimeError("database restarting")
+        return start(p)
+
+    fake = FakeSandbox(NORTHMART, [SEED_PAYMENT])
+    poller = qbo_source.Poller(books_for(fake), flaky, retry_after=60, clock=lambda: clock[0])
+    poller.tick()
+    fake.pay("INV-3102", "41350.00", pid="200")
+    assert poller.tick() == [] and calls == ["200"]
+    assert "trying once more in 60 s" in sources.last("quickbooks", "peak-bar").text
+    clock[0] = 61
+    assert [p.id for p in poller.tick()] == ["200"] and len(calls) == 2 and len(pipeline.RUNS) == 1
+    clock[0] = 500
+    assert poller.tick() == [] and len(calls) == 2
+
+
+def test_a_payment_that_fails_twice_is_left_to_a_person():
+    calls, clock = [], [0.0]
+
+    def broken(p):
+        calls.append(p.id)
+        raise RuntimeError("no charges file")
+
+    fake = FakeSandbox(NORTHMART, [SEED_PAYMENT])
+    poller = qbo_source.Poller(books_for(fake), broken, retry_after=60, clock=lambda: clock[0])
+    poller.tick()
+    fake.pay("INV-3102", "41350.00", pid="200")
+    poller.tick()
+    clock[0] = 61
+    poller.tick()
+    clock[0] = 1000
+    poller.tick()
+    assert len(calls) == 2 and "still couldn't start the run" in sources.last("quickbooks", "peak-bar").text
+
+
+def reseed(fake: FakeSandbox, new_id: str, seed_pid: str) -> None:
+    """scripts/seed_quickbooks.py after the invoice was deleted: INV-3102 again, a new Id, the seed's payment on it."""
+    fake.invoices["INV-3102"] = {**fake.invoices["INV-3102"], "Id": new_id}
+    fake.payments = [p for p in fake.payments if p["Id"] != "131"]
+    fake.payments.append({**SEED_PAYMENT, "Id": seed_pid,
+                          "Line": [{"Amount": 41350.0, "LinkedTxn": [{"TxnId": new_id, "TxnType": "Invoice"}]}]})
+
+
+def test_a_reseeded_invoice_is_watched_after_a_demo_reset(monkeypatch):
+    from api.main import app
+
+    started = []
+    monkeypatch.setattr(pipeline, "start", stub_start(started))
+    fake = FakeSandbox(NORTHMART, [SEED_PAYMENT])
+    qbo_source.poller = poller = qbo_source.Poller(books_for(fake), lambda p: pipeline.start_for_deposit(
+        p, account=p.account_id), clock=lambda: 0.0)
+    poller.tick()
+    reseed(fake, "140", "141")
+    fake.pay("INV-3102", "41350.00", pid="150")  # on the new invoice: the old Id's watcher can't see it
+    assert poller.tick() == [] and not started
+    assert TestClient(app).post("/demo/reset").status_code == 200  # forgets the invoice Ids
+    assert poller.tick() == [] and not started  # the new invoice's payments already there are history
+    fake.pay("INV-3102", "41350.00", pid="151")
+    assert [p.id for p in poller.tick()] == ["151"] and started[0].deposit.id == "151"
+
+
+def test_a_reseeded_invoice_is_found_again_without_a_reset():
+    clock = [0.0]
+    started = []
+    fake = FakeSandbox(NORTHMART, [SEED_PAYMENT])
+    poller = qbo_source.Poller(books_for(fake), started.append, clock=lambda: clock[0])
+    poller.tick()
+    reseed(fake, "140", "141")
+    clock[0] = qbo_source.REFRESH_INVOICES_S + 1
+    assert poller.tick() == [] and poller.invoices["peak-bar"]["Id"] == "140"
+    fake.pay("INV-3102", "41350.00", pid="151")
+    assert [p.id for p in poller.tick()] == ["151"] and [p.id for p in started] == ["151"]

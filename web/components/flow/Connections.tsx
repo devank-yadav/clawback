@@ -1,12 +1,13 @@
 "use client";
 
 // Where payments, records and contracts come from. Each card says what it brings in and its real state on this server:
-// connected, not connected (the app says what happens instead), ready (upload), or coming soon. Upload is always there.
+// connected, not connected (the app says what happens instead), ready (upload, and the EDI 820, which comes in through
+// the upload or the inbox and needs no keys), or coming soon. Upload is always there.
 // The three that start the agents on their own (bank, QuickBooks, remittance inbox) also say when they last looked,
 // what they last found for the distributor in view and which run it started; the page refreshes every 10 seconds.
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
@@ -106,7 +107,11 @@ export default function Connections() {
                   <Seen c={c} accountId={accountId} now={now} />
                   <div className="bp-card-links">
                     {c.id === "bank" && <Link className="cx-btn is-ghost" href={withAccount("/", accountId)}>Go to the agents</Link>}
-                    <Link className="bp-link" href={uploadHref}>Or upload a file</Link>
+                    {c.id === "edi" ? (
+                      <Link className="cx-btn is-ghost" href={uploadHref}>Upload an 820</Link>
+                    ) : (
+                      <Link className="bp-link" href={uploadHref}>Or upload a file</Link>
+                    )}
                   </div>
                 </article>
               ))}
@@ -126,7 +131,7 @@ export default function Connections() {
         {soon.length > 0 && (
           <section className="bp-section">
             <SectionHead title="Coming soon" muted="Not on this server yet." />
-            <div className="bp-soon">
+            <div className="bp-soon" style={{ "--soon-cols": Math.min(soon.length, 4) } as CSSProperties}>
               {soon.map((c) => (
                 <article key={c.id}>
                   <div className="bp-soon-top"><strong>{c.name}</strong><span className="bp-chip is-soon">Soon</span></div>

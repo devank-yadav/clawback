@@ -14,6 +14,11 @@ Every QBO_POLL_S seconds, with the QBO_* keys set and not in DEMO_MODE (and QBO_
    pipeline.start_for_deposit keys it by "quickbooks:<Payment Id>", and a run the bank's deposit of the same payment
    started in the last half hour is matched instead of a second one.
 
+A payment that can't start its run (the run raised) is tried once more, RETRY_AFTER_S later, then left to a person.
+Each account's invoice is looked up again every REFRESH_INVOICES_S, and at once after POST /demo/reset
+(forget_invoices), so a reseeded invoice with a new Id is watched without a restart; the payments already on it are
+history, as on a newly seeded one.
+
 Payments already there on the first look are history (the seed's $41,350 on INV-3102 never starts a run), and so are
 Clawback's own: the $0 payment that applies a credit memo (TotalAmt 0, PrivateNote "Clawback ..."). The access token
 comes from qbo.books() (one LiveBooks, so the refresh token rotates in one place and is saved, qbo._refreshing_token).
@@ -44,7 +49,10 @@ from api.integrations import qbo, replay
 log = logging.getLogger("clawback.qbo_source")
 
 POLL_S = 15.0  # one query per customer per look: well inside Intuit's per-company request limits
-RETRY_MISSING_S = 600.0  # an invoice the sandbox doesn't have yet is looked up again this often
+RETRY_MISSING_S = 60.0  # an invoice the sandbox doesn't have yet is looked up again this often
+REFRESH_INVOICES_S = 120.0  # a found invoice is looked up again this often: a reseed gives it a new Id
+RETRY_AFTER_S = 60.0  # a payment that couldn't start its run is tried once more, this long after
+FAILED = object()  # what _start returns when the run couldn't start (on_payment itself may return None)
 DEMO_NOTE = "Recorded for the Clawback demo: the distributor's payment"  # never starts with qbo.MARK
 
 
@@ -89,8 +97,12 @@ class Poller:
     """Look for new payments against every account's invoice; hand each to `on_payment` once."""
 
     def __init__(self, books: qbo.LiveBooks, on_payment: Callable[[Payment], object], interval: float = POLL_S,
-                 every: Callable[[], list[accounts.Account]] = accounts.every):
+                 every: Callable[[], list[accounts.Account]] = accounts.every, retry_after: float = RETRY_AFTER_S,
+                 clock: Callable[[], float] = time.monotonic):
         self.books, self.on_payment, self.interval, self.every = books, on_payment, interval, every
+        self.retry_after, self.clock = retry_after, clock
+        self._retry: dict[str, tuple[Payment, str, float]] = {}  # "<payment>:<account>" -> (payment, words, when)
+        self._found_at: dict[str, float] = {}  # account id -> when its invoice was last looked up and found
         self.seen: set[str] | None = None  # Payment Ids; filled on the first successful look: those are history
         self.customers: set[str] = set()  # customer Ids watched so far; a newly watched one's payments are history
         self.watched: set[str] = set()  # invoice Ids watched so far; payments already on a newly watched one are too
@@ -101,16 +113,61 @@ class Poller:
         self._thread: threading.Thread | None = None
 
     def _invoice(self, a: accounts.Account) -> dict | None:
-        if a.id in self.invoices:
-            return self.invoices[a.id]
-        if time.monotonic() - self._missing.get(a.id, -RETRY_MISSING_S) < RETRY_MISSING_S:
+        now = self.clock()
+        cached = self.invoices.get(a.id)  # .get: POST /demo/reset may clear it from another thread
+        if cached is not None and now - self._found_at.get(a.id, now) < REFRESH_INVOICES_S:
+            return cached
+        if cached is None and now - self._missing.get(a.id, -RETRY_MISSING_S) < RETRY_MISSING_S:
             return None
         found = self.books.invoice(a.config.qbo.invoice_no)
         if found is None:
-            self._missing[a.id] = time.monotonic()  # not seeded (scripts/seed_quickbooks.py): nothing to watch yet
+            self.invoices.pop(a.id, None)  # deleted since (a reset or a reseed in progress): nothing to watch
+            self._missing[a.id] = now  # not seeded (scripts/seed_quickbooks.py): nothing to watch yet
             return None
-        self.invoices[a.id] = found
+        self.invoices[a.id], self._found_at[a.id] = found, now
         return found
+
+    def forget_invoices(self) -> None:
+        """Look every invoice up again on the next look (POST /demo/reset calls it): a reseeded invoice has a new Id."""
+        self.invoices.clear()
+        self._found_at.clear()
+        self._missing.clear()
+
+    def _start(self, payment: Payment, what: str, a: accounts.Account, again: bool) -> object:
+        """Hand one payment to on_payment. A first failure is tried once more later; a second one is left to a person."""
+        try:
+            return self.on_payment(payment)
+        except Exception as e:  # noqa: BLE001 - one payment that can't start a run never stops the poller
+            log.exception("quickbooks: payment %s couldn't start %s's run", payment.id, a.id)
+            if again:
+                sources.saw("quickbooks", f"{what}: still couldn't start the run ({type(e).__name__}); start it from "
+                            "Agents or upload the remittance", a.id)
+            else:
+                self._retry[f"{payment.id}:{a.id}"] = (payment, what, self.clock() + self.retry_after)
+                sources.saw("quickbooks", f"{what}: couldn't start the run ({type(e).__name__}); trying once more in "
+                            f"{self.retry_after:.0f} s", a.id)
+            return FAILED
+
+    def _noted(self, payment: Payment, what: str, a: accounts.Account, run: object) -> None:
+        run_id, dep = getattr(run, "id", None), getattr(run, "deposit", None)
+        matched = dep is not None and not (getattr(dep, "source", "nessie") == "quickbooks" and dep.id == payment.id)
+        sources.saw("quickbooks", f"{what}: " + (f"the same payment as run {run_id}" if matched
+                                                 else f"started run {run_id}"), a.id, run_id)
+
+    def _retry_due(self, targets: dict[str, accounts.Account]) -> list[Payment]:
+        """The payments whose one retry is due: started now, or left to a person."""
+        now, done = self.clock(), []
+        by_id = {a.id: a for a in targets.values()}
+        for key, (payment, what, when) in list(self._retry.items()):
+            if now < when:
+                continue
+            del self._retry[key]
+            a = by_id.get(payment.account_id) or accounts.get(payment.account_id)
+            run = self._start(payment, what, a, again=True)
+            if run is not FAILED:
+                self._noted(payment, what, a, run)
+                done.append(payment)
+        return done
 
     def look(self) -> tuple[dict[str, accounts.Account], dict[str, list[dict]]]:
         """The watched invoices (sandbox Id -> account) and each of their customers' payments (customer Id -> them)."""
@@ -165,21 +222,15 @@ class Poller:
                                   description=f"{a.distributor.name} payment on {a.config.qbo.invoice_no}")
                 what = f"Payment {pid} of ${amount:,.2f} on {a.config.qbo.invoice_no} ({a.distributor.name})"
                 log.info("quickbooks: %s", what)
-                try:
-                    run = self.on_payment(payment)
-                except Exception as e:  # noqa: BLE001 - one payment that can't start a run never stops the poller
-                    log.exception("quickbooks: payment %s couldn't start %s's run", pid, a.id)
-                    sources.saw("quickbooks", f"{what}: couldn't start the run ({type(e).__name__})", a.id)
+                run = self._start(payment, what, a, again=False)
+                if run is FAILED:
                     continue
-                run_id, dep = getattr(run, "id", None), getattr(run, "deposit", None)
-                matched = dep is not None and not (getattr(dep, "source", "nessie") == "quickbooks" and dep.id == pid)
-                sources.saw("quickbooks", f"{what}: " + (f"the same payment as run {run_id}" if matched
-                                                         else f"started run {run_id}"), a.id, run_id)
+                self._noted(payment, what, a, run)
                 started.append(payment)
             if not any(applied(p, i) > 0 for i in targets):
                 sources.saw("quickbooks", f"Payment {pid} of ${_money(p.get('TotalAmt')):,.2f} isn't against an invoice "
                             "the agents check")
-        return started
+        return started + self._retry_due(targets)
 
     def start(self) -> None:
         def loop():
