@@ -6,10 +6,9 @@ import { inkOn } from '@/lib/accounts'
 import { ApiError, resetWorkspace } from '@/lib/api'
 import { askAdminToken, useSession } from '@/lib/session'
 import type { Account } from '@/lib/types'
-import TopBar from './TopBar'
+import TopBar, { type Place } from './TopBar'
 import SessionDialogs, { roleName } from './SessionDialogs'
 
-export type View = 'overview' | 'payments' | 'approvals' | 'rules'
 
 export function BrandAvatar({ account, large = false }: { account: Account | null; large?: boolean }) {
   const bg = account?.brand.colors.primary ?? '#ecebdc'
@@ -24,8 +23,8 @@ export function DistributorMark({ account }: { account: Account | null }) {
 type Props = {
   account: Account | null
   accounts: Account[] | null
-  /** The workspace view or the route this page is. */
-  active: View | string
+  /** The top bar's place this page is, if it is one (the More tools aren't). */
+  active?: Place
   crumb: string
   /** Badge on Approvals when a controller decision is waiting. */
   approvalsWaiting?: boolean
@@ -66,7 +65,7 @@ export default function AppShell({ account, active, crumb, onReset, children }: 
     <div className="app-shell">
       <TopBar
         account={account}
-        active={active === '/results' ? 'history' : undefined}
+        active={active}
         extra={<>
           <button role="menuitem" className="tb-row" onClick={() => setDetailsOpen(true)}><span><strong>Account details</strong><small>{account?.brand.name ?? ''} · {account?.distributor.name ?? ''}</small></span></button>
           <button role="menuitem" className="tb-row" disabled={resetState.busy} onClick={() => void reset()}><span><strong>{resetState.busy ? 'Resetting…' : 'Reset the demo'}</strong><small>Every distributor back to waiting for its payment</small></span></button>

@@ -5,7 +5,6 @@
 // the run starts on its own (POST …/remittance/run). Nothing here computes money.
 
 import { useState, type DragEvent } from "react";
-import { DotWave } from "@/components/console/DotWave";
 import { useRun } from "@/components/console/RunProvider";
 import { readRemittance, runRemittance } from "@/components/upload/api";
 import { money } from "@/lib/format";
@@ -66,17 +65,10 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
 
   return (
     <div className="fl-hero">
-      <DotWave />
       <section className="fl-start" aria-labelledby="fl-start-h">
         <span className="cx-eyebrow">{account ? `${account.brand.name} · ${account.distributor.name}` : "Clawback"}</span>
         <h1 id="fl-start-h">Your agents are watching {cast.distributor}’s payments.</h1>
         <p className="fl-lead">When a payment lands, they read the deal, check every deduction, dispute the wrong ones with proof and accept the fair ones. You’re asked only when the deal is unclear.</p>
-
-        <div className="fl-watch" aria-label="What the agents are watching">
-          {[["Bank", "Deposits from " + cast.distributor], ["QuickBooks", "Invoices and payments"], ["Remittance inbox", "Payment advice and broker emails"]].map(([n, d]) => (
-            <span key={n} className="fl-watch-item"><i className="tb-dot is-live" /><span><strong>{n}</strong><small>{d}</small></span></span>
-          ))}
-        </div>
 
         {reading ? (
           <div className="fl-drop is-busy">

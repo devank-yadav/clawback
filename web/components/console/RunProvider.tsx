@@ -1,8 +1,7 @@
 "use client";
 
-// One run for every console screen. The provider sits in the (console) layout, so moving between /home, /review,
-// /activity and /approval keeps the same live stream instead of restarting it. It follows the account the URL names
-// (?account=, else the first account), the same way the workspace does, and every console link keeps that account.
+// The run on `/` and the distributors page. The provider sits in the (console) layout and follows the account the URL
+// names (?account=, else the first account), the same way the other pages do; every link it makes keeps that account.
 // Nothing here computes money: amounts and decisions arrive in events (see lib/workspace.ts).
 
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
@@ -23,7 +22,7 @@ type Run = ReturnType<typeof useRunEvents> & {
   cast: Cast;
   /** Always "live": the console reads the real API. Kept for the components that label their data source. */
   source: "live";
-  /** A console link that keeps the current account: link("/review", { charge: "C6" }). */
+  /** A console link that keeps the current account: link("/charges", { charge: "C6" }). */
   link: (path: string, extra?: Record<string, string>) => string;
 };
 
@@ -31,7 +30,7 @@ const RunContext = createContext<Run | null>(null);
 
 export function RunProvider({ children }: { children: ReactNode }) {
   const { account, accounts, error: accountsError } = useCurrentAccount();
-  // ?run=<id> opens that run (a row on History); otherwise the account's newest run.
+  // ?run=<id> opens that run (a row in the Overview's past runs); otherwise the account's newest run.
   const wanted = useSearchParams().get("run");
   const run = useRunEvents(account?.id ?? null, wanted && wanted !== "latest" ? wanted : "latest");
   const view = useMemo(() => selectWorkspace(run.state, account), [run.state, account]);

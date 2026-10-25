@@ -59,7 +59,7 @@ function Coach({ account }: { account: Account }) {
 
 export default function CoachApp() {
   return (
-    <ToolFrame href="/coach" title="Deal coach" lead={(a) => `Changes to the next deal with ${a.distributor.name}, each tied to what this month’s wording cost.`}>
+    <ToolFrame title="Deal coach" lead={(a) => `Changes to the next deal with ${a.distributor.name}, each tied to what this month’s wording cost.`}>
       {(account) => <Coach account={account} />}
     </ToolFrame>
   );

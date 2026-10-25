@@ -4,14 +4,27 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
-  // `/` is the agents' flow; the workspace moved to /workspace, so its old links (/?view=…, /?charge=…) follow it.
-  // The earlier fixture board was folded into the workspace's Payments view, and the console intro into the flow.
+  // Five places: Run (/), Charges, Overview, Records (/saved), Results. Every older address lands on the one that has
+  // its content now; the query (?account=, ?charge=) comes along.
   async redirects() {
+    const to = (source: string, destination: string, view?: string) =>
+      ({ source, destination, permanent: false, ...(view ? { has: [{ type: "query" as const, key: "view", value: view }] } : {}) });
     return [
-      { source: "/board/:path*", destination: "/workspace?view=payments", permanent: false },
-      { source: "/", has: [{ type: "query", key: "view" }], destination: "/workspace", permanent: false },
-      { source: "/", has: [{ type: "query", key: "charge" }], destination: "/workspace", permanent: false },
-      { source: "/welcome", destination: "/", permanent: false },
+      to("/workspace", "/charges", "payments"),
+      to("/workspace", "/charges", "approvals"),
+      to("/workspace", "/saved", "rules"),
+      to("/workspace", "/overview"),
+      { source: "/", has: [{ type: "query", key: "view" }], destination: "/overview", permanent: false },
+      { source: "/", has: [{ type: "query", key: "charge" }], destination: "/charges", permanent: false },
+      to("/board/:path*", "/charges"),
+      to("/review", "/charges"),
+      to("/home", "/overview"),
+      to("/history", "/overview"),
+      to("/audit", "/saved"),
+      to("/activity", "/"),
+      to("/approval", "/"),
+      to("/upload", "/"),
+      to("/welcome", "/"),
     ];
   },
   turbopack: {

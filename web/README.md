@@ -34,17 +34,20 @@ Names only; real values never go in the repo (`.env*` is ignored). Read at **bui
 
 ## Routes
 
-Every route takes `?account=<id>` (the brand menu, top left, switches it; links keep it). Without one, the first
-account from `GET /accounts` is used.
+Every route takes `?account=<id>` (the distributor switcher, top right, changes it; links keep it). Without one, the
+first account from `GET /accounts` is used.
 
 | Route | What it is |
 | --- | --- |
-| `/?view=overview` | Business overview: 6-month KPIs, invoiced vs paid vs deducted by month, deductions by type, recent remittances, the current payment and “<Distributor> pays” |
-| `/?view=payments` | The current payment's analysis: live progress, every charge, the evidence panel and **How Clawback decided** (`&charge=C1` opens one) |
-| `/?view=approvals` · `/?view=rules` | The controller's credit memo · the owner's saved rules |
-| `/results` `/april` `/coach` `/scenario` `/audit` | Results and the accuracy check, next month under saved rules, Deal coach, a pasted clause, the audit log |
+| `/` | Run: send or drop in the payment, watch the agents, answer the owner's question and the controller's approval, then the result |
+| `/charges` | This payment: every charge, the evidence panel and **How Clawback decided** (`&charge=C1` opens one) |
+| `/overview` | Six months: KPIs, the current payment, “Before Clawback”, invoiced vs paid vs deducted, deductions by type, remittances, past runs |
+| `/saved` | Records: documents, saved rules, the records checks use, the audit log and its chain check |
+| `/results` | The scoreboard: totals, QuickBooks posts, the accuracy check |
+| `/april` `/coach` `/scenario` | Next month under saved rules, Deal coach, a pasted clause (the More menu) |
+| `/distributors` | Every distributor the supplier sells through, with its plain status |
 | `/portal` | The distributor's own portal (its name and colors from the account), opened in a new tab; `&dispute=` picks the dispute |
-| `/board/*` | Redirects to Payments (the earlier fixture board was folded in) |
+| `/workspace`, `/home`, `/review`, `/history`, `/audit`, `/upload`, `/board/*` | Old addresses: redirect to the page that has their content now |
 
 ## Calls
 
@@ -52,7 +55,6 @@ account from `GET /accounts` is used.
 | --- | --- |
 | Brand menu, every page | `GET /accounts` (cached for the page) |
 | Overview | `GET /accounts/{id}/overview`, read again as the run moves (dispute filed, entry posted); `GET /accounts/{id}/lookback` for “Before Clawback” (a 404 hides the card) |
-| Value strip | `value` on the run's final `totals` event, else `current.value` from the overview |
 | Download dispute packet | `GET /portal/disputes/{id}/packet.pdf` (a link, opened in a new tab) |
 | Open or reload | `GET /runs/latest?account=` (404 = no payment yet), then `GET /runs/{id}/events` (SSE, resumes with `Last-Event-ID` / `?after=`). Never starts a run. |
 | “<Distributor> pays” | `POST /payments/{account}`, once per click; with Nessie the run id may be null, then `GET /runs/latest?account=` is polled |
@@ -81,9 +83,11 @@ A step shows as done only when its event arrives from the stream, never because 
 app/(workspace)/   layout, base.css (Tailwind + v0 tokens), workspace.css (the v0 styles), app.css (multi-account additions)
 app/(portal)/      the distributor portal, its own layout and portal.css (colors from the account)
 components/shell/  AppShell (brand menu, navigation, sign-in, reset), SessionDialogs, ShellFallback
-components/workspace/  clawback-app (views), charge-workspace (charges, evidence panel), decision-trace,
-                   run-progress, charts (SVG, no library), evidence-parts
-components/tools/  ToolFrame + Results, Next month, Deal coach, Try a clause, Audit log
+app/(console)/      Run (/) and Distributors: console.css, flow.css, the RunProvider
+components/flow/   the run: start, agent strip, stage, matrix, result
+components/workspace/  clawback-app (Charges, Overview), charge-workspace (charges, evidence panel), decision-trace,
+                   charts (SVG, no library), evidence-parts
+components/tools/  ToolFrame + Records, Results, Next month, Deal coach, Try a clause
 lib/api.ts         every API call; lib/accounts.ts (account from the URL, code labels); lib/session.ts (roles, prompts)
 lib/useRunEvents.ts  event reducer + live stream per account; lib/workspace.ts (wording only, no money math)
 mock/              dev-only mock API (npm run dev:mock)

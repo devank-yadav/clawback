@@ -1,13 +1,13 @@
 import { Suspense } from "react";
+import ClawbackApp from "@/components/workspace/clawback-app";
 import ShellFallback from "@/components/shell/ShellFallback";
-import UploadTool from "@/components/upload/UploadTool";
 
-export const metadata = { title: "Bring in a remittance · Clawback" };
+export const metadata = { title: "Charges · Clawback" };
 
 export default function Page() {
   return (
     <Suspense fallback={<ShellFallback />}>
-      <UploadTool />
+      <ClawbackApp view="payments" />
     </Suspense>
   );
 }

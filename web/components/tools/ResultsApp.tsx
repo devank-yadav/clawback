@@ -87,7 +87,7 @@ function Results({ account }: { account: Account }) {
 
 export default function ResultsApp() {
   return (
-    <ToolFrame href="/results" title="Results" lead={(a) => `Where ${a.distributor.name}’s deductions stand, what went to QuickBooks, and how accurate the checks are.`}>
+    <ToolFrame place="results" title="Results" lead={(a) => `Where ${a.distributor.name}’s deductions stand, what went to QuickBooks, and how accurate the checks are.`}>
       {(account) => <Results account={account} />}
     </ToolFrame>
   );

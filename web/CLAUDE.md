@@ -21,21 +21,26 @@ log {text, level} · stage {stage: read|check, status, done, total, label, charg
 · totals {disputed, accepted, waiting}
 
 ## Screens
-`/?account=…` is the agents' flow (`app/(console)/page.tsx`, `components/flow/`, `flow.css`): drop in the payment
-advice or press "<distributor> pays", watch the seven stages on the rail (payment, read the deal, check each charge,
-file the dispute, owner, controller, QuickBooks) and the charge × agent matrix, answer the owner and the controller
-inline, then the result. Reading and checking progress comes from `stage` events (`state.stages`); the later stages
-from dispute / question / approval / ledger_post. `?run=latest` opens the last run.
-`/workspace?account=…&view=overview|payments|approvals|rules` (the workspace; old `/?view=` links redirect there) ·
-`/results` `/april` `/coach` `/scenario` `/audit` (same shell) · `/home` `/review` `/activity` `/approval` (the
-Figma console) · `/portal?account=…` (the distributor's own look, from the account's colors).
+One top bar (`components/shell/TopBar.tsx`) with five places, a More menu and the distributor switcher. Each thing
+lives in one place; don't add a second screen for something one of these already shows.
 
-## Workspace screens (current visual baseline)
-`/workspace` is the v0 workspace in `app/(workspace)/` and `components/workspace/`, drawn in the agents' flow's design
-language: one app. Its layout loads console.css (tokens) and flow.css (parts) and ends with `unify.css` (the flow's top
-bar instead of the sidebar, its type, pills and buttons). workspace.css and app.css keep their structure, with every
-light color mapped to the console tokens. The shared nav is `components/shell/nav.ts`; a run shows the flow's
-`StageRail` and meters in the workspace too. New screens use the console tokens, never new light colors.
+| Nav | Route | What it has |
+| --- | --- | --- |
+| Run | `/` (`app/(console)/page.tsx`, `components/flow/`) | Drop in the payment advice or press "<distributor> pays"; the agent strip, the current stage, the charge × agent matrix and the feed; the owner's question and the controller's approval inline; then the result (piles, dispute, next steps). `?run=latest` or `?run=<id>` opens a run |
+| Charges | `/charges` | This payment: totals and every charge with its evidence panel and how it was decided (`&charge=C1` opens one) |
+| Overview | `/overview` | Six months: KPIs, this month's payment, "Before Clawback" (claim these now), charts, remittances, past runs |
+| Records | `/saved` (`components/tools/RecordsApp.tsx`) | Documents (signed ones locked), saved rules, the records checks use, the audit trail with the chain check |
+| Results | `/results` | The scoreboard: totals, QuickBooks posts, the 30-case accuracy check |
+| More | `/april` `/coach` `/scenario` | Next month under saved rules, Deal coach, Try a clause; plus the distributor's portal (`/portal`, new tab) |
+
+The switcher lists the supplier's tracked distributors; "All distributors" opens `/distributors`. Old addresses
+(`/workspace`, `/home`, `/review`, `/history`, `/audit`, `/upload`, ...) redirect in `next.config.ts`.
+
+## Styles (current visual baseline)
+`/` and `/distributors` use `app/(console)/` (console.css tokens, flow.css parts, `RunProvider`). Charges, Overview,
+Records and the tools use `app/(workspace)/` (`AppShell`), whose layout loads the same console.css and flow.css and
+ends with `unify.css`; workspace.css and app.css keep their structure with every light color mapped to the console
+tokens. New screens use the console tokens, never new light colors.
 
 ## Design tokens from the first prototype (the earlier board is gone; kept for reference)
 - Fonts: Archivo (headings, 600/800), Source Sans 3 (text), JetBrains Mono (every number, tabular figures).

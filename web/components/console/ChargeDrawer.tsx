@@ -1,115 +1,15 @@
 "use client";
 
-// Payment review (Figma: "Clawback · Payment review" and "Clawback · Owner policy decision").
-// Left: the deductions queue. Right: the selected charge, with the six agents' steps as they stream in.
-// When the selected charge is the one waiting on the owner, the drawer becomes the owner's policy question.
+// One charge, decided: the agents' steps as they stream in (ChargeDrawer), and the owner's policy question when the
+// deal leaves the charge to judgment (OwnerDecision). Opened from the run on `/`.
 
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
-import { shortDate } from "@/lib/format";
+import { useState } from "react";
 import { useChargeDetail } from "@/lib/useChargeDetail";
 import type { ChargeView } from "@/lib/workspace";
 import { agentSteps, doneCount } from "./agents";
 import { useRun } from "./RunProvider";
-import { Shell } from "./Shell";
 import { KindTag, Money, Pill, StatusPill, StepDot } from "./ui";
-
-const noop = () => () => {};
-/** ?charge=C6 from a link on Home or Agent activity, read without forcing the page to render dynamically. */
-function useQueryCharge() {
-  return useSyncExternalStore(noop, () => new URLSearchParams(window.location.search).get("charge"), () => null);
-}
-
-export default function Review() {
-  const { view, state, source, awaitingPayment, startPayment, starting, limited, cast: CAST, link } = useRun();
-  const fromQuery = useQueryCharge();
-  const [picked, setPicked] = useState<string | null>(null);
-  const r = view.remittance;
-  const selectedId = picked ?? (fromQuery && view.charges.some((c) => c.id === fromQuery) ? fromQuery : view.charges[0]?.id) ?? null;
-  const selected = view.charges.find((c) => c.id === selectedId) ?? null;
-  const totals = view.totals;
-
-  return (
-    <Shell crumbs={["Payments", r?.invoice_id ?? "Waiting for payment"]} right={view.reviewed ? <Pill tone="accent">Review ready</Pill> : r ? <Pill live>Agents checking</Pill> : undefined}>
-      <div className="cx-head">
-        <div>
-          <h1 className="cx-h1">{r?.counterparty ?? CAST.distributor}</h1>
-          <p className="cx-meta">
-            {r ? `Invoice ${r.invoice_id ?? "—"}${r.received_at ? ` · Paid ${shortDate(r.received_at)}` : ""} · ${r.charge_count} charges taken` : "No payment has arrived yet."}
-          </p>
-        </div>
-        {awaitingPayment && (
-          <button className="cx-btn" disabled={starting} onClick={() => void startPayment()}>
-            {starting ? "Starting…" : `${CAST.distributor} pays`}
-          </button>
-        )}
-      </div>
-      {limited && <div className="cx-card" role="status">{limited}</div>}
-
-      {r && (
-        <div className="cx-stats">
-          <div className="cx-stat">
-            <span className="cx-stat-label">Invoice billed</span>
-            <Money value={r.expected} />
-            <span className="cx-tiny">Original amount requested</span>
-          </div>
-          <div className="cx-stat is-green">
-            <span className="cx-stat-label">Cash received</span>
-            <Money value={r.received} />
-            <span className="cx-tiny">Already in your account</span>
-          </div>
-          <div className="cx-stat is-amber">
-            <span className="cx-stat-label">Deductions withheld</span>
-            <Money value={r.taken} />
-            <span className="cx-tiny">{r.charge_count} charges taken from this payment</span>
-          </div>
-        </div>
-      )}
-
-      <div className="cx-review">
-        <section aria-labelledby="ded-h" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div className="cx-head" style={{ alignItems: "baseline" }}>
-            <h2 id="ded-h" style={{ fontSize: 15, fontWeight: 400 }}>Deductions</h2>
-            <span className="cx-small cx-muted">{view.charges.length} charges</span>
-          </div>
-          <div className="cx-list">
-            {view.charges.map((c) => (
-              <button key={c.id} className="cx-charge" aria-pressed={c.id === selectedId} onClick={() => setPicked(c.id)}>
-                <span className="cx-charge-title">{c.title}</span>
-                <span className="cx-charge-amt">
-                  <Money value={c.amount} />
-                </span>
-                <span className="cx-charge-why">{c.reason}</span>
-                <StatusPill status={c.status} />
-              </button>
-            ))}
-            {view.charges.length === 0 && <div className="cx-card cx-muted">{awaitingPayment ? `Waiting for ${CAST.distributor}’s payment. Nothing is checked until it arrives.` : "Loading the run…"}</div>}
-          </div>
-
-          {totals && (
-            <div className="cx-card">
-              <h3 style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Where the deductions stand</h3>
-              <div className="cx-rows">
-                <div><span>Confirmed fair</span><Money value={totals.accepted} /></div>
-                <div><span>Recommended dispute</span><Money value={totals.disputed} /></div>
-                <div><span>Needs owner policy</span><Money value={totals.waiting} /></div>
-              </div>
-              <p className="cx-tiny" style={{ marginTop: 8 }}>Proposed outcomes, not recovered cash. Fair charges still need {CAST.controller}’s accounting approval.</p>
-            </div>
-          )}
-          <Link href={selectedId ? link("/activity", { charge: selectedId }) : link("/activity")} className="cx-small">View full agent activity →</Link>
-          <p className="cx-tiny">{CAST.owner} · Owner: policy and disputes / {CAST.controller} · Controller: accounting approval</p>
-        </section>
-
-        {selected && (
-          view.question && !view.question.answer && view.question.charge_id === selected.id
-            ? <OwnerDecision charge={selected} />
-            : <ChargeDrawer charge={selected} onClose={() => setPicked(null)} key={selected.id} source={source} runId={state.run?.run_id} />
-        )}
-      </div>
-    </Shell>
-  );
-}
 
 export function ChargeDrawer({ charge, onClose, source, runId }: { charge: ChargeView; onClose: () => void; source: "fixture" | "live"; runId: string | undefined }) {
   const { state, view, cast: CAST, link } = useRun();
@@ -169,8 +69,7 @@ export function ChargeDrawer({ charge, onClose, source, runId }: { charge: Charg
         <strong style={{ fontSize: 13, fontWeight: 500 }}>{nextTitle(charge)}</strong>
         <p className="cx-small cx-muted">{nextLine(charge, view.disputeLabel, CAST.controller)}</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link className="cx-btn" href={link("/activity", { charge: charge.id })}>See every agent step</Link>
-          {charge.accepted ? <Link className="cx-btn is-ghost" href={link("/approval")}>Accounting approval</Link> : null}
+          <Link className="cx-btn" href={link("/charges", { charge: charge.id })}>Open with every charge</Link>
         </div>
       </div>
     </aside>

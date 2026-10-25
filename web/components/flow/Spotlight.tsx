@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { money } from "@/lib/format";
-import { OwnerDecision } from "@/components/console/Review";
+import { OwnerDecision } from "@/components/console/ChargeDrawer";
 import { useRun } from "@/components/console/RunProvider";
 import { Money } from "@/components/console/ui";
 import type { Stage } from "./stages";

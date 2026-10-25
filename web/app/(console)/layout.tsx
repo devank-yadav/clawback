@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { colorScheme: "dark", themeColor: "#16171f" };
 
-/** The console screens designed in Figma Make. One RunProvider keeps the same run across every page. */
+/** Run (`/`) and Distributors. One RunProvider follows the account's run across both. */
 export default function ConsoleLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">

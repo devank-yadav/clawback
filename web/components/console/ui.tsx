@@ -1,4 +1,4 @@
-// Small pieces shared by the console screens. Formatting only: amounts arrive from events.
+// Small pieces shared by the run's screens. Formatting only: amounts arrive from events.
 
 import type { ReactNode } from "react";
 import { dollars } from "@/lib/format";

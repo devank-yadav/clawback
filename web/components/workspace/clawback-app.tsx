@@ -1,34 +1,34 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowRight, Check, CircleHelp, ClipboardCheck, FileCheck2, Info, KeyRound, Layers3, ShieldCheck } from 'lucide-react'
-import AppShell, { DistributorMark, type View } from '@/components/shell/AppShell'
-import { firstName, useCurrentAccount, withAccount } from '@/lib/accounts'
-import { fetchLookback, fetchOverview } from '@/lib/api'
+import { useSearchParams } from 'next/navigation'
+import { ArrowRight, Check, FileCheck2, Info, ShieldCheck } from 'lucide-react'
+import AppShell, { DistributorMark } from '@/components/shell/AppShell'
+import { useCurrentAccount, withAccount } from '@/lib/accounts'
+import { fetchLookback, fetchOverview, fetchRuns } from '@/lib/api'
 import { anyDay, dollars, money, monthLabel, percent, share } from '@/lib/format'
-import { askAdminToken, LIMIT_ADMIN_REASON, useSession, type Role } from '@/lib/session'
-import type { Account, Lookback, Overview, RunValue } from '@/lib/types'
+import { useSession } from '@/lib/session'
+import type { Account, Lookback, Overview, RunSummary } from '@/lib/types'
 import { useFetched } from '@/lib/useFetched'
 import { useRunEvents } from '@/lib/useRunEvents'
-import { postingSentence, selectWorkspace, type ChargeView, type WorkspaceView } from '@/lib/workspace'
-import { ChargeList, EvidencePanel, Status, type ChargeFilter } from './charge-workspace'
+import { postingSentence, selectWorkspace, type WorkspaceView } from '@/lib/workspace'
+import { ChargeList, EvidencePanel, type ChargeFilter } from './charge-workspace'
 import { MonthlyChart, TypeBars } from './charts'
-import { LookbackCard, PacketLink, ValueStrip } from './impact'
-import { RunProgress } from './run-progress'
+import { LookbackCard, PacketLink } from './impact'
 
-const VIEWS: View[] = ['overview', 'payments', 'approvals', 'rules']
-const CRUMB: Record<View, string> = { overview: 'Overview', payments: 'Payments', approvals: 'Approvals', rules: 'Rules' }
+/** Charges (this payment, every charge with its evidence) or Overview (six months with this distributor). */
+export type View = 'overview' | 'payments'
+const PLACE = { overview: 'overview', payments: 'charges' } as const
+const CRUMB: Record<View, string> = { overview: 'Overview', payments: 'Charges' }
 
-/** The brand workspace at /workspace?account=…&view=…: the account and the view live in the URL, so every link and reload keeps them. */
-export default function ClawbackApp() {
+/** /charges and /overview: the account lives in the URL (?account=, and ?charge= opens one charge), so every link and
+ * reload keeps it. The run itself, with its questions and approvals, is on `/`. */
+export default function ClawbackApp({ view }: { view: View }) {
   const { account, accounts, error } = useCurrentAccount()
-  const param = useSearchParams().get('view')
-  const view: View = VIEWS.includes(param as View) ? (param as View) : 'overview'
   if (!account) {
     return (
-      <AppShell account={null} accounts={accounts} active={view} crumb={CRUMB[view]}>
+      <AppShell account={null} accounts={accounts} active={PLACE[view]} crumb={CRUMB[view]}>
         <main className="main-content">
           {error ? <div className="feedback error" role="alert"><Info />{error}</div> : <p className="muted" role="status">Loading your accounts…</p>}
         </main>
@@ -40,16 +40,14 @@ export default function ClawbackApp() {
 
 function Workspace({ account, accounts, view }: { account: Account; accounts: Account[] | null; view: View }) {
   const run = useRunEvents(account.id)
-  const { state, runId, answerQuestion, controllerDecides, startPayment, starting, limited, awaitingPayment, refresh, error } = run
+  const { state, runId, answerQuestion, awaitingPayment, refresh, error } = run
   const ws = useMemo(() => selectWorkspace(state, account), [state, account])
   const { role } = useSession()
-  const router = useRouter()
   // ?charge= opens a charge from a link; a click on the list overrides it.
   const chargeParam = useSearchParams().get('charge')
   const [picked, setPicked] = useState<{ id: string | null } | null>(null)
   const selectedId = picked ? picked.id : chargeParam
   const setSelectedId = (id: string | null) => setPicked({ id })
-  const [note, setNote] = useState('')
   const [filter, setFilter] = useState<ChargeFilter>('All')
   const distributor = account.distributor.name
 
@@ -60,56 +58,47 @@ function Workspace({ account, accounts, view }: { account: Account; accounts: Ac
   // The lookback is history: read once per account (and on reset). null = this API doesn't have it, so the card hides.
   const loadLookback = useMemo(() => () => fetchLookback(account.id), [account.id])
   const lookback = useFetched<Lookback | null>(loadLookback)
-  const value = ws.value ?? overview.data?.current.value ?? null
+  // Every run of the agents for this distributor, newest first (Overview's "Past runs").
+  const loadRuns = useCallback(() => fetchRuns(account.id), [account.id])
+  const runs = useFetched(view === 'overview' ? loadRuns : null, overviewKey)
 
   const selected = view === 'payments' ? (ws.charges.find((charge) => charge.id === selectedId) ?? null) : null
-  const askedCharge = ws.charges.find((charge) => charge.id === ws.question?.charge_id)
   const feedback = stageFeedback(ws, account)
-  const payLabel = `${distributor} pays`
   const pendingCharges = ws.remittance ? ws.remittance.charge_count - ws.charges.length : 0
 
   function onReset() {
     setSelectedId(null)
-    setNote('')
     setFilter('All')
     refresh()
     overview.reload()
     lookback.reload()
+    runs.reload()
   }
 
   const heading = view === 'overview'
-    ? { title: 'Overview', line: `Deductions from ${distributor}, last six months.` }
-    : view === 'payments'
-      ? { title: `${monthLabel(account.invoice.month)} payment`, line: `${distributor} · Invoice ${ws.remittance?.invoice_id ?? account.invoice.id}` }
-      : view === 'approvals'
-        ? { title: 'Approvals', line: `Accounting entries wait for ${account.brand.controller.name}. Policy answers don’t post anything.` }
-        : { title: 'Rules', line: `Answers ${account.brand.owner.name} gave once, applied every time after.` }
+    ? { title: 'Overview', line: `Six months of payments from ${distributor}, and what the deal didn’t allow.` }
+    : { title: 'Charges', line: `${monthLabel(account.invoice.month)} payment · ${distributor} · Invoice ${ws.remittance?.invoice_id ?? account.invoice.id}` }
 
-  const payButton = <button className="primary" disabled={starting} onClick={() => void startPayment()}>{starting ? 'Waiting for the deposit…' : payLabel} <ArrowRight /></button>
-  const reviewHref = withAccount('/workspace', account.id, { view: 'payments' })
+  const reviewHref = withAccount('/charges', account.id)
+  const runLink = <Link className="primary" href={withAccount('/', account.id)}>{awaitingPayment ? `Check ${distributor}’s payment` : 'Open the run'} <ArrowRight /></Link>
 
   return (
-    <AppShell account={account} accounts={accounts} active={view} crumb={CRUMB[view]} approvalsWaiting={ws.stage === 'controller' && ws.approval?.status === 'pending'} onReset={onReset}>
+    <AppShell account={account} accounts={accounts} active={PLACE[view]} crumb={CRUMB[view]} onReset={onReset}>
       <main className={`main-content ${selected ? 'with-panel' : ''}`}>
         <div className="page-heading">
           <div><div className="eyebrow">{account.brand.name}</div><h1>{heading.title}</h1><p>{heading.line}</p></div>
-          {(view === 'overview' || view === 'payments') && (awaitingPayment || starting ? payButton : view === 'overview' && <Link className="primary" href={reviewHref}>Open analysis <ArrowRight /></Link>)}
+          {runLink}
         </div>
 
         {error && <div className="feedback error" role="alert"><Info />{error}</div>}
-        {limited && <div className="feedback notice" role="status"><Info /><span>{limited}</span><button className="text-button" onClick={() => askAdminToken(LIMIT_ADMIN_REASON, () => void startPayment())}><KeyRound /> Use admin token</button></div>}
         {feedback && view !== 'overview' && <div className={`feedback ${ws.stage === 'refused' ? 'notice' : ''}`} role="status">{ws.stage === 'refused' ? <Info /> : <Check />}{feedback}</div>}
 
-        {view === 'overview' && state.run?.status === 'started' && <RunProgress account={account} state={state} ws={ws} />}
-        {view === 'overview' && <OverviewPage account={account} overview={overview.data} lookback={lookback.data} value={value} overviewError={overview.error} ws={ws} awaitingPayment={awaitingPayment} reviewHref={reviewHref} feedback={feedback} onOpenCharge={(id) => router.push(withAccount('/workspace', account.id, { view: 'payments', charge: id }))} />}
+        {view === 'overview' && <OverviewPage account={account} overview={overview.data} lookback={lookback.data} overviewError={overview.error} ws={ws} awaitingPayment={awaitingPayment} reviewHref={reviewHref} feedback={feedback} runs={runs.data} runsError={runs.error} />}
 
         {view === 'payments' && (
           <>
             <PaymentStrip account={account} ws={ws} awaitingPayment={awaitingPayment} />
-            {value && !awaitingPayment && <ValueStrip value={value} />}
-            {/* With a run, the flow's meters inside RunProgress show these totals; without one, the summary does. */}
-            {!state.run && <Summary ws={ws} compact />}
-            <RunProgress account={account} state={state} ws={ws} />
+            {ws.remittance && <Summary ws={ws} compact />}
             <div className="payment-workspace">
               <section className="surface charge-main"><div className="list-heading"><div><h2>Charges</h2><p>{awaitingPayment ? `Waiting for ${distributor}’s payment.` : 'Select a charge to see its evidence and how it was decided.'}</p></div></div><ChargeList charges={ws.charges} selected={selected?.id} onSelect={(charge) => setSelectedId(charge.id)} filter={filter} onFilterChange={setFilter} waiting={awaitingPayment} pending={pendingCharges} /><div className="table-footer"><ShieldCheck /> {ws.disputeId ? <>{ws.disputeLabel} · <a href={withAccount('/portal', account.id, { dispute: ws.disputeId })} target="_blank" rel="noreferrer">Open on {account.distributor.portal_name}</a><PacketLink disputeId={ws.disputeId} /></> : ws.disputeLabel}</div></section>
               {selected && <EvidencePanel key={selected.id} account={account} state={state} runId={runId} charge={selected} question={ws.question} rule={ws.rule} stage={ws.stage} role={role} onClose={() => setSelectedId(null)} onAnswer={answerQuestion} />}
@@ -117,8 +106,6 @@ function Workspace({ account, accounts, view }: { account: Account; accounts: Ac
           </>
         )}
 
-        {view === 'rules' && <RulesView account={account} ws={ws} askedCharge={askedCharge} reviewHref={reviewHref} />}
-        {view === 'approvals' && <ApprovalsView account={account} ws={ws} role={role} note={note} setNote={setNote} reviewHref={reviewHref} onDecide={controllerDecides} />}
       </main>
     </AppShell>
   )
@@ -144,7 +131,7 @@ function statusWord(ws: WorkspaceView, awaitingPayment: boolean, overview: Overv
   return 'Reviewed'
 }
 
-function OverviewPage({ account, overview, lookback, value, overviewError, ws, awaitingPayment, reviewHref, feedback, onOpenCharge }: { account: Account; overview: Overview | null; lookback: Lookback | null; value: RunValue | null; overviewError: string | null; ws: WorkspaceView; awaitingPayment: boolean; reviewHref: string; feedback: string; onOpenCharge: (id: string) => void }) {
+function OverviewPage({ account, overview, lookback, overviewError, ws, awaitingPayment, reviewHref, feedback, runs, runsError }: { account: Account; overview: Overview | null; lookback: Lookback | null; overviewError: string | null; ws: WorkspaceView; awaitingPayment: boolean; reviewHref: string; feedback: string; runs: RunSummary[] | null; runsError: string | null }) {
   const k = overview?.kpis
   const tiles: { label: string; value: string; note?: string; tone?: string }[] = k ? [
     { label: 'Invoiced', value: money(k.invoiced_6m), note: 'Last 6 months' },
@@ -164,11 +151,7 @@ function OverviewPage({ account, overview, lookback, value, overviewError, ws, a
         {k ? tiles.map((t) => <div key={t.label} className={`kpi surface ${t.tone ?? ''}`}><span>{t.label}</span><strong>{t.value}</strong>{t.note && <small>{t.note}</small>}</div>) : Array.from({ length: 7 }, (_, i) => <div key={i} className="kpi surface skeleton" aria-hidden><span /><strong /></div>)}
       </section>
 
-      {value && !awaitingPayment && <ValueStrip value={value} />}
-      <div className="overview-grid">
-        <CurrentPayment account={account} overview={overview} ws={ws} awaitingPayment={awaitingPayment} reviewHref={reviewHref} />
-        <AttentionCard account={account} ws={ws} awaitingPayment={awaitingPayment} reviewHref={reviewHref} />
-      </div>
+      <CurrentPayment account={account} overview={overview} ws={ws} awaitingPayment={awaitingPayment} reviewHref={reviewHref} />
 
       {lookback && <LookbackCard lookback={lookback} distributor={account.distributor.name} />}
 
@@ -196,7 +179,7 @@ function OverviewPage({ account, overview, lookback, value, overviewError, ws, a
         ) : <p className="muted small table-empty">Loading…</p>}
       </section>
 
-      {ws.charges.length > 0 && <section className="surface preview-section"><div className="list-heading"><div><h2>This payment’s charges</h2><p>Each one checked against the deal, with its source.</p></div><Link className="text-button" href={reviewHref}>All charges <ArrowRight /></Link></div><ChargeList charges={ws.charges} onSelect={(c) => onOpenCharge(c.id)} preview /></section>}
+      <PastRuns account={account} runs={runs} error={runsError} />
     </>
   )
 }
@@ -221,37 +204,7 @@ function CurrentPayment({ account, overview, ws, awaitingPayment, reviewHref }: 
         <div className="allocation-bar" role="img" aria-label={`${dollars(totals.disputed)} disputed, ${dollars(totals.accepted)} accepted, ${dollars(waiting)} waiting`}><span className="disputed-allocation" style={{ width: `${share(totals.disputed, taken)}%` }} /><span className="accepted-allocation" style={{ width: `${share(totals.accepted, taken)}%` }} />{waiting > 0 && <span className="pending-allocation" style={{ width: `${share(waiting, taken)}%` }} />}</div>
         <div className="allocation-legend"><span><i className="disputed-dot" />Disputing <strong>{dollars(totals.disputed)}</strong></span><span><i className="accepted-dot" />Accepted <strong>{dollars(totals.accepted)}</strong></span><span><i className="pending-dot" />Waiting on you <strong>{dollars(waiting)}</strong></span></div>
       </>}
-      <div className="card-bottom"><span><FileCheck2 /> {awaitingPayment ? `Each charge is checked against the deal when ${account.distributor.name} pays.` : ws.reviewed ? `All ${ws.charges.length} charges checked against the deal` : 'Checking each charge against the deal…'}</span>{!awaitingPayment && <Link className="text-button" href={reviewHref}>Open analysis <ArrowRight /></Link>}</div>
-    </section>
-  )
-}
-
-function AttentionCard({ account, ws, awaitingPayment, reviewHref }: { account: Account; ws: WorkspaceView; awaitingPayment: boolean; reviewHref: string }) {
-  const { stage, approval, question } = ws
-  const controllerName = account.brand.controller.name
-  const open = (stage === 'owner' && !!question && !question.answer) || (stage === 'controller' && approval?.status === 'pending')
-  const controller = stage !== 'checking' && stage !== 'owner'
-  const heading = awaitingPayment ? 'Nothing yet' : stage === 'checking' ? 'Checking your charges' : stage === 'owner' ? 'One question for you' : stage === 'controller' ? 'Ready for accounting' : stage === 'posted' ? 'All done' : 'Entry refused'
-  const body = awaitingPayment
-    ? `When ${account.distributor.name} pays, Clawback checks every deduction against the deal.`
-    : stage === 'checking'
-      ? 'Reading the deal, the emails and the records for each charge.'
-      : stage === 'owner'
-        ? question?.text ?? ''
-        : stage === 'controller'
-          ? approval ? `${dollars(approval.amount)} in accepted charges waits for ${controllerName}’s approval.` : 'The accounting entry is being prepared.'
-          : stage === 'posted'
-            ? `${controllerName} approved. ${postingSentence(ws)}`
-            : `${controllerName} refused. Nothing was posted.${approval?.note ? ` “${approval.note}”` : ''}`
-  const href = stage === 'owner' ? withAccount('/workspace', account.id, { view: 'payments' }) : controller ? withAccount('/workspace', account.id, { view: 'approvals' }) : reviewHref
-  return (
-    <section className="attention-card surface">
-      <div className="attention-heading"><h2>Needs your attention</h2><span className="count-badge">{open ? '1' : '0'}</span></div>
-      <div className="attention-icon">{controller ? <ClipboardCheck /> : <CircleHelp />}</div>
-      <div className="eyebrow">{controller ? `For ${firstName(controllerName)} · Controller` : stage === 'owner' ? `For ${firstName(account.brand.owner.name)} · Owner` : 'Status'}</div>
-      <h3>{heading}</h3>
-      <p>{body}</p>
-      {!awaitingPayment && <Link className="secondary full" href={href}>{stage === 'owner' ? 'Answer the question' : controller ? 'Review the entry' : 'Open analysis'} <ArrowRight /></Link>}
+      <div className="card-bottom"><span><FileCheck2 /> {awaitingPayment ? `Each charge is checked against the deal when ${account.distributor.name} pays.` : ws.reviewed ? `All ${ws.charges.length} charges checked against the deal` : 'Checking each charge against the deal…'}</span>{!awaitingPayment && <Link className="text-button" href={reviewHref}>Every charge <ArrowRight /></Link>}</div>
     </section>
   )
 }
@@ -267,20 +220,36 @@ function Summary({ ws, compact = false }: { ws: WorkspaceView; compact?: boolean
   return <section className={`summary-grid ${compact ? 'compact' : ''}`} aria-label="Deduction decisions"><div><span>Disputing</span><strong>{dollars(ws.totals?.disputed ?? 0)}</strong><small>Being challenged · not recovered yet</small></div><div><span>Accepted</span><strong>{dollars(ws.totals?.accepted ?? 0)}</strong><small>Backed by the deal or your rule</small></div><div><span>{waiting > 0 ? 'Waiting on you' : 'Pending'}</span><strong>{dollars(waiting)}</strong><small>{waiting > 0 ? 'One answer from the owner' : undecided > 0 ? 'Still checking charges' : 'Every charge decided'}</small></div></section>
 }
 
-function RulesView({ account, ws, askedCharge, reviewHref }: { account: Account; ws: WorkspaceView; askedCharge?: ChargeView; reviewHref: string }) {
-  const { rule, ruleCharges } = ws
-  const owner = account.brand.owner.name
-  if (!rule) return <section className="surface simple-view"><div className="list-heading"><div><h2>Saved rules</h2><p>A rule decides; it never posts an accounting entry.</p></div></div><div className="empty-state"><Layers3 /><h2>No rules yet</h2><p>{ws.stage === 'owner' ? `${owner} has one question to answer. The answer is saved as a rule.` : `When the deal leaves a charge to judgment, ${owner} answers once and it becomes a rule.`}</p>{askedCharge && <Link className="primary" href={reviewHref}>Answer the question <ArrowRight /></Link>}</div></section>
-  return <section className="surface simple-view"><div className="list-heading"><div><h2>Saved rules</h2><p>A rule decides; it never posts an accounting entry.</p></div></div><div className="rule-content"><Status value="Accepted" /><h2>{rule.label}</h2><p>{rule.summary}</p><div className="rule-meta"><span>Distributor<strong>{rule.counterparty}</strong></span><span>Set by<strong>{rule.approver_role === 'owner' ? `${owner} · Owner` : rule.approver}</strong></span><span>Applied to<strong>{ruleCharges.length ? ruleCharges.map((c) => `${c.ref} · ${c.accepted !== null ? dollars(c.accepted) : ''} accepted`).join(', ') : 'No charge yet'}</strong></span></div>{ruleCharges[0] && <Link className="secondary" href={reviewHref}>See the evidence</Link>}</div></section>
-}
+const RUN_STATUS = { started: 'Agents working', waiting: 'Waiting on you', finished: 'Finished', failed: 'Stopped' } as const
+const when = (iso: string) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 
-function ApprovalsView({ account, ws, role, note, setNote, reviewHref, onDecide }: { account: Account; ws: WorkspaceView; role: Role | null; note: string; setNote: (value: string) => void; reviewHref: string; onDecide: (approve: boolean, note: string | null) => void }) {
-  const { approval, stage } = ws
-  const owner = account.brand.owner.name
-  const controller = account.brand.controller.name
-  if (stage === 'checking' || stage === 'owner') return <section className="surface simple-view"><div className="empty-state"><ClipboardCheck /><h2>{stage === 'owner' ? 'The owner’s answer comes first' : 'Nothing to approve yet'}</h2><p>{stage === 'owner' ? `${owner} answers the open question, then ${controller} reviews the accounting entry.` : `When every charge is decided, the accepted ones go to ${controller} as one credit memo.`}</p>{stage === 'owner' && <Link className="primary" href={reviewHref}>Go to the question <ArrowRight /></Link>}</div></section>
-  if (!approval) return <section className="surface simple-view"><div className="empty-state"><ClipboardCheck /><h2>Preparing the entry</h2><p>The accepted charges are being gathered for {controller}.</p></div></section>
-  // What the API recorded wins once the approval event has arrived; the textarea is only a fallback.
-  const shownNote = approval.note || note.trim()
-  return <section className="surface simple-view"><div className="list-heading"><div><h2>Credit memo</h2><p>{account.distributor.name} · {monthLabel(account.invoice.month)} · {ws.remittance?.invoice_id ?? account.invoice.id}</p></div></div><div className="rule-content"><Status value={ws.postingLabel} /><div className="proposal-amount">{dollars(approval.amount)}</div><h2>Book the accepted deductions</h2><p>Only charges the deal or {firstName(owner)}’s rule supports. The disputed {dollars(ws.totals?.disputed ?? 0)} stays open on the invoice.</p><div className="proposal-lines">{ws.proposalLines.map((line) => <span key={line.chargeId}>{line.label}<strong>{dollars(line.amount)}</strong></span>)}</div>{approval.status === 'pending' ? <><div className="approval-notice"><ShieldCheck /><span><strong>Needs {controller}’s approval</strong><small>{owner} set the policy, not this entry. Nothing posts until the controller says yes.</small></span></div><label className="note-label" htmlFor="controller-note">Note <span>(required to refuse)</span></label><textarea id="controller-note" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Why you’re approving or refusing" /><div className="approval-actions"><button className="primary" onClick={() => onDecide(true, note.trim() || null)}>Approve credit memo</button><button className="secondary" disabled={!note.trim()} onClick={() => onDecide(false, note.trim())}>Refuse · don’t post</button></div>{role !== 'controller' && <p className="role-hint">Only {firstName(controller)} can approve. You’ll be asked to sign in as the controller.</p>}</> : <div className="feedback inline" role="status"><Check />{approval.status === 'approved' ? `Approved by ${controller}. ${postingSentence(ws)}` : `Refused by ${controller}. Nothing was posted.${shownNote ? ` Note: “${shownNote}”` : ''}`}</div>}</div></section>
+/** Every run of the agents for this distributor, newest first; each opens its own result on `/`. */
+function PastRuns({ account, runs, error }: { account: Account; runs: RunSummary[] | null; error: string | null }) {
+  return (
+    <section className="surface preview-section" aria-labelledby="runs-h">
+      <div className="list-heading"><div><h2 id="runs-h">Past runs</h2><p>Each time a payment from {account.distributor.name} arrived, the agents ran. Open one to see what each did and concluded.</p></div></div>
+      {error && <p className="muted small table-empty">{error}</p>}
+      {!runs && !error && <p className="muted small table-empty">Loading…</p>}
+      {runs && runs.length === 0 && <p className="muted small table-empty">No runs yet. They appear here once a payment has been checked.</p>}
+      {runs && runs.length > 0 && (
+        <ol className="hs-list runs-list">
+          {runs.map((r, i) => (
+            <li key={r.run_id}>
+              <Link className={`hs-row ${r.replaced ? 'is-replaced' : ''}`} href={withAccount('/', account.id, { run: r.run_id })}>
+                <span className="hs-when"><strong>{when(r.started_at)}</strong><small>{r.kind} payment{r.invoice_id ? ` · ${r.invoice_id}` : ''}</small></span>
+                <span className="hs-facts">
+                  {r.taken !== null && <span>Kept <b className="is-amber">{money(r.taken)}</b></span>}
+                  {r.disputed !== null && r.disputed > 0 && <span>Disputed <b className="is-dispute">{money(r.disputed)}</b></span>}
+                  {r.accepted !== null && r.accepted > 0 && <span>Fair <b className="is-fair">{money(r.accepted)}</b></span>}
+                  {r.questions > 0 && <span>{r.questions} question{r.questions === 1 ? '' : 's'}</span>}
+                </span>
+                <span className={`hs-status is-${r.replaced ? 'replaced' : r.status}`}>{r.replaced ? 'Replaced by a newer run' : i === 0 && r.status === 'waiting' ? 'Waiting on you' : RUN_STATUS[r.status]}</span>
+                <span className="hs-open">Open →</span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  )
 }

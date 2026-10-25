@@ -174,7 +174,7 @@ function Scenario({ account }: { account: Account }) {
 
 export default function ScenarioApp() {
   return (
-    <ToolFrame href="/scenario" title="Try a clause" lead={() => "Paste any clause and a charge. Clawback reads it, does the math and decides, with its evidence."}>
+    <ToolFrame title="Try a clause" lead={() => "Paste any clause and a charge. Clawback reads it, does the math and decides, with its evidence."}>
       {(account) => <Scenario account={account} />}
     </ToolFrame>
   );

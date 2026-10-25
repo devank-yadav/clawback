@@ -35,7 +35,7 @@ function Pile({ title, tone, total, charges, amount, onOpen }: { title: string; 
 /** "<$0.01" for tiny costs, so a real number never reads as free. */
 const cost = (usd: number) => (usd > 0 && usd < 0.01 ? "<$0.01" : money(usd));
 
-export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: string) => void; onNew: () => void; rail: ReactNode; next: ReactNode; failed: boolean }) {
+export function DonePanel({ onOpen, onNew, next, failed }: { onOpen: (id: string) => void; onNew: () => void; next: ReactNode; failed: boolean }) {
   const { view, state, cast, link } = useRun();
   const t = view.totals;
   const v = view.value;
@@ -79,8 +79,6 @@ export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: 
 
       {next && <section className="fl-nextstep" aria-label="Your next step"><span className="cx-eyebrow">Your next step</span>{next}</section>}
 
-      {rail}
-
       {disputed.length + fair.length + waiting.length === 0 ? (
         <p className="cx-small cx-muted">No charge has a decision yet.</p>
       ) : (
@@ -111,7 +109,7 @@ export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: 
           <small>Redlines for the next contract, each with what its clause cost this month.</small>
           <em>Open the Deal coach →</em>
         </a>
-        <a href={link("/workspace")}>
+        <a href={link("/overview")}>
           <strong>Past payments</strong>
           <small>The last six months, checked the same way: what the deal didn’t allow.</small>
           <em>Open the overview →</em>
@@ -120,7 +118,7 @@ export function DonePanel({ onOpen, onNew, rail, next, failed }: { onOpen: (id: 
 
       <div className="cx-head" style={{ alignItems: "center" }}>
         <span className="cx-small cx-muted">
-          Every decision is traceable: <a href={link("/workspace", { view: "payments" })}>every charge</a> · <a href={link("/audit")}>audit trail</a>
+          Every decision is traceable: <a href={link("/charges")}>every charge</a> · <a href={link("/saved#audit")}>audit trail</a>
         </span>
         <button className="cx-btn is-ghost" onClick={onNew}>Check a new payment</button>
       </div>

@@ -41,7 +41,7 @@ export default function Distributors() {
 
   return (
     <div className="fl">
-      <TopBar account={account} active="distributors" />
+      <TopBar account={account} />
       <main className="fl-main ds">
         <header className="ds-head">
           <span className="cx-eyebrow">{supplier?.brand.name ?? " "}</span>

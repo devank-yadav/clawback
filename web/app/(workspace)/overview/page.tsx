@@ -1,13 +1,13 @@
 import { Suspense } from "react";
+import ClawbackApp from "@/components/workspace/clawback-app";
 import ShellFallback from "@/components/shell/ShellFallback";
-import AuditApp from "@/components/tools/AuditApp";
 
-export const metadata = { title: "Audit log · Clawback" };
+export const metadata = { title: "Overview · Clawback" };
 
 export default function Page() {
   return (
     <Suspense fallback={<ShellFallback />}>
-      <AuditApp />
+      <ClawbackApp view="overview" />
     </Suspense>
   );
 }

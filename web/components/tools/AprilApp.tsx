@@ -82,7 +82,7 @@ function NextMonth({ account }: { account: Account }) {
 
 export default function AprilApp() {
   return (
-    <ToolFrame href="/april" title="Next month" lead={(a) => `${a.distributor.name}’s next charges, decided by the rules ${a.brand.owner.name} saved.`}>
+    <ToolFrame title="Next month" lead={(a) => `${a.distributor.name}’s next charges, decided by the rules ${a.brand.owner.name} saved.`}>
       {(account) => <NextMonth account={account} />}
     </ToolFrame>
   );

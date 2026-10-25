@@ -9,13 +9,12 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
-import { ChargeDrawer } from "@/components/console/Review";
+import { ChargeDrawer } from "@/components/console/ChargeDrawer";
 import { useRun } from "@/components/console/RunProvider";
 import { DonePanel } from "./DonePanel";
 import { ChargeMatrix } from "./ChargeMatrix";
 import { Elapsed, Meter, ACTOR } from "./parts";
 import { ReaderCard, Spotlight } from "./Spotlight";
-import { StageRail } from "./StageRail";
 import { StageHero } from "./StageHero";
 import { AgentStrip } from "./AgentStrip";
 import { StartPanel } from "./StartPanel";
@@ -106,7 +105,7 @@ function FlowFor() {
 
   return (
     <div className="fl">
-      <TopBar account={account} active="agents" />
+      <TopBar account={account} active="run" />
 
       {phase === "start" && (
         <main className="fl-main" style={{ paddingTop: 0, paddingBottom: 0 }}>
@@ -127,7 +126,6 @@ function FlowFor() {
           <AgentStrip state={state} view={view} owner={cast.owner} distributor={cast.distributor} />
           <StageHero stage={focus} stages={stages} feed={state.feed} done={status === "finished"} />
           <Spotlight focus={focus} />
-          <StageRail stages={stages} compact />
           <div className="fl-meters">
             <Meter label="Disputing, with proof" value={t?.disputed ?? 0} tone="dispute" />
             <Meter label="Fair, accepted" value={t?.accepted ?? 0} tone="fair" />
@@ -146,7 +144,7 @@ function FlowFor() {
       {phase === "done" && (
         <main className="fl-main">
           <AgentStrip state={state} view={view} owner={cast.owner} distributor={cast.distributor} />
-          <DonePanel onOpen={setDrawer} onNew={restart} rail={<StageRail stages={stages} compact />} next={focus && focus.state === "waiting" ? <Spotlight focus={focus} /> : null} failed={status === "failed"} />
+          <DonePanel onOpen={setDrawer} onNew={restart} next={focus && focus.state === "waiting" ? <Spotlight focus={focus} /> : null} failed={status === "failed"} />
         </main>
       )}
 

@@ -1,8 +1,8 @@
 "use client";
 
-// The one bar on every page: the logo, the distributor you're looking at (a custom switcher showing each tracked
-// distributor's plain status), the three places that matter (Agents, Distributors, Results) and a More menu for the
-// rest. Everything keeps the account in the URL (withAccount).
+// The one bar on every page: the logo, five places (Run, Charges, Overview, Records, Results), a More menu for the
+// demo tools, and the distributor you're looking at (a switcher showing each tracked distributor's plain status, with
+// every distributor one click further). Everything keeps the account in the URL (withAccount).
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -15,15 +15,17 @@ import * as api from "@/lib/api";
 import type { Account, RelationshipStatus } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
 
-const MAIN = [
-  { key: "agents", href: "/", label: "Agents" },
-  { key: "distributors", href: "/distributors", label: "Distributors" },
-  { key: "history", href: "/history", label: "History" },
-  { key: "saved", href: "/saved", label: "Saved" },
+export type Place = "run" | "charges" | "overview" | "records" | "results";
+
+const MAIN: { key: Place; href: string; label: string }[] = [
+  { key: "run", href: "/", label: "Run" },
+  { key: "charges", href: "/charges", label: "Charges" },
+  { key: "overview", href: "/overview", label: "Overview" },
+  { key: "records", href: "/saved", label: "Records" },
+  { key: "results", href: "/results", label: "Results" },
 ];
 
-const MORE: { href: string; label: string; view?: string; hint: string }[] = [
-  { href: "/workspace", label: "Overview & payments", hint: "This distributor, every charge and its evidence" },
+const MORE: { href: string; label: string; hint: string }[] = [
   { href: "/april", label: "Next month", hint: "The agents again, using your saved rules" },
   { href: "/coach", label: "Deal coach", hint: "Fixes for the next deal" },
   { href: "/scenario", label: "Try a clause", hint: "Paste a clause, watch the decision" },
@@ -85,7 +87,7 @@ function Switcher({ account }: { account: Account | null }) {
               <i className={`tb-dot ${STATUS_TONE[d.status]}`} />
             </button>
           ))}
-          <Link className="tb-menu-foot" href={withAccount("/distributors", account?.id)} onClick={() => setOpen(false)}>Add or manage distributors</Link>
+          <Link className="tb-menu-foot" href={withAccount("/distributors", account?.id)} onClick={() => setOpen(false)}>All distributors</Link>
         </div>
       )}
     </div>
@@ -100,7 +102,7 @@ function More({ account, extra }: { account: Account | null; extra?: ReactNode }
       {open && (
         <div className="tb-menu tb-more-menu" role="menu">
           {MORE.map((m) => (
-            <Link key={m.label} role="menuitem" className="tb-row" href={withAccount(m.href, account?.id, m.view ? { view: m.view } : undefined)} onClick={() => setOpen(false)}>
+            <Link key={m.label} role="menuitem" className="tb-row" href={withAccount(m.href, account?.id)} onClick={() => setOpen(false)}>
               <span><strong>{m.label}</strong><small>{m.hint}</small></span>
             </Link>
           ))}
@@ -126,7 +128,7 @@ function Who({ account }: { account: Account | null }) {
   );
 }
 
-export default function TopBar({ account, active, extra }: { account: Account | null; active?: string; right?: ReactNode; extra?: ReactNode }) {
+export default function TopBar({ account, active, extra }: { account: Account | null; active?: Place; extra?: ReactNode }) {
   return (
     <header className="tb">
       <Link href={withAccount("/", account?.id)} className="tb-logo"><Logo /> clawback</Link>

@@ -1,27 +1,14 @@
 'use client'
 
-// What Clawback is worth, in the API's own numbers: the run's value strip, the six-month lookback ("Before Clawback"),
+// What Clawback is worth, in the API's own numbers: the six-month lookback ("Before Clawback"),
 // the file-by date on a disputed line, and the dispute packet link. Layout math only; every amount is the API's.
 
 import { useEffect, useRef, useState } from 'react'
 import { Clock, Download } from 'lucide-react'
 import { disputePacketUrl } from '@/lib/api'
-import { aiCost, anyDay, compactMoney, daysLeftLabel, dollars, duration, minutesLabel, money, monthLabel, monthShortLabel, URGENT_DAYS } from '@/lib/format'
-import type { Lookback, LookbackStatus, RunValue } from '@/lib/types'
-
+import { anyDay, compactMoney, daysLeftLabel, dollars, money, monthLabel, monthShortLabel, URGENT_DAYS } from '@/lib/format'
+import type { Lookback, LookbackStatus } from '@/lib/types'
 /** "$4,120 being recovered · decided in 71 s · $0.38 of AI · by hand: about 45 min" once a run has decided. */
-export function ValueStrip({ value }: { value: RunValue }) {
-  return (
-    <section className="value-strip" aria-label="What this payment's check was worth">
-      <strong>{value.disputed > 0 ? `${money(value.disputed)} being recovered` : 'Nothing taken wrongly'}</strong>
-      <span>decided in {duration(value.seconds_to_decided)}</span>
-      {value.ai_cost_usd !== null && <span>{aiCost(value.ai_cost_usd)} of AI</span>}
-      {value.manual_minutes !== null && <span className="by-hand">by hand: about {minutesLabel(value.manual_minutes)}</span>}
-    </section>
-  )
-}
-
-/** "File by Apr 27 · 12 days left" on a disputed line; amber-red under two weeks. Nothing when the API sends neither. */
 export function FileBy({ fileBy, daysLeft, className = '' }: { fileBy?: string | null; daysLeft?: number | null; className?: string }) {
   if (!fileBy && (daysLeft === null || daysLeft === undefined)) return null
   const urgent = daysLeft !== null && daysLeft !== undefined && daysLeft < URGENT_DAYS
