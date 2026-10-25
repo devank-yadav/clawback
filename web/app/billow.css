@@ -99,7 +99,6 @@ i.is-dispute { background: var(--dispute); } i.is-fair { background: var(--fair)
 .fl-paste { width: min(640px, 100%); margin: 0 auto; }
 .fl-drop { background: var(--card); }
 .fl-last { width: min(640px, 100%); margin: 0 auto; border-radius: 999px; padding: 8px 8px 8px 18px; box-shadow: 0 1px 2px rgba(0, 28, 46, 0.04); }
-.fl-last.is-waiting { background: var(--wait-bg); border-color: color-mix(in srgb, var(--wait) 35%, transparent); }
 .fl-problem { width: min(640px, 100%); margin: 0 auto; background: var(--amber-bg); color: var(--amber); }
 .fl-reading { margin: 0 auto; }
 

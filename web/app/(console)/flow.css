@@ -330,8 +330,6 @@ button.fl-row:hover { background: var(--card-2); }
 .fl-pcard > span:first-child > strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .fl-pcard > span:first-child { gap: 10px; min-width: 0; }
 .fl-done-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.fl-last.is-waiting { border-color: var(--amber); background: var(--amber-bg); }
-.fl-last.is-waiting strong { color: var(--amber); font-weight: 500; }
 
 /* ---------- the agents strip (components/flow/AgentStrip.tsx) ---------- */
 .as { display: flex; flex-direction: column; gap: 10px; }
