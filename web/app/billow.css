@@ -23,10 +23,11 @@
 
 /* the floating product frame on a sky wash: the run sits in it like billow's cockpit */
 .bw-stage { position: relative; isolation: isolate; padding: 28px 0 8px; }
-.bw-stage::before { content: ""; position: absolute; z-index: -1; inset: -40px -8vw -20px; background:
-  radial-gradient(42% 60% at 22% 62%, var(--sky), transparent 70%),
-  radial-gradient(40% 55% at 78% 58%, color-mix(in srgb, var(--sky) 85%, #c9e6ff), transparent 70%),
-  radial-gradient(30% 40% at 50% 100%, color-mix(in srgb, var(--sky) 70%, transparent), transparent 70%); filter: blur(8px); pointer-events: none; }
+.bw-stage::before { content: ""; position: absolute; z-index: -1; inset: -30px -10vw -60px; background:
+  radial-gradient(34% 52% at 12% 70%, #a9dcff, transparent 72%),
+  radial-gradient(34% 52% at 88% 66%, #a9dcff, transparent 72%),
+  radial-gradient(46% 44% at 50% 104%, #c4e8ff, transparent 72%),
+  radial-gradient(60% 60% at 50% 40%, var(--sky), transparent 75%); opacity: 0.75; filter: blur(14px); pointer-events: none; }
 .bw-frame { background: color-mix(in srgb, var(--card) 94%, transparent); border: 1px solid var(--line); border-radius: var(--radius-frame); box-shadow: var(--shadow-frame); padding: 22px; display: flex; flex-direction: column; gap: 16px; backdrop-filter: blur(6px); }
 
 .bw-bar { margin: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -133,15 +134,17 @@ i.is-dispute { background: var(--dispute); } i.is-fair { background: var(--fair)
 .fl-result.is-solo { grid-template-columns: minmax(0, 1fr); }
 .fl-result .bw-stats { grid-template-columns: minmax(0, 1fr); }
 .fl-result.is-solo .bw-stats { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
-.fl-nextstep { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 18px; box-shadow: 0 1px 2px rgba(0, 28, 46, 0.04); display: flex; flex-direction: column; gap: 10px; }
+.fl-nextstep { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .fl-nextstep > .cx-eyebrow { align-self: flex-start; text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 999px; background: var(--wait-bg); color: var(--wait-ink); }
 .fl-piles { gap: 14px; }
 .fl-pile { border-radius: var(--radius-card); padding: 16px; box-shadow: 0 1px 2px rgba(0, 28, 46, 0.04); }
 .fl-pile h3 { font-size: 14px; font-weight: 600; }
 .fl-pile h3 .cx-money { font-weight: 600; }
 .fl-pile.is-wait h3 .cx-money { color: var(--wait-ink); }
-.fl-pile h3 > span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 8px; vertical-align: 1px; }
-.fl-pile.is-dispute h3 > span::before { background: var(--dispute); } .fl-pile.is-fair h3 > span::before { background: var(--fair); } .fl-pile.is-wait h3 > span::before { background: var(--wait); }
+.fl-pile h3 > span:first-child::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 8px; vertical-align: 1px; }
+.fl-pile.is-dispute h3 > span:first-child::before { background: var(--dispute); } .fl-pile.is-fair h3 > span:first-child::before { background: var(--fair); } .fl-pile.is-wait h3 > span:first-child::before { background: var(--wait); }
+.fl-pile { color: var(--ink); }
+.fl-pcard > span:first-child > span { font-weight: 600; }
 .fl-pile ul { gap: 0; }
 .fl-pile li + li .fl-pcard { border-top: 1px solid var(--line); }
 .fl-pcard { background: none; border: 0; border-radius: 0; padding: 11px 2px; }
@@ -155,14 +158,38 @@ i.is-dispute { background: var(--dispute); } i.is-fair { background: var(--fair)
 
 @media (max-width: 860px) {
   .tb { padding: 10px 16px; }
-  .tb-nav { margin: 0; }
+  .tb-nav { margin: 0 -8px; gap: 0; }
+  .tb-link { padding: 7px 9px; font-size: 13px; }
   .fl-watch, .fl-result { grid-template-columns: minmax(0, 1fr); }
   .bw-frame { padding: 14px; border-radius: 20px; }
   .bw-hero { padding-top: 28px; }
   .fl-start .bw-hero { padding-top: 32px; }
   .fl-last { border-radius: 16px; }
+  .fl-result .bw-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .fl-result .bw-stat { padding: 10px 12px; }
+  .fl-result .bw-stat strong { font-size: 19px; }
+  .fl-result .bw-stat small { display: none; }
+  .bw-stage::before { inset: -20px -16px -30px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .bw-pill.is-live::before { animation: none; }
   .bw-bar-track i, .fl-next a { transition: none; }
 }
+
+/* the decision and dispute cards: billow's "Needs attention" insight card */
+.fl-card { border-radius: var(--radius-card); padding: 20px 22px; box-shadow: 0 1px 2px rgba(0, 28, 46, 0.04), 0 18px 40px -24px rgba(0, 28, 46, 0.18); }
+.fl-card.is-amber { border-color: color-mix(in srgb, var(--wait) 45%, var(--line)); }
+.fl-card h2 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+.fl-spot .cx-drawer { border-color: color-mix(in srgb, var(--wait) 45%, var(--line)); background: var(--card); border-radius: var(--radius-card); box-shadow: 0 1px 2px rgba(0, 28, 46, 0.04), 0 18px 40px -24px rgba(0, 28, 46, 0.18); }
+.cx-quote.is-marked { background: var(--hl); border-left-color: var(--wait); }
+
+/* the agents across the top: four to a row so every conclusion reads in full */
+.as-row { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.as-agent { border-radius: 14px; padding: 12px 14px; }
+.as-agent.is-open { border-color: var(--accent); background: var(--selected); }
+.as-agent.is-waiting { border-color: color-mix(in srgb, var(--wait) 60%, var(--line)); background: var(--wait-bg); }
+.as-agent.is-waiting .as-top i { background: var(--wait); }
+.as-top strong { font-size: 13.5px; font-weight: 600; }
+.as-concl { font-size: 12.5px; }
+.as-detail { border-color: var(--line-strong); border-radius: var(--radius-card); box-shadow: var(--shadow-pop); }
+@media (max-width: 860px) { .as-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
