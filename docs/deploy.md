@@ -261,7 +261,7 @@ docker compose restart caddy              # only if deploy/Caddyfile changed (se
 bash deploy/smoke.sh https://clawback.biz # from a laptop
 ```
 
-- Web-only change: `docker compose up -d --build web` rebuilds Next.js and leaves the API's state alone.
+- Web-only change: `docker compose up -d --build --no-deps web` rebuilds Next.js and leaves the API's state alone. Without `--no-deps`, compose rebuilds and recreates `api` too (web depends on it), which wipes its in-memory state.
 - `deploy/Caddyfile` change: `docker compose restart caddy`. The file is bind-mounted, and `git pull` replaces it with a new file, so `caddy reload` inside the container would still read the old one.
 - `.env` change: `docker compose up -d --force-recreate api` (wipes the in-memory state).
 - Option B: rerun step 5's `rsync` from the laptop, then the same `docker compose` commands.
