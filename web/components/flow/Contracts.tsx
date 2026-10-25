@@ -4,16 +4,15 @@
 // emails from approved senders, notices), with every term the agents read highlighted where it sits in the text.
 // The next deal's draft is where changes belong: the Deal coach proposes redlines there for you to accept or not.
 
-import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
 import { EmptyState, PageHeader } from "@/components/ui/kit";
-import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
 import type { LibraryDocument, LibraryTerm } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
+import { renderDocument } from "./DocRender";
 
 const TERM_STATE: Record<string, { tone: string; word: string }> = {
   verified: { tone: "is-green", word: "Found word for word" },
@@ -30,22 +29,23 @@ function source(d: LibraryDocument) {
   return d.kind;
 }
 
-function Highlighted({ doc, active, onPick }: { doc: LibraryDocument; active: number | null; onPick: (i: number) => void }) {
-  const parts: React.ReactNode[] = [];
+/** The document as a document: rendered headings, lists and tables, the readers' terms marked at their offsets. */
+function Rendered({ doc, active, onPick }: { doc: LibraryDocument; active: number | null; onPick: (i: number) => void }) {
+  const terms = [...doc.terms].map((t, i) => ({ t, i })).sort((a, b) => a.t.char_start - b.t.char_start);
+  // Overlapping terms: the first one is drawn, as before. Indexes stay the terms list's own, for the side cards.
+  const drawn: LibraryTerm[] = doc.terms.map((t) => ({ ...t, char_start: -1, char_end: -1 }));
   let at = 0;
-  doc.terms.forEach((t, i) => {
-    if (t.char_start < at) return; // overlapping terms: the first one is drawn
-    parts.push(doc.text.slice(at, t.char_start));
-    parts.push(
-      <mark key={i} className={`ct-mark is-${t.status} ${t.discretion ? "is-discretion" : ""} ${active === i ? "is-active" : ""}`} onClick={() => onPick(i)} title={t.label}>
-        {doc.text.slice(t.char_start, t.char_end)}
-      </mark>,
-    );
+  for (const { t, i } of terms) {
+    if (t.char_start < at) continue;
+    drawn[i] = t;
     at = t.char_end;
-  });
-  parts.push(doc.text.slice(at));
-  return <div className="bp-text">{parts}</div>;
+  }
+  const { nodes } = renderDocument(doc.text, drawn, active, onPick);
+  return <div className="dr">{nodes}</div>;
 }
+
+/** The sections of the document, for the outline beside it. */
+const outlineOf = (doc: LibraryDocument) => renderDocument(doc.text, [], null, () => undefined).outline;
 
 export default function Contracts() {
   const { account, cast } = useRun();
@@ -55,6 +55,12 @@ export default function Contracts() {
   const [term, setTerm] = useState<number | null>(null);
   const docs = lib.data?.documents ?? [];
   const doc = docs.find((d) => d.id === pick) ?? docs[0] ?? null;
+  const outline = doc ? outlineOf(doc) : [];
+  // A term picked on the side scrolls its sentence into view.
+  useEffect(() => {
+    if (term === null) return;
+    document.querySelector(`[data-term="${term}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [term]);
   const groups = [
     { key: "base", title: "The signed deal", docs: docs.filter((d) => d.kind === "deal") },
     { key: "changes", title: "What changes it, with its source", docs: docs.filter((d) => d.kind !== "deal" && d.kind !== "draft") },
@@ -95,6 +101,12 @@ export default function Contracts() {
                   ))}
                 </div>
               ))}
+              {outline.length > 1 && (
+                <div className="dr-outline">
+                  <h2>On this page</h2>
+                  {outline.map((o) => <a key={o.id} href={`#${o.id}`} className={`is-l${o.level}`}>{o.label}</a>)}
+                </div>
+              )}
             </nav>
 
             <article className="bp-paper">
@@ -103,10 +115,10 @@ export default function Contracts() {
                 <div>
                   {doc.locked && <span className="bp-chip is-lock">Locked · nobody edits it, agents included</span>}
                   {!doc.locked && doc.kind !== "draft" && <span className={`bp-chip ${doc.approved_sender ? "is-green" : "is-amber"}`}>{source(doc)}</span>}
-                  {doc.kind === "draft" && <Link className="cx-btn" href={withAccount("/coach", account?.id)}>Get redlines from the Deal coach</Link>}
+
                 </div>
               </header>
-              <Highlighted doc={doc} active={term} onPick={setTerm} />
+              <Rendered doc={doc} active={term} onPick={setTerm} />
             </article>
 
             <aside className="bp-terms" aria-label="Terms the agents read">
