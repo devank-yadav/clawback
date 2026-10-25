@@ -97,3 +97,47 @@ def test_the_assistant_answers_with_the_owners_token():
     except Exception:  # noqa: BLE001 - the response shape is the agent's business; the header is what's tested
         pass
     assert seen == ["owner-test-token"]
+
+
+# ---- the admin's sign-in (POST /auth/login): an ID and password in, the access code out
+
+def _no_login_env(monkeypatch):
+    for k in ("OWNER_TOKEN", "ADMIN_USERNAME", "ADMIN_PASSWORD", "CLAWBACK_ADMIN_TOKEN"):
+        monkeypatch.delenv(k, raising=False)
+
+
+def test_a_laptop_with_no_password_signs_anyone_in(api, monkeypatch):
+    client, _ = api
+    _no_login_env(monkeypatch)
+    r = client.post("/auth/login", json={"username": "anyone", "password": "anything"})
+    assert r.status_code == 200 and r.json() == {"role": "owner", "code": None}
+
+
+def test_the_right_id_and_password_get_the_access_code(api, monkeypatch):
+    client, _ = api
+    _no_login_env(monkeypatch)
+    roles(monkeypatch)
+    monkeypatch.setenv("ADMIN_PASSWORD", "correct horse")
+    assert client.post("/auth/login", json={"username": "Admin ", "password": "correct horse"}).json()["code"] == "owner-test-token"
+    assert client.post("/auth/login", json={"username": "admin", "password": "wrong"}).status_code == 401
+    assert client.post("/auth/login", json={"username": "dana", "password": "correct horse"}).status_code == 401
+    monkeypatch.setenv("ADMIN_USERNAME", "dana")
+    assert client.post("/auth/login", json={"username": "dana", "password": "correct horse"}).status_code == 200
+
+
+def test_a_guarded_site_without_a_password_says_sign_in_isnt_set_up(api, monkeypatch):
+    client, _ = api
+    _no_login_env(monkeypatch)
+    roles(monkeypatch)
+    r = client.post("/auth/login", json={"username": "admin", "password": "x"})
+    assert r.status_code == 503 and "ADMIN_PASSWORD" in r.json()["detail"]
+
+
+def test_sign_in_attempts_are_limited_per_visitor(api, monkeypatch):
+    client, _ = api
+    _no_login_env(monkeypatch)
+    monkeypatch.setenv("CLAWBACK_ADMIN_TOKEN", "presenter")
+    monkeypatch.setenv("ADMIN_PASSWORD", "pw")
+    monkeypatch.setenv("LOGIN_PER_IP", "3")
+    codes = [client.post("/auth/login", json={"username": "admin", "password": "no"}).status_code for _ in range(4)]
+    assert codes == [401, 401, 401, 429]

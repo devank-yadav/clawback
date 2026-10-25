@@ -63,6 +63,10 @@ const q = encodeURIComponent;
 /** What every screen says when the API can't be reached. */
 export const unreachable = (e: Error) => `Can't reach Clawback right now (${e.message}). Try again in a moment.`;
 
+// ---- The admin's sign-in: an ID and password in, the access code the admin's actions carry out
+export const login = (username: string, password: string) =>
+  call<{ role: "owner"; code: string | null }>("/auth/login", { method: "POST", body: { username, password } });
+
 // ---- Accounts
 export const fetchAccounts = () => call<Account[]>("/accounts");
 export const fetchSuppliers = () => call<SupplierItem[]>("/suppliers");

@@ -193,3 +193,20 @@ i.is-dispute { background: var(--dispute); } i.is-fair { background: var(--fair)
 .as-concl { font-size: 12.5px; }
 .as-detail { border-color: var(--line-strong); border-radius: var(--radius-card); box-shadow: var(--shadow-pop); }
 @media (max-width: 860px) { .as-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- sign-in: the top bar's button, the /signin page and the form the dialog shares ---------- */
+.tb-signin { display: inline-flex; align-items: center; min-height: 34px; padding: 0 16px; border-radius: 999px; background: var(--button); color: #fff; font-size: 13px; font-weight: 500; }
+.tb-signin:hover { background: var(--button-hover); color: #fff; }
+.signin-page { align-items: center; }
+.signin-card { width: min(420px, 100%); margin: 8px auto 40px; padding: 24px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-frame); }
+.signin-form { display: flex; flex-direction: column; gap: 8px; }
+.signin-form .note-label { margin: 6px 0 0; font-size: 13px; font-weight: 500; color: var(--ink); }
+.signin-form input { min-height: 44px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--card); color: var(--ink); font: inherit; font-size: 14px; }
+.signin-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.signin-form .primary { margin-top: 12px; min-height: 44px; border: 0; border-radius: 999px; background: var(--button); color: #fff; font-weight: 500; cursor: pointer; }
+.signin-form .primary:disabled { opacity: 0.6; cursor: progress; }
+.signin-form .field-error { color: var(--red); font-size: 13px; margin: 0; }
+.signin-done { display: flex; flex-direction: column; gap: 14px; text-align: center; }
+.signin-actions { display: flex; gap: 10px; justify-content: center; }
+.brand-dialog { background: var(--card); color: var(--ink); border-color: var(--line); box-shadow: var(--shadow-pop); grid-template-columns: 1fr; }
+.brand-dialog p { color: var(--sub); }

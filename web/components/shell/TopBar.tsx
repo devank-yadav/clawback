@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { Logo } from "@/components/console/ui";
 import { inkOn, withAccount } from "@/lib/accounts";
 import { roleName } from "@/components/shell/SessionDialogs";
@@ -117,7 +117,18 @@ function More({ account, extra }: { account: Account | null; extra?: ReactNode }
 /** Who's signed in, only once someone is: signing in happens when an action needs it (answer or approve). */
 function Who({ account }: { account: Account | null }) {
   const { role } = useSession();
-  if (!role || !account) return null;
+  const path = usePathname();
+  const router = useRouter();
+  if (!role) {
+    if (path === "/signin") return null;
+    // Back to this page after signing in; the address is read on click, so server and browser render the same link.
+    const go = (e: ReactMouseEvent) => {
+      e.preventDefault();
+      router.push(withAccount("/signin", account?.id, { next: `${window.location.pathname}${window.location.search}` }));
+    };
+    return <Link className="tb-signin" href={withAccount("/signin", account?.id)} onClick={go}>Sign in</Link>;
+  }
+  if (!account) return null;
   const name = roleName(role, account);
   return (
     <span className="tb-who">
@@ -131,7 +142,7 @@ function Who({ account }: { account: Account | null }) {
 export default function TopBar({ account, active, extra }: { account: Account | null; active?: string; right?: ReactNode; extra?: ReactNode }) {
   return (
     <header className="tb">
-      <Link href={withAccount("/", account?.id)} className="tb-logo"><Logo /> clawback</Link>
+      <Link href={withAccount("/", account?.id, { home: "1" })} className="tb-logo" aria-label="Clawback home"><Logo /> clawback</Link>
       <nav className="tb-nav" aria-label="Clawback">
         {MAIN.map((m) => (
           <Link key={m.key} href={withAccount(m.href, account?.id)} className="tb-link" aria-current={active === m.key ? "page" : undefined}>{m.label}</Link>

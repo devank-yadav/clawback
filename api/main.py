@@ -13,6 +13,7 @@ from api.db import events as saved_events, state as saved_state
 from api.integrations import nessie, replay
 from api.routes import accounts, approvals, suppliers, audit, db, demo, eval, payments, portal, runs, scenario, trace, webhooks
 from api.routes import remittance as remittance_routes
+from api.routes import auth as auth_routes
 
 load_dotenv()
 log = logging.getLogger("clawback")
@@ -45,6 +46,7 @@ app.add_middleware(
 for r in (runs, payments, portal, approvals, webhooks, scenario, eval, audit, demo, db, trace, accounts, suppliers):
     app.include_router(r.router)
 app.include_router(remittance_routes.router)  # bring in a remittance advice (api/remittance.py)
+app.include_router(auth_routes.router)  # the admin's sign-in
 
 
 @app.get("/health")

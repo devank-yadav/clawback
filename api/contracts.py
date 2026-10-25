@@ -1233,6 +1233,20 @@ class TrackRequest(Contract):
     tracked: bool
 
 
+class LoginRequest(Contract):
+    """POST /auth/login: the admin's ID and password."""
+
+    username: str = Field(max_length=200)
+    password: str = Field(max_length=200)
+
+
+class LoginResponse(Contract):
+    """The admin is signed in; `code` goes in the X-Clawback-Role-Token header (null where the site needs none)."""
+
+    role: Literal["owner"] = "owner"
+    code: str | None = None
+
+
 class RunSummary(Contract):
     """GET /accounts/{id}/runs: one past or current run of the agents, from its own events (newest first)."""
 

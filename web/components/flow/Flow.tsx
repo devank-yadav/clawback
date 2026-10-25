@@ -7,6 +7,8 @@
 // A run started anywhere else (the Nessie deposit, another device) switches the page to it by itself.
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { withAccount } from "@/lib/accounts";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
 import { ChargeDrawer } from "@/components/console/Review";
@@ -51,14 +53,19 @@ function writeFollowed(account: string | undefined, runId: string | null) {
 
 export default function Flow() {
   const { account } = useRun();
-  // A new account starts fresh: nothing "started in this tab" carries over.
-  return <FlowFor key={account?.id ?? "none"} />;
+  const home = useSearchParams().get("home") === "1";
+  // A new account starts fresh: nothing "started in this tab" carries over. So does each click on the logo (home) or
+  // on Agents: the logo always opens the start screen, Agents the latest run.
+  return <FlowFor key={`${account?.id ?? "none"}:${home ? "home" : "agents"}`} />;
 }
 
 function FlowFor() {
   const run = useRun();
   const { state, view, account, cast, runId, starting } = run;
   const openLatest = useOpenLatest();
+  // The logo opens ?home=1: the start screen, whatever this tab last watched. "Agents" opens the latest run.
+  const home = useSearchParams().get("home") === "1";
+  const router = useRouter();
   // The run this tab was following when it started one; any newer run is "ours" from then on.
   const [startedFrom, setStartedFrom] = useState<string | null | undefined>(undefined);
   const [opened, setOpened] = useState(false);
@@ -79,7 +86,7 @@ function FlowFor() {
   const watched = !!runId && followed === runId;
   const phase: "start" | "run" | "done" =
     starting || (mine && !state.run) ? "run"
-      : fresh && !mine ? "start"
+      : (fresh || (home && !opened)) && !mine ? "start"
       : !state.run ? "start"
         : working ? "run"
           : mine || opened || openLatest || watched || waitingOnPerson ? "done"
@@ -106,11 +113,11 @@ function FlowFor() {
 
   return (
     <div className="fl">
-      <TopBar account={account} active="agents" />
+      <TopBar account={account} active={phase === "start" && home ? undefined : "agents"} />
 
       {phase === "start" && (
         <main className="fl-main" style={{ paddingTop: 0, paddingBottom: 0 }}>
-          <StartPanel onStart={() => setStartedFrom(runId ?? null)} onOpenLast={() => { setOpened(true); setFresh(false); }} />
+          <StartPanel onStart={() => (home ? router.replace(withAccount("/", account?.id)) : setStartedFrom(runId ?? null))} onOpenLast={() => { setOpened(true); setFresh(false); }} />
         </main>
       )}
 
