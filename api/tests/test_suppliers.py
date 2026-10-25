@@ -71,8 +71,8 @@ def test_saved_lists_locked_deal_records_and_rules(api):
 def test_connections_say_what_is_real(api):
     client, _ = api
     got = {c["id"]: c["status"] for c in client.get("/connections").json()}
-    assert got["upload"] == "ready" and got["inbox"] == "coming_soon" and got["portals"] == "coming_soon"
-    assert got["quickbooks"] == "not_connected"  # tests blank every key
+    assert got["upload"] == "ready" and got["portals"] == "coming_soon"
+    assert got["quickbooks"] == got["bank"] == got["inbox"] == "not_connected"  # tests blank every key
 
 
 def test_contract_library_highlights_the_terms_the_agents_read(api):

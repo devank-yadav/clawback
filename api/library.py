@@ -3,34 +3,77 @@ library (each distributor's signed deal, locked, with the terms the agents read 
 
 from __future__ import annotations
 
-import os
-
-from api import accounts, documents
+from api import accounts, documents, inbound_email, sources
 from api.contracts import Connection, ContractLibrary, LibraryDocument, LibraryTerm
-from api.integrations import nessie, replay, sms
-
-QBO_KEYS = ("QBO_CLIENT_ID", "QBO_CLIENT_SECRET", "QBO_REALM_ID", "QBO_REFRESH_TOKEN")
+from api.integrations import nessie, qbo_source, replay, sms
 
 
-def connections() -> list[Connection]:
-    qbo = all(os.getenv(k) for k in QBO_KEYS)
+def _seen(source: str, account: accounts.Account | None) -> dict:
+    """What a source has seen (api/sources.py), for the account in view."""
+    s, item = sources.state(source), sources.last(source, account.id if account else None)
+    return {"checked_at": s.checked_at, "problem": s.error, "last_seen": item.text if item else None,
+            "last_seen_at": item.at if item else None, "run_id": item.run_id if item else None}
+
+
+def _quickbooks(account: accounts.Account | None, demo: bool) -> Connection:
+    invoice = account.config.qbo.invoice_no if account else "the distributor's invoice"
+    live = qbo_source.configured() and not demo
+    watching = bool(qbo_source.poller and qbo_source.poller.running)
+    if not live:
+        detail = ("Not connected on this server: payments recorded there aren't watched, and postings are simulated "
+                  "and say so" if not demo else "DEMO_MODE: nothing reaches QuickBooks; postings are simulated and say so")
+    elif watching:
+        detail = (f"A payment recorded against {invoice} starts the agents (checked every {qbo_source.POLL_S:.0f} "
+                  "seconds); credit memos post only after your approval")
+    else:
+        detail = "Sandbox company; credit memos post only after your approval. Payments aren't watched (QBO_POLL=off)"
+    return Connection(id="quickbooks", name="QuickBooks", brings="Invoices, payments received, credit memos",
+                      status="connected" if live else "not_connected", detail=detail,
+                      **(_seen("quickbooks", account) if live else {}))
+
+
+def _bank(account: accounts.Account | None, demo: bool) -> Connection:
+    live = nessie.configured() and not demo
+    watching = bool(nessie.poller and nessie.poller.running)
+    if not live:
+        detail = "Not connected: use “Send a test payment” on Agents" if not demo else \
+            "DEMO_MODE: “Send a test payment” starts the run directly"
+    elif watching:
+        named = f" (“{account.config.nessie_description}”)" if account else ""
+        detail = f"Checked every {nessie.POLL_S:.0f} seconds; a deposit that names this invoice{named} starts the agents"
+    else:
+        detail = "Connected, not watching (NESSIE_POLL=off): “Send a test payment” posts the deposit and starts the run"
+    return Connection(id="bank", name="Bank (Capital One)", brings="Deposits: a short payment starts the agents",
+                      status="connected" if live else "not_connected", detail=detail,
+                      **(_seen("bank", account) if live else {}))
+
+
+def _inbox(account: accounts.Account | None) -> Connection:
+    to = inbound_email.address(account) if account else None
+    live = inbound_email.configured() and bool(to or not account)
+    if live:
+        detail = ("Forward remittance advice here: it's read and checked like an upload, and starts the agents if it "
+                  "adds up. A broker's email from an approved sender can change the deal; anyone else's is a claim")
+    else:
+        detail = "Not set up on this server: upload the remittance instead"
+    return Connection(id="inbox", name="Remittance inbox", brings="Remittances and broker emails, read automatically",
+                      status="connected" if live else "not_connected", detail=detail, address=to if live else None,
+                      **(_seen("inbox", account) if live else {}))
+
+
+def connections(account: accounts.Account | None = None) -> list[Connection]:
+    """Every place information comes from, as it is on this server; the three that start runs say what they've seen
+    for the account in view."""
     demo = replay.demo_mode()
     return [
-        Connection(id="quickbooks", name="QuickBooks", brings="Invoices, payments received, credit memos",
-                   status="connected" if qbo and not demo else "not_connected",
-                   detail="Sandbox company; credit memos post only after your approval" if qbo and not demo
-                   else "Not connected on this server: postings are simulated and say so"),
-        Connection(id="bank", name="Bank (Capital One)", brings="Deposits: a short payment starts the agents",
-                   status="connected" if nessie.configured() else "not_connected",
-                   detail="Checked every 5 seconds for new deposits" if nessie.configured()
-                   else "Not connected: use “Send a test payment” on Agents"),
+        _quickbooks(account, demo),
+        _bank(account, demo),
         Connection(id="upload", name="Upload", brings="Remittance advice, contracts and records as files",
                    status="ready", detail="PDF, CSV or text; the Payment reader checks every line adds up"),
         Connection(id="texts", name="Texts to you", brings="Your one question and approvals by WhatsApp or SMS",
                    status="connected" if sms.configured("owner") else "not_connected",
                    detail="A reply answers it" if sms.configured("owner") else "Not connected: decisions wait in the app"),
-        Connection(id="inbox", name="Remittance inbox", brings="Remittances and broker emails, read automatically",
-                   status="coming_soon", detail="A forwarding address per distributor"),
+        _inbox(account),
         Connection(id="portals", name="Distributor portals", brings="Walmart Retail Link, KeHE CONNECT, UNFI",
                    status="coming_soon", detail="Deduction exports pulled on a schedule"),
         Connection(id="edi", name="EDI 820", brings="Remittance advice lines straight from the distributor",

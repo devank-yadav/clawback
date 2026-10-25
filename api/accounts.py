@@ -5,7 +5,8 @@
     charges/<month>.csv           a month's charges: the invoice month's, and any later one's (Peak Bar's April)
     sales/store-sales.csv  payments/prior.csv  plan/promo-plan.csv
     history/  deliveries/  pricing/  terms/      rows api/account_rows.py reads
-A missing file means no rows.
+A missing file means no rows. Emails the remittance inbox kept for an account (api/inbound_email.py) are documents too:
+<INBOUND_EMAIL_DIR>/<id>/emails/*.eml, listed in Account.inbound; accounts.clear() picks up a new one.
 
 Every account.yaml is loaded once and checked: it validates against AccountConfig, its id is its folder's name, its
 deal_docs are its own documents, and nothing clashes with another account: document ids, invoice ids and QuickBooks
@@ -19,6 +20,7 @@ pipeline sets it on a run's thread and code that takes no account (the evidence 
 
 from __future__ import annotations
 
+import os
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -38,6 +40,7 @@ DOC_DIRS = ("deals", "emails", "notices")
 DOC_SUFFIXES = (".md", ".eml")
 CONTRACTS = "contracts"  # data/contracts/: real contracts an account.yaml names in `contracts`
 DISPUTES_PER_MONTH = 10
+INBOUND_DOCS = "emails"  # <inbound_root()>/<account id>/emails/<doc id>.eml, so documents.load reads them as emails
 
 
 class UnknownAccount(KeyError):
@@ -50,6 +53,7 @@ class Account:
     dir: Path
     docs: dict[str, Path] = field(repr=False)  # this account's documents: id -> file
     months: tuple[str, ...]  # the invoice month first, then each other charges/<month>.csv in calendar order
+    inbound: tuple[str, ...] = ()  # emails the remittance inbox kept for it (inbound_root()), oldest first; in docs too
 
     @property
     def id(self) -> str:
@@ -85,6 +89,13 @@ _current: ContextVar[str | None] = ContextVar("clawback_account", default=None)
 
 
 ONLY: set[str] | None = None  # the tests load just the accounts they name (api/tests/conftest.py)
+
+
+def inbound_root() -> Path | None:
+    """Where the remittance inbox keeps the emails it was sent (api/inbound_email.py): INBOUND_EMAIL_DIR, the VM's
+    mounted state/inbound (docker-compose.yml). Unset: nowhere, so no account has inbound documents (the tests)."""
+    value = os.getenv("INBOUND_EMAIL_DIR")
+    return Path(value) if value else None
 
 
 def _folders() -> list[Path]:
@@ -133,6 +144,15 @@ def _load() -> tuple[dict[str, Account], list[str]]:
                 mine.append(f"two documents named {p.stem!r}")
             else:
                 docs[p.stem] = p
+        inbound: list[str] = []
+        kept = inbound_root()
+        kept = kept / folder.name / INBOUND_DOCS if kept else None
+        for p in sorted(kept.glob("*.eml")) if kept and kept.is_dir() else []:  # api/inbound_email.py wrote these
+            if p.stem in docs:
+                mine.append(f"two documents named {p.stem!r}")
+            else:
+                docs[p.stem] = p
+                inbound.append(p.stem)
         if missing := [d for d in config.deal_docs if d not in docs]:
             mine.append(f"deal_docs not in deals/, emails/ or notices/: {missing}")
         months = _months(config, folder)
@@ -152,7 +172,7 @@ def _load() -> tuple[dict[str, Account], list[str]]:
         for claim in claims:
             taken[claim] = config.id
         disputes.append((low, high, config.id))
-        accounts[config.id] = Account(config, folder, docs, months)
+        accounts[config.id] = Account(config, folder, docs, months, tuple(inbound))
     return accounts, problems
 
 

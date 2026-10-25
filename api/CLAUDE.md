@@ -52,6 +52,19 @@ decision gate and approvals; Data model; API, live updates and integrations.
   and a new deposit whose description names an account (its nessie_description) starts that account's run; POST
   /payments/{account} is the "Northmart pays" button (posts the account's deposit, or starts the run directly without
   keys; /payments/northmart is Peak Bar's); GET /runs/latest?account= finds the run.
+- Three sources start runs with no clicks, all through pipeline.start_for_deposit (once per arrival; a second source
+  seeing the same payment within 30 minutes, same amount, is matched to the run the first one started), and each
+  notes what it saw for GET /connections?account= (api/sources.py, memory only): the bank (Nessie, above);
+  QuickBooks (api/integrations/qbo_source.py: with the QBO_* keys, outside DEMO_MODE, QBO_POLL not off, every 15 s a
+  payment recorded against an account's invoice starts its run; what's there on the first look and Clawback's own $0
+  payments never do; reads never recorded as fixtures; `python -m api.integrations.qbo_source pay <account>
+  [--replace]` records the distributor's payment in the sandbox for the demo); and the remittance inbox
+  (api/inbound_email.py, POST /webhooks/inbound-email, a Mailgun route; MAILGUN_WEBHOOK_SIGNING_KEY, INBOUND_EMAIL_DOMAIN,
+  INBOUND_EMAIL_DIR, INBOUND_EMAIL_FORWARDERS): signed, handled once, routed by address / desk / invoice; a remittance
+  from a trusted, SPF-authenticated sender is read and checked like an upload and starts the run on its lines; any
+  other email becomes a document of the account (accounts.inbound_root(), Account.inbound) that its next run reads
+  after the deal_docs (pipeline.documents_of): an authenticated approved sender's can change the deal, anyone else's is
+  a claim.
 - Deployed site (docs/deploy.md): the VM is the single live instance (DEMO_MODE=false). POST /demo/reset needs
   `Authorization: Bearer $CLAWBACK_ADMIN_TOKEN` when that's set; QBO_TOKEN_FILE keeps the rotated QuickBooks refresh
   token in the mounted state/ folder; GET /eval/latest falls back to eval/published/ (`make publish-score`).

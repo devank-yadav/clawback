@@ -25,7 +25,7 @@ from typing import Any
 
 import anthropic
 
-from api import accounts, account_rows, adapters, audit, evidence as evidence_mod, fee_accounts, lookback, replies, rows, trace
+from api import accounts, account_rows, adapters, audit, evidence as evidence_mod, fee_accounts, lookback, replies, rows, sources, trace
 from api.agents import investigator, investigator_ops, negotiator, reader, readers, rule_writer
 from api.contracts import (
     Answer, Approval, ApprovalLine, AutoPost, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, DeliveryRow, Dispute, DisputeLine, Event,
@@ -74,12 +74,13 @@ class Run:
     coach: Any = None  # the Deal Coach's redlines for this run, once asked for (POST /coach)
     reader_models: tuple[str, str] = ("claude", "claude-b")  # who read the deal; Devpost claims two models only if "gemini"
     disagreements: dict[str, str] = field(default_factory=dict)  # term type -> what each reader read
-    deposit: Any = None  # the Nessie deposit that started this run, if one did
+    deposit: Any = None  # what started this run, if something did: a Nessie deposit, a QuickBooks payment or an email
     texts: list[tuple[str, str]] = field(default_factory=list)  # (role, SMS body) sent back; the webhook replies with them
     replaced_by: str | None = None  # a newer run of the same payment; this one stops asking people
     ops: account_rows.Ops = field(default_factory=account_rows.Ops)  # deliveries, prices, ops terms (SH/PR/SP charges)
     decided_at: datetime | None = None  # the end of the gate's first pass; totals carry the run's value from then on
     owner_message: OwnerMessage | None = None  # the one summary text the owner gets once the gate has decided
+    started_at: datetime = field(default_factory=_now)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     def __post_init__(self) -> None:
@@ -172,6 +173,7 @@ def reset() -> None:
     sms.outbox.clear()
     audit.reset()
     _deposit_runs.clear()
+    sources.reset()
 
 
 class QuestionClosed(ValueError):
@@ -191,6 +193,10 @@ def start(kind: str | None = None, client: anthropic.Anthropic | None = None, ba
     upload read (api/remittance.py); without them the month's charges file is used. Raises UnknownMonth for a month the
     account has no charges for, and accounts.UnknownAccount for an account that isn't there."""
     account = accounts.resolve(account or accounts.DEFAULT)
+    try:
+        account = accounts.get(account.id)  # the registry's newest: an email the inbox just kept is in its documents
+    except accounts.UnknownAccount:
+        pass
     kind = kind or account.invoice.month
     if kind not in account.months:
         raise UnknownMonth(f"{account.id} has no {kind} charges (its months: {', '.join(account.months)})")
@@ -280,11 +286,19 @@ def _short(quote: str, n: int = 160) -> str:
     return quote if len(quote) <= n else quote[: n - 1].rstrip() + "…"
 
 
+def documents_of(account: accounts.Account) -> list[str]:
+    """What a run reads: the account's deal documents, then any email the remittance inbox kept for it
+    (api/inbound_email.py), oldest first. An approved sender's email can change the deal; anything else is a claim,
+    exactly as for the emails in data/."""
+    deal = account.config.deal_docs
+    return [*deal, *(d for d in account.inbound if d not in deal)]
+
+
 def _read_terms(run: Run, client) -> list[Term]:
     """Both readers on every deal document; a term counts only when they agree and its quote is found."""
     terms: list[Term] = []
     deals: list[str] = []  # the deal documents read so far: an extension is dated from their date_range
-    docs = run.account.config.deal_docs
+    docs = documents_of(run.account)
     names = _doc_names(docs)
     run.emit("stage", StageInfo(stage="read", status="started", total=len(docs),
                                 label=f"Two readers on each of {len(docs)} document{'s' if len(docs) != 1 else ''}"))
@@ -351,16 +365,17 @@ def _process(run: Run, client) -> None:
     remittance = None
     if run.kind == inv.month:
         dep = run.deposit
+        received = dep.amount if dep is not None and dep.amount is not None else inv.received  # an email may not say
         remittance = Remittance(id=remittance_id, counterparty=them, invoice_id=inv.id,
-                                expected=inv.expected, received=dep.amount if dep else inv.received, taken=taken,
-                                charge_count=len(charges), received_at=_now(), nessie_tx_id=dep.id if dep else None)
+                                expected=inv.expected, received=received, taken=taken,
+                                charge_count=len(charges), received_at=_now(),
+                                nessie_tx_id=dep.id if dep is not None and _source_of(dep) == "nessie" else None)
     run.emit("run", RunInfo(run_id=run.id, kind=run.kind, status="started", remittance=remittance,
                             demo_mode=replay.demo_mode()))
     if remittance:
         short = totals.remittance_short(inv.expected, remittance.received)
         if run.deposit:
-            run.log(f"Nessie: {them}'s deposit of ${remittance.received:,.0f} arrived (deposit {run.deposit.id}).",
-                    actor="system")
+            run.log(_arrived(run.deposit, them, remittance.received, inv.id), actor="system")
         run.log(f"{them} paid ${remittance.received:,.0f} on invoice {inv.id} for ${inv.expected:,.0f}. "
                 f"${taken:,.0f} was taken out in {len(charges)} charges.",
                 "info" if short == taken else "warn")
@@ -1018,25 +1033,77 @@ def coach_costs(run: Run) -> list:
     return out
 
 
-_deposit_runs: dict[str, str] = {}  # Nessie deposit id -> the run it started
+_deposit_runs: dict[str, str] = {}  # what started a run (its arrival key, a Nessie deposit's id) -> that run
+SAME_PAYMENT_S = 30 * 60  # one payment seen by two sources this close together is one payment: one run
+SOURCE_NAMES = {"nessie": "Nessie", "quickbooks": "QuickBooks", "email": "The remittance inbox"}
+
+
+def _source_of(arrival: Any) -> str:
+    """Where it arrived from: nessie (a bank deposit), quickbooks (a payment recorded there) or email."""
+    return getattr(arrival, "source", "nessie")
+
+
+def _arrival_key(arrival: Any) -> str:
+    """A Nessie deposit by its id (the button and run_for_deposit look it up by that); the others by source and id."""
+    src = _source_of(arrival)
+    return arrival.id if src == "nessie" else f"{src}:{arrival.id}"
+
+
+def _arrived(arrival: Any, them: str, received: Decimal, invoice_id: str) -> str:
+    src = _source_of(arrival)
+    if src == "quickbooks":
+        return (f"QuickBooks: a payment of ${received:,.0f} from {them} was recorded against invoice {invoice_id} "
+                f"(payment {arrival.id}).")
+    if src == "email":
+        return f"Remittance inbox: {them}'s remittance advice arrived by email ({arrival.description})."
+    return f"Nessie: {them}'s deposit of ${received:,.0f} arrived (deposit {arrival.id})."
+
+
+def _same_payment(account: accounts.Account, arrival: Any) -> Run | None:
+    """The account's current run of its payment, if another source started it in the last half hour for the same
+    amount: the bank's deposit, the payment recorded in QuickBooks and the remittance email are one payment."""
+    src, now = _source_of(arrival), _now()
+    current = next((r for r in reversed(list(RUNS.values())) if r.account.id == account.id
+                    and r.kind == account.invoice.month and r.replaced_by is None), None)
+    if current is None or current.deposit is None or _source_of(current.deposit) == src:
+        return None  # the same source twice is two payments (each test deposit is new)
+    if (now - current.started_at).total_seconds() > SAME_PAYMENT_S:
+        return None
+    mine, theirs = arrival.amount, current.deposit.amount
+    return current if mine is None or theirs is None or Decimal(mine) == Decimal(theirs) else None
 
 
 def start_for_deposit(deposit: Any, client: anthropic.Anthropic | None = None, background: bool = True,
-                      account: accounts.Account | str | None = None) -> Run:
-    """The invoice month's run for a deposit, once per deposit (the poller and the button can both see it). The
-    account is the one the deposit's description names (accounts.for_deposit), Peak Bar if none does."""
-    account = account or accounts.for_deposit(deposit.description) or accounts.DEFAULT
+                      account: accounts.Account | str | None = None, charges: list[Charge] | None = None) -> Run:
+    """The invoice month's run for something that arrived, once per arrival (the poller and the button can both see a
+    deposit). It is a Nessie deposit, a QuickBooks payment (api/integrations/qbo_source.py) or a remittance email
+    (api/inbound_email.py): each has id, amount and description, and the last two say their `source`. The account is
+    the one named, else the one the description names (accounts.for_deposit), else Peak Bar. If another source started
+    this account's run of the same payment in the last half hour, that run is returned and nothing new starts.
+    `charges` are a remittance email's checked lines (the account's charges file otherwise)."""
+    account = accounts.resolve(account or accounts.for_deposit(deposit.description) or accounts.DEFAULT)
+    key = _arrival_key(deposit)
     with _state:
-        if deposit.id in _deposit_runs:
-            return RUNS[_deposit_runs[deposit.id]]
-        _deposit_runs[deposit.id] = ""
-    run = start(None, client, background, deposit=deposit, account=account)
-    _deposit_runs[deposit.id] = run.id
+        if key in _deposit_runs:
+            return RUNS[_deposit_runs[key]]
+        same = _same_payment(account, deposit)
+        _deposit_runs[key] = same.id if same else ""
+    if same:
+        same.log(f"{SOURCE_NAMES[_source_of(deposit)]} shows the same payment ({deposit.description}), so the agents "
+                 "keep checking it here instead of starting again.", actor="system")
+        return same
+    try:
+        run = start(None, client, background, deposit=deposit, account=account, charges=charges)
+    except BaseException:
+        with _state:
+            _deposit_runs.pop(key, None)  # nothing started: the next sighting may try again
+        raise
+    _deposit_runs[key] = run.id
     return run
 
 
 def run_for_deposit(deposit_id: str) -> Run | None:
-    """The run this Nessie deposit started, once it has one."""
+    """The run this Nessie deposit started (or matched), once it has one."""
     return RUNS.get(_deposit_runs.get(deposit_id) or "")
 
 

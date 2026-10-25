@@ -70,7 +70,8 @@ export const login = (username: string, password: string) =>
 // ---- Accounts
 export const fetchAccounts = () => call<Account[]>("/accounts");
 export const fetchSuppliers = () => call<SupplierItem[]>("/suppliers");
-export const fetchConnections = () => call<Connection[]>("/connections");
+export const fetchConnections = (account?: string) =>
+  call<Connection[]>(account ? `/connections?account=${q(account)}` : "/connections");
 export const fetchContract = (account: string) => call<ContractLibrary>(`/accounts/${q(account)}/contract`);
 export const fetchRuns = (account: string) => call<RunSummary[]>(`/accounts/${q(account)}/runs`);
 export const fetchSaved = (account: string) => call<SavedOverview>(`/accounts/${q(account)}/saved`);

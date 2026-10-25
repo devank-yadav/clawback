@@ -25,6 +25,7 @@ DATA = accounts.DATA
 _PASTED: dict[str, tuple[Document, str]] = {}  # the judge's clauses from the scenario box
 _PASTED_BY: dict[str, str] = {}  # pasted doc id -> the account it was pasted for (the readers run on other threads)
 
+SENDER_CHECK = "X-Clawback-Sender-Check"  # pass / fail, written by api/inbound_email.py on the emails it keeps
 _EMAIL = re.compile(r"[\w.+-]+@[\w.-]+\.\w+")
 _MD_DATE = re.compile(r"\*\*(?:[A-Za-z ]*?date):\*\*\s*([A-Z][a-z]+ \d{1,2}, \d{4})", re.I)
 _MD_FROM = re.compile(r"^\*\*From:\*\*(.*)$", re.M)
@@ -56,8 +57,12 @@ PATHS = _Paths()
 
 
 def _rel(account: accounts.Account, path: Path) -> str:
-    """The path under the folder that holds accounts/: relative to data/ for every real account."""
-    return path.relative_to(account.dir.parent.parent).as_posix()
+    """The path under the folder that holds accounts/: relative to data/ for every real account. An email the
+    remittance inbox kept (accounts.inbound_root(), outside data/) is "inbound/<account>/<file>"."""
+    try:
+        return path.relative_to(account.dir.parent.parent).as_posix()
+    except ValueError:
+        return f"inbound/{account.id}/{path.name}"
 
 
 def file(doc_id: str) -> Path:
@@ -111,12 +116,16 @@ def load(doc_id: str) -> tuple[Document, str]:
     account, path = found
     text = path.read_text()
     kind = _kind(doc_id, path.parent.name)
-    sender, received_at = None, None
+    sender, received_at, authenticated = None, None, True
     if kind == "email":
         msg = email.message_from_string(text)
         sender = email.utils.parseaddr(msg.get("From", ""))[1] or None
         if msg.get("Date"):
             received_at = email.utils.parsedate_to_datetime(msg["Date"])
+        # An email the remittance inbox kept says whether its sender was authenticated (Mailgun's SPF check passed for
+        # the From address's domain, api/inbound_email.py). A From line anyone could have typed never approves anyone.
+        if (check := msg.get(SENDER_CHECK)) is not None:
+            authenticated = check.strip().lower() == "pass"
     else:
         if m := _MD_FROM.search(text):
             if e := _EMAIL.search(m.group(1)):
@@ -128,7 +137,8 @@ def load(doc_id: str) -> tuple[Document, str]:
     contracts = {Path(n).stem for n in account.config.contracts}
     signed = kind == "amendment" or (kind == "deal" and (doc_id == account.config.deal_docs[0] or doc_id in contracts))
     doc = Document(id=doc_id, kind=kind, path=_rel(account, path), sender=sender,
-                   approved_sender=_approved(sender, account), signed_by_both=signed, received_at=received_at,
+                   approved_sender=authenticated and _approved(sender, account), signed_by_both=signed,
+                   received_at=received_at,
                    sha256=hashlib.sha256(text.encode()).hexdigest())
     return doc, text
 

@@ -1,4 +1,7 @@
-"""Twilio inbound SMS (F8, F10): the admin's answer and yes / no, the same way as answering in the app.
+"""Inbound webhooks: Twilio's texts (below) and the remittance inbox's emails (POST /webhooks/inbound-email, a Mailgun
+route; api/inbound_email.py). Both live under /webhooks/, which Caddy passes to the API unchanged.
+
+Twilio inbound SMS (F8, F10): the admin's answer and yes / no, the same way as answering in the app.
 
 Also the WhatsApp Sandbox's "When a message comes in" URL (SMS_CHANNEL=whatsapp): the fields are the same and From
 is "whatsapp:+1555…", which matches on its digits like any other format.
@@ -13,6 +16,7 @@ When TWILIO_AUTH_TOKEN is set, X-Twilio-Signature must match (HMAC-SHA1 over the
 fields, per Twilio's webhook security docs); without the token (local dev, tests) it is not checked.
 """
 
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -23,7 +27,7 @@ from xml.sax.saxutils import escape
 
 from fastapi import APIRouter, HTTPException, Request, Response
 
-from api import pipeline, replies
+from api import inbound_email, pipeline, remittance, replies, sources
 
 router = APIRouter(tags=["webhooks"])
 
@@ -113,6 +117,36 @@ def _approval(text: str) -> list[str]:
     if approval.status == "approved":
         return [f"Approved: ${approval.amount:,.0f} credit memo ({len(approval.lines)} lines)."]
     return [f"Held: the ${approval.amount:,.0f} credit memo won't post. Your note is on the card."]
+
+
+@router.post(inbound_email.PATH, response_model=inbound_email.InboundResult)
+async def inbound_email_webhook(request: Request) -> inbound_email.InboundResult:
+    """The remittance inbox (api/inbound_email.py): a Mailgun route forwards every email sent to the receiving domain
+    here. Signed (403 / 406 / 503 otherwise); a remittance starts its account's run, anything else is kept."""
+    try:
+        form = await request.form(max_files=inbound_email.MAX_ATTACHMENTS + 5, max_fields=300,
+                                  max_part_size=4 * 1024 * 1024)
+    except Exception:  # noqa: BLE001 - not a form Mailgun would send
+        raise HTTPException(400, "Send Mailgun's form fields (a route forwarding to this URL).") from None
+    fields: dict[str, str] = {}
+    files: dict[str, tuple[str, str, bytes]] = {}
+    for name, value in form.multi_items():
+        if isinstance(value, str):
+            fields.setdefault(name, value)
+            if name.startswith("attachment-"):  # sent as a field rather than a file part
+                files.setdefault(name, (name, "text/plain", value.encode()))
+            continue
+        data = await value.read(remittance.MAX_BYTES + 1)
+        if len(data) <= remittance.MAX_BYTES:  # anything bigger isn't a remittance advice; it's left out
+            files[name] = (value.filename or name, value.content_type or "", data)
+    await form.close()
+    msg = inbound_email.parse(fields, files)
+    try:
+        inbound_email.verify(fields, msg.key)
+        sources.checked("inbox")
+        return await asyncio.to_thread(inbound_email.handle, msg)
+    except inbound_email.Refused as e:
+        raise HTTPException(e.status, e.detail) from None
 
 
 @router.post(PATH)

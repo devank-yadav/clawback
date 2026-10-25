@@ -8,6 +8,7 @@ services:
     env_file: ${CLAWBACK_ENV_FILE:-.env}
     environment:
       QBO_TOKEN_FILE: /app/state/qbo.env  # QuickBooks' rotated refresh token, kept across restarts
+      INBOUND_EMAIL_DIR: /app/state/inbound  # emails the remittance inbox keeps as documents (api/inbound_email.py)
     volumes:
       - ./state:/app/state  # a folder, not a single-file mount: saving the token replaces the file
     restart: unless-stopped

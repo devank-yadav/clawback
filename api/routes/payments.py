@@ -59,5 +59,6 @@ def _pays(account_id: str) -> PaymentResponse:
                                f"Deposit posted to Nessie; the poller hasn't started the run after {POLLER_WAIT_S:.0f} s "
                                "(GET /runs/latest finds it).")
     run = pipeline.start_for_deposit(deposit, account=account)
+    nessie.note(deposit, account.id, run)  # the poller isn't running, so the Connections page hears it from here
     return PaymentResponse(via="nessie", deposit_id=deposit.id, run_id=run.id,
                            message="Deposit posted to Nessie; the run started for it.")

@@ -95,9 +95,10 @@ def account_document(account_id: str, doc_id: str) -> DocumentText:
 
 
 @router.get("/connections", response_model=list[Connection])
-def list_connections() -> list[Connection]:
-    """Where payments, records and contracts come from, as they really are on this server."""
-    return library.connections()
+def list_connections(account: str | None = None) -> list[Connection]:
+    """Where payments, records and contracts come from, as they really are on this server. With ?account=, the bank,
+    QuickBooks and the remittance inbox say what they last saw for that account, and the inbox gives its address."""
+    return library.connections(account_or_404(account) if account else None)
 
 
 @router.get("/accounts/{account_id}/contract", response_model=ContractLibrary)
