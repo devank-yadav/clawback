@@ -7,9 +7,7 @@
 // computes money.
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type DragEvent } from "react";
-import { Play } from "lucide-react";
 import { useRun } from "@/components/console/RunProvider";
 import { readRemittance, runRemittance } from "@/components/upload/api";
 import { withAccount } from "@/lib/accounts";
@@ -18,37 +16,25 @@ import { money } from "@/lib/format";
 import { useFetched } from "@/lib/useFetched";
 import { PageHeader } from "@/components/ui/kit";
 import CheckPayments from "@/components/app/CheckPayments";
+import { ReceivedList, RunAgentsButton, useReceivedPayments } from "@/components/app/ReceivedPayments";
 import { AgentRoster } from "./AgentRoster";
 
-const ago = (iso: string) => {
-  const s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000));
-  return s < 60 ? "just now" : s < 3600 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} h ago`;
-};
-
-/** What arrives while this screen is open: payments waiting for "Run the agents" and runs going on elsewhere, read
- * again every 4 seconds. */
-function useArrivals() {
+/** The supplier's distributors whose payment the agents are checking right now, read again every 4 seconds. */
+function useCheckingElsewhere() {
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const t = window.setInterval(() => setTick((n) => n + 1), 4_000);
     return () => window.clearInterval(t);
   }, []);
-  const load = useCallback(() => Promise.all([
-    api.fetchPendingPayments().catch(() => [] as api.PendingPayment[]),
-    api.fetchSuppliers().catch(() => []),
-  ]), []);
-  const fetched = useFetched(load, String(tick));
-  const pending = fetched.data?.[0] ?? [];
-  const checking = (fetched.data?.[1] ?? []).flatMap((s) => s.distributors).filter((d) => d.tracked && d.status === "checking");
-  return { pending, checking, loaded: !!fetched.data };
+  const load = useCallback(() => api.fetchSuppliers().catch(() => []), []);
+  return (useFetched(load, String(tick)).data ?? []).flatMap((s) => s.distributors).filter((d) => d.tracked && d.status === "checking");
 }
 
 export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpenLast: () => void }) {
   const { account, cast, state, view, starting, limited, follow, error } = useRun();
-  const router = useRouter();
-  const { pending, checking } = useArrivals();
-  const elsewhere = checking.filter((d) => d.account_id !== account?.id);
-  const [runningId, setRunningId] = useState<string | null>(null);
+  const received = useReceivedPayments();
+  const { pending, runningId } = received;
+  const elsewhere = useCheckingElsewhere().filter((d) => d.account_id !== account?.id);
   const [over, setOver] = useState(false);
   const [reading, setReading] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -78,20 +64,6 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
     }
   }
 
-  /** "Run the agents" on a received payment: its run starts and this screen opens on it. */
-  async function runPayment(p: api.PendingPayment) {
-    if (runningId) return;
-    setRunningId(p.id);
-    setProblem(null);
-    try {
-      const r = await api.runPendingPayment(p.id);
-      router.push(withAccount("/", p.account_id, r.run_id ? { run: r.run_id } : undefined));
-    } catch (e) {
-      setProblem(`The agents couldn’t start on ${p.distributor}’s payment (${(e as Error).message}).`);
-      setRunningId(null);
-    }
-  }
-
   function drop(e: DragEvent) {
     e.preventDefault();
     setOver(false);
@@ -114,23 +86,10 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
             {" "}<button className="ph-link" onClick={() => setPasting((v) => !v)} disabled={busy} aria-expanded={pasting}>Upload a remittance manually</button>
           </>}
           actions={!reading && (pending.length > 0
-            ? <button className="cx-btn is-blue fl-runbtn" onClick={() => void runPayment(pending[0])} disabled={!!runningId}><Play aria-hidden="true" />{runningId === pending[0].id ? "Starting…" : "Run the agents"}</button>
+            ? <RunAgentsButton received={received} />
             : <CheckPayments account={account?.id} />)}
         />
-        {pending.length > 0 && (
-          <ul className="fl-received" aria-label="Payments received">
-            {pending.map((p, i) => (
-              <li key={p.id}>
-                <span className="fl-received-chip">Payment received</span>
-                <span className="fl-received-text">
-                  <strong>{p.distributor} paid {money(p.received)} of {money(p.expected)} on {p.invoice_id}</strong>
-                  <small>Sent from {p.distributor}’s portal · {ago(p.received_at)} · the agents haven’t started</small>
-                </span>
-                {i > 0 && <button className="cx-btn is-ghost" onClick={() => void runPayment(p)} disabled={!!runningId}>{runningId === p.id ? "Starting…" : "Run the agents"}</button>}
-              </li>
-            ))}
-          </ul>
-        )}
+        <ReceivedList received={received} />
         {reading && (
           <div className="fl-drop is-busy">
             <span className="fl-reading" aria-live="polite">

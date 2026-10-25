@@ -258,3 +258,8 @@ h4.dr-h { font-size: 15px; font-weight: 600; color: var(--sub); }
   .fl-rail-now b { font-weight: 600; color: var(--ink); }
   .fl-rail-now.is-waiting b { color: var(--wait-ink); }
 }
+/* a run opened by its link, while it loads; and a replay, which is a state, not a button */
+.fl-opening { margin: 0; padding: 28px 0; }
+.fl-replay-tag { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 500; color: var(--sub); }
+.fl-replay-tag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: cx-pulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .fl-replay-tag::before { animation: none; } }

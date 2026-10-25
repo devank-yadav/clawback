@@ -15,6 +15,7 @@ import { useRun } from "@/components/console/RunProvider";
 import { PageHeader } from "@/components/ui/kit";
 import { Claw, landPulse } from "@/components/ui/Claw";
 import CheckPayments from "./CheckPayments";
+import { ReceivedList, RunAgentsButton, useReceivedPayments } from "./ReceivedPayments";
 import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
 import { money } from "@/lib/format";
@@ -97,13 +98,16 @@ export default function Dashboard() {
   const rising = !!t && seen !== null && t.recovered > seen + 0.005;
   // When it went down (a demo reset), remember the lower figure so the next rise plays.
   useEffect(() => { if (t && seen !== null && t.recovered < seen - 0.005) writeSeen(t.recovered); }, [t, seen]);
+  // A payment sent from a distributor's portal waits here too: "Run the agents" takes "Check for new payments"' place.
+  const received = useReceivedPayments();
 
   return (
     <div className="fl">
       <TopBar account={account} />
       <main className="fl-main bp ap hm">
         <PageHeader title="Home" line={o ? `${account?.brand.name ?? "Your company"} across ${o.distributors} distributor${o.distributors === 1 ? "" : "s"}` : undefined}
-          actions={<><Link className="cx-btn is-ghost" href={withAccount("/upload", account?.id)}>Add a remittance</Link><CheckPayments account={account?.id} /></>} />
+          actions={<><Link className="cx-btn is-ghost" href={withAccount("/upload", account?.id)}>Add a remittance</Link>{received.pending.length ? <RunAgentsButton received={received} /> : <CheckPayments account={account?.id} />}</>} />
+        <ReceivedList received={received} />
         {fetched.error && <div className="fl-problem" role="alert">{fetched.error}</div>}
 
         <section className="hm-block" aria-labelledby="hm-needs">
