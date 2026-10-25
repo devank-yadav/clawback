@@ -6,7 +6,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useState, type ReactNode } from "react";
-import { ScrollText } from "lucide-react";
+import { Play, ScrollText } from "lucide-react";
 import { money } from "@/lib/format";
 import type { ChargeView } from "@/lib/workspace";
 import { useRun } from "@/components/console/RunProvider";
@@ -34,7 +34,7 @@ function Pile({ title, tone, total, charges, amount, onOpen }: { title: string; 
   );
 }
 
-export function DonePanel({ onOpen, onNew, next, disputeInNext = false, failed }: { onOpen: (id: string) => void; onNew: () => void; rail?: ReactNode; next: ReactNode; disputeInNext?: boolean; failed: boolean }) {
+export function DonePanel({ onOpen, onNew, onReplay, next, disputeInNext = false, failed }: { onOpen: (id: string) => void; onNew: () => void; onReplay?: () => void; rail?: ReactNode; next: ReactNode; disputeInNext?: boolean; failed: boolean }) {
   const { view, state, cast } = useRun();
   const [audit, setAudit] = useState(false);
   const t = view.totals;
@@ -105,7 +105,10 @@ export function DonePanel({ onOpen, onNew, next, disputeInNext = false, failed }
       {!disputeInNext && <DisputeCard />}
 
       <div className="fl-foot">
-        {state.run && <button className="cx-btn is-ghost" onClick={() => setAudit(true)}><ScrollText aria-hidden="true" />Audit trail</button>}
+        <span className="fl-foot-left">
+          {state.run && onReplay && <button className="cx-btn is-ghost" onClick={onReplay}><Play aria-hidden="true" />Replay the run</button>}
+          {state.run && <button className="cx-btn is-ghost" onClick={() => setAudit(true)}><ScrollText aria-hidden="true" />Audit trail</button>}
+        </span>
         <button className="cx-btn is-ghost" onClick={onNew}>Back to the start</button>
       </div>
       {audit && state.run && <AuditDrawer runId={state.run.run_id} onClose={() => setAudit(false)} />}

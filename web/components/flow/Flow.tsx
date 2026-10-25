@@ -61,7 +61,7 @@ export default function Flow() {
 
 function FlowFor() {
   const run = useRun();
-  const { state, view, account, cast, runId, starting, gone } = run;
+  const { state, view, account, cast, runId, starting, gone, replay, replaying, skipReplay } = run;
   const openLatest = useOpenLatest();
   // The logo opens ?home=1: the start screen, whatever this tab last watched. "Agents" opens the latest run.
   const home = useSearchParams().get("home") === "1";
@@ -136,7 +136,11 @@ function FlowFor() {
                 ? <>{r.counterparty} paid {money(r.received)} of {money(r.expected)} and <b>kept {money(r.taken)}</b> in {r.charge_count} charges</>
                 : state.run ? `${cast.distributor}’s charges` : `Waiting for ${cast.distributor}’s payment…`}
             </p>
-            <Elapsed from={r?.received_at ?? state.feed[0]?.at ?? null} running={status === "started"} decidedIn={view.value?.seconds_to_decided ?? null} />
+            {replaying ? (
+              <span className="fl-replay" role="status"><span className="bw-pill">Replay</span><button className="cx-btn is-ghost" onClick={skipReplay}>Skip to the result</button></span>
+            ) : (
+              <Elapsed from={r?.received_at ?? state.feed[0]?.at ?? null} running={status === "started"} decidedIn={view.value?.seconds_to_decided ?? null} />
+            )}
           </div>
           <div className="bw-stage">
             <div className="bw-frame">
@@ -163,7 +167,7 @@ function FlowFor() {
 
       {phase === "done" && (
         <main className="fl-main">
-          <DonePanel onOpen={setDrawer} onNew={restart} next={nextUp ? <Spotlight focus={nextUp} /> : null} disputeInNext={nextUp?.key === "file"} failed={status === "failed"} />
+          <DonePanel onOpen={setDrawer} onNew={restart} onReplay={() => { setOpened(true); void replay(); }} next={nextUp ? <Spotlight focus={nextUp} /> : null} disputeInNext={nextUp?.key === "file"} failed={status === "failed"} />
         </main>
       )}
 

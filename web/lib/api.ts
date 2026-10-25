@@ -128,6 +128,17 @@ export async function latestRun(account: string): Promise<StartedRun | null> {
 }
 
 /** POST /payments/{account}: the "<Distributor> pays" button, the only thing that starts a run. run_id is null until Nessie's deposit is seen. */
+/** POST /payments/sync ("Check for new payments"): looks at the connected sources now. A payment it finds starts its
+ * run; the answer names it (or several). Read defensively until the contract settles: run_id/account_id, or runs[]. */
+export type PaymentSync = {
+  found?: number | null;
+  run_id?: string | null;
+  account_id?: string | null;
+  runs?: { run_id: string; account_id: string; distributor?: string | null }[] | null;
+  message?: string | null;
+};
+export const syncPayments = () => call<PaymentSync>("/payments/sync", { method: "POST", timeoutMs: 30_000 });
+
 export const accountPays = (account: string) => call<PaymentStarted>(`/payments/${q(account)}`, { method: "POST", timeoutMs: 20_000, admin: true });
 
 /** The stream for a run the page already knows the id of. */

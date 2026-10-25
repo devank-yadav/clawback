@@ -317,5 +317,42 @@ export function useRunEvents(account: string | null, runId: string = "latest", {
   const awaitingPayment = !!account && followed === null && !error;
   const runId_ = followed?.run_id ?? null;
 
-  return { state, runId: runId_, answerQuestion, decideApproval, startPayment, follow, starting, limited, awaitingPayment, refresh, error, gone };
+  // ---- Replay: a finished run's saved events played back into the same screen at their recorded pace (each event's
+  // `at`), long waits shortened to a few seconds. The screen is the live one; only the source of events differs.
+  const [replaying, setReplaying] = useState(false);
+  const replayTimers = useRef<number[]>([]);
+  const replayEvents = useRef<RunEvent[]>([]);
+  const stopReplay = useCallback(() => {
+    replayTimers.current.forEach((t) => window.clearTimeout(t));
+    replayTimers.current = [];
+  }, []);
+  useEffect(() => stopReplay, [stopReplay]);
+
+  const replay = useCallback(async () => {
+    if (!runId_) return;
+    const events = await api.runEventsOnce(runId_);
+    if (!events.length) return;
+    stopReplay();
+    replayEvents.current = events;
+    dispatch({ kind: "reset" });
+    setReplaying(true);
+    let t = 0;
+    events.forEach((e, i) => {
+      if (i > 0) {
+        const gap = Date.parse(e.at) - Date.parse(events[i - 1].at);
+        t += Number.isFinite(gap) ? Math.min(Math.max(gap, 0), 3000) : 300;
+      }
+      replayTimers.current.push(window.setTimeout(() => dispatch({ kind: "event", event: e }), t));
+    });
+    replayTimers.current.push(window.setTimeout(() => setReplaying(false), t + 100));
+  }, [runId_, stopReplay]);
+
+  /** Straight to the result: every event not yet played lands at once (the reducer skips the ones it has). */
+  const skipReplay = useCallback(() => {
+    stopReplay();
+    replayEvents.current.forEach((event) => dispatch({ kind: "event", event }));
+    setReplaying(false);
+  }, [stopReplay]);
+
+  return { state, runId: runId_, answerQuestion, decideApproval, startPayment, follow, starting, limited, awaitingPayment, refresh, error, gone, replay, replaying, skipReplay };
 }

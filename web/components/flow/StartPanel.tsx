@@ -9,6 +9,7 @@ import { useRun } from "@/components/console/RunProvider";
 import { readRemittance, runRemittance } from "@/components/upload/api";
 import { money } from "@/lib/format";
 import { PageHeader } from "@/components/ui/kit";
+import CheckPayments from "@/components/app/CheckPayments";
 
 const CREW: { name: string; tag: "AI" | "CODE" | "PERSON" }[] = [
   { name: "Payment reader", tag: "AI" },
@@ -68,7 +69,8 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
           line="No payment in progress. A payment from the bank, QuickBooks or the remittance inbox starts the agents."
           actions={!reading && (
             <>
-              <button className="cx-btn" onClick={() => setPasting((v) => !v)} disabled={busy} aria-expanded={pasting}>{starting ? "The payment is landing…" : "Add a remittance"}</button>
+              <button className="cx-btn is-ghost" onClick={() => setPasting((v) => !v)} disabled={busy} aria-expanded={pasting}>{starting ? "The payment is landing…" : "Add a remittance"}</button>
+              <CheckPayments account={account?.id} />
             </>
           )}
         />

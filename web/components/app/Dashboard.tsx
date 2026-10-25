@@ -12,6 +12,7 @@ import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
 import { PageHeader } from "@/components/ui/kit";
+import CheckPayments from "./CheckPayments";
 import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
 import { money } from "@/lib/format";
@@ -55,7 +56,7 @@ export default function Dashboard() {
       <TopBar account={account} />
       <main className="fl-main bp ap hm">
         <PageHeader title="Home" line={o ? `${account?.brand.name ?? "Your company"} across ${o.distributors} distributor${o.distributors === 1 ? "" : "s"}` : undefined}
-          actions={<Link className="cx-btn is-ghost" href={withAccount("/upload", account?.id)}>Add a remittance</Link>} />
+          actions={<><Link className="cx-btn is-ghost" href={withAccount("/upload", account?.id)}>Add a remittance</Link><CheckPayments account={account?.id} /></>} />
         {fetched.error && <div className="fl-problem" role="alert">{fetched.error}</div>}
 
         <section className="hm-block" aria-labelledby="hm-needs">
