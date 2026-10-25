@@ -221,15 +221,6 @@ export const sendDisputeReply = (id: string, emailId: string, runId: string | nu
   call<DisputeEmail>(`/disputes/${q(id)}/replies/${q(emailId)}/send${runQ(runId)}`, { method: "POST", body: { subject, body }, timeoutMs: 30_000 });
 export const fetchNotifications = () => call<SupplierNotification[]>("/notifications");
 
-/** GET /overview: the signed-in supplier across all its distributors; null while the API doesn't serve it yet (404). */
-export async function fetchCompanyOverview(): Promise<CompanyOverview | null> {
-  try {
-    return await call<CompanyOverview>("/overview");
-  } catch (e) {
-    if (e instanceof ApiError && (e.status === 404 || e.status === 405)) return null;
-    throw e;
-  }
-}
 
 // ---- Next month, coach, scenario, accuracy, audit
 /** POST /replay/april: next month's charges under the rules saved so far. */
@@ -241,4 +232,8 @@ export const fetchScenarioExamples = () => call<ScenarioExample[]>("/scenario/ex
 /** POST /scenario: a pasted clause and charge. Allow up to 30 seconds. */
 export const postScenario = (req: ScenarioRequest) => call<ScenarioResponse>("/scenario", { method: "POST", body: req, timeoutMs: 35_000, admin: true });
 export const fetchAudit = (account: string) => call<AuditEntry[]>(`/audit?account=${q(account)}`);
+/** GET /overview: the signed-in supplier across all its distributors (Home). */
+export const fetchCompanyOverview = () => call<CompanyOverview>("/overview");
+/** GET /audit?run_id=: one run's entries (the run's audit drawer). */
+export const fetchRunAudit = (runId: string) => call<AuditEntry[]>(`/audit?run_id=${q(runId)}`);
 export const verifyAudit = () => call<AuditVerify>("/audit/verify");

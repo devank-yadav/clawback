@@ -1,28 +1,71 @@
 "use client";
 
-// The supplier's home: the distributors it sells through, each with a plain status (never a money figure). Pick one
-// and its whole workflow opens: contract, payments, the agents' run, decisions and the result. Track or untrack any.
+// The distributors the supplier sells through, as one table: each one's plain status, its last payment (from its
+// overview), and what the latest check found (taken, disputed, waiting on you), as the API reports them. A row opens
+// that distributor's agents view. Stopping tracking sits behind a row menu and asks once more; distributors not
+// tracked are listed below, to track again.
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { MoreHorizontal } from "lucide-react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar, { DistributorMark, STATUS_TONE } from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
 import { EmptyState, PageHeader, SectionHead } from "@/components/ui/kit";
 import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
-import type { DistributorItem, SupplierItem } from "@/lib/types";
+import { money } from "@/lib/format";
+import type { DistributorItem, Overview, RunSummary, SupplierItem } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
 
-const ACTION: Record<DistributorItem["status"], string> = {
-  waiting_for_payment: "Open", checking: "Watch the agents", needs_you: "Decide now", settled: "See the result", stopped: "See what happened",
-};
+type Facts = { overview: Overview | null; run: RunSummary | null };
+const day = (iso: string) => new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+const none = <span className="db-none">–</span>;
 
-/** The latest run's payment month, from its id ("run-march-…"); no run yet means no payment checked yet. */
-function lastPayment(d: DistributorItem) {
-  if (!d.latest_run_id) return "None yet";
-  const month = /^run-([a-z]+)-/.exec(d.latest_run_id)?.[1];
-  return month ? `${month.charAt(0).toUpperCase()}${month.slice(1)} payment` : "Checked";
+/** Each tracked distributor's last payment and latest check; one that fails to load shows dashes. */
+async function loadFacts(ids: string[]): Promise<Record<string, Facts>> {
+  const pairs = await Promise.all(ids.map(async (id) => {
+    const [overview, runs] = await Promise.all([
+      api.fetchOverview(id).catch(() => null),
+      api.fetchRuns(id).catch(() => [] as RunSummary[]),
+    ]);
+    return [id, { overview, run: runs.find((r) => !r.replaced) ?? null }] as const;
+  }));
+  return Object.fromEntries(pairs);
+}
+
+/** The facts for a comma-joined list of account ids, reloaded when the list changes. */
+function useFacts(ids: string) {
+  const load = useCallback(() => loadFacts(ids ? ids.split(",") : []), [ids]);
+  return useFetched(ids ? load : null, ids);
+}
+
+/** "…" on a row: Stop tracking, which asks once more before it stops. */
+function RowMenu({ d, busy, onStop }: { d: DistributorItem; busy: boolean; onStop: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [sure, setSure] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setSure(false); } };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { setOpen(false); setSure(false); } };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", esc); };
+  }, [open]);
+  return (
+    <div className="ds-menu" ref={ref}>
+      <button className="ds-menu-btn" aria-haspopup="menu" aria-expanded={open} aria-label={`More for ${d.distributor.name}`} onClick={() => setOpen((v) => !v)}><MoreHorizontal /></button>
+      {open && (
+        <div className="tb-menu ds-menu-list" role="menu">
+          <Link role="menuitem" className="tb-row" href={withAccount("/contracts", d.account_id)}><span><strong>Signed deal</strong></span></Link>
+          <button role="menuitem" className="tb-row is-danger" disabled={busy} onClick={() => (sure ? onStop() : setSure(true))}>
+            <span><strong>{sure ? `Stop tracking ${d.distributor.name}?` : "Stop tracking"}</strong>{sure && <small>Click again to stop. Its payments won’t be checked.</small>}</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Distributors() {
@@ -35,7 +78,8 @@ export default function Distributors() {
   const supplier = changed ?? all?.find((s) => s.distributors.some((d) => d.account_id === account?.id)) ?? all?.[0] ?? null;
   const tracked = supplier?.distributors.filter((d) => d.tracked) ?? [];
   const others = supplier?.distributors.filter((d) => !d.tracked) ?? [];
-  const waiting = tracked.filter((d) => d.status === "needs_you");
+  const ids = tracked.map((d) => d.account_id).join(",");
+  const facts = useFacts(ids);
 
   async function toggle(d: DistributorItem) {
     if (!supplier) return;
@@ -51,66 +95,50 @@ export default function Distributors() {
     <div className="fl">
       <TopBar account={account} active="distributors" />
       <main className="fl-main bp bp-ds">
-        <PageHeader title="Distributors" line={supplier ? `${tracked.length} tracked. Open one to see its payments and the agents’ work.` : undefined} actions={<a className="cx-btn" href="#add">Add a distributor</a>} />
-
-        {waiting.length > 0 && (
-          <Link className="bp-next" href={withAccount("/", waiting[0].account_id)}>
-            <DistributorMark name={waiting[0].distributor.name} color={waiting[0].distributor.colors.primary} size={40} />
-            <span className="bp-next-text"><span className="bp-chip is-amber">Your next step</span>{waiting[0].distributor.name}: {waiting[0].status_label.toLowerCase()}</span>
-            <b>Decide now →</b>
-          </Link>
-        )}
+        <PageHeader title="Distributors" line={supplier ? `${tracked.length} tracked. Open one to see its payments and the agents’ work.` : undefined} />
         {fetched.error && <div className="fl-problem" role="alert">{fetched.error}</div>}
 
-        <div className="bw-stage">
-          <section className="bp-frame" aria-label="Distributors you track">
-            <div className="bp-frame-bar">
-              <span className="bp-tab">Tracked <b>{supplier ? tracked.length : "–"}</b></span>
-            </div>
-            <div className="bp-thead" aria-hidden="true"><span>Distributor</span><span>Status</span><span>Last payment</span><span>Contract</span><span /></div>
-            {!supplier && !fetched.error && [0, 1, 2].map((i) => <div key={i} className="bp-skel" aria-hidden="true"><i /><i /><i /><i /><i /></div>)}
-            {supplier && tracked.length === 0 && (
-              <EmptyState title="No distributors tracked yet." line="Track one below and the agents start checking its payments." />
-            )}
-            <ul className="bp-rows">
-              {tracked.map((d) => (
+        <section className="bp-frame" aria-label="Distributors you track">
+          <div className="bp-thead" aria-hidden="true"><span>Distributor</span><span>Status</span><span>Last payment</span><span className="num">Taken</span><span className="num">Disputed</span><span className="num">Waits on you</span><span /></div>
+          {!supplier && !fetched.error && [0, 1, 2].map((i) => <div key={i} className="bp-skel" aria-hidden="true"><i /><i /><i /><i /><i /></div>)}
+          {supplier && tracked.length === 0 && <EmptyState title="No distributors tracked yet." line="Track one below and the agents start checking its payments." />}
+          <ul className="bp-rows">
+            {tracked.map((d) => {
+              const f = facts.data?.[d.account_id];
+              const last = f?.overview?.recent_remittances?.[0] ?? null;
+              return (
                 <li key={d.account_id}>
                   <div className={`bp-row ${d.account_id === account?.id ? "is-current" : ""}`}>
                     <Link className="bp-row-open" href={withAccount("/", d.account_id)} aria-label={`Open ${d.distributor.name}`} />
                     <span className="bp-who">
-                      <DistributorMark name={d.distributor.name} color={d.distributor.colors.primary} size={34} />
-                      <span><strong>{d.distributor.name}</strong>{d.account_id === account?.id && <small>In view now</small>}</span>
+                      <DistributorMark name={d.distributor.name} color={d.distributor.colors.primary} size={30} />
+                      <span><strong>{d.distributor.name}</strong></span>
                     </span>
                     <span className="bp-cell" data-label="Status"><span className={`bp-chip ${STATUS_TONE[d.status]}`}>{d.status_label}</span></span>
-                    <span className="bp-cell" data-label="Last payment"><strong>{lastPayment(d)}</strong></span>
-                    <span className="bp-cell" data-label="Contract"><Link className="bp-link bp-over" href={withAccount("/contracts", d.account_id)}>Signed deal</Link></span>
-                    <span className="bp-row-end">
-                      <span className="bp-go">{ACTION[d.status]} →</span>
-                      <button className="bp-untrack bp-over" disabled={busy === d.account_id} onClick={() => void toggle(d)}>Stop tracking</button>
-                    </span>
+                    <span className="bp-cell" data-label="Last payment">{last ? <><strong>{money(last.paid)}</strong><small>{day(last.date)}</small></> : none}</span>
+                    <span className="bp-cell num" data-label="Taken">{f?.run?.taken != null ? money(f.run.taken) : none}</span>
+                    <span className="bp-cell num" data-label="Disputed">{f?.run?.disputed ? money(f.run.disputed) : none}</span>
+                    <span className="bp-cell num" data-label="Waits on you">{f?.run?.waiting ? money(f.run.waiting) : none}</span>
+                    <span className="bp-row-end bp-over"><RowMenu d={d} busy={busy === d.account_id} onStop={() => void toggle(d)} /></span>
                   </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+
+        {others.length > 0 && (
+          <section id="add" className="bp-section">
+            <SectionHead title="Not tracked" muted="Track one and the agents check its payments too." />
+            <ul className="bp-add-list">
+              {others.map((d) => (
+                <li key={d.account_id} className="bp-add-row">
+                  <DistributorMark name={d.distributor.name} color={d.distributor.colors.primary} size={32} />
+                  <strong>{d.distributor.name}</strong>
+                  <button className="cx-btn is-ghost" disabled={busy === d.account_id} onClick={() => void toggle(d)}>Track</button>
                 </li>
               ))}
             </ul>
-          </section>
-        </div>
-
-        {supplier && (
-          <section id="add" className="bp-section">
-            <SectionHead title="Add a distributor" muted="Track another and the agents check its payments too." />
-            {others.length > 0 ? (
-              <ul className="bp-add-list">
-                {others.map((d) => (
-                  <li key={d.account_id} className="bp-add-row">
-                    <DistributorMark name={d.distributor.name} color={d.distributor.colors.primary} size={32} />
-                    <strong>{d.distributor.name}</strong>
-                    <button className="cx-btn is-ghost" disabled={busy === d.account_id} onClick={() => void toggle(d)}>Track</button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="bp-add-done">Every distributor {supplier.brand.name} sells through is tracked. Stop tracking one above and it shows up here.</p>
-            )}
           </section>
         )}
       </main>

@@ -121,7 +121,7 @@ export function ChargeDrawer({ charge, onClose, source, runId }: { charge: Charg
   return (
     <aside className="cx-drawer" aria-label={`${charge.title} detail`}>
       <div className="cx-head" style={{ alignItems: "center" }}>
-        <span className="cx-eyebrow">Deduction detail · {charge.ref}</span>
+        <span className="cx-tiny">{charge.ref}</span>
         <button className="cx-drawer-close" onClick={onClose} aria-label="Back to the first charge">✕</button>
       </div>
       <div className="cx-head" style={{ alignItems: "center" }}>

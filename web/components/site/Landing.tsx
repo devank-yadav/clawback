@@ -126,40 +126,50 @@ export default function Landing() {
         </section>
 
         <section id="problem" className="st-section">
-          <div className="st-head">
-            <h2>Distributors take money out of every payment.<span>Small brands rarely have the time to check it.</span></h2>
+          <div className="st-head is-center">
+            <h2 className="display">Distributors take money<br />out of every payment</h2>
+            <p>Small brands rarely have the hours to check each deduction.<br />Two suppliers took theirs to court.</p>
           </div>
           <div className="st-cases">
             <article className="st-case">
-              <p className="st-case-when">Omaha Industries v. United Natural Foods · filed January 2024</p>
-              <p className="st-case-figure display">$268,816.94</p>
-              <p className="st-case-label">charged back</p>
-              <figure className="st-share" aria-label="About 82% of more than $326,780 in sales charged back, according to Omaha">
-                <div className="st-share-track"><span style={{ width: "82%" }} /></div>
-                <figcaption><span>About 82% taken back</span><span>of more than $326,780 of pet food sold to Giant Food</span></figcaption>
-              </figure>
-              <p className="st-case-text">Omaha says UNFI leaned on broad language in the supply agreement to charge back the product, and never gave a full accounting.</p>
-              <Sources list={OMAHA_SOURCES} />
+              <div className="st-vig" aria-hidden="true">
+                <div className="st-vig-sheet">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <div key={i} className={`st-vig-row ${i === 2 ? "is-hot" : ""}`}><i /><i /><i /><i /></div>
+                  ))}
+                </div>
+                <span className="st-vig-chip is-red">$268,816.94 charged back</span>
+                <div className="st-vig-bar"><span style={{ width: "82%" }} /></div>
+                <span className="st-vig-cap">About 82% of $326,780 in sales</span>
+              </div>
+              <div className="st-case-body">
+                <h3 className="display">Chargebacks on most of the sale</h3>
+                <p>Omaha Industries says UNFI charged back $268,816.94 on more than $326,780 of pet food it sold to Giant Food, citing broad language in the supply agreement.</p>
+                <p className="st-case-when">Omaha Industries v. United Natural Foods · filed January 2024</p>
+                <Sources list={OMAHA_SOURCES} />
+              </div>
             </article>
             <article className="st-case">
-              <p className="st-case-when">NYSM Organics v. United Natural Foods · filed Nov 3, 2024 · R.I. Superior Court</p>
-              <p className="st-case-figure display is-words">Paid late. Discount kept.</p>
-              <figure className="st-tl" aria-label="Schematic: the invoice, the prompt-pay discount window, and a payment made after the window closed that still took the discount">
-                <div className="st-tl-track">
-                  <span className="st-tl-window" />
-                  <i className="st-tl-mark is-start" style={{ left: "0%" }} />
-                  <i className="st-tl-mark" style={{ left: "38%" }} />
-                  <i className="st-tl-mark is-paid" style={{ left: "80%" }} />
+              <div className="st-vig" aria-hidden="true">
+                <div className="st-vig-sheet is-invoice">
+                  <div className="st-vig-row is-head"><i /><i /></div>
+                  <div className="st-vig-tl">
+                    <span className="st-vig-window" />
+                    <b className="is-start" style={{ left: "0%" }} />
+                    <b style={{ left: "40%" }} />
+                    <b className="is-paid" style={{ left: "82%" }} />
+                  </div>
+                  <div className="st-vig-tl-labels"><span>Invoice</span><span>Window closes</span><span className="is-paid">Paid</span></div>
+                  <div className="st-vig-row"><i /><i /><i /></div>
                 </div>
-                <figcaption className="st-tl-labels">
-                  <span style={{ left: "0%" }}>Invoice</span>
-                  <span style={{ left: "38%" }}>Discount window closes</span>
-                  <span className="is-paid" style={{ left: "80%" }}>Paid, discount still taken</span>
-                </figcaption>
-              </figure>
-              <p className="st-case-text">A natural-foods supplier says UNFI takes prompt-pay discounts on invoices it pays after the window, among “opaque and constant deductions” that cost too much to dispute.</p>
-              <p className="st-case-status">Pending. The consumer-protection claim was dismissed on June 5, 2025; the contract claims continue.</p>
-              <Sources list={NYSM_SOURCES} />
+                <span className="st-vig-chip is-amber">Discount taken after the window</span>
+              </div>
+              <div className="st-case-body">
+                <h3 className="display">Paid late, discount kept</h3>
+                <p>A natural-foods supplier says UNFI takes prompt-pay discounts on invoices it pays after the window, among “opaque and constant deductions”. The case is pending.</p>
+                <p className="st-case-when">NYSM Organics v. United Natural Foods · filed Nov 3, 2024</p>
+                <Sources list={NYSM_SOURCES} />
+              </div>
             </article>
           </div>
           <p className="st-fine">Allegations as reported in public filings and the trade press; neither case has been decided.</p>

@@ -1,0 +1,123 @@
+/* The app redesign: Home (the company view), the run's result, the audit drawer, the row and user menus. Loaded last
+   by the console and workspace layouts. Quotes and selected rows carry a highlight, never a colored side bar. */
+
+.cx-quote.is-marked { border-left: 0; border-radius: 12px; }
+.bp-term q { border-left: 0; padding-left: 0; }
+.bp-ds .bp-row.is-current::before { display: none; }
+.bp-ds .bp-row.is-current { background: var(--card-2); }
+
+/* Home */
+.hm { gap: 28px; }
+.hm-block { display: flex; flex-direction: column; gap: 10px; }
+.hm-block > h2 { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); }
+.hm-empty, .hm-gap { margin: 0; font-size: 14px; color: var(--sub); }
+.hm-none { color: var(--faint); }
+.hm-skel { display: flex; flex-direction: column; gap: 8px; }
+.hm-skel i { height: 52px; border-radius: 14px; background: var(--raised); }
+.hm-queue, .hm-recent { list-style: none; margin: 0; padding: 0; }
+.hm-queue { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--card); overflow: hidden; }
+.hm-queue li + li { border-top: 1px solid var(--line); }
+.hm-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 14px 18px; min-height: 56px; color: var(--ink); }
+.hm-item:hover { background: var(--card-2); }
+.hm-what { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hm-what strong { font-size: 14.5px; font-weight: 600; }
+.hm-what small { font-size: 12.5px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-amt { font-variant-numeric: tabular-nums; font-weight: 600; }
+.hm-go { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 500; color: var(--accent-ink); white-space: nowrap; }
+.hm-go svg, .hm-days svg, .dc-level svg { width: 14px; height: 14px; }
+.hm-money { margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--card); }
+.hm-money > div { display: flex; flex-direction: column; gap: 4px; padding: 14px 18px; min-width: 0; }
+.hm-money > div + div { border-left: 1px solid var(--line); }
+.hm-money dt { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--sub); }
+.hm-money dt i { width: 8px; height: 8px; border-radius: 2px; }
+.hm-money dt i.is-dispute, .bp-result i.is-dispute { background: var(--dispute); }
+.hm-money dt i.is-fair, .bp-result i.is-fair { background: var(--fair); }
+.hm-money dd { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.4px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.hm-money small { font-size: 12px; color: var(--sub); }
+.hm-money small a { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px; }
+.hm-table { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); overflow: hidden; font-size: 14px; }
+.hm-table th { padding: 10px 18px; text-align: left; font-size: 12px; font-weight: 500; color: var(--sub); background: var(--card-2); border-bottom: 1px solid var(--line); }
+.hm-table td { padding: 12px 18px; border-bottom: 1px solid var(--line); }
+.hm-table tr:last-child td { border-bottom: 0; }
+.hm-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.hm-table a { color: var(--accent-ink); font-weight: 600; }
+.hm-days { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
+.hm-days.is-amber { color: var(--wait-ink); font-weight: 600; }
+.hm-days.is-red { color: var(--dispute-ink); font-weight: 600; }
+.hm-recent { border-top: 1px solid var(--line); }
+.hm-recent li { display: flex; justify-content: space-between; gap: 16px; padding: 10px 2px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.hm-recent a { color: var(--ink); }
+.hm-recent a:hover { color: var(--accent-ink); }
+.hm-recent time { flex: none; font-size: 12.5px; color: var(--faint); }
+@media (max-width: 860px) {
+  .hm-item { grid-template-columns: minmax(0, 1fr) auto; }
+  .hm-item > .dc-level, .hm-item > .hm-go { grid-column: 1 / -1; justify-self: start; }
+  .hm-money { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hm-money > div:nth-child(3) { border-left: 0; }
+  .hm-money > div:nth-child(n + 3) { border-top: 1px solid var(--line); }
+  .hm-table thead { display: none; }
+  .hm-table, .hm-table tbody, .hm-table tr, .hm-table td { display: block; width: 100%; }
+  .hm-table tr { padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .hm-table tr:last-child { border-bottom: 0; }
+  .hm-table td { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border: 0; }
+  .hm-table td::before { content: attr(data-label); color: var(--faint); font-size: 12.5px; }
+  .hm-recent li { flex-direction: column; gap: 2px; }
+}
+
+/* the run's result */
+.fl-nextstep h2 { margin: 0 0 8px; font-size: 15px; font-weight: 600; color: var(--ink); }
+.fl-pile-total { font-variant-numeric: tabular-nums; }
+.fl-foot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 4px; }
+.fl-foot .cx-btn, .cx-btn.is-ghost { display: inline-flex; align-items: center; gap: 7px; }
+.fl-foot .cx-btn svg, .cx-btn svg { width: 16px; height: 16px; }
+.dm-draft-h { margin: 0; font-size: 13px; font-weight: 600; color: var(--accent-ink); }
+.dm-earlier summary, .bp-earlier summary { cursor: pointer; padding: 8px 12px; font-size: 12.5px; color: var(--sub); }
+.dm-earlier .dm-list-item { opacity: 0.75; margin-top: 6px; }
+.dm-group { display: flex; flex-direction: column; gap: 4px; }
+.bp-earlier .bp-row { opacity: 0.7; }
+
+/* History and Distributors */
+.bp-hs { --cols: minmax(170px, 1fr) minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 0.8fr) 72px; }
+.bp-hs .bp-go { display: inline-flex; align-items: center; gap: 4px; }
+.bp-hs .bp-go svg { width: 14px; height: 14px; }
+.bp-result i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+.bp-ds { --cols: minmax(0, 1.3fr) minmax(0, 1.5fr) minmax(0, 0.9fr) minmax(0, 0.7fr) minmax(0, 0.7fr) minmax(0, 0.8fr) 44px; }
+.bp-ds .num { text-align: right; justify-content: flex-end; }
+.ds-menu { position: relative; display: flex; justify-content: flex-end; }
+.ds-menu-btn { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: var(--sub); cursor: pointer; }
+.ds-menu-btn:hover, .ds-menu-btn[aria-expanded="true"] { background: var(--raised); color: var(--ink); }
+.ds-menu-btn svg { width: 18px; height: 18px; }
+.ds-menu-list { left: auto; right: 0; min-width: 240px; z-index: 30; }
+.tb-row.is-danger strong { color: var(--dispute-ink); }
+
+/* the audit drawer */
+.ad-backdrop { position: fixed; inset: 0; z-index: 60; background: rgba(0, 28, 46, 0.24); display: flex; justify-content: flex-end; }
+.ad-panel { width: min(460px, 100%); height: 100%; overflow-y: auto; background: var(--card); box-shadow: var(--shadow-pop); padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; outline: none; }
+.ad-head { display: flex; justify-content: space-between; align-items: center; }
+.ad-head h2 { margin: 0; font-size: 18px; font-weight: 600; }
+.ad-close { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; color: var(--sub); }
+.ad-close:hover { background: var(--raised); }
+.ad-verify { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 12px; font-size: 13.5px; font-weight: 500; }
+.ad-verify svg { width: 16px; height: 16px; }
+.ad-verify.is-ok { background: var(--green-bg); color: var(--green); }
+.ad-verify.is-broken { background: var(--red-bg); color: var(--red); }
+.ad-empty { margin: 0; font-size: 13.5px; color: var(--sub); }
+.ad-list { list-style: none; margin: 0; padding: 0; }
+.ad-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.ad-what { font-size: 13.5px; color: var(--ink); }
+.ad-meta { grid-column: 1; font-size: 12px; color: var(--faint); }
+.ad-hash { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 11.5px; color: var(--sub); background: var(--raised); padding: 2px 6px; border-radius: 6px; }
+
+/* the user menu: fixed, so the sidebar's scroll box can't clip it; it opens upward above the user */
+.sb-user-menu { position: fixed; top: auto; left: 12px; right: auto; bottom: 76px; width: 228px; min-width: 0; z-index: 70; }
+.sb-user-menu .tb-row small { white-space: normal; }
+.sb-user-menu .tb-row svg { width: 16px; height: 16px; color: var(--sub); flex: none; }
+.sb-details { margin: 0; padding: 4px 10px 8px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--line); }
+.sb-details dt { font-size: 11px; color: var(--faint); }
+.sb-details dd { margin: 0; font-size: 12.5px; color: var(--ink); overflow-wrap: anywhere; }
+.sb-note { margin: 6px 4px 0; font-size: 12px; color: var(--sub); }
+.sb-all { background: var(--raised-2); color: var(--ink); width: 26px; height: 26px; border-radius: 8px; }
+.sb-all svg { width: 15px; height: 15px; }
+.bp-ds .bp-cell small { display: block; font-size: 12px; color: var(--faint); }
+.bp-ds .bp-cell[data-label="Last payment"] { display: flex; flex-direction: column; align-items: flex-start; }
+.bp-score { display: block; }

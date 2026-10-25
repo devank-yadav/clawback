@@ -12,11 +12,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Bell, Bookmark, House, ChevronsUpDown, Gavel, ExternalLink, FileText, History as HistoryIcon,
-  LogIn, LogOut, Menu, Plug, Truck, Workflow, X,
+  Landmark, Layers, LogIn, LogOut, Menu, Plug, RotateCcw, Truck, UserRound, Workflow, X,
 } from "lucide-react";
 import { Logo } from "@/components/console/ui";
 import { inkOn, withAccount } from "@/lib/accounts";
-import { signOut, useSession } from "@/lib/session";
+import { askAdminToken, signOut, useSession } from "@/lib/session";
+import { adminToken } from "@/lib/tokens";
 import { signInHref } from "@/lib/signin-route";
 import * as api from "@/lib/api";
 import type { Account, RelationshipStatus } from "@/lib/types";
@@ -87,7 +88,7 @@ function Switcher({ account, onPick }: { account: Account | null; onPick: () => 
   return (
     <div className="sb-switch" ref={ref}>
       <button className="sb-switch-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)} disabled={!account}>
-        {all ? <span className="tb-mark sb-all" aria-hidden="true">∗</span> : <DistributorMark name={account?.distributor.name ?? "·"} color={account?.distributor.colors.primary} size={26} />}
+        {all ? <span className="tb-mark sb-all" aria-hidden="true"><Layers /></span> : <DistributorMark name={account?.distributor.name ?? "·"} color={account?.distributor.colors.primary} size={26} />}
         <span className="sb-switch-text">
           <small>Distributor</small>
           <strong>{all ? "All distributors" : account?.distributor.name ?? "Loading…"}</strong>
@@ -115,30 +116,122 @@ function Switcher({ account, onPick }: { account: Account | null; onPick: () => 
 
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 
-/** Who's signed in, with Sign out (and the page's own extras: account details, the demo reset). */
-function UserMenu({ account, extra }: { account: Account | null; extra?: ReactNode }) {
-  const { status, user } = useSession();
-  const { open, setOpen, ref } = usePopover();
+/** The presenter's controls, for a tab holding the admin token (lib/tokens.ts): the distributor's payment arrives
+ * through the bank deposit exactly as in production (POST /payments/{account}), and the reset. Judges never see them. */
+function usePresenter(account: Account | null) {
   const router = useRouter();
+  const [note, setNote] = useState<string | null>(null);
+  const simulate = useCallback(async () => {
+    if (!account) return;
+    setNote(`Posting ${account.distributor.name}’s payment…`);
+    try {
+      const paid = await api.accountPays(account.id);
+      // Through the bank the run starts when the deposit is seen (about 5 s): find it, then open that run.
+      let runId = paid.run_id;
+      for (let i = 0; !runId && i < 20; i++) {
+        await new Promise((r) => setTimeout(r, 1000));
+        runId = (await api.latestRun(account.id))?.run_id ?? null;
+      }
+      setNote(null);
+      router.push(withAccount("/", account.id, runId ? { run: runId } : undefined));
+    } catch (e) {
+      setNote(`The payment didn’t go through (${(e as Error).message}).`);
+    }
+  }, [account, router]);
+  const reset = useCallback(async () => {
+    setNote("Resetting every distributor…");
+    try {
+      await api.resetWorkspace();
+      window.location.reload();
+    } catch (e) {
+      setNote(`The reset didn’t go through (${(e as Error).message}).`);
+    }
+  }, []);
+  // Alt+Shift+P: simulate the payment (asks for the admin token first when this tab has none).
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (!(e.altKey && e.shiftKey && e.code === "KeyP")) return;
+      e.preventDefault();
+      if (adminToken()) void simulate();
+      else askAdminToken("Presenter mode: the admin token lets this tab post the distributor’s payment.", () => void simulate());
+    };
+    document.addEventListener("keydown", key);
+    return () => document.removeEventListener("keydown", key);
+  }, [simulate]);
+  return { simulate, reset, note };
+}
+
+/** Who's signed in. The menu opens upward with the account's details, the presenter's controls when this tab holds
+ * the admin token, and Sign out. Enter or Space opens it, arrow keys and Tab move inside, Escape closes it. */
+function UserMenu({ account }: { account: Account | null }) {
+  const { status, user, supplier } = useSession();
+  const [open, setOpen] = useState(false);
+  const [details, setDetails] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const presenter = usePresenter(account);
+  const [presenting, setPresenting] = useState(false);
+
+  const close = useCallback((refocus = true) => {
+    setOpen(false);
+    setDetails(false);
+    if (refocus) button.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    // Focus the first item, keep Tab inside, Escape closes; a click outside closes without stealing focus.
+    menu.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
+    const outside = (e: MouseEvent) => { if (wrap.current && !wrap.current.contains(e.target as Node)) close(false); };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); close(); return; }
+      const items = [...(menu.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? [])];
+      if (!items.length) return;
+      const at = items.indexOf(document.activeElement as HTMLElement);
+      if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) { e.preventDefault(); items[(at + 1) % items.length].focus(); }
+      if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) { e.preventDefault(); items[(at - 1 + items.length) % items.length].focus(); }
+    };
+    document.addEventListener("mousedown", outside);
+    document.addEventListener("keydown", key);
+    return () => { document.removeEventListener("mousedown", outside); document.removeEventListener("keydown", key); };
+  }, [open, close]);
+
   if (status === "out" || status === "unknown") {
     return <Link className="sb-signin" href={signInHref(undefined)}><LogIn aria-hidden="true" /> Sign in</Link>;
   }
-  // A laptop with no passwords: nobody signs in, the admin is the account's owner.
+  // A server with no passwords: nobody signs in, and the admin is the account's owner.
   const name = user?.name ?? account?.brand.owner.name ?? " ";
-  const detail = user?.email ?? (status === "open" ? "Open laptop · no sign-in" : " ");
+  const detail = user?.email ?? account?.brand.owner.email ?? " ";
   return (
-    <div className="sb-user" ref={ref}>
-      <button className="sb-user-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+    <div className="sb-user" ref={wrap}>
+      <button ref={button} className="sb-user-btn" aria-haspopup="menu" aria-expanded={open} aria-controls="sb-user-menu" onClick={() => { if (open) close(); else { setPresenting(!!adminToken()); setOpen(true); } }}>
         <i aria-hidden="true">{initials(name)}</i>
         <span><strong>{name}</strong><small>{detail}</small></span>
         <ChevronsUpDown aria-hidden="true" />
       </button>
       {open && (
-        <div className="tb-menu sb-menu sb-user-menu" role="menu">
-          {extra}
+        <div id="sb-user-menu" ref={menu} className="tb-menu sb-user-menu" role="menu" aria-label="Your account">
+          <button role="menuitem" className="tb-row" aria-expanded={details} onClick={() => setDetails((v) => !v)}><UserRound aria-hidden="true" /><span><strong>Account details</strong></span></button>
+          {details && (
+            <dl className="sb-details">
+              <div><dt>Name</dt><dd>{name}</dd></div>
+              <div><dt>Email</dt><dd>{detail}</dd></div>
+              <div><dt>Company</dt><dd>{supplier?.name ?? account?.brand.name ?? " "}</dd></div>
+              <div><dt>Role</dt><dd>Admin: answers the questions and approves what posts</dd></div>
+            </dl>
+          )}
+          {presenting && account && (
+            <>
+              <button role="menuitem" className="tb-row" onClick={() => { close(false); void presenter.simulate(); }}><Landmark aria-hidden="true" /><span><strong>Presenter: simulate {account.distributor.name}’s payment</strong><small>Posts the bank deposit; the agents start on their own</small></span></button>
+              <button role="menuitem" className="tb-row" onClick={() => { close(false); void presenter.reset(); }}><RotateCcw aria-hidden="true" /><span><strong>Presenter: reset every distributor</strong></span></button>
+            </>
+          )}
           {status === "in" && <button role="menuitem" className="tb-row" onClick={() => void signOut().then(() => router.push("/"))}><LogOut aria-hidden="true" /><span><strong>Sign out</strong></span></button>}
         </div>
       )}
+      {presenter.note && <p className="sb-note" role="status">{presenter.note}</p>}
     </div>
   );
 }
@@ -207,7 +300,7 @@ function useSignedInOnly() {
   }, [status]);
 }
 
-export default function TopBar({ account, extra }: { account: Account | null; active?: string; right?: ReactNode; extra?: ReactNode }) {
+export default function TopBar({ account }: { account: Account | null; active?: string; right?: ReactNode; extra?: ReactNode }) {
   const path = usePathname();
   const { supplier } = useSession();
   const [open, setOpen] = useState(false);
@@ -260,7 +353,7 @@ export default function TopBar({ account, extra }: { account: Account | null; ac
             </a>
           )}
         </nav>
-        <div className="sb-foot"><UserMenu account={account} extra={extra} /></div>
+        <div className="sb-foot"><UserMenu account={account} /></div>
       </aside>
     </>
   );

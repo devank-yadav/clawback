@@ -7,6 +7,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback } from "react";
+import { ArrowUpRight } from "lucide-react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
@@ -41,6 +42,21 @@ export default function Disputes() {
   const open: Thread | null =
     threads.find((t) => t.dispute.id === wantId && (!wantRun || t.run_id === wantRun)) ?? threads.find((t) => t.dispute.id === wantId) ?? threads[0] ?? null;
   const href = (t: Thread) => withAccount("/disputes", account?.id, { id: t.dispute.id, run: t.run_id });
+  // One entry per dispute: the newest run's (the API lists newest first), with the runs it replaced folded under it.
+  // Only the newest can be sent; an earlier run's is shown for the record.
+  const groups: { head: Thread; earlier: Thread[] }[] = [];
+  for (const t of threads) {
+    const g = groups.find((x) => x.head.dispute.id === t.dispute.id);
+    if (g) g.earlier.push(t);
+    else groups.push({ head: t, earlier: [] });
+  }
+  const isHead = (t: Thread | null) => !!t && groups.some((g) => g.head === t);
+  const ListItem = ({ t, current }: { t: Thread; current: boolean }) => (
+    <Link href={href(t)} className="dm-list-item" aria-current={current ? "page" : undefined}>
+      <span><strong>{t.dispute.id}</strong><small>{t.dispute.lines.length} line{t.dispute.lines.length === 1 ? "" : "s"} · {t.messages.length} message{t.messages.length === 1 ? "" : "s"}</small></span>
+      <span className="dm-list-right"><b>{money(t.dispute.total)}</b><span className={`bp-chip ${isHead(t) ? STATUS[t.dispute.status].tone : "is-swap"}`}>{isHead(t) ? STATUS[t.dispute.status].label : "Replaced"}</span></span>
+    </Link>
+  );
 
   return (
     <div className="fl">
@@ -58,11 +74,16 @@ export default function Disputes() {
           <div className="dm-layout">
             <nav className="dm-list" aria-label="Disputes">
               {!list.data && !list.error && <div className="bp-skel" aria-hidden="true"><i /><i /></div>}
-              {threads.map((t, i) => (
-                <Link key={`${t.run_id}:${t.dispute.id}`} href={href(t)} className="dm-list-item" aria-current={open === t ? "page" : undefined}>
-                  <span><strong>{t.dispute.id}</strong><small>{threads.slice(0, i).some((o) => o.dispute.id === t.dispute.id) ? "An earlier run · " : ""}{t.dispute.lines.length} line{t.dispute.lines.length === 1 ? "" : "s"} · {t.messages.length} message{t.messages.length === 1 ? "" : "s"}</small></span>
-                  <span className="dm-list-right"><b>{money(t.dispute.total)}</b><span className={`bp-chip ${STATUS[t.dispute.status].tone}`}>{STATUS[t.dispute.status].label}</span></span>
-                </Link>
+              {groups.map(({ head, earlier }) => (
+                <div key={`${head.run_id}:${head.dispute.id}`} className="dm-group">
+                  <ListItem t={head} current={open === head} />
+                  {earlier.length > 0 && (
+                    <details className="dm-earlier" open={earlier.includes(open as Thread)}>
+                      <summary>{earlier.length} earlier run{earlier.length === 1 ? "" : "s"}, replaced</summary>
+                      {earlier.map((t) => <ListItem key={`${t.run_id}:${t.dispute.id}`} t={t} current={open === t} />)}
+                    </details>
+                  )}
+                </div>
               ))}
             </nav>
             {open && (
@@ -79,7 +100,7 @@ export default function Disputes() {
                     </li>
                   ))}
                 </ul>
-                {unsent(open.dispute) && (
+                {unsent(open.dispute) && isHead(open) && (
                   <section className="dm-section" aria-label="Review and send">
                     <h3>Review and send</h3>
                     <ReviewAndSend key={`${open.run_id}:${open.dispute.id}`} disputeId={open.dispute.id} runId={open.run_id} onSent={list.reload} />
@@ -89,7 +110,7 @@ export default function Disputes() {
                   <h3>Thread</h3>
                   <DisputeThread key={`${open.run_id}:${open.dispute.id}`} disputeId={open.dispute.id} runId={open.run_id} distributor={cast.distributor} refreshKey={`${open.dispute.status}:${replies}`} />
                 </section>
-                <a className="cx-btn is-ghost" href={withAccount("/portal", account?.id, { dispute: open.dispute.id })} target="_blank" rel="noreferrer">Open {account?.distributor.portal_name ?? `${cast.distributor}’s portal`} ↗</a>
+                <a className="cx-btn is-ghost" href={withAccount("/portal", account?.id, { dispute: open.dispute.id })} target="_blank" rel="noreferrer">Open {account?.distributor.portal_name ?? `${cast.distributor}’s portal`}<ArrowUpRight aria-hidden="true" /></a>
               </article>
             )}
           </div>

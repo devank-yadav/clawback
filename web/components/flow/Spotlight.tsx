@@ -4,6 +4,7 @@
 // admin's approval of the credit memo, or the dispute and the distributor's replies. People act here, on the same page as the run.
 
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { useState } from "react";
 import { money } from "@/lib/format";
 import { DisputeThread, ReviewAndSend } from "@/components/disputes/DisputeMail";
@@ -55,7 +56,6 @@ export function ApprovalCard() {
   if (!a || a.status !== "pending") return null;
   return (
     <section className="fl-card is-amber" aria-label="Your approval">
-      <span className="cx-eyebrow">Waiting on you · {cast.ownerFull}</span>
       <div className="cx-head" style={{ alignItems: "flex-end" }}>
         <h2>Approve the credit memo for the fair charges?</h2>
         <Money value={a.amount} className="cx-big" />
@@ -111,7 +111,7 @@ export function DisputeCard() {
       )}
       <div className="dm-links">
         <Link className="cx-btn is-ghost" href={link("/disputes", { id: d.id, ...(runId ? { run: runId } : {}) })}>Open the thread</Link>
-        <a className="cx-btn is-ghost" href={link("/portal")} target="_blank" rel="noreferrer">Open {account?.distributor.portal_name ?? `${cast.distributor}’s portal`} ↗</a>
+        <a className="cx-btn is-ghost" href={link("/portal")} target="_blank" rel="noreferrer">Open {account?.distributor.portal_name ?? `${cast.distributor}’s portal`}<ArrowUpRight aria-hidden="true" /></a>
       </div>
     </section>
   );

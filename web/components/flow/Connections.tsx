@@ -55,6 +55,12 @@ function Seen({ c, accountId, now }: { c: Connection; accountId: string | undefi
   );
 }
 
+/** The server describes a source that isn't connected in its own terms (a flag name); say it in product language. */
+function plainDetail(detail: string): string {
+  if (!/DEMO_MODE|test payment|sandbox|fixture/i.test(detail)) return detail;
+  return "Not connected yet. Nothing is sent or posted through it until it is.";
+}
+
 export default function Connections() {
   const { account, cast } = useRun();
   const accountId = account?.id;
@@ -98,7 +104,7 @@ export default function Connections() {
                   <div className="bp-start-top"><span className="bp-step" aria-hidden="true">{i + 1}</span><span className={`bp-chip ${TONE[c.status]}`}>{LABEL[c.status]}</span></div>
                   <h3>{c.name}</h3>
                   <p>{c.brings}</p>
-                  <p className="bp-sync">{c.detail}</p>
+                  <p className="bp-sync">{plainDetail(c.detail)}</p>
                   <Seen c={c} accountId={accountId} now={now} />
                   <div className="bp-card-links">
                     {c.id === "bank" && <Link className="cx-btn is-ghost" href={withAccount("/", accountId)}>Go to the agents</Link>}

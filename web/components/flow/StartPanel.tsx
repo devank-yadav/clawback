@@ -22,7 +22,7 @@ const CREW: { name: string; tag: "AI" | "CODE" | "PERSON" }[] = [
 ];
 
 export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpenLast: () => void }) {
-  const { account, cast, state, view, startPayment, starting, limited, follow, error } = useRun();
+  const { account, cast, state, view, starting, limited, follow, error } = useRun();
   const [over, setOver] = useState(false);
   const [reading, setReading] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -39,7 +39,7 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
     try {
       const r = await readRemittance(input, account.id);
       if (!r.can_run) {
-        setProblem(r.problems[0]?.text ?? "The lines don’t add up to what was taken, so no run can start from this read. Check the file, or try the sample payment.");
+        setProblem(r.problems[0]?.text ?? "The lines don’t add up to what was taken, so no run can start from this read. Check the file and try again.");
         return;
       }
       const started = await runRemittance(r.read_id, account.id);
@@ -59,10 +59,6 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
     if (file) void read({ file }, file.name);
   }
 
-  function pay() {
-    onStart();
-    void startPayment();
-  }
 
   return (
     <div className="fl-hero">
@@ -72,10 +68,7 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
           line="No payment in progress. A payment from the bank, QuickBooks or the remittance inbox starts the agents."
           actions={!reading && (
             <>
-              <button className="cx-btn is-ghost" onClick={() => setPasting((v) => !v)} disabled={busy} aria-expanded={pasting}>Upload a remittance</button>
-              <button className="cx-btn fl-go" onClick={pay} disabled={busy || !account}>
-                {starting ? "The payment is landing…" : "Send a test payment"}
-              </button>
+              <button className="cx-btn" onClick={() => setPasting((v) => !v)} disabled={busy} aria-expanded={pasting}>{starting ? "The payment is landing…" : "Add a remittance"}</button>
             </>
           )}
         />

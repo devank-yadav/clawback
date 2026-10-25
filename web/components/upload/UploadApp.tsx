@@ -106,7 +106,7 @@ function Result({ r, onReset }: { r: RemittanceRead; onReset: () => void }) {
             <h2>{h?.payer ?? r.distributor}{h?.payment_ref ? ` · ${h.payment_ref}` : ""}</h2>
             <p className="muted text-[13px]">
               {h?.payment_date ? `Paid ${shortDay(h.payment_date)} · ` : ""}{h?.invoice_id ? `Invoice ${h.invoice_id} · ` : ""}
-              Read from {r.input === "pdf" ? "a PDF" : "text"}{r.source === "fixture" ? " (saved answer, offline)" : ""}
+              Read from {r.input === "pdf" ? "a PDF" : "text"}{r.source === "fixture" ? " (an earlier reading of this file)" : ""}
             </p>
           </div>
           <span className={`status ${r.ok ? "accepted" : r.can_run ? "pending" : "disputed"}`}>
@@ -225,7 +225,7 @@ export default function UploadApp({ account = api.ACCOUNT, distributor = "the di
         <div className="tool-actions">
           <button type="button" className="primary" disabled={!text.trim() || !!busy} onClick={() => read({ text }, "the pasted text")}>Read this text</button>
           {account === api.ACCOUNT && <>
-            <button type="button" className="secondary" disabled={!!busy} onClick={sample}>Try Northmart&apos;s March remittance</button>
+            <button type="button" className="secondary" disabled={!!busy} onClick={sample}>Use the March remittance from Northmart</button>
             <a className="text-button" href={api.sampleUrl()} download>Download it (PDF)</a>
           </>}
         </div>

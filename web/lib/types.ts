@@ -133,49 +133,36 @@ export type QuestionRisk = {
   reason: string;
 };
 
-/** GET /overview (branch supplier-overview): the signed-in supplier across all its distributors. Every amount is the
- * API's; the web adds nothing up. Read defensively: a field the API hasn't sent shows as a gap. */
-export type CompanyOverview = {
-  totals?: {
-    taken?: Money | null;
-    disputed?: Money | null;
-    fair?: Money | null;
-    accepted?: Money | null;
-    /** Only what evidence shows came back (a distributor's reply agreeing, or a credit), never a projection. */
-    recovered?: Money | null;
-    recovered_evidence?: { kind?: string; label?: string; href?: string | null; dispute_id?: string | null; run_id?: string | null; account_id?: string | null }[] | null;
-  } | null;
-  needs_you?: NeedsYou[] | null;
-  open_disputes?: OpenDispute[] | null;
-  recent?: { at: string; text: string; account_id?: string | null; run_id?: string | null; dispute_id?: string | null }[] | null;
-};
-
-/** One thing waiting on the admin: answer a question, review and send a dispute, or approve a credit memo. */
-export type NeedsYou = {
-  kind: "answer" | "send" | "approve" | (string & {});
-  account_id: string;
-  run_id?: string | null;
-  distributor?: string | null;
-  title: string;
-  amount?: Money | null;
-  risk?: QuestionRisk | null;
-  question_id?: string | null;
-  dispute_id?: string | null;
-};
-
-export type OpenDispute = {
-  account_id: string;
-  run_id?: string | null;
-  dispute_id: string;
-  distributor?: string | null;
-  amount: Money;
-  status: string;
-  /** Days left in the distributor's dispute window, counted by the API; null when it doesn't know. */
-  days_left?: number | null;
-  file_by?: string | null;
-};
-
 export type Answer = { question_id: string; from_role: Role; text: string; answered_at: string; rule_id: string | null };
+
+// ---- GET /overview (api/contracts.py SupplierOverview): the signed-in supplier across its distributors. Every amount
+// is the API's, computed from engine values; the web shows them as given and adds nothing up.
+/** Why an amount counts as recovered: the distributor agreed in a dispute thread, or a later remittance credited it. */
+export type RecoveredEvidence = { dispute_id: string | null; message_id: string | null; remittance_ref: string | null; charge_id: string | null; amount: Money };
+export type OverviewTotals = {
+  taken: Money; disputed: Money; fair: Money; waiting: Money;
+  /** Only the part of disputed with evidence (a reply agreeing, or a credit), never more. */
+  recovered: Money;
+  /** Disputed minus recovered: filed or drafted, no agreement or credit yet. */
+  disputed_awaiting_reply: Money;
+  evidence: RecoveredEvidence[];
+};
+export type OverviewLink = { page: "run" | "dispute" | "approval" | "question"; run_id: string | null; dispute_id: string | null };
+export type NeedsYou = {
+  kind: "question" | "dispute_email" | "reply_email" | "approval";
+  account_id: string; distributor: string; title: string; amount: Money | null;
+  risk_level: "high" | "medium" | "low"; since: string | null; link: OverviewLink;
+};
+export type OpenDispute = {
+  dispute_id: string; account_id: string; distributor: string; run_id: string; amount: Money; status: string;
+  filed_at: string | null; file_by: string | null; days_left: number | null;
+};
+export type RecentItem = { at: string; kind: "run_decided" | "reply" | "sent"; account_id: string; distributor: string; text: string; link: OverviewLink };
+export type CompanyOverview = {
+  supplier: string | null; distributors: number; totals: OverviewTotals;
+  /** Already sorted: highest risk first, then the oldest within a level. */
+  needs_you: NeedsYou[]; open_disputes: OpenDispute[]; recent: RecentItem[];
+};
 
 export type Rule = {
   id: string;

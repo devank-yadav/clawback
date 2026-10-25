@@ -112,6 +112,8 @@ function FlowFor() {
 
   const stages = buildStages(state, view, { distributor: cast.distributor, owner: cast.owner }, starting || (mine && !state.run));
   const focus = focusStage(stages);
+  // On the result, the one thing that needs the admin first: their question (it blocks the books), else whatever waits.
+  const nextUp = stages.find((s) => s.key === "owner" && s.state === "waiting") ?? (focus?.state === "waiting" ? focus : null);
   const r = view.remittance;
   const t = view.totals;
   const charge = drawer ? view.charges.find((c) => c.id === drawer) ?? null : null;
@@ -161,8 +163,7 @@ function FlowFor() {
 
       {phase === "done" && (
         <main className="fl-main">
-          <AgentStrip state={state} view={view} owner={cast.owner} distributor={cast.distributor} />
-          <DonePanel onOpen={setDrawer} onNew={restart} rail={<StageRail stages={stages} compact />} next={focus && focus.state === "waiting" ? <Spotlight focus={focus} /> : null} disputeInNext={focus?.key === "file" && focus.state === "waiting"} failed={status === "failed"} />
+          <DonePanel onOpen={setDrawer} onNew={restart} next={nextUp ? <Spotlight focus={nextUp} /> : null} disputeInNext={nextUp?.key === "file"} failed={status === "failed"} />
         </main>
       )}
 

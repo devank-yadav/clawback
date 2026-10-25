@@ -5,7 +5,6 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { CircleCheck, CircleX, X } from "lucide-react";
-import { useRun } from "@/components/console/RunProvider";
 import * as api from "@/lib/api";
 import type { AuditEntry } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
@@ -21,11 +20,10 @@ const plain = (e: AuditEntry) => {
 };
 
 export function AuditDrawer({ runId, onClose }: { runId: string; onClose: () => void }) {
-  const { account } = useRun();
   const panel = useRef<HTMLDivElement>(null);
-  const load = useCallback(() => Promise.all([api.fetchAudit(account!.id), api.verifyAudit()]), [account]);
-  const fetched = useFetched(account ? load : null);
-  const entries = (fetched.data?.[0] ?? []).filter((e) => e.evidence?.run_id === runId);
+  const load = useCallback(() => Promise.all([api.fetchRunAudit(runId), api.verifyAudit()]), [runId]);
+  const fetched = useFetched(load);
+  const entries = fetched.data?.[0] ?? [];
   const verify = fetched.data?.[1] ?? null;
 
   // A dialog: focus goes in, Escape closes it, and Tab stays inside until it does.

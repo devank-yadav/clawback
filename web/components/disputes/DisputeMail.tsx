@@ -7,7 +7,9 @@
 //    and their Send buttons.
 // Nothing here computes money or writes a figure: the API drafts and checks every word that goes out.
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { withAccount } from "@/lib/accounts";
 import { AlertTriangle, Check, Mail, Paperclip, Send } from "lucide-react";
 import * as api from "@/lib/api";
 import { ApiError } from "@/lib/api";
@@ -28,7 +30,8 @@ const WRITER: Record<DisputeEmail["written_by"], string> = {
 /** What happened to an email that left (or tried to). */
 export function SentLine({ email }: { email: DisputeEmail }) {
   if (email.status === "sent") return <div className="dm-sent"><Check aria-hidden="true" /><span>Sent to {email.to} {email.sent_at ? `at ${when(email.sent_at)}` : ""}{email.detail && <small>{email.detail}</small>}</span></div>;
-  if (email.status === "outbox") return <div className="dm-sent is-outbox"><Mail aria-hidden="true" /><span>Saved to the outbox{email.sent_at ? ` · ${when(email.sent_at)}` : ""}<small>{email.detail ? `Not sent: ${email.detail}` : "Nothing left this server."}</small></span></div>;
+  // Kept in the app because no mail account is connected: say so plainly, and never claim it went out.
+  if (email.status === "outbox") return <div className="dm-sent is-outbox"><Mail aria-hidden="true" /><span>Saved, not sent{email.sent_at ? ` · ${when(email.sent_at)}` : ""}<small>Connect Gmail to send it from your address. <Link href={withAccount("/connections", email.account_id)}>Open Connections</Link></small></span></div>;
   if (email.status === "failed") return <p className="dm-problems" role="alert"><AlertTriangle aria-hidden="true" /> Couldn’t send{email.detail ? `: ${email.detail}` : ""}. Send again to retry.</p>;
   return null;
 }
@@ -87,7 +90,7 @@ function EmailEditor({ email, sendLabel, onSend, onSave, busy, problem }: {
       <label htmlFor={`dm-subject-${id}`}>Subject</label>
       <input id={`dm-subject-${id}`} value={subject} onChange={(e) => setSubject(e.target.value)} />
       <label htmlFor={`dm-body-${id}`}>Message</label>
-      <textarea id={`dm-body-${id}`} value={typing ?? body} readOnly={typing !== null} aria-busy={typing !== null} onChange={(e) => setBody(e.target.value)} rows={Math.min(18, Math.max(8, body.split("\n").length + 1))} />
+      <textarea id={`dm-body-${id}`} value={typing ?? body} readOnly={typing !== null} aria-busy={typing !== null} onChange={(e) => setBody(e.target.value)} rows={Math.min(10, Math.max(6, body.split("\n").length + 1))} />
       {email.attachments.length > 0 && (
         <ul className="dm-attachments" aria-label="Attachments">
           {email.attachments.map((a) => <li key={a}><Paperclip aria-hidden="true" />{a}</li>)}
@@ -212,7 +215,7 @@ export function DisputeThread({ disputeId, runId, distributor, refreshKey = "", 
       )}
       {drafts.map((d) => (
         <section key={d.id} className="dm-draft" aria-label="The Negotiator's reply, waiting for you">
-          <span className="cx-eyebrow">Reply ready · waiting for you to send</span>
+          <h4 className="dm-draft-h">The Negotiator’s reply, ready for you to send</h4>
           <EmailEditor email={d} busy={busy === d.id} problem={problem?.id === d.id ? problem.text : null} sendLabel="Send reply" onSend={(s, b) => void sendReply(d, s, b)} />
         </section>
       ))}
