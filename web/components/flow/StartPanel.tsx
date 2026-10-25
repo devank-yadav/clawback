@@ -125,19 +125,14 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
         {limited && <div className="fl-problem" role="status">{limited}</div>}
         {error && <div className="fl-problem" role="alert">{error}</div>}
 
-        {state.run && (waitingOnYou ? (
-          <div className="fl-last is-waiting">
-            <span><strong>Your previous payment is waiting on your decision.</strong> Starting a new one replaces it, and its open question closes.</span>
-            <button className="cx-btn" onClick={onOpenLast}>Open it</button>
-          </div>
-        ) : last ? (
+        {state.run && !waitingOnYou && last && (
           <div className="fl-last">
             <span>
               Last payment: {state.run.status === "failed" ? "the agents stopped" : `${money(last.disputed)} disputed · ${money(last.accepted)} fair${last.questions ? ` · ${last.questions} question${last.questions === 1 ? "" : "s"}` : ""}`}
             </span>
             <button className="cx-btn is-ghost" onClick={onOpenLast}>See the result</button>
           </div>
-        ) : null)}
+        )}
 
         <AgentRoster account={account?.id} working={starting || !!reading || !!runningId || elsewhere.length > 0} received={pending[0]?.distributor ?? null} />
 
