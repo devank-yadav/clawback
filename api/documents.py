@@ -91,7 +91,8 @@ def _kind(doc_id: str, folder: str) -> str:
 
 
 def _approved(sender: str | None, account: accounts.Account) -> bool:
-    return sender is not None and sender.lower() in account.config.approved_senders
+    """Compared without case on both sides (AccountConfig lowercases its list, but a config built another way may not)."""
+    return bool(sender) and sender.strip().lower() in {s.strip().lower() for s in account.config.approved_senders}
 
 
 def paste(text: str, kind: str = "deal", sender: str | None = None, received_at: datetime | None = None) -> Document:

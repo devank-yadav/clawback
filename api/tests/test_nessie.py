@@ -305,3 +305,47 @@ def test_a_deposit_that_cant_start_a_run_never_stops_the_poller():
     poller.tick()
     fake.deposits.append(NORTHMART)
     assert poller.tick() == [] and "couldn't start the run" in sources.last("bank", "peak-bar").text
+
+
+def test_a_deposit_that_couldnt_start_a_run_is_tried_once_more_later():
+    calls, clock = [], [0.0]
+
+    def flaky(d):
+        calls.append(d.id)
+        if len(calls) == 1:
+            raise RuntimeError("database restarting")
+        return pipeline.start_for_deposit(d, client=ScenarioClaude(), background=False)
+
+    fake = FakeNessie([OLD])
+    poller = nessie.Poller(client_for(fake), flaky, retry_after=60, clock=lambda: clock[0])
+    poller.tick()
+    fake.deposits.append(NORTHMART)
+    assert poller.tick() == [] and calls == ["dep-new"]
+    assert "trying once more in 60 s" in sources.last("bank", "peak-bar").text
+    clock[0] = 30
+    assert poller.tick() == [] and len(calls) == 1  # not yet
+    clock[0] = 61
+    assert [d.id for d in poller.tick()] == ["dep-new"] and len(calls) == 2 and len(pipeline.RUNS) == 1
+    assert "started run" in sources.last("bank", "peak-bar").text
+    clock[0] = 500
+    assert poller.tick() == [] and len(calls) == 2  # once started, never again
+
+
+def test_a_deposit_that_fails_twice_is_left_to_a_person():
+    calls, clock = [], [0.0]
+
+    def broken(d):
+        calls.append(d.id)
+        raise RuntimeError("no charges file")
+
+    fake = FakeNessie([OLD])
+    poller = nessie.Poller(client_for(fake), broken, retry_after=60, clock=lambda: clock[0])
+    poller.tick()
+    fake.deposits.append(NORTHMART)
+    poller.tick()
+    clock[0] = 61
+    assert poller.tick() == [] and len(calls) == 2
+    assert "still couldn't start the run" in sources.last("bank", "peak-bar").text
+    clock[0] = 1000
+    poller.tick()
+    assert len(calls) == 2  # tried once more, and only once

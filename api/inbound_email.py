@@ -19,13 +19,17 @@ Each POST, in order:
    for, the one whose invoice number, then distributor name, the email mentions. None or several: kept for a person.
 4. Who sent it: the From address counts only when Mailgun's SPF check passed (X-Mailgun-Spf, every copy of it) for an
    envelope sender in the From address's domain. Anyone can type a From line.
-5. A remittance (a PDF, CSV or text attachment, or a body that says remittance or payment advice and names the
-   account's invoice), from a trusted sender (the distributor's desk or its domain, one of the account's
+5. A remittance (a PDF, CSV, text or EDI 820 attachment the Payment reader accepts, api/remittance.extract_text, that
+   is an 820 or says remittance or payment advice or names the account's invoice; or a body that is an 820, or says
+   remittance or payment advice and names the account's invoice; any other attachment, a sales report or a signed
+   amendment, leaves the email a document), from a trusted sender (the distributor's desk or its domain, one of the account's
    approved_senders, or INBOUND_EMAIL_FORWARDERS, the people who forward remittances), is read and checked exactly as
    an upload (api/remittance.read: Claude lists the lines, code checks every one and that they add up), and if it can
    run, starts the run on its lines (remittance.start_with_charges, once per email; a run the bank's deposit or
    QuickBooks already started for the same payment is matched instead). The read runs off the request's thread.
-   Anything that can't run is noted on the Connections page for a person; nothing is decided from the email.
+   Anything that can't run is noted on the Connections page for a person; nothing is decided from the email. A read
+   that fails in the background is marked failed (never left "reading"). An EDI 820 is read by plain code
+   (api/edi820.py), not by Claude. Addresses (desk, approved senders, forwarders) are compared without case.
 6. Anything else is kept as a document of the account under accounts.inbound_root() (INBOUND_EMAIL_DIR), with what
    the sender check found, and the account's next run reads it with both readers: an email from an approved sender
    (authenticated) can change the deal, as the broker's extension does; anyone else's is shown as a claim and never
@@ -43,6 +47,7 @@ import os
 import re
 import threading
 import time
+from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -51,7 +56,7 @@ from typing import Literal
 
 import anthropic
 
-from api import accounts, documents, remittance, sources
+from api import accounts, documents, edi820, remittance, sources
 from api.contracts import Contract
 
 log = logging.getLogger("clawback.inbound_email")
@@ -62,12 +67,16 @@ DOMAIN = "INBOUND_EMAIL_DOMAIN"
 FORWARDERS = "INBOUND_EMAIL_FORWARDERS"
 MAX_AGE_S = 12 * 3600  # Mailgun retries for 8 hours and says not to be strict about the timestamp
 MAX_ATTACHMENTS = 10
-REMITTANCE_FILES = (".pdf", ".csv", ".txt")
+REMITTANCE_FILES = (".pdf", ".csv", ".txt", ".edi", ".x12", ".820")
+REMITTANCE_TYPES = ("application/pdf", "text/csv", "text/plain", "application/edi-x12")  # EDI-X12: RFC 1767
+TEXT_FILES = (".csv", ".txt", ".edi", ".x12", ".820")
+MAX_TOKENS = 20_000  # signature tokens remembered; one older than MAX_AGE_S is refused by its age anyway
 REMITTANCE_WORDS = re.compile(r"\bremittance\b|\bremit advice\b|\bpayment advice\b", re.I)
 HANDLED = "_handled"  # under the inbound root: one file per email handled, so a restart still knows it
 BACKGROUND = True  # the remittance read and its run happen off the request's thread (tests turn it off)
 
-Status = Literal["reading", "started", "matched", "kept", "claim", "not_run", "unrouted", "duplicate", "dispute_reply"]
+Status = Literal["reading", "started", "matched", "kept", "claim", "not_run", "unrouted", "duplicate", "dispute_reply",
+                 "failed"]
 
 
 class Refused(Exception):
@@ -152,8 +161,18 @@ def signature(timestamp: str, token: str, key: str) -> str:
     return hmac.new(key.encode(), f"{timestamp}{token}".encode(), hashlib.sha256).hexdigest()
 
 
-_tokens: dict[str, str] = {}  # token -> the email it signed
+# token -> (the email it signed, its timestamp), oldest first. Bounded: a token whose timestamp is more than MAX_AGE_S
+# from now can't pass the age check again, so it's forgotten; past MAX_TOKENS the oldest go first.
+_tokens: OrderedDict[str, tuple[str, float]] = OrderedDict()
 _lock = threading.Lock()
+
+
+def _forget_old_tokens(now: float) -> None:
+    """Under _lock."""
+    for tok in [t for t, (_, ts) in _tokens.items() if abs(now - ts) > MAX_AGE_S]:
+        del _tokens[tok]
+    while len(_tokens) > MAX_TOKENS:
+        _tokens.popitem(last=False)
 
 
 def verify(form: dict[str, str], key_of_email: str, now: float | None = None) -> None:
@@ -163,14 +182,17 @@ def verify(form: dict[str, str], key_of_email: str, now: float | None = None) ->
     timestamp, token, sig = (form.get(k, "") for k in ("timestamp", "token", "signature"))
     if not (timestamp and token and sig) or not hmac.compare_digest(signature(timestamp, token, key), sig):
         raise Refused(403, "bad signature")
+    now = now if now is not None else time.time()
     try:
-        age = abs((now if now is not None else time.time()) - float(timestamp))
+        ts = float(timestamp)
+        age = abs(now - ts)
     except ValueError:
         raise Refused(403, "bad timestamp") from None
-    if age > MAX_AGE_S:
+    if not age <= MAX_AGE_S:  # too old (or not a number at all)
         raise Refused(403, "the signature is too old")
     with _lock:
-        seen = _tokens.setdefault(token, key_of_email)
+        seen = _tokens.setdefault(token, (key_of_email, ts))[0]
+        _forget_old_tokens(now)  # after: the newest token is never the one dropped
     if seen != key_of_email:
         raise Refused(406, "this signature was already used for another email")
 
@@ -202,6 +224,15 @@ def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
+def _addr(s: str) -> str:
+    return s.strip().lower()
+
+
+def approved(account: accounts.Account, sender: str) -> bool:
+    """One of the account's approved_senders, whatever the case of either address."""
+    return bool(sender) and _addr(sender) in {_addr(a) for a in account.config.approved_senders}
+
+
 def _domain(addr: str) -> str:
     return addr.rsplit("@", 1)[-1].lower() if "@" in addr else ""
 
@@ -210,7 +241,7 @@ def _text_of(msg: Message) -> str:
     """Subject, body and any text attachments: where an invoice number or a payer's name would be."""
     texts = [msg.subject, msg.body]
     for a in msg.attachments:
-        if a.name.lower().endswith((".csv", ".txt")):
+        if a.name.lower().endswith(TEXT_FILES):
             texts.append(a.data[:200_000].decode("utf-8", "ignore"))
     return "\n".join(texts)
 
@@ -223,11 +254,11 @@ def route(msg: Message) -> tuple[accounts.Account | None, str]:
     for name in (local.split("+", 1)[1] if "+" in local else "", local):
         if name in by_id:
             return by_id[name], "address"
-    desk = [a for a in listed if a.distributor.desk_email.lower() == msg.sender]
+    desk = [a for a in listed if _addr(a.distributor.desk_email) == _addr(msg.sender)]
     if len(desk) == 1:
         return desk[0], "sender"
     pool = desk or [a for a in listed if _domain(a.distributor.desk_email) == _domain(msg.sender)] or \
-        [a for a in listed if msg.sender in a.config.approved_senders] or listed
+        [a for a in listed if approved(a, msg.sender)] or listed
     text = _text_of(msg)
     for how, says in (("invoice", lambda a: _norm(a.invoice.id) in _norm(text)),
                       ("payer", lambda a: a.distributor.name.lower() in text.lower())):
@@ -255,26 +286,49 @@ def sender_check(msg: Message) -> tuple[bool, str]:
 
 def trusted(msg: Message, account: accounts.Account, authenticated: bool) -> bool:
     """May this sender's remittance start a run: the distributor's desk (or its domain), an approved sender, or one of
-    the people who forward remittances (INBOUND_EMAIL_FORWARDERS)."""
-    forwarders = {f.strip().lower() for f in os.getenv(FORWARDERS, "").split(",") if f.strip()}
-    s = msg.sender
-    return authenticated and (s == account.distributor.desk_email.lower()
-                              or _domain(s) == _domain(account.distributor.desk_email)
-                              or s in account.config.approved_senders or s in forwarders)
+    the people who forward remittances (INBOUND_EMAIL_FORWARDERS). Addresses are compared without case."""
+    forwarders = {_addr(f) for f in os.getenv(FORWARDERS, "").split(",") if f.strip()}
+    s = _addr(msg.sender)
+    desk = _addr(account.distributor.desk_email)
+    return authenticated and (s == desk or _domain(s) == _domain(desk) or approved(account, s) or s in forwarders)
 
 
 # ---------------------------------------------------------------- 5. remittance or document
 
-def remittance_file(msg: Message) -> Attachment | None:
-    return next((a for a in msg.attachments if a.name.lower().endswith(REMITTANCE_FILES)
-                 or a.content_type.split(";")[0].strip() in ("application/pdf", "text/csv", "text/plain")), None)
+def _candidate(a: Attachment) -> bool:
+    return a.name.lower().endswith(REMITTANCE_FILES) or a.content_type.split(";")[0].strip().lower() in REMITTANCE_TYPES
+
+
+def _reads_as_remittance(text: str, account: accounts.Account) -> bool:
+    """What the Payment reader would take as this account's remittance: an EDI 820, or text that says remittance or
+    payment advice, or names the account's invoice."""
+    head = text[:200_000]
+    return edi820.looks_like(text) or bool(REMITTANCE_WORDS.search(head)) or _norm(account.invoice.id) in _norm(head)
+
+
+def remittance_file(msg: Message, account: accounts.Account) -> tuple[Attachment, str, str] | None:
+    """The first attachment that is a remittance: one the Payment reader accepts (api/remittance.extract_text: not too
+    big, a PDF with text in it, or UTF-8 text) whose text reads as a remittance. A sales report, a price list or a
+    signed amendment attached to a broker's email isn't one, so that email stays a document. Returns the attachment,
+    its text and what it came as."""
+    for a in msg.attachments:
+        if not _candidate(a):
+            continue
+        try:
+            text, kind = remittance.extract_text(a.data, a.name)
+        except remittance.InputError:
+            continue
+        if _reads_as_remittance(text, account):
+            return a, text, kind
+    return None
 
 
 def is_remittance(msg: Message, account: accounts.Account) -> bool:
-    if remittance_file(msg) is not None:
+    if remittance_file(msg, account) is not None:
         return True
     text = f"{msg.subject}\n{msg.body}"
-    return bool(REMITTANCE_WORDS.search(text)) and _norm(account.invoice.id) in _norm(text)
+    return edi820.looks_like(msg.body) or (bool(REMITTANCE_WORDS.search(text))
+                                           and _norm(account.invoice.id) in _norm(text))
 
 
 # ---------------------------------------------------------------- the store
@@ -366,10 +420,10 @@ def _who(msg: Message) -> str:
     return f"Email from {msg.sender or 'an unknown sender'}" + (f" (“{msg.subject}”)" if msg.subject else "")
 
 
-def _remittance_text(msg: Message) -> tuple[str, Literal["text", "pdf"]]:
-    att = remittance_file(msg)
-    if att is not None:
-        return remittance.extract_text(att.data, att.name)
+def _remittance_text(msg: Message, account: accounts.Account) -> tuple[str, Literal["text", "pdf"]]:
+    found = remittance_file(msg, account)
+    if found is not None:
+        return found[1], found[2]  # type: ignore[return-value]
     return msg.body, "text"
 
 
@@ -378,7 +432,7 @@ def read_and_run(msg: Message, account: accounts.Account, client: anthropic.Anth
     """Read the remittance and check it as an upload is; start the run on its lines if they add up."""
     who = _who(msg)
     try:
-        text, kind = _remittance_text(msg)
+        text, kind = _remittance_text(msg, account)
         r = remittance.read(account.id, text, kind, client=client)
     except remittance.InputError as e:
         sources.saw("inbox", f"{who}: its remittance can't be read ({e})", account.id)
@@ -425,6 +479,30 @@ def handle(msg: Message, client: anthropic.Anthropic | None = None, background: 
         raise
 
 
+def _background(msg: Message, key: str, account: accounts.Account, how: str,
+                client: anthropic.Anthropic | None) -> None:
+    """The remittance's read and run, off the webhook's thread. Whatever goes wrong, the email ends up with an outcome:
+    failed (with why, on the Connections page) instead of "reading" forever. Mailgun already has its 200, so a person
+    uploads it instead."""
+    try:
+        result = read_and_run(msg, account, client, True).model_copy(update={"routed_by": how})
+    except Exception as e:  # noqa: BLE001 - noted for a person
+        log.exception("inbound remittance failed in the background")
+        result = InboundResult(status="failed", account=account.id, routed_by=how,
+                               detail=f"handling failed: {type(e).__name__}")
+        try:
+            sources.saw("inbox", f"{_who(msg)}: couldn't be handled ({type(e).__name__}); upload the remittance "
+                        "instead", account.id)
+        except Exception:  # noqa: BLE001
+            log.exception("couldn't note the failed email")
+    try:
+        _remember(key, result)
+    except Exception:  # noqa: BLE001 - the outcome is in memory (set first); only the file that outlives a restart failed
+        log.exception("couldn't save the inbound email's outcome")
+        with _lock:
+            _handled[key] = result
+
+
 def _handle(msg: Message, key: str, client: anthropic.Anthropic | None, background: bool) -> InboundResult:
     who = _who(msg)
     from api import dispute_email  # a reply to a dispute email (d-<n>+<token>@, or In-Reply-To one we sent)
@@ -451,7 +529,7 @@ def _handle(msg: Message, key: str, client: anthropic.Anthropic | None, backgrou
                                                 detail=f"untrusted sender ({why})"))
         if background:
             def work() -> None:
-                _remember(key, read_and_run(msg, account, client, True).model_copy(update={"routed_by": how}))
+                _background(msg, key, account, how, client)
 
             threading.Thread(target=work, daemon=True, name="inbound-remittance").start()
             sources.saw("inbox", f"{who}: a remittance for {account.distributor.name}; the Payment reader is on it",
