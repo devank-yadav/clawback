@@ -114,7 +114,10 @@ def _post(run: pipeline.Run, dispute: Dispute, text: str, attachment_doc_id: str
     return [theirs, ours]
 
 
-def _new_document(run: pipeline.Run, dispute: Dispute, doc_id: str, client, deliver=None) -> PortalMessage | None:
+def _new_document(run: pipeline.Run, dispute: Dispute, doc_id: str, client, deliver=None,
+                  keep_status: bool = False) -> PortalMessage | None:
+    """A document that may change the deal under an open dispute. keep_status: the document came from the supplier's
+    own Drive before the dispute was sent, so a recomputed dispute stays the admin's draft (api/drive.py)."""
     owner, policy, them = run.name("owner"), load_policy(), run.distributor
     if doc_id not in run.account.docs:
         run.log(f"{them} attached a document Clawback doesn't have ({doc_id}): held for {owner}.", "warn", "negotiator")
@@ -155,7 +158,8 @@ def _new_document(run: pipeline.Run, dispute: Dispute, doc_id: str, client, deli
                                    "math": " ".join(run.allowances[ln.charge_id].steps)})
              for ln in dispute.lines if run.decisions[ln.charge_id].disputed > 0]
     total = totals.total_of(ln.amount for ln in lines)
-    run.emit("dispute", dispute.model_copy(update={"lines": lines, "total": total, "status": "answered"}))
+    run.emit("dispute", dispute.model_copy(update={"lines": lines, "total": total,
+                                                   "status": dispute.status if keep_status else "answered"}))
     cap = next((t.params.get("max_units") for t in new_terms if t.type == "unit_cap"), None)
     parts = [f"we withdraw ${amt:,.0f} of {run.charges[cid].ref} ({cid}) and keep "
              f"${run.decisions[cid].disputed:,.0f} disputed" for cid, amt in conceded]

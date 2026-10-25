@@ -54,6 +54,7 @@ class Account:
     docs: dict[str, Path] = field(repr=False)  # this account's documents: id -> file
     months: tuple[str, ...]  # the invoice month first, then each other charges/<month>.csv in calendar order
     inbound: tuple[str, ...] = ()  # emails the remittance inbox kept for it (inbound_root()), oldest first; in docs too
+    drive: tuple[str, ...] = ()  # documents Google Drive brought in (drive_root(), api/drive.py); in docs too
 
     @property
     def id(self) -> str:
@@ -96,6 +97,16 @@ def inbound_root() -> Path | None:
     mounted state/inbound (docker-compose.yml). Unset: nowhere, so no account has inbound documents (the tests)."""
     value = os.getenv("INBOUND_EMAIL_DIR")
     return Path(value) if value else None
+
+
+def drive_root() -> Path | None:
+    """Where api/drive.py keeps the documents it brought in from Google Drive: DRIVE_DOCS_DIR, else
+    <CLAWBACK_STATE_DIR>/drive once DRIVE_ROOT_FOLDER_ID is set. Unset: nowhere (the tests, laptops without Drive)."""
+    if value := os.getenv("DRIVE_DOCS_DIR"):
+        return Path(value)
+    if os.getenv("DRIVE_ROOT_FOLDER_ID"):
+        return Path(os.getenv("CLAWBACK_STATE_DIR", "state")) / "drive"
+    return None
 
 
 def _folders() -> list[Path]:
@@ -153,6 +164,15 @@ def _load() -> tuple[dict[str, Account], list[str]]:
             else:
                 docs[p.stem] = p
                 inbound.append(p.stem)
+        drive: list[str] = []
+        synced = drive_root()
+        for sub in DOC_DIRS if synced else ():
+            for p in sorted((synced / folder.name / sub).glob("*.md")):  # api/drive.py wrote these
+                if p.stem in docs:
+                    mine.append(f"two documents named {p.stem!r}")
+                else:
+                    docs[p.stem] = p
+                    drive.append(p.stem)
         if missing := [d for d in config.deal_docs if d not in docs]:
             mine.append(f"deal_docs not in deals/, emails/ or notices/: {missing}")
         months = _months(config, folder)
@@ -172,7 +192,7 @@ def _load() -> tuple[dict[str, Account], list[str]]:
         for claim in claims:
             taken[claim] = config.id
         disputes.append((low, high, config.id))
-        accounts[config.id] = Account(config, folder, docs, months, tuple(inbound))
+        accounts[config.id] = Account(config, folder, docs, months, tuple(inbound), tuple(drive))
     return accounts, problems
 
 

@@ -1445,6 +1445,10 @@ class LibraryDocument(Contract):
     approved_sender: bool
     text: str
     terms: list[LibraryTerm]
+    # Google Drive (api/drive.py): which version is this, and when Drive last changed it. None: not from Drive.
+    version: int | None = None
+    updated_at: datetime | None = None
+    source: Literal["data", "drive", "inbox"] = "data"
 
 
 class ContractLibrary(Contract):

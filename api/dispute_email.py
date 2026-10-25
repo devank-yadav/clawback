@@ -150,6 +150,14 @@ def email_for(run: pipeline.Run, dispute: Dispute, client=None, redraft: bool = 
     return _put(e)
 
 
+def forget_draft(run: pipeline.Run, dispute_id: str) -> None:
+    """The dispute changed before it was sent: the next look drafts its email again from the new lines."""
+    with _lock:
+        e = EMAILS.get(_email_id(run, dispute_id))
+        if e and e.status not in ("sent", "outbox"):
+            del EMAILS[e.id]
+
+
 def edit(e: DisputeEmail, subject: str | None, body: str) -> DisputeEmail:
     """The admin's edit. Ready if it passes the outbound filter, held with the problems if not."""
     if e.status in ("sent", "outbox"):

@@ -85,8 +85,9 @@ def send(dispute_id: str, req: DisputeSendRequest | None = None, run_id: str | N
     """The admin's "Review and send": emails the dispute with its packet and files it. 409 when the email is held
     or the dispute was already sent; a Mailgun failure comes back as email.status "failed" (send again to retry)."""
     run, dispute = _found(who, dispute_id, run_id)
-    if dispute.status not in ("ready_to_send", "draft"):
-        raise HTTPException(409, f"{dispute_id} is already {dispute.status}")
+    emailed = any(e.kind == "dispute" and e.status in ("sent", "outbox") for e in dispute_email.emails_of(run.id, dispute_id))
+    if emailed or dispute.status in ("filed", "withdrawn", "resolved"):  # answered on the portal first: may still go
+        raise HTTPException(409, f"{dispute_id} is already {'sent' if emailed else dispute.status}")
     req = req or DisputeSendRequest()
     try:
         filed, email = dispute_email.send_dispute(run, dispute, "owner", req.subject, req.body)

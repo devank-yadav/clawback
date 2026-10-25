@@ -86,6 +86,11 @@ decision gate and approvals; Data model; API, live updates and integrations.
   Replies to d-<n>+<token>@INBOUND_EMAIL_DOMAIN or In-Reply-To a sent Message-Id go through disputes._post; the
   Negotiator's answer waits as a reply email (POST /disputes/{id}/replies/{email_id}/send); GET /notifications.
   policy.yaml auto_send (default false) sends within-limit disputes on their own.
+- Google Drive (api/drive.py, routes api/routes/drive.py, migration 008): with GOOGLE_SERVICE_ACCOUNT_JSON and
+  DRIVE_ROOT_FOLDER_ID, a poller (30 s, Changes API) versions each file in <Supplier>/<Distributor>/{Contracts,
+  Promotions, Remittances, Correspondence, Sales data} by sha256; contracts and notices become account documents under
+  DRIVE_DOCS_DIR (Account.drive, read by runs), a signed amendment under an open dispute concedes through
+  disputes._new_document, a remittance starts a run; POST /drive/sync; the Drive card in library.connections().
 - One admin (api/auth.py): the brand's owner answers every question and approves every credit memo, in the app or by
   text to OWNER_PHONE (there is no controller; account.yaml's brand.controller is still accepted and unused). With
   OWNER_TOKEN set, the in-app answer and approval need it as X-Clawback-Role-Token; POST /questions/{id}/answer takes
