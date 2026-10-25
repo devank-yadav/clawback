@@ -154,8 +154,9 @@ export type NeedsYou = {
   risk_level: "high" | "medium" | "low"; since: string | null; link: OverviewLink;
 };
 export type OpenDispute = {
+  /** amount: what still awaits the distributor's reply; total: the whole dispute; agreed: what they agreed to pay. */
   dispute_id: string; account_id: string; distributor: string; run_id: string; amount: Money; status: string;
-  filed_at: string | null; file_by: string | null; days_left: number | null;
+  filed_at: string | null; file_by: string | null; days_left: number | null; total?: Money; agreed?: Money;
 };
 export type RecentItem = { at: string; kind: "run_decided" | "reply" | "sent"; account_id: string; distributor: string; text: string; link: OverviewLink };
 export type CompanyOverview = {

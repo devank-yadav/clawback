@@ -11,6 +11,7 @@ import { DisputeThread, ReviewAndSend } from "@/components/disputes/DisputeMail"
 import { OwnerDecision } from "@/components/console/Review";
 import { useRun } from "@/components/console/RunProvider";
 import { Money } from "@/components/console/ui";
+import { reachedQuickBooks } from "@/lib/workspace";
 import type { Stage } from "./stages";
 
 export function ReaderCard({ live }: { live: boolean }) {
@@ -48,6 +49,37 @@ export function ReaderCard({ live }: { live: boolean }) {
   );
 }
 
+/** After the admin approves (or holds) the credit memo: what the Bookkeeper did, in the API's own words. Posted to
+ * QuickBooks only when the ledger says it reached QuickBooks; a simulated write says so, as the Bookkeeper logged it. */
+export function BooksOutcome() {
+  const { view, state, cast } = useRun();
+  const a = view.approval;
+  if (!a || a.status === "pending") return null;
+  if (a.status === "refused") {
+    return (
+      <section className="fl-card" aria-label="The credit memo">
+        <div className="cx-head"><h2>Credit memo held · {money(a.amount)}</h2></div>
+        <p className="cx-small cx-muted">Nothing posted to QuickBooks.{a.note ? ` ${cast.owner}’s note: “${a.note}”` : ""}</p>
+      </section>
+    );
+  }
+  const memo = state.ledger.find((p) => p.qbo_entity === "credit_memo");
+  const reached = !!memo && reachedQuickBooks(memo);
+  const said = [...state.feed].reverse().find((l) => l.actor === "bookkeeper" && l.text.startsWith("QuickBooks"));
+  const line = view.postingProblem
+    ? `${view.postingLabel}: ${view.postingProblem}`
+    : reached ? "Credit memo posted to QuickBooks" : said?.text ?? "The Bookkeeper is posting the credit memo…";
+  return (
+    <section className={`fl-card ${view.postingProblem ? "is-amber" : ""}`} aria-label="The credit memo" aria-live="polite">
+      <div className="cx-head" style={{ alignItems: "flex-end" }}>
+        <h2>{reached ? "Credit memo posted" : view.postingProblem ? "Credit memo not posted" : "Credit memo approved"} · {money(a.amount)}</h2>
+        <span className="cx-tiny">{a.lines.length} line{a.lines.length === 1 ? "" : "s"} · Bookkeeper</span>
+      </div>
+      <p className="cx-small">{line}</p>
+    </section>
+  );
+}
+
 export function ApprovalCard() {
   const { view, decideApproval, cast } = useRun();
   const [note, setNote] = useState("");
@@ -57,7 +89,7 @@ export function ApprovalCard() {
   return (
     <section className="fl-card is-amber" aria-label="Your approval">
       <div className="cx-head" style={{ alignItems: "flex-end" }}>
-        <h2>Approve the credit memo for the fair charges?</h2>
+        <h2>Approve credit memo of {money(a.amount)} ({a.lines.length} line{a.lines.length === 1 ? "" : "s"})?</h2>
         <Money value={a.amount} className="cx-big" />
       </div>
       <div className="cx-rows">
@@ -65,7 +97,7 @@ export function ApprovalCard() {
           <div key={l.chargeId}><span>{l.label}</span><Money value={l.amount} /></div>
         ))}
       </div>
-      <p className="cx-small cx-muted">Nothing posts to QuickBooks until you say yes. The disputed money stays open with {cast.distributor}.</p>
+      <p className="cx-small cx-muted">This memo posts to QuickBooks only after your yes. The disputed money stays open with {cast.distributor}.</p>
       <label className="cx-tiny" htmlFor="fl-note">Note (needed only to hold it)</label>
       <textarea id="fl-note" className="cx-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why you’re holding it, if you are" />
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -98,13 +130,13 @@ export function DisputeCard() {
   return (
     <section className={`fl-card dm-card ${unsent ? "is-review" : ""}`} aria-label={`Dispute ${d.id}`}>
       <div className="cx-head" style={{ alignItems: "center" }}>
-        <h2>{unsent ? "Review and send" : "Dispute sent"} · {d.id} · {money(d.total)}</h2>
+        <h2>{unsent ? "Review and send" : "Dispute filed"} · {d.id} · {money(d.total)}</h2>
         <span className="cx-tiny">{d.lines.length} line{d.lines.length === 1 ? "" : "s"}, each with the deal’s sentence, the data and the math</span>
       </div>
       {unsent ? (
         <>
           <p className="cx-small cx-muted">Nothing goes to {cast.distributor} until you send it. Edit anything; code checks every figure and quote again before it leaves.</p>
-          <ReviewAndSend disputeId={d.id} runId={runId} />
+          <ReviewAndSend disputeId={d.id} runId={runId} distributor={cast.distributor} />
         </>
       ) : (
         <DisputeThread disputeId={d.id} runId={runId} distributor={cast.distributor} refreshKey={`${d.status}:${replies}`} limit={4} />

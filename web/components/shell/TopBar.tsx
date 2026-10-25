@@ -12,7 +12,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Bell, Bookmark, House, ChevronsUpDown, Gavel, ExternalLink, FileText, History as HistoryIcon,
-  Landmark, Layers, LogIn, LogOut, Menu, MessagesSquare, Plug, RotateCcw, Truck, UserRound, Workflow, X,
+  KeyRound, Landmark, Layers, LogIn, LogOut, Menu, MessagesSquare, Plug, RotateCcw, Truck, UserRound, Workflow, X,
 } from "lucide-react";
 import { Logo } from "@/components/console/ui";
 import { inkOn, withAccount } from "@/lib/accounts";
@@ -245,6 +245,9 @@ function UserMenu({ account }: { account: Account | null }) {
               <div><dt>Company</dt><dd>{supplier?.name ?? account?.brand.name ?? " "}</dd></div>
               <div><dt>Role</dt><dd>Admin: answers the questions and approves what posts</dd></div>
             </dl>
+          )}
+          {!presenting && (
+            <button role="menuitem" className="tb-row" onClick={() => { close(false); askAdminToken("Enter the presenter key. This tab then shows the presenter controls in your menu.", () => { setPresenting(true); setOpen(true); }); }}><KeyRound aria-hidden="true" /><span><strong>Presenter mode…</strong><small>Asks for the presenter key</small></span></button>
           )}
           {presenting && account && (
             <>

@@ -10,7 +10,7 @@ import { Play, ScrollText } from "lucide-react";
 import { money } from "@/lib/format";
 import type { ChargeView } from "@/lib/workspace";
 import { useRun } from "@/components/console/RunProvider";
-import { DisputeCard } from "./Spotlight";
+import { BooksOutcome, DisputeCard } from "./Spotlight";
 import { MoneyBar } from "@/components/ui/kit";
 import { AuditDrawer } from "./AuditDrawer";
 import { Claw, landPulse } from "@/components/ui/Claw";
@@ -59,7 +59,7 @@ export function DonePanel({ onOpen, onNew, onReplay, next, disputeInNext = false
     : t.disputed > 0 ? `${money(t.disputed)} of it isn’t allowed by the deal.`
     : t.waiting > 0 ? `${money(t.waiting)} of it waits on your call.`
     : "Every charge matches the deal.";
-  const disputedLabel = unsent ? "To dispute, ready to send" : `Disputed, awaiting ${distributor}’s reply`;
+  const disputedLabel = unsent ? "To dispute, ready to send" : `Dispute filed, awaiting ${distributor}’s reply`;
   const meta = [
     r ? `${distributor} paid ${money(r.received)} of ${money(r.expected)}` : null,
     view.charges.length ? `${view.charges.length} charges checked${seconds !== null ? ` in ${seconds} s` : ""}` : null,
@@ -106,6 +106,8 @@ export function DonePanel({ onOpen, onNew, onReplay, next, disputeInNext = false
           {next}
         </section>
       )}
+
+      {!next && <BooksOutcome />}
 
       {disputed.length + fair.length + waiting.length === 0 ? (
         <p className="cx-small cx-muted">No charge has a decision yet.</p>

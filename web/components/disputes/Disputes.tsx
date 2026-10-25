@@ -22,7 +22,7 @@ import { DisputeThread, ReviewAndSend } from "./DisputeMail";
 const STATUS: Record<Dispute["status"], { label: string; tone: string }> = {
   ready_to_send: { label: "Ready to send", tone: "is-amber" },
   draft: { label: "Waiting for you", tone: "is-amber" },
-  filed: { label: "Sent", tone: "is-live" },
+  filed: { label: "Filed", tone: "is-live" },
   answered: { label: "Answered", tone: "is-live" },
   resolved: { label: "Resolved", tone: "is-green" },
   withdrawn: { label: "Withdrawn", tone: "is-swap" },
@@ -103,7 +103,7 @@ export default function Disputes() {
                 {unsent(open.dispute) && isHead(open) && (
                   <section className="dm-section" aria-label="Review and send">
                     <h3>Review and send</h3>
-                    <ReviewAndSend key={`${open.run_id}:${open.dispute.id}`} disputeId={open.dispute.id} runId={open.run_id} onSent={list.reload} />
+                    <ReviewAndSend key={`${open.run_id}:${open.dispute.id}`} disputeId={open.dispute.id} runId={open.run_id} distributor={cast.distributor} onSent={list.reload} />
                   </section>
                 )}
                 <section className="dm-section" aria-label="The thread">
