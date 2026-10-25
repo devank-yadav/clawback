@@ -163,6 +163,10 @@ svg { flex-shrink: 0; }
 .cx-choice:hover { border-color: #4a4c60; }
 .cx-choice[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .cx-choice[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+/* "Save as a rule for next time" and "Post fair charges like these automatically from now on". */
+.cx-check { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; cursor: pointer; }
+.cx-check input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--accent); flex: none; }
+.cx-check small { display: block; margin-top: 2px; }
 .cx-radio { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--sub); flex: none; display: grid; place-items: center; }
 .cx-choice[aria-checked="true"] .cx-radio { border-color: var(--accent); }
 .cx-choice[aria-checked="true"] .cx-radio::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
@@ -239,7 +243,7 @@ svg { flex-shrink: 0; }
   .cx-pill.is-live::before, .cx-step.is-waiting .cx-step-dot { animation: none; }
 }
 
-/* The owner and controller sign-in (components/shell/SessionDialogs.tsx), in the console's dark look. */
+/* The admin's sign-in (components/shell/SessionDialogs.tsx), in the console's dark look. */
 .dialog-backdrop{position:fixed;inset:0;background:rgba(5,6,10,.6);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
 .brand-dialog{position:relative;width:min(450px,100%);padding:24px;background:#1d1f29;color:#e9eaf2;border:1px solid #333542;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.5);display:grid;grid-template-columns:1fr;gap:14px}
 .brand-dialog h2{margin:4px 0;font-size:18px;font-weight:500}

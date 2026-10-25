@@ -3,7 +3,7 @@
 // the real API stays the default (NEXT_PUBLIC_API_BASE, http://localhost:8000).
 //
 // Optional env: MOCK_PORT (8010), MOCK_SPEED (1 = live-like pacing; 0.2 = fast), MOCK_ADMIN_TOKEN (reset needs it),
-// MOCK_OWNER_TOKEN / MOCK_CONTROLLER_TOKEN (role codes), MOCK_RUNS_PER_VISITOR (payments before a 429).
+// MOCK_OWNER_TOKEN (the admin's code: answers and approvals), MOCK_RUNS_PER_VISITOR (payments before a 429).
 
 import http from "node:http";
 import crypto from "node:crypto";
@@ -13,7 +13,7 @@ import { ACCOUNTS, accountOf, lookbackOf, overviewOf, withFileBy } from "./data.
 const PORT = Number(process.env.MOCK_PORT ?? 8010);
 const SPEED = Number(process.env.MOCK_SPEED ?? 1);
 const ADMIN = process.env.MOCK_ADMIN_TOKEN || null;
-const ROLE_TOKENS = { owner: process.env.MOCK_OWNER_TOKEN || null, controller: process.env.MOCK_CONTROLLER_TOKEN || null };
+const ROLE_TOKENS = { owner: process.env.MOCK_OWNER_TOKEN || null };
 const RUN_LIMIT = Number(process.env.MOCK_RUNS_PER_VISITOR ?? 0);
 
 const fixture = (name) => JSON.parse(readFileSync(new URL(`../fixtures/${name}`, import.meta.url), "utf8"));
@@ -238,17 +238,17 @@ function generatedSteps(run, charges, { kind }) {
   return { steps, remittance, totals: t };
 }
 
-/** The credit memo for the controller, built when it is reached (after every decision is in). */
+/** The credit memo for the admin, built when it is reached (after every decision is in). */
 function approvalSteps(run) {
   const a = run.account;
   const build = () => {
     const decisions = Object.values(run.state.decisions).filter((d) => d.accepted > 0);
     const amount = decisions.reduce((s, d) => s + d.accepted, 0);
-    return { id: `AP-${run.id.split("-").pop()}`, kind: "credit_memo", amount, lines: decisions.map((d) => ({ charge_id: d.charge_id, amount: d.accepted })), proposed_by: "bookkeeper", approver_role: "controller", status: "pending", text: `Approve a credit memo of ${money(amount)} (${decisions.length} lines)?`, note: null, requested_at: now(), decided_at: null };
+    return { id: `AP-${run.id.split("-").pop()}`, kind: "credit_memo", amount, lines: decisions.map((d) => ({ charge_id: d.charge_id, amount: d.accepted })), proposed_by: "bookkeeper", approver_role: "owner", status: "pending", text: `Approve a credit memo of ${money(amount)} (${decisions.length} lines)?`, note: null, requested_at: now(), decided_at: null };
   };
   return [
     { type: "approval", data: build, delay: 600 },
-    { type: "log", data: () => ({ text: `Asked ${a.brand.controller.name} (controller) to approve a ${money(run.approval.amount)} credit memo. Nothing posts until then.`, level: "info", actor: "bookkeeper", charge_id: null }) },
+    { type: "log", data: () => ({ text: `Asked ${a.brand.owner.name} to approve a ${money(run.approval.amount)} credit memo. Nothing posts until then.`, level: "info", actor: "bookkeeper", charge_id: null }) },
     { type: "run", data: () => ({ run_id: run.id, kind: run.kind, status: "waiting", remittance: null, demo_mode: false }) },
     { pause: "approval" },
   ];
@@ -283,9 +283,9 @@ function startGeneratedRun(account) {
   return run;
 }
 
-// ---------------------------------------------------------------- people: the owner's answer and the controller's reply
+// ---------------------------------------------------------------- the admin: the answer, then the yes or no
 
-function answer(run, text) {
+function answer(run, text, saveRule = true) {
   const a = run.account;
   const q = run.question;
   if (a.fixture) {
@@ -299,32 +299,37 @@ function answer(run, text) {
   const rule = { id: "R-1", label: c.rule.label, pattern_text: c.question, term_type: c.rule.term_type, counterparty: a.distributor.name, condition: c.rule.condition, decision: "accept", else_decision: "dispute", summary: c.rule.summary, approver: a.brand.owner.name, approver_role: "owner", learned_at: now(), source_question_id: q.id, status: "active" };
   const t = { ...run.totals, accepted: run.totals.accepted + c.amount, waiting: run.totals.waiting - c.amount };
   run.resume("answer", [
-    { type: "answer", data: { question_id: q.id, from_role: "owner", text, answered_at: now(), rule_id: rule.id }, delay: 200 },
-    { fn: () => ruleTrace(run, c.id, text, rule), delay: 1500 },
-    { type: "rule", data: rule },
-    { type: "log", data: { text: `Saved ${rule.label}: ${rule.summary}`, level: "good", actor: "gate", charge_id: c.id } },
-    { type: "decision", data: () => ({ charge_id: c.id, decision: "accept", disputed: 0, accepted: c.amount, waiting: 0, gate_row: 3, rule_id: rule.id, decided_by: "policy", decided_at: now(), reason: `Accepted by ${rule.label}: ${rule.summary}` }) },
+    { type: "answer", data: { question_id: q.id, from_role: "owner", text, answered_at: now(), rule_id: saveRule ? rule.id : null }, delay: 200 },
+    ...(saveRule ? [
+      { fn: () => ruleTrace(run, c.id, text, rule), delay: 1500 },
+      { type: "rule", data: rule },
+      { type: "log", data: { text: `Saved ${rule.label}: ${rule.summary}`, level: "good", actor: "gate", charge_id: c.id } },
+      { type: "decision", data: () => ({ charge_id: c.id, decision: "accept", disputed: 0, accepted: c.amount, waiting: 0, gate_row: 3, rule_id: rule.id, decided_by: "policy", decided_at: now(), reason: `Accepted by ${rule.label}: ${rule.summary}` }) },
+    ] : [
+      { type: "log", data: { text: `${a.brand.owner.name} answered for ${c.id} only: no rule saved.`, level: "info", actor: "gate", charge_id: c.id } },
+      { type: "decision", data: () => ({ charge_id: c.id, decision: "accept", disputed: 0, accepted: c.amount, waiting: 0, gate_row: 4, rule_id: null, decided_by: "owner", decided_at: now(), reason: "Owner chose to accept." }) },
+    ]),
     { type: "totals", data: t },
     ...approvalSteps(run),
   ]);
 }
 
-function reply(run, approve, note) {
+function reply(run, approve, note, autoPost = () => null) {
   const a = run.account;
   if (a.fixture) {
     const src = approve ? MARCH : REFUSED;
     const steps = fixtureSteps(run, src.events.filter((e) => e.id >= PAUSE_AT_REPLY));
-    for (const s of steps) if (s.type === "approval") s.data = { ...s.data, note: note ?? s.data.note, decided_at: now() };
+    for (const s of steps) if (s.type === "approval") s.data = { ...s.data, note: note ?? s.data.note, decided_at: now(), sets_auto_post: autoPost(s.data) };
     run.resume("approval", steps);
     return;
   }
-  const ap = { ...run.approval, status: approve ? "approved" : "refused", note, decided_at: now() };
+  const ap = { ...run.approval, status: approve ? "approved" : "refused", note, decided_at: now(), sets_auto_post: autoPost(run.approval) };
   const steps = [{ type: "approval", data: ap, delay: 300 }];
   if (approve) {
-    steps.push({ type: "log", data: { text: `${a.brand.controller.name} approved. Posting the credit memo.`, level: "info", actor: "controller", charge_id: null } });
+    steps.push({ type: "log", data: { text: `${a.brand.owner.name} approved. Posting the credit memo.`, level: "info", actor: "owner", charge_id: null } });
     steps.push({ type: "ledger_post", delay: 1200, data: { id: `LP-${ap.id}`, qbo_entity: "credit_memo", qbo_id: null, qbo_url: null, amount: ap.amount, lines: ap.lines.map((l) => ({ charge_id: l.charge_id, description: run.state.charges[l.charge_id]?.description ?? l.charge_id, amount: l.amount })), status: "posted", approval_id: ap.id, note: "QuickBooks isn't connected to this mock server.", posted_at: now() } });
   } else {
-    steps.push({ type: "log", data: { text: `${a.brand.controller.name} refused the credit memo. Nothing posts.`, level: "warn", actor: "controller", charge_id: null } });
+    steps.push({ type: "log", data: { text: `${a.brand.owner.name} held the credit memo. Nothing posts.`, level: "warn", actor: "owner", charge_id: null } });
   }
   steps.push({ type: "run", data: () => ({ run_id: run.id, kind: run.kind, status: "finished", remittance: null, demo_mode: false }) });
   run.resume("approval", steps);
@@ -410,7 +415,7 @@ function auditOf(accountId) {
     if (accountId && run.account.id !== accountId) continue;
     for (const e of run.events) {
       if (!["decision", "dispute", "rule", "approval", "ledger_post", "answer"].includes(e.type)) continue;
-      const entry = { id: out.length + 1, at: e.at, actor: e.data.decided_by ?? (e.type === "answer" ? "owner" : e.type === "approval" && e.data.status !== "pending" ? "controller" : "system"), action: `${e.type}${e.data.decision ? `_${e.data.decision}` : e.data.status ? `_${e.data.status}` : ""}`, object_ref: e.data.charge_id ?? e.data.id ?? e.data.question_id ?? run.id, evidence: e.data.evidence_ids ? { evidence_ids: e.data.evidence_ids } : { run_id: run.id }, prev_hash: prev };
+      const entry = { id: out.length + 1, at: e.at, actor: e.data.decided_by ?? (e.type === "answer" ? "owner" : e.type === "approval" && e.data.status !== "pending" ? "owner" : "system"), action: `${e.type}${e.data.decision ? `_${e.data.decision}` : e.data.status ? `_${e.data.status}` : ""}`, object_ref: e.data.charge_id ?? e.data.id ?? e.data.question_id ?? run.id, evidence: e.data.evidence_ids ? { evidence_ids: e.data.evidence_ids } : { run_id: run.id }, prev_hash: prev };
       entry.hash = crypto.createHash("sha256").update(prev + JSON.stringify(entry)).digest("hex");
       prev = entry.hash;
       out.push(entry);
@@ -533,23 +538,24 @@ const server = http.createServer(async (req, res) => {
       return ev ? send(res, 200, ev) : fail(res, 404, `unknown evidence ${parts[1]}`);
     }
     if (req.method === "POST" && parts[0] === "questions" && parts[2] === "answer") {
-      if (!roleOk(req, "owner")) return fail(res, 401, "Only the owner can do this. Sign in as the owner (X-Clawback-Role-Token).");
+      if (!roleOk(req, "owner")) return fail(res, 401, "Only the admin can do this. Sign in as the admin (X-Clawback-Role-Token).");
       const run = [...runs.values()].reverse().find((r) => r.question?.id === parts[1]);
       if (!run) return fail(res, 404, `no open question ${parts[1]}`);
       if (run.question.answer || run.events.some((e) => e.type === "answer")) return fail(res, 409, "already answered");
       const body = await bodyOf(req);
       run.question = { ...run.question, answer: body.text };
-      answer(run, body.text);
+      answer(run, body.text, body.save_rule !== false);
       return send(res, 200, { answer: { question_id: parts[1], from_role: "owner", text: body.text, answered_at: now(), rule_id: "R-1" }, rule: null });
     }
     if (req.method === "POST" && parts[0] === "approvals") {
-      if (!roleOk(req, "controller")) return fail(res, 401, "Only the controller can do this. Sign in as the controller (X-Clawback-Role-Token).");
+      if (!roleOk(req, "owner")) return fail(res, 401, "Only the admin can do this. Sign in as the admin (X-Clawback-Role-Token).");
       const run = [...runs.values()].reverse().find((r) => r.approval?.id === parts[1]);
       if (!run) return fail(res, 404, `unknown approval ${parts[1]}`);
       if (run.approval.status !== "pending" || run.replied) return fail(res, 409, "already decided");
       const body = await bodyOf(req);
       run.replied = true;
-      reply(run, !!body.approve, body.note ?? null);
+      const standing = (ap) => (body.approve && body.auto_post ? { limit: ap.amount, set_by: run.account.brand.owner.name, approval_id: ap.id, set_at: now() } : null);
+      reply(run, !!body.approve, body.note ?? null, standing);
       return send(res, 200, { approval: { ...run.approval, status: body.approve ? "approved" : "refused", note: body.note ?? null }, ledger_post: null });
     }
     if (req.method === "POST" && p === "/demo/reset") {

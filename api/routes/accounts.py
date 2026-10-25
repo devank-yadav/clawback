@@ -4,9 +4,9 @@ months and its current payment (api/overview.py, computed by code from history/ 
 
 from fastapi import APIRouter, HTTPException
 
-from api import accounts, history, lookback as lookback_mod, overview as overview_mod, suppliers
+from api import accounts, history, library, lookback as lookback_mod, overview as overview_mod, suppliers
 from api.contracts import (
-    AccountListItem, AccountOverview, DocumentText, Lookback, RunSummary, SavedDocument, SavedOverview, SavedRecords,
+    AccountListItem, AccountOverview, Connection, ContractLibrary, DocumentText, Lookback, RunSummary, SavedDocument, SavedOverview, SavedRecords,
 )
 from api.routes.runs import account_or_404, latest_run_id
 
@@ -92,3 +92,15 @@ def account_document(account_id: str, doc_id: str) -> DocumentText:
     with accounts.using(a):
         doc, text = documents.load(doc_id)
     return DocumentText(id=doc.id, title=_title(doc), kind=doc.kind, locked=_locked(doc), text=text)
+
+
+@router.get("/connections", response_model=list[Connection])
+def list_connections() -> list[Connection]:
+    """Where payments, records and contracts come from, as they really are on this server."""
+    return library.connections()
+
+
+@router.get("/accounts/{account_id}/contract", response_model=ContractLibrary)
+def account_contract(account_id: str) -> ContractLibrary:
+    """The deal and what changes it, with the terms the agents read in the latest run highlighted. Read-only."""
+    return library.library(account_or_404(account_id))

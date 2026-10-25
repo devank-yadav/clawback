@@ -1,0 +1,10 @@
+po,written_on,order_terms,ship_to,product,units,unit_cost,po_cost,cancel_date,sail_date,received_on,received_units,invoiced_units,invoiced_amount
+4612655,2025-10-20,domestic,DC003 Pedricktown,Peak Bar Original 4-Pack,15000,2.10,31500.00,2025-11-21,,2025-11-18,15000,15000,31500.00
+4612788,2026-01-26,FOB,DC003 Pedricktown,Peak Bar Chocolate 3-Pack,40000,1.85,74000.00,2026-03-31,2026-02-27,2026-03-26,40000,40000,74000.00
+4612815,2026-02-16,domestic,DC004 Forsyth,Peak Bar Chocolate 3-Pack,20000,1.85,37000.00,2026-03-13,,2026-03-10,20700,20000,37000.00
+4612861,2026-02-24,domestic,DC004 Forsyth,Peak Bar Chocolate 3-Pack,8000,1.85,14800.00,2026-03-16,,2026-03-19,8000,8000,14800.00
+4612877,2026-03-04,domestic,DC003 Pedricktown,Peak Bar Peanut Butter 2-Pack,26000,1.40,36400.00,2026-03-27,,2026-03-20,26000,26000,36400.00
+4612893,2026-03-05,domestic,DC004 Forsyth,Peak Bar Peanut Butter 2-Pack,7000,1.40,9800.00,2026-03-27,,2026-03-23,7000,7000,9800.00
+4612902,2026-03-06,domestic,DC003 Pedricktown,Peak Bar Original 4-Pack,12000,2.10,25200.00,2026-03-27,,2026-03-18,12000,12000,25200.00
+4612912,2026-03-02,LDP,DC003 Pedricktown,Peak Bar Original 4-Pack,110000,2.10,231000.00,2026-03-27,,2026-03-24,122000,110000,231000.00
+4612920,2026-03-09,domestic,DC004 Forsyth,Peak Bar Chocolate 3-Pack,10000,1.85,18500.00,2026-03-27,,2026-03-25,9000,9000,16650.00

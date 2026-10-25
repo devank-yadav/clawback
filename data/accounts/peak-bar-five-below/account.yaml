@@ -1,0 +1,43 @@
+# Peak Bar Co. <- Five Below. The deal is Five Below's real Vendor Agreement: the 2025 version for purchase orders
+# written from March 1, 2026, the August 2023 version before that. Both are verbatim excerpts of the SEC filings
+# (data/contracts/*-excerpt-peak-bar.txt, this account's copies, named in `contracts`; line ranges in fees/fees.yaml
+# and data/contracts/README.md); everything else here is written by our side, or is Five Below's own backup or email.
+# This file has exactly the AccountConfig shape.
+id: peak-bar-five-below
+supplier: peak-bar
+brand:
+  name: Peak Bar Co.
+  kind: snack brand
+  city: Oakland, CA
+  initials: PB
+  colors: {primary: "#b4462b", accent: "#f2b552"}
+  owner: {name: Dana Okafor, email: dana@peakbar.example}
+  controller: {name: Sam Reyes}
+distributor:
+  name: Five Below
+  desk_email: vendorcompliance@fivebelow.example
+  portal_name: Five Below Vendor Portal
+  colors: {primary: "#0047bb", accent: "#ffd100"}
+invoice:
+  id: PBF-2603
+  expected: 444850.00
+  received: 439710.75
+  month: march
+  period_start: 2026-03-01
+  period_end: 2026-03-31
+contracts: [five-below-vendor-agreement-2023-excerpt-peak-bar.txt, five-below-vendor-agreement-2025-excerpt-peak-bar.txt]
+# Both versions of Five Below's Vendor Agreement are read first; then our signed acceptance that says which version
+# governs which purchase orders, and the DC's appointment email.
+deal_docs: [five-below-vendor-agreement-2023-excerpt-peak-bar, five-below-vendor-agreement-2025-excerpt-peak-bar,
+            peak-bar-five-below-vendor-agreement-acceptance-2026, peak-bar-five-below-forsyth-reschedule-2026-03-11]
+approved_senders: [dana@peakbar.example]
+dispute_start: 1020
+qbo:
+  customer: Five Below
+  invoice_no: PBF-2603
+  lines:
+    - {item: Peak Bar Original 4-Pack, qty: 122000, unit_price: 2.10}
+    - {item: Peak Bar Chocolate 3-Pack, qty: 77000, unit_price: 1.85}
+    - {item: Peak Bar Peanut Butter 2-Pack, qty: 33000, unit_price: 1.40}
+  payment_date: 2026-04-10
+nessie_description: Five Below remittance PBF-2603

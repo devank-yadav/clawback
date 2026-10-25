@@ -21,7 +21,7 @@ npm run build && npm start
 `npm run dev:mock` is for working on screens without the backend. It serves the same contract shapes for four
 accounts (Peak Bar Co. replays the recorded run in `web/fixtures/`; three more brands get generated runs with
 shortage, pricing and spoilage charges). Optional env for it: `MOCK_SPEED` (1 = live-like pacing, 0.2 = fast),
-`MOCK_ADMIN_TOKEN`, `MOCK_OWNER_TOKEN` / `MOCK_CONTROLLER_TOKEN` (to try the sign-in and the reset prompt), and
+`MOCK_ADMIN_TOKEN`, `MOCK_OWNER_TOKEN` (to try the admin's sign-in and the reset prompt), and
 `MOCK_RUNS_PER_VISITOR` (to try the per-visitor limit), and `MOCK_NO_LOOKBACK=1` (the lookback answers 404, so the card hides). The app itself never imports the mock.
 
 ## Environment variables
@@ -39,12 +39,12 @@ first account from `GET /accounts` is used.
 
 | Route | What it is |
 | --- | --- |
-| `/` | Run: send or drop in the payment, watch the agents, answer the owner's question and the controller's approval, then the result |
+| `/` | Run: send or drop in the payment, watch the agents, answer and approve inline (one admin, the owner), then the result |
 | `/charges` | This payment: every charge, the evidence panel and **How Clawback decided** (`&charge=C1` opens one) |
 | `/overview` | Six months: KPIs, the current payment, “Before Clawback”, invoiced vs paid vs deducted, deductions by type, remittances, past runs |
 | `/saved` | Records: documents, saved rules, the records checks use, the audit log and its chain check |
 | `/results` | The scoreboard: totals, QuickBooks posts, the accuracy check |
-| `/april` `/coach` `/scenario` | Next month under saved rules, Deal coach, a pasted clause (the More menu) |
+| `/contracts` `/connections` `/april` `/coach` `/scenario` | The More menu: the signed deal with the agents' terms, where information comes from, next month under saved rules, Deal coach, a pasted clause |
 | `/distributors` | Every distributor the supplier sells through, with its plain status |
 | `/portal` | The distributor's own portal (its name and colors from the account), opened in a new tab; `&dispute=` picks the dispute |
 | `/workspace`, `/home`, `/review`, `/history`, `/audit`, `/upload`, `/board/*` | Old addresses: redirect to the page that has their content now |
@@ -60,16 +60,18 @@ first account from `GET /accounts` is used.
 | “<Distributor> pays” | `POST /payments/{account}`, once per click; with Nessie the run id may be null, then `GET /runs/latest?account=` is polled |
 | Evidence panel | `GET /charges/{id}?run_id=`; a clicked number not in its list: `GET /evidence/{id}?run_id=` |
 | How Clawback decided | `GET /runs/{id}/trace?charge_id=` and `GET /runs/{id}/trace/summary` |
-| Owner's answer | `POST /questions/{id}/answer` with `X-Clawback-Role-Token` (the owner's access code) |
-| Controller's yes or no | `POST /approvals/{id}` `{approve, note}` with `X-Clawback-Role-Token` (the controller's access code) |
+| Owner's answer | `POST /questions/{id}/answer` `{text, save_rule}` with `X-Clawback-Role-Token` (the admin's access code) |
+| Owner's yes or no | `POST /approvals/{id}` `{approve, note, auto_post}` with `X-Clawback-Role-Token` (the admin's access code) |
 | Reset workspace | `POST /demo/reset`; a 401 asks for the admin token and retries with `Authorization: Bearer` |
 | Portal | `GET /portal/disputes/{id}`, `/messages`, `/portal/presets?account=&dispute_id=`; `POST …/messages` |
 | Next month · Coach · Try a clause | `POST /replay/april?account=` · `POST /coach?account=` · `GET /scenario/examples`, `POST /scenario` |
 | Results · Audit | `GET /eval/latest` · `GET /audit?account=`, `GET /audit/verify` |
 
-**Sign-in.** “Sign in as owner / controller” (brand menu) asks for that role's access code once and keeps it for the
-browser tab (sessionStorage). A local API has no codes, so it can be left empty. Answering or approving as the wrong
-role opens the right sign-in first; a 401 asks again (“Only the controller can approve this”).
+**Sign-in.** One person decides: the owner, signed in as the admin. “Sign in as admin” (brand menu) asks for the
+access code once and keeps it for the browser tab (sessionStorage). A local API has no codes, so it can be left
+empty. Answering or approving before signing in opens the sign-in first; a 401 asks again (“Only the admin can do
+this”). Answers carry “Save as a rule for next time” (on by default); approvals carry “Post fair charges like these
+automatically from now on” (off by default).
 
 **Limits.** A 429 from a payment, a next-month run, the coach, a pasted clause or a portal reply shows the API's own
 words (“That's the limit for now…”), not an error, with “Use admin token”. Once the presenter enters the admin token

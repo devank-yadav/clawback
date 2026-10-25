@@ -264,7 +264,7 @@ def test_a_second_account_runs_end_to_end(two_accounts):
     rule = next(e.data for e in run.events if e.type == "rule")
     assert (rule.label, rule.counterparty, rule.approver) == ("Rule #1", "Eastway", "Ari Lane")
     assert run.evidence[f"ev-{rule.id}"].person == "Ari Lane (owner)"
-    # $800 is within the controller limit, so the memo posts on policy, to Eastway in QuickBooks
+    # $800 is within the approval limit, so the memo posts on policy, to Eastway in QuickBooks
     approval = [e.data for e in run.events if e.type == "approval"][-1]
     assert (approval.status, approval.amount) == ("approved", D(800))
     (memo,) = [c for c in qbo.books().calls if c[0] == "CreditMemo"]

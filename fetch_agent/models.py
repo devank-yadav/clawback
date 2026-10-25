@@ -55,7 +55,7 @@ class Approval(_Read):
     kind: str  # credit_memo, dispute_over_limit, closed_period
     amount: Decimal
     lines: list[ApprovalLine] = []
-    approver_role: str  # owner, controller
+    approver_role: str  # owner (the admin; older runs said controller)
     status: str
     text: str
 

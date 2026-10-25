@@ -1,0 +1,342 @@
+EX-4.4
+4
+ea027551401ex4-4_jmgroup.htm
+VENDOR AGREEMENT, WITH FIVE BELOW (2025 VERSION)
+
+[...]
+
+11. | CANCELLATION
+BY VENDOR. Vendor may not cancel a Purchase Order within sixty (60) days of the FOB/FCA
+date, for an FOB/FCA order, or ninety (90) days of the in warehouse date, for an LDP order.
+Vendor cancellation within this time period, without the prior written authorization of Buyer,
+will result in a chargeback to the vendor of 50% of the FOB/FCA/LDP (depending on order terms)
+value of the order. Buyer may permit Vendor, at its sole discretion and on a case by case
+basis, to short or over ship an order by five percent 5% of quantity (10% for yarn/fiber
+dye orders). Any overages not reported will not be paid. In the case of a short shipment
+(shipping less than the shortage allowance, if such a shortage allowance is provided), Vendor
+will be charged back 50% of the FOB/FCA/LDP value as stated above. Vendor may cancel unconfirmed
+Purchase Orders by promptly informing Buyer, in writing, of Vendor’s intent not to
+confirm the order.
+
+[...]
+
+Violation Summary
+
+Five Below’s goal is to
+establish a solid partnership and working relationship with Vendors who have demonstrated their ability to partner with us in
+providing our customers with quality product at great prices. The chargeback policy is a financial incentive for our Vendors to
+become familiar with and closely follow our standards.
+
+The following schedule lists specific
+issues and fees for each violation. Chargebacks are enforced to recoup cost of business and are not for financial gain. This list is not
+intended to include every potential chargeback and does not (in any way whatsoever) limit Five Below’s rights and remedies (which
+are further described in Five Below’s Purchase Order Terms and Conditions in Section 1 Legal).
+
+74
+
+There will be a $100 per Purchase
+Order administrative fee assessed for each incident of non-compliance in addition to the following specific fees listed below:
+
+Area
+
+| Violation
+| Penalty
+| Measured
+Unit
+
+Purchasing
+
+| Receipt of backorder (shortship)
+| 5% of cost of backorder
+| Per shipment
+
+Overage quantity received
+| 3% of PO cost for overage up to $750
+| Per shipment
+
+Incorrect item received
+| 3% of cost up to $750
+| Per Purchase Order
+
+Lack of, or incorrect, UPC on item
+
+· if
+repack required
+
+· if
+able to correct via system update
+
+$0.50
+
+3% up to $750
+
+Unit
+
+PO
+
+| Incorrect case pack dimensions during item set up negatively effecting landed cost
+| $5
+| Carton
+
+Packing
+
+| Incorrect inner pack or master pack
+| 3% of cost up to $750
+| Per Purchase Order
+
+Incorrect carton marking
+| 3% of cost up to $750
+| Per Purchase Order
+
+Carton dimensions or weight outside parameters
+| $50
+| Pallet
+
+Unapproved plastic banding on cartons or individually shrink-wrapped master carton
+| $5
+| Carton
+
+Poor product packaging (improper sealing or closure, under/overpacking,
+insufficient for
+
+handling)
+
+| $5
+| Carton
+
+Missing or incorrect packing slip (Domestic only).
+| $300
+| Per shipment
+
+Missing or Incomplete Carton or Pallet Label
+| 3% of cost up to $750
+| Per Purchase Order
+
+Incorrect Bill of Lading (Domestic only)
+| $200
+| Per shipment
+
+Palletization (domestic only)
+
+| Incorrect pallet loading
+| $50
+| Pallet
+
+Broken Pallets
+| $50
+| Pallet
+
+Unapproved CHEP pallet
+| $50
+| Pallet
+
+Unapproved floor loaded shipment
+| $1,500
+| Trailer
+
+All Inbound Shipments
+
+| Shipping to the incorrect DC
+| $750 per day on lot, plus cost to reroute
+| Trailer
+
+Inadequate Delivery Vehicle (lip of trailer must be at least
+50 inch off ground). Standard dock plate is
+
+47 inches
+
+| $1,500
+| Trailer
+
+Domestic Shipments
+
+| Cartons not grouped by PO, then UPC/item/style number
+| $50
+| Per Pallet
+
+Failure to use slip sheets for multiple items on the same pallet
+| $50
+| Per Pallet
+
+Failure to accurately book an RTS for a Purchase Order 72 hours prior to ship date for domestic collect orders
+
+$150
+
+Per Purchase Order
+
+Failure to accurately book a Purchase Order using TMS for FOB orders.
+| 3% of cost up to $750
+| Per Purchase Order
+
+Appointment not made 48 hours in advance of requested appt date
+| $150
+| Per Appointment
+
+Missed/Late/Unappointed Appointments w/o communication
+| 5% of cost up to $750
+| Per Appointment
+
+Late Shipment (arrive after the cancel date because of late booking)
+| 5% cost of order
+| Per Purchase Order
+
+75
+
+| Collect – Origin Change after RTS
+| $100 admin fee
+| Per Order
+
+Accessorial violations
+
+Examples include: Detention/overweight/re- weigh fee/ incorrect
+shipping method based on
+
+pallet counts (+/-) ,TONU
+
+Full cost of added fee
+
+Import Shipments
+
+Vendor not ready by confirmed and agreed upon date
+
+5% cost of order (buyer applicable charge)
+plus Freight Forwarder charge
+
+of $200.
+
+Per Purchase Order
+
+Vendor ships from a port other than the confirmed and agreed upon port
+| $150 plus $25/cbm (Five Below Charge)
+| Per Purchase Order
+
+Failure to book than 21+ days prior to ship date
+
+Freight Forwarder charge
+
+$200
+
+| Per Purchase Order
+
+Missed sailing due to vendor production lateness
+
+5% cost of order plus cost to expedite
+freight (buyer
+
+applicable charge)
+
+Per Purchase Order
+
+Documents not uploaded within 3 working days of the sail
+date or missing information. All Freight
+
+Forwarder charges.
+
+1-7 days Late $100 8-12 days late $200
+
+13+ days late $250
+
+Per Document, Per Day late + Pass
+
+through Fee's
+
+Container light load - vendor opted to ship under- utilized
+container versus delivering goods to CFS
+
+warehouse for consolidation
+
+$100 (Five Below Charge)
+
+Per CBM
+
+Cartons not grouped by PO, then UPC/item/style number. (Five Below Charge)
+| 3% of cost up to $750
+| Per Purchase Order
+
+** | It is Vendor’s responsibility to ensure that all parties
+in its distribution operation are fully aware and informed of these fees. Five Below’s goal is to have zero chargebacks and move
+product in a timely and efficient manner. Quantity or pricing chargebacks will be created when the invoice is processed. There will be
+90 days from the chargeback creation to dispute.
+
+Disputes Contacts:
+
+| - | Shortage and cost variances: Invoices@FiveBelow.com
+
+| - | Routing Agreement violations disputes
+
+| ○ | DC003
+Pedricktown, NJ, contact: PTinbound@FiveBelow.com
+
+| ○ | DC004
+Forsyth, GA, contact: ForsythInbound@FiveBelow.com
+
+| ○ | DC005
+Conroe, TX, contact: ConroeAppointments@fivebelow.com
+
+| ○ | DC006
+Buckeye, AZ, contact: SCAZ-inbound@fivebelow.com
+
+| ○ | DC007
+Indianapolis, IN contact: scin-inbound@fivebelow.com
+
+| - | Unresolved disputes & questions: VendorRelations@FiveBelow.com
+
+[...]
+
+Document Instructions
+
+Five Below requires all vendors to participate in the E-document
+process. This process utilizes the information provided in the purchase order along with the vendor booking to auto-create the commercial
+invoice and packing list. All other documents except for the packing list and commercial invoice MUST be uploaded into the Forwarder portal
+no later the 3 days after vessel departure. For each shipment, upload all applicable test reports, [Child’s] Certificates of Conformity,
+Intellectual Property Rights Agreements, CTPAT 7-point inspection, etc. no later than three (3) working days after
+the sail date (sail + 3). Vendor will need to upload all documentation within the Forwarder portal.
+
+86
+
+| ● | Packing List
+
+| ○ | The details for the packing list will be captured during the booking process. This information will auto-create the packing list through
+the E-doc process in the Forwarder system.
+
+| ○ | Vendor should be sure to revise their booking if any shipment related information changes.
+
+| ● | Commercial Invoice
+
+| ○ | The details for the commercial invoice will be captured during the booking process. This information will auto-create the commercial
+invoice through the E-doc process in the Forwarder system.
+
+| ○ | Vendor should be sure to revise their booking if any shipment related information changes.
+
+| ● | Required Documents to Upload include:
+
+| ○ | Forwarder’s Cargo Receipt
+
+| § | Include Five Below Purchase Order number on FCR and Packing List
+
+| § | Five Below does not accept Original Bills of Lading
+
+| ○ | Merchandise License Agreements (if applicable)
+
+| ○ | [Child’s] General Certificate of Conformity
+
+| ○ | Certificate of Origin
+
+| ○ | CTPAT 7-point Inspection
+
+| ○ | Other documents as applicable (Lacey Declaration, FDA Certification, etc.)
+
+| ○ | All Copyrighted/Trademarked product must have all applicable License Agreements uploaded
+
+| ○ | Acceptable formats include PDF, Excel, TIF. MDI is not acceptable since it is unreadable
+
+Any documents missing above required information or calculated
+incorrectly will be rejected by US Customs. Ensure documents are complete and correct prior to upload.
+
+Chargebacks for Non-Compliance—Booking Process
+
+| ● | Any documents not uploaded within 3 working days of the sail date or missing information will be subject to a chargeback of
+$150 USD per document, per day late
+
+| ● | Any demurrage or storage incurred due to a delay in receiving documents or incorrect documents will be charged back to the vendor.
+This includes all containers on the Five Below Master Bill of Lading

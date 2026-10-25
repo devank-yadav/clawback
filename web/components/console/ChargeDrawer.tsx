@@ -12,7 +12,7 @@ import { useRun } from "./RunProvider";
 import { KindTag, Money, Pill, StatusPill, StepDot } from "./ui";
 
 export function ChargeDrawer({ charge, onClose, source, runId }: { charge: ChargeView; onClose: () => void; source: "fixture" | "live"; runId: string | undefined }) {
-  const { state, view, cast: CAST, link } = useRun();
+  const { state, view, link } = useRun();
   const detail = useChargeDetail(charge.id, runId, source);
   const steps = agentSteps(charge.id, state, detail);
   const clause = detail?.evidence.find((e) => e.kind === "clause") ?? null;
@@ -67,7 +67,7 @@ export function ChargeDrawer({ charge, onClose, source, runId }: { charge: Charg
 
       <div className="cx-next">
         <strong style={{ fontSize: 13, fontWeight: 500 }}>{nextTitle(charge)}</strong>
-        <p className="cx-small cx-muted">{nextLine(charge, view.disputeLabel, CAST.controller)}</p>
+        <p className="cx-small cx-muted">{nextLine(charge, view.disputeLabel)}</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Link className="cx-btn" href={link("/charges", { charge: charge.id })}>Open with every charge</Link>
         </div>
@@ -82,10 +82,10 @@ function nextTitle(c: ChargeView) {
   if (c.status === "Needs your input") return "Decided by your rule";
   return "Dispute prepared with proof";
 }
-function nextLine(c: ChargeView, disputeLabel: string, controller: string) {
+function nextLine(c: ChargeView, disputeLabel: string) {
   if (c.status === "Reviewing") return "Each step fills in as its agent finishes.";
-  if (c.status === "Accepted") return `Goes into the controller’s approval. Nothing posts until ${controller} says yes.`;
-  return `${disputeLabel}. Fair parts go to ${controller}’s accounting approval separately.`;
+  if (c.status === "Accepted") return "Goes into your accounting approval. Nothing posts until you say yes.";
+  return `${disputeLabel}. Fair parts go to your accounting approval separately.`;
 }
 
 /** The owner's choices: the replies the API reads (api/replies.py). A rule is saved and remembered; "this one" settles
@@ -107,6 +107,7 @@ export function OwnerDecision({ charge }: { charge: ChargeView }) {
   const clause = detail?.evidence.find((e) => e.kind === "clause") ?? null;
   const choices = choicesFor(charge.code);
   const [own, setOwn] = useState("");
+  const [saveRule, setSaveRule] = useState(true);
   const picked = choice === "own" ? (own.trim() ? { id: "own", label: own, text: own.trim() } : null) : choices.find((c) => c.id === choice) ?? null;
   const q = view.question!;
 
@@ -149,12 +150,18 @@ export function OwnerDecision({ charge }: { charge: ChargeView }) {
             onFocus={() => setChoice("own")} onChange={(e) => setOwn(e.target.value)} aria-label="Your own rule" />
         </span>
       </fieldset>
-      <p className="cx-small cx-muted">Saved as a rule for this distributor, so you’re never asked twice. This guides your agents; it doesn’t change the contract.</p>
+      <label className="cx-check">
+        <input type="checkbox" checked={saveRule} onChange={(e) => setSaveRule(e.target.checked)} />
+        <span>Save as a rule for next time</span>
+      </label>
+      <p className="cx-small cx-muted">{saveRule
+        ? "Saved as a rule for this distributor, so you’re never asked twice. This guides your agents; it doesn’t change the contract."
+        : "Settles this charge only. Nothing is saved, so the next charge like it asks you again."}</p>
       <div className="cx-head" style={{ alignItems: "center" }}>
-        <button className="cx-btn" disabled={!picked} onClick={() => picked && answerQuestion(q.id, picked.text)}>Save policy</button>
+        <button className="cx-btn" disabled={!picked} onClick={() => picked && answerQuestion(q.id, picked.text, saveRule)}>{saveRule ? "Save policy" : "Decide this charge"}</button>
         {!picked && <span className="cx-tiny">Choose an option first</span>}
       </div>
-      <p className="cx-tiny">For {CAST.ownerFull}, owner. This is not accounting approval: the charge stays open until it’s decided under your policy.</p>
+      <p className="cx-tiny">For {CAST.ownerFull}, admin. This is not the accounting approval: the charge stays open until it’s decided under your policy.</p>
     </aside>
   );
 }

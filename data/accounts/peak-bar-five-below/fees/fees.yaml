@@ -1,0 +1,30 @@
+# Fee-schedule wiring for this account (api/fee_accounts.py). account.yaml keeps the AccountConfig shape and names the
+# governing deal in `contracts`: Five Below's Vendor Agreement in two versions. Each is a verbatim excerpt of its
+# filing: the filing's own lines, cut at section boundaries and joined by a "[...]" line, nothing reworded
+# (scripts/check_accounts.py rebuilds each from `excerpts`).
+excerpts:
+  five-below-vendor-agreement-2023-excerpt-peak-bar: {source: contracts/five-below-vendor-agreement-2023.txt, lines: [[1, 13], [584, 591], [4926, 5142], [5734, 5794]]}
+  five-below-vendor-agreement-2025-excerpt-peak-bar: {source: contracts/five-below-vendor-agreement-2025.txt, lines: [[1, 4], [653, 664], [5367, 5626], [6190, 6246]]}
+# Which version governs a purchase order, by the date it was written: our acceptance, signed by Five Below
+# (deals/peak-bar-five-below-vendor-agreement-acceptance-2026). A version's terms apply from its date.
+governs:
+  five-below-vendor-agreement-2023-excerpt-peak-bar: {from: 2023-08-01, per: peak-bar-five-below-vendor-agreement-acceptance-2026}
+  five-below-vendor-agreement-2025-excerpt-peak-bar: {from: 2026-03-01, per: peak-bar-five-below-vendor-agreement-acceptance-2026}
+# Charge code -> the violation as the agreement's Violation Summary names it.
+codes:
+  OV: Overage quantity received
+  CM: Incorrect carton marking
+  MA: Missed/Late/Unappointed Appointments w/o communication
+  LS: Late Shipment (arrive after the cancel date because of late booking)
+  DU: Documents not uploaded
+  AP: Appointment not made 48 hours in advance of requested appt date
+  BO: Receipt of backorder (shortship)
+  IP: Incorrect inner pack or master pack
+# Over or short shipped quantities: their lines carry the delivery's variance from the order (Section 11's 5%).
+quantity_codes: [OV, BO]
+policy_changes: []
+# The day the remittance arrived and any dispute would be filed; the invoice date.
+as_of: 2026-04-10
+invoice_date: 2026-03-31
+# Older chargebacks reviewed with this payment (taken from earlier payments, so not in its total).
+older_charges: charges/older.csv

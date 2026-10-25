@@ -1,0 +1,44 @@
+# Peak Bar Co. <- KeHE Distributors. The deal is KeHE's real Vendor Policies & Procedures (May 31, 2015), word for word
+# in data/contracts/kehe-vendor-policies-2015-peak-bar.txt (this account's byte-identical copy of the filing);
+# everything else here is written by our side. The fee-schedule wiring (charge codes, backup, the policy change, the
+# review date) is in fees/fees.yaml, loaded by api/fee_accounts.py.
+id: peak-bar-kehe
+supplier: peak-bar
+brand:
+  name: Peak Bar Co.
+  kind: snack brand
+  city: Oakland, CA
+  initials: PB
+  colors: {primary: "#b4462b", accent: "#f2b552"}
+  owner: {name: Dana Okafor, email: dana@peakbar.example}
+  controller: {name: Sam Reyes}
+distributor:
+  name: KeHE Distributors
+  desk_email: vendorperformance@kehe.example
+  portal_name: KeHE Vendor Portal
+  colors: {primary: "#00573f", accent: "#e8f1ec"}
+invoice:
+  id: PBK-2603
+  expected: 131040.00
+  received: 120630.08
+  month: march
+  period_start: 2026-03-01
+  period_end: 2026-03-31
+# KeHE's policy is the deal (the real text in data/contracts/); then our promotion submission, the broker's extension
+# and KeHE's portal notice changing the Extra Performance charge.
+contracts: [kehe-vendor-policies-2015-peak-bar.txt]
+deal_docs: [kehe-vendor-policies-2015-peak-bar, peak-bar-kehe-promotion-2026-03, peak-bar-kehe-broker-2026-03-24,
+            peak-bar-kehe-ep-admin-2026-03-02]
+# Policy §10.7 lets KeHE change the policy by posting on its Vendor Portal (with 30 days' notice, which the engine
+# checks), so the portal's posting address is approved alongside the owner and the broker (§6.1).
+approved_senders: [dana@peakbar.example, jordan@peakbar-broker.example, vendorportal@kehe.example]
+dispute_start: 1000
+qbo:
+  customer: KeHE Distributors
+  invoice_no: PBK-2603
+  lines:
+    - {item: Peak Bar Original, qty: 2600, unit_price: 24.00}
+    - {item: Peak Bar Chocolate, qty: 2160, unit_price: 24.00}
+    - {item: Peak Bar Peanut Butter, qty: 700, unit_price: 24.00}
+  payment_date: 2026-04-10
+nessie_description: KeHE Distributors remittance PBK-2603

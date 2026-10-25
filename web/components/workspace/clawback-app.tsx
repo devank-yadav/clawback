@@ -12,7 +12,7 @@ import { useSession } from '@/lib/session'
 import type { Account, Lookback, Overview, RunSummary } from '@/lib/types'
 import { useFetched } from '@/lib/useFetched'
 import { useRunEvents } from '@/lib/useRunEvents'
-import { postingSentence, selectWorkspace, type WorkspaceView } from '@/lib/workspace'
+import { approvedBy, postingSentence, selectWorkspace, type WorkspaceView } from '@/lib/workspace'
 import { ChargeList, EvidencePanel, type ChargeFilter } from './charge-workspace'
 import { MonthlyChart, TypeBars } from './charts'
 import { LookbackCard, PacketLink } from './impact'
@@ -113,10 +113,10 @@ function Workspace({ account, accounts, view }: { account: Account; accounts: Ac
 
 /** What the stream says just happened. Never worded as done until the matching event has arrived. */
 function stageFeedback(ws: WorkspaceView, account: Account) {
-  const controller = account.brand.controller.name
-  if (ws.stage === 'controller' && ws.rule) return `Rule saved by ${account.brand.owner.name}. The accounting entry is ready for ${controller}.`
-  if (ws.stage === 'refused') return `${controller} refused the entry. Nothing was posted.`
-  if (ws.stage === 'posted') return `${controller} approved. ${postingSentence(ws)}`
+  const owner = account.brand.owner.name
+  if (ws.stage === 'approval' && ws.rule) return `Rule saved by ${owner}. The accounting entry is ready for your approval.`
+  if (ws.stage === 'refused') return `${owner} held the entry. Nothing was posted.`
+  if (ws.stage === 'posted') return `${approvedBy(ws, owner)}. ${postingSentence(ws)}`
   return ''
 }
 
@@ -124,8 +124,8 @@ function statusWord(ws: WorkspaceView, awaitingPayment: boolean, overview: Overv
   if (awaitingPayment) return 'Waiting for payment'
   if (!ws.remittance) return overview ? overview.current.status.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) : 'Loading'
   if (!ws.reviewed) return 'Analyzing'
-  if (ws.stage === 'owner') return 'Needs the owner'
-  if (ws.stage === 'controller') return 'Needs the controller'
+  if (ws.stage === 'owner') return 'Needs your answer'
+  if (ws.stage === 'approval') return 'Needs your approval'
   if (ws.stage === 'refused') return 'Entry refused'
   if (ws.stage === 'posted') return 'Complete'
   return 'Reviewed'
@@ -217,7 +217,7 @@ function PaymentStrip({ account, ws, awaitingPayment }: { account: Account; ws: 
 function Summary({ ws, compact = false }: { ws: WorkspaceView; compact?: boolean }) {
   const waiting = ws.totals?.waiting ?? 0
   const undecided = ws.totals?.undecided ?? 0
-  return <section className={`summary-grid ${compact ? 'compact' : ''}`} aria-label="Deduction decisions"><div><span>Disputing</span><strong>{dollars(ws.totals?.disputed ?? 0)}</strong><small>Being challenged · not recovered yet</small></div><div><span>Accepted</span><strong>{dollars(ws.totals?.accepted ?? 0)}</strong><small>Backed by the deal or your rule</small></div><div><span>{waiting > 0 ? 'Waiting on you' : 'Pending'}</span><strong>{dollars(waiting)}</strong><small>{waiting > 0 ? 'One answer from the owner' : undecided > 0 ? 'Still checking charges' : 'Every charge decided'}</small></div></section>
+  return <section className={`summary-grid ${compact ? 'compact' : ''}`} aria-label="Deduction decisions"><div><span>Disputing</span><strong>{dollars(ws.totals?.disputed ?? 0)}</strong><small>Being challenged · not recovered yet</small></div><div><span>Accepted</span><strong>{dollars(ws.totals?.accepted ?? 0)}</strong><small>Backed by the deal or your rule</small></div><div><span>{waiting > 0 ? 'Waiting on you' : 'Pending'}</span><strong>{dollars(waiting)}</strong><small>{waiting > 0 ? 'One answer from you' : undecided > 0 ? 'Still checking charges' : 'Every charge decided'}</small></div></section>
 }
 
 const RUN_STATUS = { started: 'Agents working', waiting: 'Waiting on you', finished: 'Finished', failed: 'Stopped' } as const

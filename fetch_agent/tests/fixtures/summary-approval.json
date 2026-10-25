@@ -109,7 +109,7 @@
         }
       ],
       "proposed_by": "bookkeeper",
-      "approver_role": "controller",
+      "approver_role": "owner",
       "status": "pending",
       "text": "Approve credit memo of $2,730 (3 lines)?",
       "note": null,

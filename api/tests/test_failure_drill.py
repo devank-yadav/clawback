@@ -1,5 +1,5 @@
 """The failure drill (docs/design.md, Proof > Test plan): Wi-Fi off, Gemini key revoked, expired QuickBooks token,
-controller says no, SMS not delivered, judge types nonsense in the portal. One test per drill, offline, with the
+the admin says no, SMS not delivered, judge types nonsense in the portal. One test per drill, offline, with the
 fakes the other tests already use. The four bugs the audit found (PR #52) are fixed; their tests now pass.
 """
 
@@ -20,7 +20,7 @@ from api.tests.test_pipeline import MARCH_FIRST, ScenarioClaude, final, last_tot
 from api.tests.test_reader import RECORDED
 from api.tests.test_readers import FakeGemini
 
-OWNER, SAM, FROM = "+15550100001", "+15550100002", "+14155550100"  # fake numbers; nothing is sent
+OWNER, FROM = "+15550100001", "+14155550100"  # fake numbers; nothing is sent
 _sleep = time.sleep
 
 
@@ -29,7 +29,6 @@ def _clean(tmp_path, monkeypatch):
     for k in (*qbo.KEYS, *sms.KEYS, "DEMO_MODE", "RECORD_FIXTURES", "GEMINI_API_KEY", "PUBLIC_BASE_URL"):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("OWNER_PHONE", OWNER)
-    monkeypatch.setenv("CONTROLLER_PHONE", SAM)
     monkeypatch.setattr(replay, "FIXTURES", tmp_path)
     monkeypatch.setattr(replay.time, "sleep", lambda _s: None)
     pipeline.reset(), disputes.reset()
@@ -193,9 +192,9 @@ def test_a_write_failing_mid_sequence_reports_the_write_that_failed(monkeypatch)
     assert not any("noted with the dispute lines" in t for t in logs(run))
 
 
-# ---------------------------------------------------------------- controller says no
+# ---------------------------------------------------------------- the admin says no
 
-def test_controller_says_no_nothing_posts_and_the_note_is_kept(monkeypatch):
+def test_admin_says_no_nothing_posts_and_the_note_is_kept(monkeypatch):
     from api.main import app
 
     api = TestClient(app)
@@ -208,7 +207,7 @@ def test_controller_says_no_nothing_posts_and_the_note_is_kept(monkeypatch):
     assert posts(run) == [] and qbo.books().calls == []
     assert _snapshot(run) == before  # the meters and the piles stay as they were
     assert api.get("/inbox").json()["approvals"] == []
-    assert any(role == "owner" and "Wait for Northmart's answer on D-0417." in text for role, text in sms.outbox)
+    assert any("Wait for Northmart's answer on D-0417." in t for t in logs(run))
     assert api.post(f"/approvals/{ap}", json={"approve": True}).status_code == 409  # a later yes can't sneak it through
     assert posts(run) == []
     assert [e.data.status for e in run.events if e.type == "approval"] == ["pending", "refused"]
@@ -250,9 +249,9 @@ def test_sms_not_delivered_question_waits_in_the_inbox_and_the_run_finishes_in_t
     t = last_totals(run)
     assert (t.disputed, t.accepted, t.waiting, t.questions) == (D(4120), D(2730), D(0), 1)
 
-    assert [a["to"] for a in attempts] == [OWNER, OWNER, SAM]  # Sam's text failed too
+    assert [a["to"] for a in attempts] == [OWNER, OWNER, OWNER]  # the approval's text to Dana failed too
     (ap,) = api.get("/inbox").json()["approvals"]
-    assert any("In the inbox (text failed (TwilioRestException)) for Sam" in t for t in logs(run))
+    assert any("In the inbox (text failed (TwilioRestException)) for Dana: \"Approve" in t for t in logs(run))
     r = api.post(f"/approvals/{ap['id']}", json={"approve": True}).json()
     assert [p["status"] for p in r["ledger_posts"]] == ["posted", "posted"]
     inbox = api.get("/inbox").json()
@@ -288,8 +287,8 @@ def test_judge_types_nonsense_reply_is_held_and_nothing_changes(monkeypatch, tex
 
 # ---------------------------------------------------------------- Wi-Fi off in DEMO_MODE, the whole demo
 
-def test_wifi_off_demo_mode_runs_march_dana_sam_portal_and_april_from_recordings(monkeypatch):
-    """Through the routes, as the demo runs: the payment button, Dana's text, Sam's text, the judge's presets and the
+def test_wifi_off_demo_mode_runs_march_dana_portal_and_april_from_recordings(monkeypatch):
+    """Through the routes, as the demo runs: the payment button, Dana's two texts (the answer and the yes), the judge's presets and the
     amendment on the portal, then April. Every connect attempt is recorded, so a swallowed one still fails here."""
     from api.main import app
 
@@ -321,7 +320,7 @@ def test_wifi_off_demo_mode_runs_march_dana_sam_portal_and_april_from_recordings
     t = last_totals(march)
     assert (t.taken, t.disputed, t.accepted, t.waiting, t.questions) == (D(6850), D(4120), D(2730), D(0), 1)
 
-    assert "Approved: $2,730 credit memo (3 lines)." in text(SAM, "YES")
+    assert "Approved: $2,730 credit memo (3 lines)." in text(OWNER, "YES")
     assert [(p.qbo_entity, p.status, p.amount) for p in posts(march)] == [
         ("credit_memo", "posted", D(2730)), ("invoice_note", "posted", D(4120))]
     assert all(p.qbo_id.startswith("sim-") for p in posts(march))

@@ -25,7 +25,7 @@ nobody has. Clawback does that check. It:
    distributor's comeback and checking that it can answer it.
 4. **Accepts the fair ones**, including a charge that looks wrong until the broker's email explains it.
 5. **Asks the owner only when the deal is unclear**, once, and saves the answer as a rule so it never asks twice.
-6. **Records the result in QuickBooks**, but only after the controller approves.
+6. **Records the result in QuickBooks**, but only after the owner (the admin, the one person who decides) approves.
 7. **Suggests edits to next month's deal**, each showing what the weak clause cost.
 
 It also:
@@ -39,8 +39,9 @@ It also:
   checks every line and the totals.
 - **Shows how it decided.** "How Clawback decided" lists every AI call behind each charge and the model that
   answered it.
-- **Keeps roles real.** Only the controller's sign-in approves money and only the owner's answers the owner's
-  question.
+- **One person decides.** The owner, signed in as the admin, answers the questions and approves the money; no agent
+  does either. Each answer has "Save as a rule for next time" (on by default), and the approval has "Post fair
+  charges like these automatically from now on", which sets an auto-post limit for later memos.
 
 ## The demo numbers
 
@@ -111,7 +112,7 @@ To replay the agent-mode eval offline from its recordings: `DEMO_MODE=true pytho
 ```
 Nessie deposit ─▶ Readers: Claude + Gemini ─▶ sentence + agreement check (code) ─▶ math engine (code)
    ─▶ Investigator (Claude) ─▶ comeback rehearsal (Claude) ─▶ decision gate (code + owner policy + saved rules)
-   ─▶ dispute D-0417 to the Northmart portal · one question to the owner · credit memo to the controller
+   ─▶ dispute D-0417 to the Northmart portal · one question to the owner · credit memo to the owner
    ─▶ QuickBooks sandbox (code, after approval) · every step streamed to the board and the hash-chained audit log
 ```
 
@@ -148,8 +149,10 @@ config/   policy.yaml, the owner's policy
 - **No made-up numbers.** Amounts come only from `api/engine/`. Any number an agent writes must come from its input,
   and an outbound filter blocks any dollar figure, quote, promise, discount or deadline that isn't in a finding or a
   verified term.
-- **The controller approves money.** A credit memo over $1,000 needs the controller, never the owner or an agent. If
-  the controller says no, nothing posts and their note shows on the card. Disputes over $5,000 wait for the owner.
+- **The admin approves money.** A credit memo over $1,000 needs the owner's yes, never an agent's, unless it is within
+  the auto-post limit the owner set by ticking "Post fair charges like these automatically" (that posting is logged
+  and audited as the owner's auto-post rule). If the owner says no, nothing posts and the note shows on the card.
+  Disputes over $5,000 wait for the owner.
 - **The audit chain.** Every decision, question, answer, rule, approval, dispute, portal message and QuickBooks write
   is appended to a sha256 hash chain. `GET /audit/verify` recomputes it, so an edited, missing or reordered row
   breaks the check.

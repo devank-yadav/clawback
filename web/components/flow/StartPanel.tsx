@@ -6,7 +6,7 @@
 
 import { useState, type DragEvent } from "react";
 import { useRun } from "@/components/console/RunProvider";
-import { readRemittance, runRemittance } from "@/components/upload/api";
+import { ACCOUNT as SAMPLE_ACCOUNT, readRemittance, runRemittance, sampleFile, sampleUrl } from "@/components/upload/api";
 import { money } from "@/lib/format";
 
 const CREW: { name: string; tag: "AI" | "CODE" | "PERSON" }[] = [
@@ -103,7 +103,14 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) void read({ file: f }, f.name); e.target.value = ""; }} />
             </label>
             <textarea value={text} onChange={(e) => setText(e.target.value)} aria-label="Remittance text" placeholder={`Or paste the remittance ${cast.distributor} sent`} />
-            <div><button className="cx-btn" disabled={busy || !text.trim()} onClick={() => void read({ text }, "the pasted text")}>Read it</button></div>
+            <div className="fl-paste-actions">
+              <button className="cx-btn" disabled={busy || !text.trim()} onClick={() => void read({ text }, "the pasted text")}>Read it</button>
+              {/* Only Peak Bar ← Northmart ships a sample: a real PDF to read here, or to download and drop back in. */}
+              {account?.id === SAMPLE_ACCOUNT && <>
+                <button className="cx-btn is-ghost" disabled={busy} onClick={() => void sampleFile().then((file) => read({ file }, `${cast.distributor}’s March remittance`), (e) => setProblem(`The sample didn’t load (${(e as Error).message}).`))}>Try {cast.distributor}’s March remittance</button>
+                <a className="cx-small" href={sampleUrl()} download>Download it (PDF)</a>
+              </>}
+            </div>
           </div>
         )}
 

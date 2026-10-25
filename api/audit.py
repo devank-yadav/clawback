@@ -44,7 +44,9 @@ def describe(ev: Any, account: accounts.Account | str | None = None) -> tuple[st
                 return "bookkeeper", "approval_requested", f"approval:{d.id}"
             if d.status == "approved" and d.note and d.note.startswith("Within policy"):
                 return "policy", "credit_memo_approved", f"approval:{d.id}"
-            return _person("controller"), f"credit_memo_{d.status}", f"approval:{d.id}"
+            if d.status == "approved" and d.posted_by_auto_post:  # the admin's standing yes, not a new one
+                return f"auto_post:{a.first_name()}", "credit_memo_auto_posted", f"approval:{d.id}"
+            return _person("owner"), f"credit_memo_{d.status}", f"approval:{d.id}"
         case "ledger_post":
             return "bookkeeper", f"qbo_{d.qbo_entity}_{d.status}", f"ledger:{d.id}"
         case "dispute":

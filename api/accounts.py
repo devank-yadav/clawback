@@ -67,10 +67,9 @@ class Account:
     def invoice(self) -> AccountInvoice:
         return self.config.invoice
 
-    def first_name(self, role: str) -> str:
-        """Dana, Sam: how texts and the log name the owner and the controller."""
-        person = self.brand.owner if role == "owner" else self.brand.controller
-        return person.name.split()[0]
+    def first_name(self, role: str = "owner") -> str:
+        """Dana: how texts and the log name the admin (the owner), the one person who decides."""
+        return self.brand.owner.name.split()[0]
 
     def dispute_start(self, month: str) -> int:
         """The first dispute number a run of this month files."""

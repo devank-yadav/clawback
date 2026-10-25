@@ -58,7 +58,7 @@ function Results({ account }: { account: Account }) {
 
       <section className="surface tool-card" aria-labelledby="qb-h">
         <h2 id="qb-h">QuickBooks</h2>
-        {posts.length === 0 && <p className="muted">Nothing posted. The credit memo waits for {account.brand.controller.name}; nothing posts without a yes.</p>}
+        {posts.length === 0 && <p className="muted">Nothing posted. The credit memo waits for {account.brand.owner.name}; nothing posts without a yes.</p>}
         {posts.map((p) => (
           <div className="tool-row" key={p.id}>
             <div>

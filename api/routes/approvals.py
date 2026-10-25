@@ -1,4 +1,5 @@
-"""Controller approvals: the in-app Yes / No buttons (fallback for the SMS reply).
+"""The admin's approvals: the in-app Yes / No buttons (fallback for the SMS reply), and "Post fair charges like these
+automatically from now on" (auto_post), which saves the account's auto-post limit at the memo's amount.
 
 A live run's approvals (AP-run-…) are decided in api/pipeline.py; the recorded fixture's AP-1 still works for
 screens built against web/fixtures.
@@ -29,12 +30,12 @@ reset()
 
 
 @router.post("/approvals/{approval_id}", response_model=ApprovalDecisionResponse,
-             dependencies=[Depends(require_role("controller"))])
+             dependencies=[Depends(require_role("owner"))])
 def decide(approval_id: str, req: ApprovalDecisionRequest) -> ApprovalDecisionResponse:
     """Approve posts the credit memo to QuickBooks; refuse posts nothing and keeps the note for the card."""
     if pipeline.find_approval(approval_id):
         try:
-            approval, posts = pipeline.decide_approval(approval_id, req.approve, req.note)
+            approval, posts = pipeline.decide_approval(approval_id, req.approve, req.note, req.auto_post)
         except ValueError as e:
             raise HTTPException(409, str(e)) from e
         memo = next((p for p in posts if p.qbo_entity == "credit_memo"), None)
@@ -54,6 +55,6 @@ def decide(approval_id: str, req: ApprovalDecisionRequest) -> ApprovalDecisionRe
 
 @router.get("/inbox", response_model=InboxResponse)
 def inbox() -> InboxResponse:
-    """What waits on Dana or Sam right now (the /inbox screen, and the fallback when texts don't arrive)."""
+    """What waits on the admin (Dana) right now (the /inbox screen, and the fallback when texts don't arrive)."""
     questions, approvals = pipeline.inbox()
     return InboxResponse(questions=questions, approvals=approvals, messages=pipeline.owner_messages())

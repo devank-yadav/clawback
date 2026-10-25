@@ -1,7 +1,7 @@
 "use client";
 
-// The card under the rail for the stage that needs the eye: the two readers at work, the owner's one question, the
-// controller's approval, or the dispute and the distributor's replies. People act here, on the same page as the run.
+// The card under the rail for the stage that needs the eye: the two readers at work, the admin's one question, the
+// admin's approval of the credit memo, or the dispute and the distributor's replies. People act here, on the same page as the run.
 
 import { useState } from "react";
 import { money } from "@/lib/format";
@@ -45,14 +45,15 @@ export function ReaderCard({ live }: { live: boolean }) {
   );
 }
 
-export function ControllerCard() {
-  const { view, controllerDecides, cast } = useRun();
+export function ApprovalCard() {
+  const { view, decideApproval, cast } = useRun();
   const [note, setNote] = useState("");
+  const [autoPost, setAutoPost] = useState(false);
   const a = view.approval;
   if (!a || a.status !== "pending") return null;
   return (
-    <section className="fl-card is-amber" aria-label="Controller approval">
-      <span className="cx-eyebrow">Waiting on {cast.controllerFull} · controller</span>
+    <section className="fl-card is-amber" aria-label="Your approval">
+      <span className="cx-eyebrow">Waiting on you · {cast.ownerFull}</span>
       <div className="cx-head" style={{ alignItems: "flex-end" }}>
         <h2>Approve the credit memo for the fair charges?</h2>
         <Money value={a.amount} className="cx-big" />
@@ -62,15 +63,26 @@ export function ControllerCard() {
           <div key={l.chargeId}><span>{l.label}</span><Money value={l.amount} /></div>
         ))}
       </div>
-      <p className="cx-small cx-muted">Nothing posts to QuickBooks until {cast.controller} says yes. The disputed money stays open with {cast.distributor}.</p>
+      <p className="cx-small cx-muted">Nothing posts to QuickBooks until you say yes. The disputed money stays open with {cast.distributor}.</p>
       <label className="cx-tiny" htmlFor="fl-note">Note (needed only to hold it)</label>
       <textarea id="fl-note" className="cx-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why you’re holding it, if you are" />
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button className="cx-btn" onClick={() => controllerDecides(true, note || null)}>Approve {money(a.amount)}</button>
-        <button className="cx-btn is-ghost" onClick={() => controllerDecides(false, note || "Held by controller")}>Hold</button>
+        <button className="cx-btn" onClick={() => decideApproval(true, note || null, autoPost)}>Approve {money(a.amount)}</button>
+        <button className="cx-btn is-ghost" onClick={() => decideApproval(false, note || `Held by ${cast.owner}`)}>Hold</button>
       </div>
-      <p className="cx-tiny">Only the controller can approve: you sign in with {cast.controller}’s code.</p>
+      <AutoPostBox checked={autoPost} onChange={setAutoPost} limit={a.amount} />
+      <p className="cx-tiny">Only the admin can approve: you sign in with {cast.owner}’s code.</p>
     </section>
+  );
+}
+
+/** "Post fair charges like these automatically from now on": with a yes, memos up to this amount post without asking. */
+export function AutoPostBox({ checked, onChange, limit }: { checked: boolean; onChange: (on: boolean) => void; limit: number }) {
+  return (
+    <label className="cx-check">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span>Post fair charges like these automatically from now on <small className="cx-tiny">(memos up to {money(limit)} post without asking)</small></span>
+    </label>
   );
 }
 
@@ -114,7 +126,7 @@ export function Spotlight({ focus }: { focus: Stage | null }) {
     const charge = view.charges.find((c) => c.id === view.question?.charge_id);
     return charge ? <div className="fl-spot"><OwnerDecision charge={charge} key={charge.id} /></div> : null;
   }
-  if (focus.key === "controller" && focus.state === "waiting") return <div className="fl-spot"><ControllerCard /></div>;
+  if (focus.key === "approval" && focus.state === "waiting") return <div className="fl-spot"><ApprovalCard /></div>;
   if (focus.key === "file" && focus.state === "waiting") return <div className="fl-spot"><DisputeCard /></div>;
   return null;
 }

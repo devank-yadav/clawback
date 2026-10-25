@@ -66,3 +66,22 @@ def test_saved_lists_locked_deal_records_and_rules(api):
     assert "maximum of 5,000 units" in text["text"] and text["locked"] is True
     assert client.get("/accounts/peak-bar/documents/nope").status_code == 404
     assert client.put("/accounts/peak-bar/documents/spring-promo", json={"text": "x"}).status_code == 405  # never edited
+
+
+def test_connections_say_what_is_real(api):
+    client, _ = api
+    got = {c["id"]: c["status"] for c in client.get("/connections").json()}
+    assert got["upload"] == "ready" and got["inbox"] == "coming_soon" and got["portals"] == "coming_soon"
+    assert got["quickbooks"] == "not_connected"  # tests blank every key
+
+
+def test_contract_library_highlights_the_terms_the_agents_read(api):
+    client, fake = api
+    before = client.get("/accounts/peak-bar/contract").json()
+    assert before["read_in_run"] is None and all(d["terms"] == [] for d in before["documents"])
+    pipeline.start("march", fake, background=False)
+    got = client.get("/accounts/peak-bar/contract").json()
+    deal = next(d for d in got["documents"] if d["id"] == "spring-promo")
+    assert got["read_in_run"] and deal["locked"] is True and deal["kind"] == "deal"
+    cap = next(t for t in deal["terms"] if t["type"] == "unit_cap")
+    assert deal["text"][cap["char_start"]:cap["char_end"]] == cap["quote"] and cap["label"] == "at most 5,000 units"

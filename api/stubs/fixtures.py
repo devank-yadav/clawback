@@ -29,7 +29,7 @@ DATA = REPO / "data"
 WEB_FIXTURES = REPO / "web" / "fixtures"
 
 MARCH_RUN = "run-march-demo"
-REFUSED_RUN = "run-march-refused"  # same run, but Sam refuses the credit memo
+REFUSED_RUN = "run-march-refused"  # same run, but Dana holds the credit memo
 APRIL_RUN = "run-april-demo"
 REMITTANCE_ID = "REM-3102"
 DISPUTE_ID = "D-0417"
@@ -188,9 +188,9 @@ EVIDENCE: dict[str, Evidence] = {e.id: e for e in [
     Evidence(id="ev-answer-Q-1", kind="person", label="Dana's answer",
              summary="Dana Okafor (owner) answered by text: \"accept if notice is at least 14 days\".",
              person="Dana Okafor (owner)"),
-    Evidence(id="ev-approval-AP-1", kind="approval", label="Sam approved",
-             summary="Sam Reyes (controller) approved the $2,730 credit memo.",
-             approval_id="AP-1", person="Sam Reyes (controller)"),
+    Evidence(id="ev-approval-AP-1", kind="approval", label="Dana approved",
+             summary="Dana Okafor (owner) approved the $2,730 credit memo.",
+             approval_id="AP-1", person="Dana Okafor (owner)"),
     *[_charge_ev(c) for c in MARCH_CHARGES + APRIL_CHARGES],
 ]}
 
@@ -351,16 +351,16 @@ REFUSAL_NOTE = "Hold this until I've seen the broker's Mar 28 email for the Apri
 
 @cache
 def march_run() -> RunFixture:
-    return _march(MARCH_RUN, controller_approves=True)
+    return _march(MARCH_RUN, owner_approves=True)
 
 
 @cache
 def refused_run() -> RunFixture:
-    """The same March run, but Sam refuses the credit memo: nothing posts and the totals don't move."""
-    return _march(REFUSED_RUN, controller_approves=False)
+    """The same March run, but Dana holds the credit memo: nothing posts and the totals don't move."""
+    return _march(REFUSED_RUN, owner_approves=False)
 
 
-def _march(run_id: str, controller_approves: bool) -> RunFixture:
+def _march(run_id: str, owner_approves: bool) -> RunFixture:
     run = _Run(run_id, start := datetime(2026, 10, 24, 10, 30, 0, tzinfo=PDT))
     remittance = REMITTANCE.model_copy(update={"received_at": run.now()})  # the deposit is what starts the run
     run.add("run", RunInfo(run_id=run_id, kind="march", status="started", remittance=remittance, demo_mode=True))
@@ -417,13 +417,13 @@ def _march(run_id: str, controller_approves: bool) -> RunFixture:
     memo_lines = [ApprovalLine(charge_id="C1", amount=_m(1200)), ApprovalLine(charge_id="C3", amount=_m(330)),
                   ApprovalLine(charge_id="C6", amount=_m(1200))]
     approval = Approval(id="AP-1", kind="credit_memo", amount=_m(2730), lines=memo_lines, proposed_by="bookkeeper",
-                        approver_role="controller", status="pending", text="Approve credit memo of $2,730 (3 lines)?",
+                        approver_role="owner", status="pending", text="Approve credit memo of $2,730 (3 lines)?",
                         requested_at=run.now() + run.step)
     run.add("approval", approval, gap=2)
-    run.log("Texted Sam (controller): approve a $2,730 credit memo? Nothing posts until Sam says yes.", actor="bookkeeper")
-    if controller_approves:
+    run.log("Texted Dana: approve a $2,730 credit memo? Nothing posts until Dana says yes.", actor="bookkeeper")
+    if owner_approves:
         run.add("approval", approval.model_copy(update={"status": "approved", "decided_at": run.now() + run.step * 6}), gap=6)
-        run.log("Sam approved. Posting to QuickBooks.", "good", "controller")
+        run.log("Dana approved. Posting to QuickBooks.", "good", "owner")
         run.add("ledger_post", credit_memo(posted_at=run.now() + run.step), gap=2)
         run.add("ledger_post", LedgerPost(
             id="LP-2", qbo_entity="invoice_note", qbo_id=None, amount=_m(4120), status="posted",
@@ -434,8 +434,8 @@ def _march(run_id: str, controller_approves: bool) -> RunFixture:
     else:
         run.add("approval", approval.model_copy(update={"status": "refused", "note": REFUSAL_NOTE,
                                                         "decided_at": run.now() + run.step * 6}), gap=6)
-        run.log("Sam refused the $2,730 credit memo. Nothing posts to QuickBooks; Sam's note is on the card and the "
-                "memo goes back to Dana.", "warn", "controller")
+        run.log("Dana held the $2,730 credit memo. Nothing posts to QuickBooks; the note is on the card.", "warn",
+                "owner")
 
     run.add("portal_message", PortalMessage(
         id="PM-1", dispute_id=DISPUTE_ID, from_party="northmart", classification="claim_without_document",
@@ -456,14 +456,14 @@ def _march(run_id: str, controller_approves: bool) -> RunFixture:
     used = {e.id for d in details.values() for e in d.evidence}
     used |= {i for ln in DISPUTE_LINES for i in ln.evidence_ids}
     used |= {i for e in run.events if e.type == "portal_message" for i in e.data.evidence_ids}
-    if controller_approves:
+    if owner_approves:
         used |= {"ev-approval-AP-1"}
     return RunFixture(run_id=run_id, events=run.events, charges=details,
                       evidence={i: EVIDENCE[i] for i in sorted(used)})
 
 
 def credit_memo(posted_at: datetime) -> LedgerPost:
-    """LP-1: what posts once Sam approves AP-1 (also returned by the stub POST /approvals/AP-1)."""
+    """LP-1: what posts once Dana approves AP-1 (also returned by the stub POST /approvals/AP-1)."""
     return LedgerPost(
         id="LP-1", qbo_entity="credit_memo", qbo_id=None, amount=_m(2730), status="posted", approval_id="AP-1",
         note="Credit memo applied to INV-3102.", posted_at=posted_at,
@@ -611,7 +611,7 @@ _AUDIT_ACTIONS = {  # event type -> (actor, action, object_ref)
     "rule": lambda d: ("owner:Dana", "rule_saved", f"rule:{d.id}"),
     "dispute": lambda d: ("negotiator", "dispute_filed", f"dispute:{d.id}"),
     "approval": lambda d: ("bookkeeper", "approval_requested", f"approval:{d.id}") if d.status == "pending"
-    else ("controller:Sam", f"credit_memo_{d.status}", f"approval:{d.id}"),
+    else ("owner:Dana", f"credit_memo_{d.status}", f"approval:{d.id}"),
     "ledger_post": lambda d: ("bookkeeper", f"qbo_{d.qbo_entity}_posted", f"ledger:{d.id}"),
     "portal_message": lambda d: ("northmart" if d.from_party == "northmart" else "negotiator", "portal_message",
                                  f"portal:{d.id}"),

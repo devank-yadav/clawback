@@ -1,8 +1,8 @@
-"""Send one SMS through Twilio to the owner or the controller.
+"""Send one SMS through Twilio to the admin (the owner), who gets the questions and the approvals.
 
 Run: python scripts/send_sms.py owner "Test from Clawback"
-     python scripts/send_sms.py controller "Approve credit memo of $2,730 (3 lines)?"
-Keys (.env): TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM, OWNER_PHONE, CONTROLLER_PHONE.
+     python scripts/send_sms.py owner "Approve credit memo of $2,730 (3 lines)?"
+Keys (.env): TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM, OWNER_PHONE.
 Trial accounts only text verified caller IDs.
 """
 
@@ -17,7 +17,7 @@ from twilio.rest import Client
 
 ROOT = Path(__file__).resolve().parent.parent
 TIMEOUT = 30
-TO_KEYS = {"owner": "OWNER_PHONE", "controller": "CONTROLLER_PHONE"}
+TO_KEYS = {"owner": "OWNER_PHONE"}
 
 
 def require(*names):
@@ -33,7 +33,7 @@ def mask(phone):
 
 def main():
     if len(sys.argv) != 3 or sys.argv[1] not in TO_KEYS:
-        sys.exit('Usage: python scripts/send_sms.py owner|controller "message text"')
+        sys.exit('Usage: python scripts/send_sms.py owner "message text"')
     who, text = sys.argv[1], sys.argv[2]
     load_dotenv(ROOT / ".env")
     sid, token, from_, to = require("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM", TO_KEYS[who])

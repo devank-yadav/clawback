@@ -11,8 +11,8 @@
 > - **Measured:** 5 live Peak Bar runs, identical decisions every time ($4,120 disputed, 1 question), 65–73 seconds
 >   from deposit to a decided board, 13–14 Claude calls, about $0.38 of Claude per run. So the run starts at 0:00,
 >   and the Omaha story plays while it reads.
-> - **Roles:** Devank narrates and holds the owner's phone (Dana). Rishi drives the laptop. Manasv holds the
->   controller's phone (Sam) and runs the reset between tables.
+> - **Roles:** Devank narrates and holds the owner's phone (Dana, the admin: she answers and approves). Rishi drives
+>   the laptop. Manasv runs the reset between tables.
 > - ✂ marks a line to cut if we're running long.
 
 ## The script
@@ -24,7 +24,7 @@
 | 0:44–1:10 | Narrate the feed; open C1 when it lands (§3.1 highlighted, the math line), then C3 and its email. | "Claude and Gemini each read the deal and the emails; plain code does the math. Week 1: they charged $1.50 a bar, §3.1 says $1.00, so $600 is disputed and the fair $1,200 accepted. This one looks wrong, April dates on a March promo, but the approved broker extended it by email. Accepted. It doesn't fight fair charges." |
 | 1:10–1:28 | Dana's phone buzzes. Devank reads it aloud and replies `accept if notice is at least 14 days`. Rule #1 appears; C6 moves to Accept. | "The display fee is 'at its discretion': a judgment call, so it asks the owner, once. She sets a rule: 14 days' notice. This one had 20, so it's accepted, and next month it won't ask. $4,120 disputed, $2,730 accepted, one question." |
 | 1:28–1:48 | Open C4 → **How Clawback decided**. Read only the rows the screen shows. | "Every AI call behind this charge: Claude and Gemini each read the 5,000-bar cap, code found the sentence word for word and did the math, Claude wrote the finding and rehearsed Northmart's comeback before filing, and the gate, plain code, made the call. The whole run: about 38 cents of Claude, just over a minute." |
-| 1:48–2:05 | Manasv, signed in as the controller on Sam's phone, taps **Approve**. The QuickBooks post appears. | "Money is the one thing no agent touches. Only the controller's sign-in approves the $2,730 credit memo, not the owner's, not an agent. Sam says yes: QuickBooks gets $2,730 credited and $4,120 left open with the dispute lines." |
+| 1:48–2:05 | Dana's phone again: Devank, signed in as the admin, taps **Approve**. The QuickBooks post appears. | "Money is the one thing no agent touches. Only Dana's yes approves the $2,730 credit memo, never an agent. She says yes: QuickBooks gets $2,730 credited and $4,120 left open with the dispute lines. Tick 'post fair charges like these automatically' and next month's smaller memo posts on its own, logged as her rule." |
 | 2:05–2:35 | Switch to the real-contract account (run in setup). Open the charge that cites KeHE's policy, sentence highlighted. TODO (needs Devank): the account's name and the charge to open, once it's merged. | "This account runs on a real contract: KeHE's 2015 vendor policies, word for word from an SEC filing. TeaSquares' founder said on the Foodbevy podcast that the company invoiced KeHE $32,000 in 2019 and was paid $21,000. Our brand here faces that kind of short pay, and Clawback checks every line against KeHE's own wording and flags what the policy doesn't support." |
 | ✂ 2:35–2:47 | Account switcher: Fernwell, Ridgefire, Birchbank. | "Three more: a sparkling tea whose delivery records disprove a shortage, a salsa whose distributor's emailed rate is never applied, and a clean month, every charge accepted. It never fights a fair charge." |
 | 2:47–3:00 | Open `/results`. | "Peak Bar: $4,120 disputed, $2,730 accepted, one question, the same in five live runs. And on 30 planted charges: 30 of 30, zero wrong automatic actions." |
@@ -50,7 +50,6 @@ live site keeps running and the board is there for Q&A. There is no offline mode
 - [ ] **Dana's phone** (Devank): WhatsApp open on the Twilio sandbox chat, clawback.biz signed in as the owner as the
       fallback. Send any message to the sandbox on Sunday morning: WhatsApp only lets a business send a free-form
       message to someone who wrote in the last 24 hours (check in Twilio's console).
-- [ ] **Sam's phone** (Manasv): clawback.biz signed in as the controller, on Approvals. WhatsApp open as well.
 - [ ] **Laptop tabs** (Rishi): Peak Bar's payment, the real-contract account, Fernwell, Ridgefire, Birchbank,
       `/results`, `/scenario`, `/upload` with the sample remittance.
 - [ ] **Backup video** open in a tab, cued to the Peak Bar beats.
@@ -62,7 +61,7 @@ live site keeps running and the board is there for Q&A. There is no offline mode
 3. C1 → its evidence (sentence, math line). C3 → the broker's email.
 4. Dana's phone: reply to the question.
 5. C4 → **How Clawback decided**.
-6. Sam's phone: **Approve**. The QuickBooks post on the laptop.
+6. Dana's phone: **Approve**. The QuickBooks post on the laptop.
 7. Real-contract account → the charge citing KeHE's policy.
 8. ✂ Fernwell → Ridgefire → Birchbank.
 9. `/results`.
@@ -82,7 +81,7 @@ live site keeps running and the board is there for Q&A. There is no offline mode
 | "You graded your own homework." | `/scenario`: the judge's own clause, both models live |
 | "Real remittances aren't CSVs." | `/upload`: the sample remittance, each line's quote highlighted, the totals check |
 | "Two models? The eval shows Claude twice." | How Clawback decided: the Gemini row; then the one-line truth about the recorded score |
-| "Who can move money?" | Sam's phone: only the controller's sign-in approves |
+| "Who can move money?" | Dana's phone: only the admin's sign-in approves, never an agent |
 | "What does a run cost?" | The trace summary: about $0.38 of Claude, 65–73 seconds |
 
 - **Don't know a number?** "We haven't measured that." Never guess, never round a demo number, never say what a real
@@ -112,8 +111,8 @@ live site keeps running and the board is there for Q&A. There is no offline mode
 | No card by 1:00 | Plan B: the backup video | "Same run, recorded this morning; the live one finishes behind it." |
 | "Too many runs" | Make sure the admin token is set; otherwise a judge's phone at clawback.biz has its own 3 runs | "The public site limits each visitor's runs, so a link can't drain our credits." |
 | Dana's WhatsApp doesn't arrive | Answer on the charge's card, signed in as the owner | "Same question, in the app." |
-| Sam's Approve fails | Sam replies `YES` on WhatsApp (only the controller's number counts) | "Same approval, from the controller's phone." |
-| The controller says no | Show "held by controller" with the note | "That's the point: if the controller refuses, nothing posts." |
+| Dana's Approve fails | Dana replies `YES` on WhatsApp (only the owner's number counts) | "Same approval, from her phone." |
+| Dana says no | Show "held by Dana" with the note | "That's the point: if she refuses, nothing posts." |
 | A portal reply is held for Dana | Tap a preset instead | "Anything it can't back with evidence goes to the owner, never out the door." |
 | Over time | Skip ✂ rows | — |
 

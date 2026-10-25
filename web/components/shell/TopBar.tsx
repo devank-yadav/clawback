@@ -26,6 +26,8 @@ const MAIN: { key: Place; href: string; label: string }[] = [
 ];
 
 const MORE: { href: string; label: string; hint: string }[] = [
+  { href: "/contracts", label: "Contracts", hint: "The signed deal, locked, with what the agents read" },
+  { href: "/connections", label: "Connections", hint: "Where payments, records and contracts come from" },
   { href: "/april", label: "Next month", hint: "The agents again, using your saved rules" },
   { href: "/coach", label: "Deal coach", hint: "Fixes for the next deal" },
   { href: "/scenario", label: "Try a clause", hint: "Paste a clause, watch the decision" },

@@ -16,7 +16,7 @@ def load_policy(path: str | Path = DEFAULT_PATH) -> Policy:
     raw = yaml.safe_load(Path(path).read_text())
     return Policy(
         auto_dispute_limit=Decimal(str(raw["auto_dispute_limit_usd"])),
-        controller_approval_over=Decimal(str(raw["controller_approval_over_usd"])),
+        approval_over=Decimal(str(raw["approval_over_usd"])),
         confidence_floor=Decimal(str(raw["confidence_floor"])),
         match_tolerance=Decimal(str(raw["match_tolerance_usd"])),
         rule_match_similarity=Decimal(str(raw["rule_match_similarity"])),
@@ -27,4 +27,5 @@ def load_policy(path: str | Path = DEFAULT_PATH) -> Policy:
         default_dispute_days=int(raw.get("default_dispute_days", 90)),
         manual_minutes_per_charge=None if raw.get("manual_minutes_per_charge") is None
         else Decimal(str(raw["manual_minutes_per_charge"])),
+        auto_post_limit=None if raw.get("auto_post_limit") is None else Decimal(str(raw["auto_post_limit"])),
     )

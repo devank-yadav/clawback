@@ -13,12 +13,11 @@ export default function SessionDialogs({ account }: { account: Account | null })
   return <AdminDialog key={`admin-${prompt.reason}`} reason={prompt.reason} />
 }
 
-export const roleName = (role: Role, account: Account | null) =>
-  account ? (role === 'owner' ? account.brand.owner.name : account.brand.controller.name) : role === 'owner' ? 'Owner' : 'Controller'
+/** The admin's name: the brand's owner, the one person who answers and approves. */
+export const roleName = (_role: Role, account: Account | null) => account?.brand.owner.name ?? 'Admin'
 
 function SignInDialog({ role, reason, account }: { role: Role; reason: string | null; account: Account | null }) {
   const [code, setCode] = useState('')
-  const title = role === 'owner' ? 'Owner' : 'Controller'
   return (
     <div className="dialog-backdrop" role="presentation" onMouseDown={closePrompt}>
       <form className="brand-dialog token-dialog" role="dialog" aria-modal="true" aria-labelledby="signin-title" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); signIn(role, code.trim() || null) }}>
@@ -26,10 +25,10 @@ function SignInDialog({ role, reason, account }: { role: Role; reason: string | 
         <span className="attention-icon"><LogIn /></span>
         <div>
           <h2 id="signin-title">Sign in as {roleName(role, account)}</h2>
-          <p>{role === 'owner' ? 'The owner answers policy questions; each answer becomes a rule.' : 'The controller approves or refuses accounting entries. Nothing posts without a yes.'}</p>
+          <p>The admin answers policy questions (each answer can become a rule) and approves the accounting entries. Nothing posts without a yes.</p>
         </div>
         {reason && <p className="field-error" role="alert">{reason}</p>}
-        <label htmlFor="role-code" className="note-label">{title} access code <span>(leave empty if your server has none)</span></label>
+        <label htmlFor="role-code" className="note-label">Admin access code <span>(leave empty if your server has none)</span></label>
         <input id="role-code" type="password" autoFocus autoComplete="off" value={code} onChange={(event) => setCode(event.target.value)} />
         <button className="primary" type="submit">Sign in</button>
       </form>

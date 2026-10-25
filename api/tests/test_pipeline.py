@@ -142,7 +142,7 @@ def test_owner_answer_becomes_rule_1_and_finishes_march():
     t = last_totals(run)
     assert (t.disputed, t.accepted, t.waiting, t.questions) == (D(4120), D(2730), D(0), 1)
     approval = next(e.data for e in run.events if e.type == "approval")
-    assert (approval.amount, approval.status, approval.approver_role, len(approval.lines)) == (D(2730), "pending", "controller", 3)
+    assert (approval.amount, approval.status, approval.approver_role, len(approval.lines)) == (D(2730), "pending", "owner", 3)
     assert run.done and run.events[-1].data.status == "finished"
     assert sum(1 for e in run.events if e.type == "dispute") == 1  # not refiled after the answer
 
@@ -325,15 +325,15 @@ def test_a_new_run_closes_the_old_runs_question():
 
 
 def test_a_replaced_runs_approval_waits_on_nobody():
-    """Sam's YES and the inbox only see the newest run, even while it's still deciding."""
+    """The admin's YES and the inbox only see the newest run, even while it's still deciding."""
     fake = ScenarioClaude()
     old = pipeline.start("march", fake, background=False)
     pipeline.answer(next(iter(old.questions)), "accept if notice is at least 14 days", client=fake)
     (stale,) = pipeline.inbox()[1]
     assert pipeline.pending_approval() == stale.id
-    old.replaced_by = "run-march-still-deciding"  # a newer run has started and hasn't asked Sam yet
+    old.replaced_by = "run-march-still-deciding"  # a newer run has started and hasn't asked Dana yet
     assert pipeline.pending_approval() is None and pipeline.inbox()[1] == []
-    new = pipeline.start("march", fake, background=False)  # Rule #1 is saved: it goes straight to Sam
+    new = pipeline.start("march", fake, background=False)  # Rule #1 is saved: it goes straight to the approval
     (fresh,) = pipeline.inbox()[1]
     assert fresh.id == f"AP-{new.id}" and pipeline.pending_approval() == fresh.id
 

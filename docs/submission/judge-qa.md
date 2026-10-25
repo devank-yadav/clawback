@@ -75,15 +75,16 @@ portals comes later, behind the same approvals.
 [Upload screen · D-0417's lines on the portal]
 
 **"Who can move money?"**
-No agent. Only the controller's sign-in can approve the credit memo, never the owner's sign-in or an agent. If the
-controller says no, nothing is written and the note shows on the card. Disputes over $5,000 wait for the owner.
-[Sam's phone, signed in as controller · audit log]
-- By text, only a reply from the controller's number counts, and Twilio's signature is checked.
+No agent. Only the owner, signed in as the admin, can approve the credit memo. If she says no, nothing is written and
+the note shows on the card. If she ticked "post fair charges like these automatically", later memos up to that amount
+post on her rule, and the audit log says so. Disputes over $5,000 wait for her too.
+[Dana's phone, signed in as the admin · audit log]
+- By text, only a reply from the owner's number counts, and Twilio's signature is checked.
 
 **"What if the AI is wrong?"**
 Then the worst case is a question, not a payment. A term counts only if both models read it the same way and its
 sentence is found word for word. Code does all the math. A dispute needs confidence of at least 0.9, two kinds of
-evidence and an answer to the comeback, or the owner decides. Nothing reaches the books without the controller.
+evidence and an answer to the comeback, or the owner decides. Nothing reaches the books without the owner's yes.
 And when the distributor shows a valid document, it backs down.
 [Tablet: **Attach signed amendment** → $1,000 conceded, $540 still disputed]
 
@@ -123,7 +124,7 @@ the deal's spoilage terms), and code works out the difference. No delivery row o
 
 **Can I try it on my phone?**
 Yes, at clawback.biz. Each visitor gets 3 live runs per 10 minutes and 20 other AI requests (the scenario box, the
-portal, the Deal Coach), so a public link can't drain our credits. Approving money still needs the controller's
+portal, the Deal Coach), so a public link can't drain our credits. Approving money still needs the admin's
 sign-in.
 
 **Who is the customer?**

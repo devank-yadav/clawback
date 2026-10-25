@@ -2,7 +2,7 @@
 
 `make record` runs it with RECORD_FIXTURES=1 so every AI answer is saved; the tests replay those recordings
 (DEMO_MODE). --account <id> runs another account (api/accounts.py): its invoice month, the owner's answer and the
-controller's yes, then each later month it has charges for. --portal also sends the judge's preset replies on the
+owner's yes to the credit memo, then each later month it has charges for. --portal also sends the judge's preset replies on the
 first dispute (Peak Bar's D-0417: claims, an agreement, then the signed amendment); --coach adds the Deal Coach's
 redlines and the scenario box's examples.
 """
@@ -88,7 +88,7 @@ def main() -> int:
         _print(march, seen)
     pending = [a for a in pipeline.inbox()[1] if a.id.startswith(f"AP-{march.id}")]
     if pending:
-        print(f"\n  CONTROLLER   replies YES to \"{pending[0].text}\"")
+        print(f"\n  OWNER        replies YES to \"{pending[0].text}\"")
         seen = len(march.events)
         pipeline.decide_approval(pending[0].id, True)
         _print(march, seen)

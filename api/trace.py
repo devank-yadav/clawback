@@ -24,7 +24,7 @@ Where the pipeline enters the contexts (Devank wires these; until then nothing i
 - run_context(run.id) around the work of each entry point that runs agents for a run:
     api/pipeline._guarded         (the run's own thread: readers, Investigator, comebacks, Moss, QuickBooks)
     api/pipeline.answer           (the owner's reply: rule writer, Moss, then the charges decided again)
-    api/pipeline.decide_approval  (the controller's yes: the QuickBooks writes)
+    api/pipeline.decide_approval  (the admin's yes: the QuickBooks writes)
     api/disputes.post             (the portal: Negotiator's reply, or the readers on an attached document)
     api/scenario.run              (the scenario box)
 - charge_context(c.id) around each turn of the per-charge loop in api/pipeline._process.

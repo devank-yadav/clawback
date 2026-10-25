@@ -1,0 +1,11 @@
+deduction_ref,on,group,description,base_amount,pass_through,units,cartons,days,proof_doc
+9127135-SA,2026-02-25,9127135,"10% of PO 9127135, New Store 5821",3744.00,0,240,0,,
+9127151-SA,2026-02-27,9127151,"10% of PO 9127151, New Store discount",14040.00,0,900,0,,
+9127177-NW,2026-03-02,9127177,"12% of PO 9127177, New DC 6099",23040.00,0,800,0,,
+PBW-2603-DM,2026-03-31,PBW-2603,1.5% of invoice PBW-2603,88224.00,0,0,0,,
+RJ-26-031804,2026-03-18,9127190,"60 Variety 24-Packs rejected at $28.80, plus a 15% rejection allowance",1728.00,1728.00,60,0,,peak-bar-walmart-rejection-2026-03-18
+FN-26-032611,2026-03-26,9127204,"Late delivery assessment, 3% of PO cost $9,360.00",280.80,0,0,0,,peak-bar-walmart-fine-2026-03-26
+FN-26-032714,2026-03-27,9127229,ASN after arrival assessment,250.00,0,0,0,,peak-bar-walmart-fine-2026-03-27
+RC-FY26-0305,2026-03-05,FY2026,"366 units returned at current cost, plus 10% handling",6976.80,6976.80,366,0,,peak-bar-walmart-return-center-claim-2026-03-05
+RC-FY26-0305,2026-03-05,FY2026,Less the Defective/Returned Mdse. Allowance taken in FY2026,0,-5700.00,0,0,,peak-bar-walmart-return-center-claim-2026-03-05
+IN-26-033102,2026-03-31,DB-2512-0097,"18% per annum on $8,450.00 for 52 days",8450.00,0,0,0,52,peak-bar-walmart-interest-2026-03-31

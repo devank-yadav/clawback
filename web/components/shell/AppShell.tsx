@@ -26,15 +26,13 @@ type Props = {
   /** The top bar's place this page is, if it is one (the More tools aren't). */
   active?: Place
   crumb: string
-  /** Badge on Approvals when a controller decision is waiting. */
-  approvalsWaiting?: boolean
   /** Called after a reset succeeds; without it the page reloads. */
   onReset?: () => void
   children: ReactNode
 }
 
 /** The frame every brand screen shares: brand menu, navigation, who is viewing, and the page. */
-// `accounts` and `approvalsWaiting` stay in the props for the callers; the top bar's switcher loads its own list.
+// `accounts` stays in the props for the callers; the top bar's switcher loads its own list.
 export default function AppShell({ account, active, crumb, onReset, children }: Props) {
   const { role } = useSession()
   const [detailsOpen, setDetailsOpen] = useState(false)
@@ -59,7 +57,6 @@ export default function AppShell({ account, active, crumb, onReset, children }: 
   }
 
   const person = role ? roleName(role, account) : null
-  const roleWord = role === 'owner' ? 'Owner' : 'Controller'
 
   return (
     <div className="app-shell">
@@ -75,7 +72,7 @@ export default function AppShell({ account, active, crumb, onReset, children }: 
       <div className="main-shell">
         <header className="topbar">
           <span>{account?.brand.name ?? 'Clawback'} <span className="slash">/</span> <strong>{crumb}</strong></span>
-          {account && <span className="topbar-note"><span className="tiny-dot" /> {person ? `Signed in as ${person} · ${roleWord}` : 'Not signed in'}</span>}
+          {account && <span className="topbar-note"><span className="tiny-dot" /> {person ? `Signed in as ${person} · Admin` : 'Not signed in'}</span>}
         </header>
         {resetState.message && <div className={`feedback shell-feedback ${resetState.error ? 'error' : ''}`} role="status">{resetState.error ? <Info /> : <Check />}{resetState.message}<button className="icon-button" aria-label="Dismiss" onClick={() => setResetState((s) => ({ ...s, message: null }))}><X /></button></div>}
         {children}
@@ -88,8 +85,7 @@ export default function AppShell({ account, active, crumb, onReset, children }: 
             <BrandAvatar account={account} large />
             <div><div className="eyebrow">{account.brand.kind} · {account.brand.city}</div><h2 id="brand-title">{account.brand.name}</h2><p>Deductions from {account.distributor.name} are checked against the signed deal before anything is accepted or disputed.</p></div>
             <dl>
-              <div><dt>Owner</dt><dd>{account.brand.owner.name}<small>{account.brand.owner.email}</small></dd></div>
-              <div><dt>Controller</dt><dd>{account.brand.controller.name}</dd></div>
+              <div><dt>Admin</dt><dd>{account.brand.owner.name}<small>{account.brand.owner.email}</small></dd></div>
               <div><dt>Distributor</dt><dd>{account.distributor.name}<small>{account.distributor.desk_email}</small></dd></div>
             </dl>
             <button className="secondary" onClick={() => setDetailsOpen(false)}>Done</button>

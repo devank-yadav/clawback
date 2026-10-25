@@ -2,6 +2,7 @@
 // Pure reads and wording: every amount and every decision below arrived in an event, none is computed here.
 
 import { codeLabel } from "./accounts";
+import { money } from "./format";
 import type { Account, Approval, Charge, ChargeDetail, Decision, Evidence, LedgerPost, Question, Remittance, Rule, RunValue, Totals } from "./types";
 import type { RunState } from "./useRunEvents";
 
@@ -29,8 +30,9 @@ export type ChargeView = {
   daysLeft: number | null;
 };
 
-/** owner: waiting on the owner's policy answer. controller: waiting on the controller. posted / refused: the controller answered. */
-export type Stage = "checking" | "owner" | "controller" | "posted" | "refused";
+/** owner: waiting on the admin's policy answer. approval: waiting on the admin's yes to the credit memo. posted /
+ * refused: the admin answered (or the memo posted on policy or the admin's auto-post rule). */
+export type Stage = "checking" | "owner" | "approval" | "posted" | "refused";
 
 export type ProposalLine = { chargeId: string; label: string; amount: number };
 
@@ -47,7 +49,7 @@ export type WorkspaceView = {
   ruleCharges: ChargeView[];
   approval: Approval | null;
   proposalLines: ProposalLine[];
-  /** What the controller's approval actually produced, in words that never overstate it. */
+  /** What the admin's approval actually produced, in words that never overstate it. */
   postingLabel: string;
   postingProblem: string | null;
   disputeLabel: string;
@@ -116,6 +118,14 @@ export function postingSentence(ws: Pick<WorkspaceView, "postingLabel" | "postin
   return "Waiting for QuickBooks to confirm the entry.";
 }
 
+/** Who said yes to the posted memo: the admin, their auto-post rule, or the policy (small memos post on policy). */
+export function approvedBy(ws: Pick<WorkspaceView, "approval">, owner: string): string {
+  const a = ws.approval;
+  if (a?.posted_by_auto_post) return `Posted by ${owner}’s auto-post rule (memos up to ${money(a.posted_by_auto_post.limit)})`;
+  if (a?.note?.startsWith("Within policy")) return "Within policy: no approval needed";
+  return `Approved by ${owner}`;
+}
+
 /** Why the API did not post the credit memo (its note), when it failed or is held. */
 export function postingProblem(ledger: LedgerPost[]): string | null {
   const post = memoPost(ledger);
@@ -138,7 +148,7 @@ export function selectWorkspace(state: RunState, account: Account | null): Works
   let stage: Stage = "checking";
   if (approval?.status === "approved") stage = "posted";
   else if (approval?.status === "refused") stage = "refused";
-  else if (approval || question?.answer) stage = "controller";
+  else if (approval || question?.answer) stage = "approval";
   else if (question) stage = "owner";
 
   const byId = Object.fromEntries(charges.map((c) => [c.id, c]));

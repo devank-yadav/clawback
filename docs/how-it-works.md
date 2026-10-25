@@ -21,7 +21,7 @@ trace (the last section) or try the checks in [test-it-yourself.md](test-it-your
 | 7 | File the dispute, answer the portal | code + **AI** | `api/pipeline.py`, `api/disputes.py`, `api/agents/negotiator.py` | outbound filter on every message out |
 | 8 | Ask the owner one question | code, then **a person** | `api/pipeline.py` (`_ask_owner`), `api/integrations/sms.py` | — |
 | 9 | Turn the answer into a rule | code (AI only if code can't read it) | `api/replies.py`, `api/agents/rule_writer.py` | the condition must parse in `api/engine/rules.py` |
-| 10 | Approve the credit memo | **a person** (the controller) | `api/pipeline.py` (`decide_approval`) | — |
+| 10 | Approve the credit memo | **a person** (the owner, the admin) | `api/pipeline.py` (`decide_approval`) | — |
 | 11 | Write to QuickBooks | code | `api/integrations/qbo.py` | one write per approval id |
 | 12 | Record every action | code | `api/audit.py`, `api/engine/audit_chain.py` | the hash chain (`GET /audit/verify`) |
 
@@ -181,12 +181,14 @@ The rule is saved (Rule #1), indexed in Moss, echoed back by text with an UNDO o
 decided again (step 6, row 3). C6 had 20 days' notice, so Rule #1 accepts it. In April the same rule decides both
 fees with no question: 18 days' notice → accept $1,200, 5 days → dispute $800.
 
-### 10. The controller's approval (a person)
+### 10. The owner's approval (a person)
 
 When nothing is waiting on the owner, `pipeline._request_credit_memo` proposes one credit memo for every accepted
-amount ($2,730, 3 lines). Over $1,000 it needs the controller, never the owner or an agent
-(`gate.needs_controller`). Sam answers YES or NO by text, or in the app (`POST /approvals/{id}`). NO posts nothing
-and the note shows on the card.
+amount ($2,730, 3 lines). Over $1,000 it needs the owner's yes, never an agent's (`gate.needs_approval`), unless the
+amount is within the auto-post limit she set. Dana answers YES or NO by text, or in the app (`POST /approvals/{id}`).
+NO posts nothing and the note shows on the card. With `auto_post` ("Post fair charges like these automatically from
+now on"), her yes also saves an auto-post limit at this memo's amount; a later memo up to it posts without asking,
+logged and audited as her auto-post rule.
 
 ### 11. QuickBooks (code)
 

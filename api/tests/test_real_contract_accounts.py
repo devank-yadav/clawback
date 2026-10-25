@@ -1,5 +1,6 @@
-"""Copperline Home Co. <- Walmart and Fizzwick Toys Co. <- Five Below, end to end through the pipeline: Walmart's real
-2013 Supplier Agreement and verbatim excerpts of Five Below's 2023 and 2025 Vendor Agreements, our side's purchase
+"""Copperline Home Co. and Peak Bar Co. <- Walmart, Fizzwick Toys Co. and Peak Bar Co. <- Five Below, end to end through
+the pipeline: Walmart's real 2013 Supplier Agreement and verbatim excerpts of Five Below's 2023 and 2025 Vendor
+Agreements (Peak Bar's accounts on their own byte-identical copies), our side's purchase
 orders, delivery logs and acceptance, and the other side's notices and backup. Faked AI answers
 (api/tests/real_contract_answers.py) go through the real Claude call path, the readers' JSON validation, the quote
 check, the merge, the engine and the gate; the decisions reproduce each account's expected.csv to the cent, and every
@@ -24,6 +25,16 @@ from api.tests import real_contract_answers as fake
 
 CONTRACTS = Path(__file__).resolve().parents[2] / "data" / "contracts"
 CLAUSES = ("ev-walmart-supplier-agreement-2013", "ev-five-below-vendor-agreement-")
+WALMART = {"copperline", "peak-bar-walmart"}
+# Peak Bar's accounts number their POs and chargebacks on their own (data/accounts/peak-bar-*): the same cases.
+REFS = {
+    "copperline": {"regular": "8840151-SA", "new_store": "8840135-SA"},
+    "peak-bar-walmart": {"regular": "9127151-SA", "new_store": "9127135-SA"},
+    "fizzwick": {"po": "4500912", "within": "CB0418830", "over": "CB0418822", "fee": "CB0418847",
+                 "retailer": "CB0418866", "excerpt": "five-below-vendor-agreement-2025-excerpt"},
+    "peak-bar-five-below": {"po": "4612912", "within": "CB0521330", "over": "CB0521322", "fee": "CB0521347",
+                            "retailer": "CB0521366", "excerpt": "five-below-vendor-agreement-2025-excerpt-peak-bar"},
+}
 
 
 class FakeClaude:
@@ -68,7 +79,7 @@ class FakeClaude:
         return clause + backup + [f"ev-charge-{payload['charge']['id']}"]
 
 
-@pytest.fixture(params=["copperline", "fizzwick"])
+@pytest.fixture(params=list(fake.READERS))
 def account(request, monkeypatch, tmp_path):
     monkeypatch.setattr(accounts, "ONLY", {"peak-bar", request.param})
     accounts.clear()
@@ -116,15 +127,16 @@ def test_the_remittance_adds_up(account):
 
 
 def test_our_records_reach_the_engine(account):
-    lines = {ln.deduction_ref: ln for ln in fee_accounts.fee_data(account).lines}
-    if account.id == "copperline":
-        assert (lines["8840151-SA"].po_type, lines["8840135-SA"].po_type) == ("Regular", "New Store")
+    lines, ref = {ln.deduction_ref: ln for ln in fee_accounts.fee_data(account).lines}, REFS[account.id]
+    if account.id in WALMART:
+        assert (lines[ref["regular"]].po_type, lines[ref["new_store"]].po_type) == ("Regular", "New Store")
         assert lines["FN-26-032611"].caused_by == "carrier" and lines["FN-26-032714"].caused_by == "supplier"
     else:
-        assert lines["CB0418830"].variance_pct == Decimal("3.50") and lines["CB0418822"].variance_pct == Decimal("10.91")
-        assert lines["CB0418847"].variance_pct is None  # not a quantity fee
-        assert lines["CB0418866"].caused_by == "retailer"
-        assert str(fee_accounts.governs_from("five-below-vendor-agreement-2025-excerpt", account)) == "2026-03-01"
+        assert lines[ref["within"]].variance_pct == Decimal("3.50")
+        assert lines[ref["over"]].variance_pct == Decimal("10.91")
+        assert lines[ref["fee"]].variance_pct is None  # not a quantity fee
+        assert lines[ref["retailer"]].caused_by == "retailer"
+        assert str(fee_accounts.governs_from(ref["excerpt"], account)) == "2026-03-01"
 
 
 # --- The decisions --------------------------------------------------------------------------------------------
@@ -157,14 +169,16 @@ def test_totals_come_from_the_engine(run, account):
 
 def test_the_reasons_name_each_check(run, account):
     a = run.run.allowances
-    if account.id == "copperline":
-        assert a["W2"].steps[0] == ("No New Store/Club Discount fee: 8840151 is a regular order; the fee applies only "
+    if account.id in WALMART:
+        po = REFS[account.id]["regular"].removesuffix("-SA")
+        assert a["W2"].steps[0] == (f"No New Store/Club Discount fee: {po} is a regular order; the fee applies only "
                                     "to new store.")
         assert a["W6"].facts["not_owed"] and run.run.shown["W6"].gate_row == 7
         assert a["W9"].steps[0] == "Fee DB-2512-0097: 12% a year on $8,450.00 for 52 days = $144.46 -> $144.46."
     else:
-        assert a["F1"].steps[:2] == ("Fee 4500912: 3% of $25,200.00 = $756.00; maximum $750.00 -> $750.00.",
-                                     "Plus the administrative fee for 4500912: $100.00.")
+        po = REFS[account.id]["po"]
+        assert a["F1"].steps[:2] == (f"Fee {po}: 3% of $25,200.00 = $756.00; maximum $750.00 -> $750.00.",
+                                     f"Plus the administrative fee for {po}: $100.00.")
         assert "within the 5% the buyer may permit at its discretion" in a["F2"].steps[0]
         assert a["F6"].missing == ("one rule for Documents not uploaded (the deal states 2)",)
         assert a["F9"].facts["past_dispute_window"] and a["F9"].allowed == Decimal("850.00")
