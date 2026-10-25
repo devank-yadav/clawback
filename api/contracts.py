@@ -565,8 +565,9 @@ class DisputeEmail(Contract):
     """One email about a dispute (Phase E): the dispute email itself, or a reply to the distributor.
 
     held: the drafter's checks failed twice, or the admin's edit failed the outbound filter; the admin edits it.
-    ready: checked, waiting for the admin to send. sent: Mailgun took it. outbox: recorded in the app instead of sent
-    (no Mailgun keys, or DEMO_MODE). failed: Mailgun refused it; sending again retries."""
+    ready: checked, waiting for the admin to send. sent: Gmail (or Mailgun) took it, from the supplier's address.
+    outbox: recorded in the app instead of sent (no Gmail or Mailgun keys, or DEMO_MODE). failed: it didn't go out;
+    sending again retries."""
 
     id: str  # "EM-<run id>-D-0417" for the dispute email; "-R<n>" for a reply
     kind: Literal["dispute", "reply"]
@@ -1445,6 +1446,10 @@ class LibraryDocument(Contract):
     approved_sender: bool
     text: str
     terms: list[LibraryTerm]
+    # Google Drive (api/drive.py): which version is this, and when Drive last changed it. None: not from Drive.
+    version: int | None = None
+    updated_at: datetime | None = None
+    source: Literal["data", "drive", "inbox"] = "data"
 
 
 class ContractLibrary(Contract):

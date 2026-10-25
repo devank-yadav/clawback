@@ -56,10 +56,11 @@ def usd(amount) -> str:
 
 
 def subject(dispute: Dispute, account: accounts.Account) -> str:
-    """The research's format: "Dispute: [Brand], [Check/Remittance #], [Deduction #], [Amount]"."""
+    """The research's format, "Dispute: [Brand], [Check/Remittance #], [Deduction #], [Amount]", then the [D-n] tag a
+    reply is matched by (api/dispute_email.route)."""
     refs = ", ".join(ln.ref for ln in dispute.lines)
     rem = dispute.remittance_id or account.invoice.id
-    return f"Dispute: {account.brand.name}, Remittance {rem}, Deductions {refs}, {usd(dispute.total)} ({dispute.id})"
+    return f"Dispute: {account.brand.name}, Remittance {rem}, Deductions {refs}, {usd(dispute.total)} [{dispute.id}]"
 
 
 def greeting(account: accounts.Account) -> str:

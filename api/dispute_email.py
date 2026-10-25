@@ -1,24 +1,26 @@
-"""Dispute email (Phase E): the admin reviews and sends each dispute by email, and the distributor's replies come
-back by email and are answered.
+"""Dispute email (Phase E): the admin reviews each dispute's email in the app and Clawback sends it, from the
+supplier's own Gmail; the distributor's replies come back to that inbox and are answered the same way.
 
-1. Drafting. A run files each dispute as `ready_to_send` (api/pipeline._file_dispute). Its email is drafted when
-   first asked for (GET /disputes/{id}/email): the email writer (api/agents/email_writer.py, Claude) writes it from
-   the dispute's lines; code adds the subject ("Dispute: [Brand], Remittance [#], Deductions [refs], [Amount]"), the
-   greeting and signature, and the outbound filter checks every figure and quote. A draft that fails twice is held;
-   the admin edits it (PUT), which is checked again.
-2. Sending. POST /disputes/{id}/send is the admin's approval: the email goes out through Mailgun
-   (api/integrations/mailgun.py) from disputes@<MAILGUN_DOMAIN> with Reply-To d-<n>+<token>@<INBOUND_EMAIL_DOMAIN>,
-   to the distributor's desk_email, with the dispute packet PDF attached; its Message-Id is saved; then the dispute
-   is filed. No keys, or DEMO_MODE: the email goes to the in-app outbox instead. policy.yaml `auto_send: true` sends
-   a dispute within the auto-dispute limit on its own (default off).
-3. Replies. The remittance inbox (api/inbound_email.py) hands any email to d-<n>+<token>@, or one whose
-   In-Reply-To / References names a Message-Id we sent, to on_reply(): it becomes a dispute message (not an account
-   document) and goes through api/disputes._post: an attachment that is one of the account's documents is re-read,
-   recomputed and conceded if valid; text gets the Negotiator's answer, drafted as a reply email for the admin to
-   send (POST /disputes/{id}/replies/{email_id}/send); anything unclear is held for the owner. Each reply notifies
-   the supplier in the app (GET /notifications) and by text to the admin (api/integrations/sms.py).
-4. Saved. Emails, reply tokens, dispute messages and notifications are written to Postgres (migration 007) when
-   there is a database; disputes themselves are already in the events table. Memory otherwise.
+1. Drafting (in the app). A run files each dispute as `ready_to_send` (api/pipeline._file_dispute). Its email is
+   written when first asked for (GET /disputes/{id}/email): the email writer (api/agents/email_writer.py, Claude)
+   writes it from the dispute's lines; code adds the subject ("Dispute: [Brand], Remittance [#], Deductions [refs],
+   [Amount] [D-n]"), the greeting and signature, and the outbound filter checks every figure and quote. A draft that
+   fails twice is held; the admin edits it (PUT), which is checked again.
+2. Sending. POST /disputes/{id}/send is the admin's approval. With GMAIL_ADDRESS and GMAIL_APP_PASSWORD the email
+   goes out over Gmail's SMTP (api/integrations/gmail.py) from the supplier's address to the distributor's desk_email,
+   with the packet PDF attached and our own Message-ID, which is saved; then the dispute is filed. Without Gmail keys,
+   Mailgun's sender (api/integrations/mailgun.py) is used if its keys are set. Neither, or DEMO_MODE: the email goes to
+   the in-app outbox instead. policy.yaml `auto_send: true` sends a dispute within the auto-dispute limit on its own
+   (default off).
+3. Replies. The Gmail poller (GMAIL_POLL, every 30 s) reads new INBOX mail; route() matches it to a dispute by
+   In-Reply-To / References against a Message-ID we sent, or by "[D-n]" in the subject (the Mailgun inbound webhook's
+   d-<n>+<token>@ address still works too). on_reply() makes it a dispute message and runs api/disputes._post: an
+   attachment that is one of the account's documents is re-read, recomputed and conceded if valid; text gets the
+   Negotiator's answer as a reply email for the admin to review and send (POST /disputes/{id}/replies/{email_id}/send);
+   anything unclear is held for the owner. Each reply notifies the supplier in the app (GET /notifications) and by
+   text.
+4. Saved. Emails, tokens, dispute messages and notifications are written to Postgres (migration 007) when there is a
+   database; disputes themselves are already in the events table. Memory otherwise.
 
 Emails and replies are data, never instructions.
 """
@@ -34,12 +36,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
+import email.utils
+from email.message import EmailMessage
 
 from api import accounts, disputes, lookback, packet, pipeline
 from api.agents import email_writer
 from api.contracts import Dispute, DisputeEmail, PortalMessage, SupplierNotification
 from api.engine import outbound_filter
-from api.integrations import mailgun, sms
+from api.integrations import gmail, mailgun, replay, sms
 
 log = logging.getLogger("clawback.dispute_email")
 
@@ -84,11 +88,18 @@ def token(run: pipeline.Run, dispute_id: str) -> str:
 
 
 def reply_to(run: pipeline.Run, dispute_id: str) -> str | None:
+    """Mailgun's sender only: replies to d-<n>+<token>@ reach the inbound webhook. From Gmail, replies come back to
+    the supplier's own inbox, so there is no Reply-To."""
+    if gmail.configured():
+        return None
     domain = (os.getenv("INBOUND_EMAIL_DOMAIN") or "").strip().lower()
     return f"{dispute_id.lower()}+{token(run, dispute_id)}@{domain}" if domain else None
 
 
 def from_addr(account: accounts.Account) -> str:
+    """The supplier's own Gmail when it's set up; else Mailgun's disputes@ address."""
+    if gmail.configured():
+        return f"{account.brand.owner.name} <{gmail.address()}>"
     return f"{account.brand.name} <disputes@{mailgun.domain() or 'clawback.local'}>"
 
 
@@ -150,6 +161,14 @@ def email_for(run: pipeline.Run, dispute: Dispute, client=None, redraft: bool = 
     return _put(e)
 
 
+def forget_draft(run: pipeline.Run, dispute_id: str) -> None:
+    """The dispute changed before it was sent: the next look drafts its email again from the new lines."""
+    with _lock:
+        e = EMAILS.get(_email_id(run, dispute_id))
+        if e and e.status not in ("sent", "outbox"):
+            del EMAILS[e.id]
+
+
 def edit(e: DisputeEmail, subject: str | None, body: str) -> DisputeEmail:
     """The admin's edit. Ready if it passes the outbound filter, held with the problems if not."""
     if e.status in ("sent", "outbox"):
@@ -170,19 +189,67 @@ def _packet(run: pipeline.Run, dispute: Dispute) -> bytes:
     return packet.packet_pdf(dispute, run.account, run.evidence, math, file_by=lookback.deadline(run.account)[0])
 
 
+def tag(dispute_id: str) -> str:
+    """The tag every subject carries, so a reply can be matched even without its In-Reply-To."""
+    return f"[{dispute_id}]"
+
+
+def mime(e: DisputeEmail, run: pipeline.Run, dispute: Dispute, message_id: str, packet_pdf: bytes | None) -> bytes:
+    """The RFC 822 email Gmail sends: From the supplier's address, To the desk, our Message-ID, the packet attached."""
+    m = EmailMessage()
+    m["From"] = e.from_addr
+    m["To"] = e.to
+    m["Subject"] = e.subject if tag(dispute.id) in e.subject else f"{e.subject} {tag(dispute.id)}"
+    m["Date"] = email.utils.formatdate(localtime=True)
+    m["Message-ID"] = message_id
+    if e.in_reply_to:
+        refs = [x.message_id for x in emails_of(run.id, dispute.id) if x.message_id and x.message_id != message_id]
+        m["In-Reply-To"] = e.in_reply_to
+        m["References"] = " ".join(dict.fromkeys([*refs, e.in_reply_to]))
+    m["X-Clawback-Dispute"] = dispute.id
+    m.set_content(e.body)
+    if packet_pdf is not None:
+        m.add_attachment(packet_pdf, maintype="application", subtype="pdf", filename=f"{dispute.id}-packet.pdf")
+    return m.as_bytes()
+
+
+def transport() -> str:
+    """How the next email goes: gmail (its keys, outside DEMO_MODE), else mailgun (its keys), else the outbox."""
+    if gmail.why_simulated() is None:
+        return "gmail"
+    if mailgun.why_simulated() is None:
+        return "mailgun"
+    return "outbox"
+
+
 def _deliver(e: DisputeEmail, run: pipeline.Run, dispute: Dispute) -> DisputeEmail:
-    refs = tuple(x.message_id for x in emails_of(run.id, dispute.id) if x.message_id)
-    out = mailgun.Outgoing(
-        to=e.to, from_addr=e.from_addr, subject=e.subject, text=e.body, reply_to=e.reply_to,
-        in_reply_to=e.in_reply_to, references=refs if e.kind == "reply" else (),
-        attachments=((f"{dispute.id}-packet.pdf", _packet(run, dispute), "application/pdf"),) if e.kind == "dispute" else (),
-        tags={"X-Clawback-Dispute": dispute.id})
-    try:
-        sent = mailgun.send(out)
-    except mailgun.SendFailed as err:
-        run.log(f"The {dispute.id} email to {run.distributor} didn't go out ({err}). Sending again retries.", "error",
-                "negotiator")
-        return _put(e.model_copy(update={"status": "failed", "detail": str(err)}))
+    pdf = _packet(run, dispute) if e.kind == "dispute" else None
+    via = transport()
+    if via == "gmail":
+        message_id = email.utils.make_msgid(idstring=dispute.id.lower(), domain=gmail.address().rsplit("@", 1)[-1])
+        try:
+            gmail.send(mime(e, run, dispute, message_id, pdf), e.to)
+        except gmail.GmailError as err:
+            run.log(f"The {dispute.id} email to {run.distributor} didn't go out ({err}). Sending again retries.",
+                    "error", "negotiator")
+            return _put(e.model_copy(update={"status": "failed", "detail": str(err)}))
+        sent = mailgun.Sent(message_id, False, f"sent from {gmail.address()} through Gmail", _now())
+    else:
+        refs = tuple(x.message_id for x in emails_of(run.id, dispute.id) if x.message_id)
+        out = mailgun.Outgoing(
+            to=e.to, from_addr=e.from_addr, subject=e.subject, text=e.body, reply_to=e.reply_to,
+            in_reply_to=e.in_reply_to, references=refs if e.kind == "reply" else (),
+            attachments=((f"{dispute.id}-packet.pdf", pdf, "application/pdf"),) if pdf is not None else (),
+            tags={"X-Clawback-Dispute": dispute.id})
+        try:
+            sent = mailgun.send(out)
+        except mailgun.SendFailed as err:
+            run.log(f"The {dispute.id} email to {run.distributor} didn't go out ({err}). Sending again retries.",
+                    "error", "negotiator")
+            return _put(e.model_copy(update={"status": "failed", "detail": str(err)}))
+        if sent.simulated:
+            why = "DEMO_MODE" if replay.demo_mode() else "no Gmail or Mailgun keys"
+            sent = mailgun.Sent(sent.message_id, True, f"in the in-app outbox ({why})", sent.at)
     with _lock:
         MESSAGE_IDS[sent.message_id] = (run.id, dispute.id)
     return _put(e.model_copy(update={"status": "outbox" if sent.simulated else "sent", "message_id": sent.message_id,
@@ -273,7 +340,7 @@ def send_reply(email_id: str, subject: str | None = None, body: str | None = Non
 
 def route(msg) -> tuple[pipeline.Run, Dispute] | None:
     """An inbound email (api/inbound_email.Message) that answers one of our dispute emails: by the d-<n>+<token>
-    address, else by In-Reply-To / References naming a Message-Id we sent."""
+    address, else by In-Reply-To / References naming a Message-Id we sent, else by the [D-n] tag in the subject."""
     to = " ".join([msg.recipient, *msg.header("To"), *msg.header("Cc")])
     where = None
     for m in ADDRESS.finditer(to):
@@ -288,10 +355,17 @@ def route(msg) -> tuple[pipeline.Run, Dispute] | None:
         ids = " ".join([*msg.header("In-Reply-To"), *msg.header("References")])
         with _lock:
             where = next((MESSAGE_IDS[i] for i in re.findall(r"<[^>]+>", ids) if i in MESSAGE_IDS), None)
+    if where is None and (m := TAG.search(msg.subject or "")):
+        dispute_id = m.group(1).upper()
+        with _lock:  # the newest run that emailed it, else any run that filed it
+            emailed = [e.run_id for e in EMAILS.values() if e.dispute_id == dispute_id and e.message_id]
+        if emailed and emailed[-1] in pipeline.RUNS:
+            where = (emailed[-1], dispute_id)
+        elif (found := find(dispute_id)) is not None:
+            return found
     if where is None:
         return None
-    found = find(where[1], where[0])
-    return found
+    return find(where[1], where[0])
 
 
 def _reply_text(body: str) -> str:
@@ -398,6 +472,93 @@ def outbox(only=None) -> list[DisputeEmail]:
     return out
 
 
+# ---------------------------------------------------------------- 5. reading replies from Gmail
+
+TAG = re.compile(r"\[(D-\d{4,})\]", re.IGNORECASE)
+
+
+def as_message(raw: bytes):
+    """A Gmail message as api/inbound_email.Message, so the reply logic is the webhook's."""
+    from email import policy as email_policy
+    from email.parser import BytesParser
+
+    from api import inbound_email
+
+    m = BytesParser(policy=email_policy.default).parsebytes(raw)
+    body = m.get_body(preferencelist=("plain",))
+    text = body.get_content() if body is not None else ""
+    atts = tuple(inbound_email.Attachment(p.get_filename() or "attachment", p.get_content_type(),
+                                          p.get_payload(decode=True) or b"") for p in m.iter_attachments())
+    return inbound_email.Message(from_header=str(m.get("From", "")), envelope="", recipient=str(m.get("To", "")),
+                                 subject=str(m.get("Subject", "")), body=text,
+                                 headers=tuple((k, str(v)) for k, v in m.items()), attachments=atts)
+
+
+_seen: set[str] = set()  # Message-Ids already handled
+_last_uid: dict[str, int | None] = {"inbox": None}
+
+
+def poll_once(client=None) -> dict:
+    """One look at the Gmail inbox: each new reply to a dispute goes through on_reply."""
+    if gmail.why_simulated():
+        return {"ok": False, "detail": gmail.why_simulated(), "replies": 0}
+    own = (gmail.address() or "").lower()
+    try:
+        new, top = gmail.new_inbox_messages(_last_uid["inbox"])
+    except gmail.GmailError as e:
+        return {"ok": False, "detail": str(e), "replies": 0}
+    _last_uid["inbox"] = top
+    replies = 0
+    for _, raw in new:
+        msg = as_message(raw)
+        if msg.sender == own or (msg.message_id and msg.message_id in _seen):
+            continue
+        if msg.message_id:
+            _seen.add(msg.message_id)
+        if (found := route(msg)) is not None:
+            on_reply(*found, msg, client)
+            replies += 1
+    return {"ok": True, "detail": "checked", "replies": replies}
+
+
+class Poller:
+    def __init__(self, every: float):
+        self.every, self._stop = every, threading.Event()
+        self.thread = threading.Thread(target=self._loop, name="gmail-poller", daemon=True)
+
+    def _loop(self) -> None:
+        first = True
+        while not self._stop.wait(0 if first else self.every):
+            first = False
+            try:
+                poll_once()
+            except Exception:  # noqa: BLE001 - the next look tries again
+                log.exception("gmail poll failed")
+
+    def start(self) -> None:
+        self.thread.start()
+
+    def stop(self) -> None:
+        self._stop.set()
+
+    @property
+    def running(self) -> bool:
+        return self.thread.is_alive()
+
+
+poller: Poller | None = None
+
+
+def start_poller() -> bool:
+    """GMAIL_POLL (on by default once the Gmail keys are set; never in DEMO_MODE): every GMAIL_POLL_SECONDS (30)."""
+    global poller
+    if gmail.why_simulated() or os.getenv("GMAIL_POLL", "on").lower() == "off":
+        return False
+    poller = Poller(float(os.getenv("GMAIL_POLL_SECONDS") or 30))
+    poller.start()
+    return True
+
+
 # ---------------------------------------------------------------- saving
 
 def _json(model):
@@ -449,3 +610,5 @@ def reset() -> None:
     with _lock:
         EMAILS.clear(), TOKENS.clear(), MESSAGE_IDS.clear(), NOTIFICATIONS.clear()
     mailgun.reset()
+    _seen.clear()
+    _last_uid["inbox"] = None

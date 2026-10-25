@@ -99,14 +99,14 @@ def test_disputes_start_as_drafts_and_the_email_is_drafted_from_the_lines():
     e = dispute_email.email_for(run, d, fake)
     assert e.status == "ready" and e.written_by == "claude" and not e.problems
     refs = ", ".join(ln.ref for ln in d.lines)
-    assert e.subject == f"Dispute: Peak Bar Co., Remittance {d.remittance_id}, Deductions {refs}, $4,120.00 (D-0417)"
+    assert e.subject == f"Dispute: Peak Bar Co., Remittance {d.remittance_id}, Deductions {refs}, $4,120.00 [D-0417]"
     assert re.fullmatch(r"d-0417\+[0-9a-f]{12}@in\.clawback\.test", e.reply_to)
     assert e.to == "deductions@northmart.example" and e.from_addr.endswith("<disputes@clawback.local>")
     assert e.body.startswith("Hello Northmart deductions team,") and e.body.count("disputed.") == 4
     assert "Dana Okafor" in e.body and e.attachments == ["D-0417-packet.pdf"]
 
 
-def test_draft_approve_send_through_mailgun_files_the_dispute(mg, monkeypatch):
+def test_without_gmail_keys_mailgun_still_sends_and_files_the_dispute(mg, monkeypatch):
     from api.main import app
 
     fake = EmailClaude()
@@ -138,7 +138,7 @@ def test_no_keys_or_demo_mode_goes_to_the_in_app_outbox():
     run = finished_march(fake)
     filed, e = dispute_email.send_dispute(run, _dispute(run), client=fake)
     assert filed.status == "filed" and e.status == "outbox" and e.message_id.startswith("<sim-")
-    assert mailgun.OUTBOX and "no MAILGUN_API_KEY" in e.detail
+    assert mailgun.OUTBOX and "no Gmail or Mailgun keys" in e.detail
 
 
 def test_a_failed_call_falls_back_to_the_template_and_an_invented_figure_twice_is_held():
@@ -272,3 +272,187 @@ def test_another_supplier_cant_see_or_send_the_dispute(monkeypatch):
     assert _dispute(run).status == "ready_to_send"
     users.reset()
     accounts.clear()
+
+
+# ---------------------------------------------------------------- the supplier's Gmail: SMTP out, IMAP in
+
+class FakeSmtp:
+    """Gmail's SMTP server: login with the app password, sendmail, quit."""
+
+    def __init__(self, password="app-pw"):
+        self.password, self.sent = password, []
+
+    def login(self, user, password):
+        import smtplib
+
+        if password != self.password:
+            raise smtplib.SMTPAuthenticationError(535, b"5.7.8 Username and Password not accepted")
+        return 235, b"Accepted"
+
+    def sendmail(self, from_addr, to, raw):
+        self.sent.append((from_addr, to, raw))
+        return {}
+
+    def quit(self):
+        return 221, b"bye"
+
+
+class FakeImap:
+    """Gmail's IMAP server, enough for reading INBOX: login, SELECT, UID SEARCH, UID FETCH."""
+
+    def __init__(self):
+        self.inbox: list[bytes] = []
+
+    def login(self, user, password):
+        return "OK", [b"ok"]
+
+    def logout(self):
+        return "BYE", [b""]
+
+    def select(self, box, readonly=False):
+        assert box == "INBOX" and readonly
+        return "OK", [str(len(self.inbox)).encode()]
+
+    def uid(self, command, *args):
+        if command == "SEARCH":
+            return "OK", [" ".join(str(i + 1) for i in range(len(self.inbox))).encode()]
+        uid = int(args[0])
+        return "OK", [(f"{uid} (UID {uid} BODY[] {{1}}".encode(), self.inbox[uid - 1]), b")"]
+
+
+@pytest.fixture
+def gm(monkeypatch):
+    from api.integrations import gmail
+
+    smtp, imap = FakeSmtp(), FakeImap()
+    monkeypatch.setenv("GMAIL_ADDRESS", "dana.peakbar@gmail.com")
+    monkeypatch.setenv("GMAIL_APP_PASSWORD", "app-pw")
+    monkeypatch.setattr(gmail, "smtp_fn", lambda: smtp)
+    monkeypatch.setattr(gmail, "connect_fn", lambda: imap)
+    return smtp, imap
+
+
+def _parsed(raw: bytes):
+    from email import policy
+    from email.parser import BytesParser
+
+    return BytesParser(policy=policy.default).parsebytes(raw)
+
+
+def _distributor_reply(to_mid, subject, body, *, mid, attachment=None) -> bytes:
+    from email.message import EmailMessage
+
+    m = EmailMessage()
+    m["From"], m["To"], m["Subject"], m["Message-ID"] = ("Desk <deductions@northmart.example>",
+                                                        "dana.peakbar@gmail.com", subject, mid)
+    if to_mid:
+        m["In-Reply-To"], m["References"] = to_mid, to_mid
+    m.set_content(body)
+    if attachment:
+        m.add_attachment(attachment[1], maintype="text", subtype="markdown", filename=attachment[0])
+    return m.as_bytes()
+
+
+def test_review_then_send_goes_out_from_the_suppliers_gmail(gm, mg, monkeypatch):
+    from api.main import app
+
+    smtp, _ = gm
+    fake = EmailClaude()
+    monkeypatch.setattr(claude_mod.anthropic, "Anthropic", lambda *a, **k: fake)
+    run = finished_march(fake)
+    client = TestClient(app)
+    email = client.get(f"/disputes/D-0417/email?run_id={run.id}").json()
+    assert email["from_addr"] == "Dana Okafor <dana.peakbar@gmail.com>" and email["reply_to"] is None
+    assert not smtp.sent  # nothing goes out before the admin says so
+    body = client.post(f"/disputes/D-0417/send?run_id={run.id}").json()
+    assert (body["dispute"]["status"], body["email"]["status"]) == ("filed", "sent")
+    ((frm, to, raw),) = smtp.sent
+    assert (frm, to) == ("dana.peakbar@gmail.com", ["deductions@northmart.example"])
+    m = _parsed(raw)
+    assert m["Subject"].endswith("[D-0417]") and m["Message-ID"] == body["email"]["message_id"]
+    assert m["Message-ID"].endswith("@gmail.com>") and "through Gmail" in body["email"]["detail"]
+    (pdf,) = list(m.iter_attachments())
+    assert pdf.get_filename() == "D-0417-packet.pdf" and pdf.get_content()[:4] == b"%PDF"
+    assert not mg.requests  # Gmail wins over Mailgun when both are set
+    assert client.post(f"/disputes/D-0417/send?run_id={run.id}").status_code == 409
+
+
+def test_a_wrong_app_password_fails_and_sending_again_retries(gm, monkeypatch):
+    smtp, _ = gm
+    monkeypatch.setenv("GMAIL_APP_PASSWORD", "wrong")
+    fake = EmailClaude()
+    run = finished_march(fake)
+    d, e = dispute_email.send_dispute(run, _dispute(run), client=fake)
+    assert e.status == "failed" and "app password" in e.detail and d.status == "ready_to_send" and not smtp.sent
+    monkeypatch.setenv("GMAIL_APP_PASSWORD", "app-pw")
+    d, e = dispute_email.send_dispute(run, _dispute(run), client=fake)
+    assert (d.status, e.status) == ("filed", "sent") and len(smtp.sent) == 1
+
+
+def test_demo_mode_keeps_the_outbox_even_with_gmail_keys(gm, monkeypatch):
+    smtp, _ = gm
+    fake = EmailClaude()
+    run = finished_march(fake)
+    monkeypatch.setenv("DEMO_MODE", "true")
+    _, e = dispute_email.send_dispute(run, _dispute(run), client=fake)
+    assert e.status == "outbox" and "DEMO_MODE" in e.detail and not smtp.sent
+
+
+def test_gmail_replies_match_by_in_reply_to_and_the_answer_is_sent_after_approval(gm):
+    smtp, imap = gm
+    fake = EmailClaude()
+    run = finished_march(fake)
+    _, e = dispute_email.send_dispute(run, _dispute(run), client=fake)
+    assert dispute_email.poll_once(fake)["replies"] == 0  # the first look notes where INBOX stands
+    imap.inbox.append(_distributor_reply(e.message_id, "RE: deductions", "There was no unit cap on the Spring promo."
+                                         "\n\nOn Sat, Dana wrote:\n> old", mid="<r1@northmart.example>"))
+    assert dispute_email.poll_once(fake)["replies"] == 1
+    theirs = [m for m in dispute_email.thread(run, "D-0417") if m.from_party == "northmart"][-1]
+    assert (theirs.channel, theirs.text, theirs.classification) == (
+        "email", "There was no unit cap on the Spring promo.", "claim_without_document")
+    (reply,) = [x for x in dispute_email.emails_of(run.id, "D-0417") if x.kind == "reply"]
+    assert reply.status == "ready" and "signed change" in reply.body and len(smtp.sent) == 1  # waits for the admin
+    assert "Northmart replied to D-0417" in dispute_email.notifications()[0].text
+    sent = dispute_email.send_reply(reply.id)
+    assert sent.status == "sent" and len(smtp.sent) == 2
+    m = _parsed(smtp.sent[-1][2])
+    assert m["In-Reply-To"] == "<r1@northmart.example>" and e.message_id in m["References"]
+    assert m["Subject"].startswith("Re: Dispute: Peak Bar Co.") and m["Subject"].endswith("[D-0417]")
+    assert [x.channel for x in dispute_email.thread(run, "D-0417") if x.from_party == "clawback"] == ["email"]
+    assert dispute_email.poll_once(fake)["replies"] == 0  # read once
+
+
+def test_gmail_replies_match_by_subject_tag_and_our_own_mail_is_skipped(gm):
+    _, imap = gm
+    fake = EmailClaude()
+    run = finished_march(fake)
+    dispute_email.send_dispute(run, _dispute(run), client=fake)
+    dispute_email.poll_once(fake)
+    imap.inbox.append(_distributor_reply(None, "Re: Dispute: Peak Bar Co. [D-0417]",
+                                         "Agreed, Mint wasn't part of the Spring promo.", mid="<r2@northmart.example>"))
+    imap.inbox.append(_distributor_reply(None, "[D-0417] note", "x", mid="<own@gmail.com>").replace(
+        b"Desk <deductions@northmart.example>", b"dana.peakbar@gmail.com"))
+    imap.inbox.append(_distributor_reply(None, "Lunch?", "unrelated", mid="<r3@x>"))
+    assert dispute_email.poll_once(fake)["replies"] == 1
+    assert [m.classification for m in dispute_email.thread(run, "D-0417") if m.from_party == "northmart"] == ["agrees"]
+
+
+def test_the_signed_amendment_by_gmail_concedes_1000(gm):
+    _, imap = gm
+    fake = EmailClaude()
+    run = finished_march(fake)
+    _, e = dispute_email.send_dispute(run, _dispute(run), client=fake)
+    dispute_email.poll_once(fake)
+    text = run.account.docs["amendment-1"].read_bytes()
+    imap.inbox.append(_distributor_reply(e.message_id, "Re", "The cap was raised to 6,000 units. Signed amendment "
+                                         "attached.", mid="<r4@northmart.example>", attachment=("amendment-1.md", text)))
+    dispute_email.poll_once(fake)
+    assert final(run)["C4"] == ("split", D(540), D(1000))
+    t = last_totals(run)
+    assert (t.disputed, t.accepted) == (D(3120), D(3730))
+    (reply,) = [x for x in dispute_email.emails_of(run.id, "D-0417") if x.kind == "reply"]
+    assert "withdraw $1,000" in reply.body and reply.status == "ready"
+
+
+def test_without_gmail_keys_nothing_polls():
+    assert dispute_email.poll_once()["ok"] is False and dispute_email.start_poller() is False

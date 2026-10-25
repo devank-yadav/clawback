@@ -15,6 +15,8 @@ from api.routes import accounts, approvals, suppliers, audit, db, demo, eval, pa
 from api.routes import remittance as remittance_routes
 from api.routes import auth as auth_routes
 from api.routes import dispute_mail
+from api.routes import drive as drive_routes
+from api import dispute_email, drive
 
 load_dotenv()
 log = logging.getLogger("clawback")
@@ -33,7 +35,15 @@ async def lifespan(_app: FastAPI):
         log.info("nessie poller started")
     if qbo_source.start_poller(lambda p: pipeline.start_for_deposit(p, account=p.account_id)):
         log.info("quickbooks payments poller started")
+    if drive.start_poller():
+        log.info("google drive poller started")
+    if dispute_email.start_poller():
+        log.info("gmail poller started (dispute replies and Sent)")
     yield
+    if dispute_email.poller:
+        dispute_email.poller.stop()
+    if drive.poller:
+        drive.poller.stop()
     if nessie.poller:
         nessie.poller.stop()
     if qbo_source.poller:
@@ -54,6 +64,7 @@ for r in (runs, payments, portal, approvals, webhooks, scenario, eval, audit, de
     app.include_router(r.router)
 app.include_router(remittance_routes.router)  # bring in a remittance advice (api/remittance.py)
 app.include_router(auth_routes.router)  # sign-in (api/users.py)
+app.include_router(drive_routes.router)  # Google Drive: Sync now, status (api/drive.py)
 app.include_router(dispute_mail.router)  # dispute email: review, send, thread (api/dispute_email.py)
 
 

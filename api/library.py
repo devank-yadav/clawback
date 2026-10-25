@@ -3,7 +3,9 @@ library (each distributor's signed deal, locked, with the terms the agents read 
 
 from __future__ import annotations
 
-from api import accounts, documents, inbound_email, sources
+from datetime import datetime, timezone
+
+from api import accounts, documents, drive, inbound_email, sources
 from api.contracts import Connection, ContractLibrary, LibraryDocument, LibraryTerm
 from api.integrations import nessie, qbo_source, replay, sms
 
@@ -61,6 +63,27 @@ def _inbox(account: accounts.Account | None) -> Connection:
                       **(_seen("inbox", account) if live else {}))
 
 
+def _drive() -> Connection:
+    """Google Drive (api/drive.py): watching the shared folder, or how to connect it."""
+    if not drive.configured():
+        return Connection(id="drive", name="Google Drive", brings="Contracts, promotions, remittances, correspondence",
+                          status="not_connected",
+                          detail="Not connected: share your Clawback folder with the service account "
+                                 "(GOOGLE_SERVICE_ACCOUNT_JSON, DRIVE_ROOT_FOLDER_ID). Upload works meanwhile")
+    s = drive.STATUS
+    if s.changed_at:
+        mins = int((datetime.now(timezone.utc) - s.changed_at).total_seconds() // 60)
+        ago = "just now" if mins < 1 else f"{mins} min ago"
+        detail = f"Watching the shared folder · last change {ago} · {s.files} files"
+    elif s.checked_at:
+        detail = f"Watching the shared folder · no changes yet · {s.files} files"
+    else:
+        detail = "Connected; the first look is on its way"
+    return Connection(id="drive", name="Google Drive", brings="Contracts, promotions, remittances, correspondence",
+                      status="connected", detail=detail, checked_at=s.checked_at, problem=s.problem, last_seen=s.last,
+                      last_seen_at=s.changed_at)
+
+
 def connections(account: accounts.Account | None = None) -> list[Connection]:
     """Every place information comes from, as it is on this server; the three that start runs say what they've seen
     for the account in view."""
@@ -78,8 +101,7 @@ def connections(account: accounts.Account | None = None) -> list[Connection]:
                    status="coming_soon", detail="Deduction exports pulled on a schedule"),
         Connection(id="edi", name="EDI 820", brings="Remittance advice lines straight from the distributor",
                    status="coming_soon", detail="The standard payment-and-remittance message"),
-        Connection(id="drive", name="Google Drive / DocuSign", brings="Signed contracts",
-                   status="coming_soon", detail="Import once; the signed original stays locked"),
+        _drive(),
     ]
 
 
@@ -125,7 +147,10 @@ def library(account: accounts.Account) -> ContractLibrary:
             mine = [LibraryTerm(type=t.type, quote=t.exact_quote, char_start=t.char_start, char_end=t.char_end,
                                 status=t.status, discretion=t.discretion, label=_label(t))
                     for t in terms if t.source_doc_id == doc_id and 0 <= t.char_start < t.char_end <= len(text)]
+            v = drive.current_version(account.id, doc_id)
+            source = "drive" if doc_id in account.drive or v else "inbox" if doc_id in account.inbound else "data"
             out.append(LibraryDocument(
+                version=v.version if v else None, updated_at=v.seen_at if v else None, source=source,
                 id=doc.id, title=f"{TITLE.get(doc.kind, 'Document')} · {doc.id.replace('-', ' ')}", kind=doc.kind,
                 locked=doc.kind in ("deal", "amendment") or doc.signed_by_both, sender=doc.sender,
                 approved_sender=doc.approved_sender, text=text,

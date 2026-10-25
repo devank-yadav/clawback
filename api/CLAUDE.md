@@ -79,13 +79,20 @@ decision gate and approvals; Data model; API, live updates and integrations.
   and checks ids with tenancy.account_or_404 / can_see_run: another supplier's ids are 404, signed out 401 once any
   password is set; no password anywhere (laptops, tests) stays open. Tokens (OWNER_TOKEN, CLAWBACK_ADMIN_TOKEN) see
   every supplier. api/tests/test_tenancy.py walks every Peak Bar route as Lantern Hill.
-- Dispute email (api/dispute_email.py, api/agents/email_writer.py, api/integrations/mailgun.py, routes
-  api/routes/dispute_mail.py, migration 007): runs file disputes as ready_to_send; GET /disputes/{id}/email drafts
-  the email (Claude, checked by the outbound filter, one retry, then held; the code template when the call fails);
-  PUT edits it, POST /disputes/{id}/send emails it with the packet PDF (Mailgun, else the in-app outbox) and files it.
-  Replies to d-<n>+<token>@INBOUND_EMAIL_DOMAIN or In-Reply-To a sent Message-Id go through disputes._post; the
-  Negotiator's answer waits as a reply email (POST /disputes/{id}/replies/{email_id}/send); GET /notifications.
-  policy.yaml auto_send (default false) sends within-limit disputes on their own.
+- Dispute email (api/dispute_email.py, api/agents/email_writer.py, api/integrations/gmail.py, mailgun.py, routes
+  api/routes/dispute_mail.py, migration 007): runs file disputes as ready_to_send; GET /disputes/{id}/email drafts the
+  email in the app (Claude, checked by the outbound filter, one retry, then held; the code template when the call
+  fails); PUT edits it; POST /disputes/{id}/send is the admin's approval: sent over Gmail SMTP (smtp.gmail.com:465 SSL,
+  GMAIL_ADDRESS + GMAIL_APP_PASSWORD) from the supplier's address with the packet PDF, our Message-ID saved and [D-n]
+  in the subject; Mailgun when only its keys are set; the in-app outbox with neither or in DEMO_MODE; then filed. The
+  Gmail poller (GMAIL_POLL, IMAP, 30 s) matches replies by In-Reply-To / References or [D-n] and runs disputes._post;
+  the Negotiator's answer waits as a reply email (POST /disputes/{id}/replies/{email_id}/send); GET /notifications.
+  policy.yaml auto_send (default false).
+- Google Drive (api/drive.py, routes api/routes/drive.py, migration 008): with GOOGLE_SERVICE_ACCOUNT_JSON and
+  DRIVE_ROOT_FOLDER_ID, a poller (30 s, Changes API) versions each file in <Supplier>/<Distributor>/{Contracts,
+  Promotions, Remittances, Correspondence, Sales data} by sha256; contracts and notices become account documents under
+  DRIVE_DOCS_DIR (Account.drive, read by runs), a signed amendment under an open dispute concedes through
+  disputes._new_document, a remittance starts a run; POST /drive/sync; the Drive card in library.connections().
 - One admin (api/auth.py): the brand's owner answers every question and approves every credit memo, in the app or by
   text to OWNER_PHONE (there is no controller; account.yaml's brand.controller is still accepted and unused). With
   OWNER_TOKEN set, the in-app answer and approval need it as X-Clawback-Role-Token; POST /questions/{id}/answer takes

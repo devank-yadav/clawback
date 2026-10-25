@@ -292,9 +292,11 @@ def _short(quote: str, n: int = 160) -> str:
 def documents_of(account: accounts.Account) -> list[str]:
     """What a run reads: the account's deal documents, then any email the remittance inbox kept for it
     (api/inbound_email.py), oldest first. An approved sender's email can change the deal; anything else is a claim,
-    exactly as for the emails in data/."""
+    exactly as for the emails in data/. Then the documents Google Drive brought in (api/drive.py), drafts aside: a
+    signed amendment there changes the deal like one in data/."""
     deal = account.config.deal_docs
-    return [*deal, *(d for d in account.inbound if d not in deal)]
+    drive = [d for d in account.drive if d not in deal and "draft" not in d]
+    return [*deal, *(d for d in account.inbound if d not in deal), *drive]
 
 
 def _read_terms(run: Run, client) -> list[Term]:
