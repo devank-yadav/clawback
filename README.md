@@ -138,6 +138,20 @@ eval/     run.py (engine mode) and agent.py (agent mode)
 config/   policy.yaml, the owner's policy
 ```
 
+## Fetch.ai agent
+
+![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3)
+![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1)
+
+| Agent | Address |
+| --- | --- |
+| **Clawback Assistant** | `agent1qtqhltj3d3u46j3nelxphsn8ezgzwhgrpx54r7m6m0x7l3mg08h757x2pa2` |
+
+A uAgents mailbox agent with the Agent Chat Protocol, registered on Agentverse and running on our Vultr VM. In
+ASI:One the owner asks "What did Northmart take this month?" and gets the totals, open disputes and the pending
+question (`GET /summary`), and can answer that question in the chat (`POST /questions/{id}/answer`). It is read-only
+otherwise and never approves money. Code and run steps: [fetch_agent/README.md](fetch_agent/README.md).
+
 ## Safety design
 
 - **Two readers.** Claude and Gemini read every document separately. A term they read differently is marked

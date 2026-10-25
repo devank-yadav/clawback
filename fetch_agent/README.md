@@ -1,5 +1,10 @@
 # Clawback Assistant (Fetch.ai ASI:One Agent Challenge)
 
+![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3)
+![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1)
+
+**Agent:** Clawback Assistant · **Address:** `agent1qtqhltj3d3u46j3nelxphsn8ezgzwhgrpx54r7m6m0x7l3mg08h757x2pa2`
+
 An Agentverse agent that Dana, the owner of Peak Bar Co., chats with in ASI:One. Every name is fictional.
 
 - **"What did Northmart take this month?"** (or "status", "what's waiting on me?", "hi") → it calls
