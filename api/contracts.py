@@ -1527,11 +1527,16 @@ class NeedsYou(Contract):
 
 
 class OpenDispute(Contract):
+    """amount is what's still awaiting the distributor's reply: the dispute's total less the lines they agreed to.
+    The open disputes' amounts add up to the totals' disputed_awaiting_reply."""
+
     dispute_id: str
     account_id: str
     distributor: str
     run_id: str
     amount: Money
+    total: Money | None = None  # the dispute as filed (or as recomputed after a signed document)
+    agreed: Money = Decimal("0.00")  # of it, lines the distributor agreed to: recovered, with evidence
     status: str
     filed_at: datetime | None = None
     file_by: date | None = None  # the deal's dispute window (api/lookback.deadline), as on the question's details

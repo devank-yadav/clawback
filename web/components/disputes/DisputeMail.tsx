@@ -7,9 +7,7 @@
 //    and their Send buttons.
 // Nothing here computes money or writes a figure: the API drafts and checks every word that goes out.
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { withAccount } from "@/lib/accounts";
 import { AlertTriangle, Check, Mail, Paperclip, Send } from "lucide-react";
 import * as api from "@/lib/api";
 import { ApiError } from "@/lib/api";
@@ -29,12 +27,27 @@ const WRITER: Record<DisputeEmail["written_by"], string> = {
   code: "Written by code",
 };
 
+/** Where a dispute went, in the same words everywhere: sent by email, or filed on the distributor's portal with the
+ * email copy kept here (no mailbox connected yet), or why it couldn't go and a way to try again. */
+export function sentWords(email: Pick<DisputeEmail, "status" | "to" | "sent_at">, distributor?: string): string | null {
+  if (email.status === "sent") return `Sent to ${email.to}${email.sent_at ? ` at ${when(email.sent_at)}` : ""}`;
+  if (email.status === "outbox") return `Filed on ${distributor ? `${distributor}’s` : "the distributor’s"} portal · email copy saved (no mailbox connected yet)`;
+  return null;
+}
+
 /** What happened to an email that left (or tried to). */
-export function SentLine({ email }: { email: DisputeEmail }) {
-  if (email.status === "sent") return <div className="dm-sent"><Check aria-hidden="true" /><span>Sent to {email.to} {email.sent_at ? `at ${when(email.sent_at)}` : ""}{email.detail && <small>{email.detail}</small>}</span></div>;
-  // Kept in the app because no mail account is connected: say so plainly, and never claim it went out.
-  if (email.status === "outbox") return <div className="dm-sent is-outbox"><Mail aria-hidden="true" /><span>Saved, not sent{email.sent_at ? ` · ${when(email.sent_at)}` : ""}<small>Connect Gmail to send it from your address. <Link href={withAccount("/connections", email.account_id)}>Open Connections</Link></small></span></div>;
-  if (email.status === "failed") return <p className="dm-problems" role="alert"><AlertTriangle aria-hidden="true" /> Couldn’t send{email.detail ? `: ${email.detail}` : ""}. Send again to retry.</p>;
+export function SentLine({ email, distributor, onRetry }: { email: DisputeEmail; distributor?: string; onRetry?: () => void }) {
+  if (email.status === "sent") return <div className="dm-sent"><Check aria-hidden="true" /><span>{sentWords(email, distributor)}{email.detail && <small>{email.detail}</small>}</span></div>;
+  // Filed on the portal; the email copy is kept here because no mailbox is connected. Never claim it was emailed.
+  if (email.status === "outbox") return <div className="dm-sent is-outbox"><Check aria-hidden="true" /><span>{sentWords(email, distributor)}{email.sent_at ? <small>{when(email.sent_at)}</small> : null}</span></div>;
+  if (email.status === "failed") {
+    return (
+      <div className="dm-problems" role="alert">
+        <AlertTriangle aria-hidden="true" />
+        <div><strong>Couldn’t send{email.detail ? `: ${email.detail}` : ""}</strong>{onRetry && <button className="cx-btn is-ghost" onClick={onRetry}>Try again</button>}</div>
+      </div>
+    );
+  }
   return null;
 }
 
@@ -117,7 +130,7 @@ function EmailEditor({ email, sendLabel, onSend, onSave, busy, problem }: {
 }
 
 /** "Review and send": the dispute's email, drafted on the first look. `onSent` runs once it was sent or outboxed. */
-export function ReviewAndSend({ disputeId, runId, onSent }: { disputeId: string; runId: string | null; onSent?: () => void }) {
+export function ReviewAndSend({ disputeId, runId, distributor, onSent }: { disputeId: string; runId: string | null; distributor?: string; onSent?: () => void }) {
   const load = useCallback(() => api.fetchDisputeEmail(disputeId, runId), [disputeId, runId]);
   const fetched = useFetched(load);
   const [email, setEmail] = useState<DisputeEmail | null>(null);
@@ -150,22 +163,23 @@ export function ReviewAndSend({ disputeId, runId, onSent }: { disputeId: string;
       : <p className="dm-loading" role="status">Drafting the email from the dispute lines…</p>;
   }
   const done = shown.status === "sent" || shown.status === "outbox";
-  if (done && !open) return <SentLine email={shown} />;
+  const retry = () => void act(async () => (await api.sendDispute(disputeId, runId, shown.subject, shown.body)).email, true);
+  if (done && !open) return <SentLine email={shown} distributor={distributor} />;
   return (
     <>
-      {shown.status === "failed" && <SentLine email={shown} />}
+      {shown.status === "failed" && <SentLine email={shown} distributor={distributor} onRetry={busy ? undefined : retry} />}
       {!done && (
         <div className="cm-ready">
           <span className="cm-ready-text"><Mail aria-hidden="true" /><span><strong>{shown.subject}</strong><small>To {shown.to} · {shown.attachments.length} attachment{shown.attachments.length === 1 ? "" : "s"}{shown.problems.length ? " · needs a fix before it can go" : ""}</small></span></span>
           <button className="cm-send is-glow" onClick={() => setOpen(true)}><Send aria-hidden="true" />Review and send</button>
         </div>
       )}
-      <SlideOver open={open} onClose={close} title={done ? "Sent" : "Review and send"} wide>
+      <SlideOver open={open} onClose={close} title={done ? (shown.status === "sent" ? "Sent" : "Dispute filed") : "Review and send"} wide>
         {done ? (
           <motion.div className="cm-done" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 22 }}>
             <motion.span className="cm-check" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 420, damping: 16, delay: 0.05 }}><Check aria-hidden="true" /></motion.span>
-            <h3>{shown.status === "sent" ? `Sent to ${shown.to}` : "Saved, not sent"}</h3>
-            <SentLine email={shown} />
+            <h3>{shown.status === "sent" ? `Sent to ${shown.to}` : `Dispute filed · ${shown.dispute_id}`}</h3>
+            <SentLine email={shown} distributor={distributor} />
             <button className="cx-btn is-ghost" onClick={close}>Done</button>
           </motion.div>
         ) : editing ? (
@@ -254,7 +268,7 @@ export function DisputeThread({ disputeId, runId, distributor, refreshKey = "", 
 
   return (
     <div className="dm-thread">
-      {dispute && <SentLine email={dispute} />}
+      {dispute && <SentLine email={dispute} distributor={distributor} />}
       {shown.length === 0 && drafts.length === 0 ? (
         <p className="dm-empty">No replies yet. {distributor}’s answer will show here, from their portal or by email.</p>
       ) : (

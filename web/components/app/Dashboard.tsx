@@ -21,7 +21,7 @@ import { money } from "@/lib/format";
 import type { NeedsYou, OverviewLink } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
 
-const STATUS: Record<string, string> = { ready_to_send: "Ready to send", draft: "Ready to send", filed: "Sent, awaiting reply", answered: "Replied" };
+const STATUS: Record<string, string> = { ready_to_send: "Ready to send", draft: "Ready to send", filed: "Filed, awaiting reply", answered: "Replied" };
 const ACTION: Record<NeedsYou["kind"], string> = { question: "Answer", dispute_email: "Review and send", reply_email: "Send the reply", approval: "Approve" };
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
@@ -173,7 +173,7 @@ export default function Dashboard() {
                     <span className="hm-what"><strong>{d.distributor} · {d.dispute_id}</strong><small>{d.file_by ? `File by ${new Date(`${d.file_by}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "Dispute window not known"}</small></span>
                     <span className={`hm-chip ${d.status === "ready_to_send" || d.status === "draft" ? "is-ready" : ""}`}>{STATUS[d.status] ?? d.status}</span>
                     <DaysLeft days={d.days_left} />
-                    <span className="hm-amt">{money(d.amount)}</span>
+                    <span className="hm-amt">{(d.agreed ?? 0) > 0 ? <>{money(d.amount)} awaiting<small>{money(d.agreed ?? 0)} agreed</small></> : money(d.amount)}</span>
                   </Link>
                 </li>
               ))}

@@ -27,7 +27,7 @@ const STEPS = [
   {
     icon: <MessageSquareReply />,
     title: "Replies are handled, and you’re kept up to date",
-    body: "Clawback answers the distributor’s replies, concedes when shown a signed change, and tells you what moved. Nothing posts to your books without your yes.",
+    body: "Clawback answers the distributor’s replies, concedes when shown a signed change, and tells you what moved. Credit memos over $1,000 wait for your approval.",
   },
 ];
 
@@ -44,8 +44,8 @@ const TRUST = [
   },
   {
     icon: <ShieldCheck />,
-    title: "A person approves money",
-    body: "No agent moves money or posts to QuickBooks. Credit memos wait for your approval, and every action lands in an audit log that shows any edit.",
+    title: "You approve the large credit memos",
+    body: "No AI agent moves money or posts to QuickBooks. Credit memos over $1,000 wait for your approval, and every action lands in an audit log that shows any edit.",
   },
 ];
 

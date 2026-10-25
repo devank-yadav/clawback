@@ -25,7 +25,7 @@ from typing import Any
 
 import anthropic
 
-from api import accounts, account_rows, adapters, audit, evidence as evidence_mod, fee_accounts, lookback, replies, rows, sources, trace
+from api import accounts, account_rows, adapters, audit, documents, evidence as evidence_mod, fee_accounts, lookback, replies, rows, sources, trace
 from api.agents import investigator, investigator_ops, negotiator, reader, readers, rule_writer
 from api.contracts import (
     Answer, Approval, ApprovalLine, AutoPost, LedgerLine, LedgerPost, Charge, ChargeDetail, Decision, DeliveryRow, Dispute, DisputeLine, Event,
@@ -507,9 +507,40 @@ def _decide(run: Run, charge_id: str, policy: eng.Policy) -> eng.Decision:
     return _record(run, charge_id, d, decided_by="gate")
 
 
+def _amendment_reason(run: Run, charge_id: str, d: eng.Decision) -> eng.Decision:
+    """A charge that's fair because an approved sender's email extended the deal says so, from the verified
+    amendment term (its end date and extra units) and the email itself (who sent it, and when), never invented."""
+    if d.kind != eng.DecisionKind.ACCEPT or d.gate_row not in (5, 6):
+        return d
+    a = run.allowances.get(charge_id)
+    used = [t for t in (a.terms if a else ()) if t.type == eng.TermType.AMENDMENT and t.source_approved]
+    if not used or not any("covered by an approved amendment" in s for s in a.steps):
+        return d
+    t = used[0]
+    try:
+        with accounts.using(run.account):
+            doc, text = documents.load(t.source_doc_id)
+    except Exception:  # noqa: BLE001 - without the document, keep the engine's own words
+        return d
+    if doc.kind != "email":
+        return d
+    m = re.search(r"^From:\s*(.*?)\s*<", text, re.MULTILINE)
+    who = m.group(1).strip() if m and m.group(1).strip() else (doc.sender or "an approved sender")
+    who = "you" if doc.sender and doc.sender.lower() == (run.account.brand.owner.email or "").lower() else who
+    when = f" on {doc.received_at:%b} {doc.received_at.day}" if doc.received_at else ""
+    until = f" through {t.effective_to:%b} {t.effective_to.day}" if t.effective_to else ""
+    extra = t.params.get("extra_units")
+    more = f" (up to {int(extra):,} more units)" if extra is not None else ""
+    import dataclasses
+
+    return dataclasses.replace(d, reason=f"Fair: {who}, an approved sender, extended the promo{until} by email{when}"
+                                         f"{more}.")
+
+
 def _record(run: Run, charge_id: str, d: eng.Decision, decided_by: str) -> eng.Decision:
     """Store and show a decision; an Ask sends the owner one question (never a second for the same charge)."""
     c = run.charges[charge_id]
+    d = _amendment_reason(run, charge_id, d)
     run.decisions[charge_id] = d
     shown = adapters.to_contract_decision(d, waiting=c.amount if d.kind == eng.DecisionKind.ASK else Decimal(0),
                                           decided_by=decided_by, decided_at=_now())

@@ -178,7 +178,7 @@ function FlowFor() {
       {phase === "done" && (
         <main className="fl-main">
           <DonePanel onOpen={setDrawer} onNew={restart} onReplay={() => { setOpened(true); window.scrollTo({ top: 0 }); void replay(); }}
-            rail={<StageRail stages={stages} compact />} next={<NeedsYou stages={pending} />} disputeInNext={pending.some((s) => s.key === "file")} failed={status === "failed"} />
+            rail={<StageRail stages={stages} compact />} next={pending.length ? <NeedsYou stages={pending} /> : null} disputeInNext={pending.some((s) => s.key === "file")} failed={status === "failed"} />
         </main>
       )}
 
