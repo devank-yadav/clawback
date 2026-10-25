@@ -259,7 +259,7 @@ def test_a_second_account_runs_end_to_end(two_accounts):
     logs = [e.data.text for e in run.events if e.type == "log"]
     assert "Eastway paid $9,100 on invoice INV-9001 for $10,000. $900 was taken out in 3 charges." in logs
     assert any(x.startswith("Asked Ari one question about T3") for x in logs)
-    assert any("Within the $5,000 limit Ari set" in x for x in logs)
+    assert any(x.startswith("Drafted dispute D-0901") and "Ready for Ari to review and send" in x for x in logs)
     assert not any("Northmart" in x or "Dana" in x or "Sam" in x for x in logs)
     rule = next(e.data for e in run.events if e.type == "rule")
     assert (rule.label, rule.counterparty, rule.approver) == ("Rule #1", "Eastway", "Ari Lane")

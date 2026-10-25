@@ -662,6 +662,7 @@
           },
           "status": {
             "enum": [
+              "ready_to_send",
               "draft",
               "filed",
               "answered",
@@ -1485,6 +1486,27 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "channel": {
+            "default": "portal",
+            "enum": [
+              "portal",
+              "email"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "email_message_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Email Message Id"
           }
         },
         "required": [
@@ -3932,6 +3954,7 @@
           },
           "status": {
             "enum": [
+              "ready_to_send",
               "draft",
               "filed",
               "answered",
@@ -4433,6 +4456,27 @@
         "format": "date-time",
         "title": "Created At",
         "type": "string"
+      },
+      "channel": {
+        "default": "portal",
+        "enum": [
+          "portal",
+          "email"
+        ],
+        "title": "Channel",
+        "type": "string"
+      },
+      "email_message_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Email Message Id"
       }
     },
     "required": [
@@ -5550,6 +5594,7 @@
       },
       "status": {
         "enum": [
+          "ready_to_send",
           "draft",
           "filed",
           "answered",

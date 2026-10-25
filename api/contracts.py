@@ -537,7 +537,9 @@ class Dispute(Contract):
     counterparty: str
     lines: list[DisputeLine]
     total: Money
-    status: Literal["draft", "filed", "answered", "resolved", "withdrawn"]
+    # ready_to_send: drafted, waiting for the admin's "Review and send" (POST /disputes/{id}/send), which files it;
+    # draft: an older run's over-limit dispute (still sendable the same way); filed: sent to the distributor.
+    status: Literal["ready_to_send", "draft", "filed", "answered", "resolved", "withdrawn"]
     approved_by: Literal["policy", "owner"]
     filed_at: datetime | None
 
@@ -555,6 +557,80 @@ class PortalMessage(Contract):
     charge_ids: list[str] = []
     evidence_ids: list[str] = []
     created_at: datetime
+    channel: Literal["portal", "email"] = "portal"  # where it was said: the portal, or an email (Phase E)
+    email_message_id: str | None = None  # the email's Message-Id, for one that came or went by email
+
+
+class DisputeEmail(Contract):
+    """One email about a dispute (Phase E): the dispute email itself, or a reply to the distributor.
+
+    held: the drafter's checks failed twice, or the admin's edit failed the outbound filter; the admin edits it.
+    ready: checked, waiting for the admin to send. sent: Mailgun took it. outbox: recorded in the app instead of sent
+    (no Mailgun keys, or DEMO_MODE). failed: Mailgun refused it; sending again retries."""
+
+    id: str  # "EM-<run id>-D-0417" for the dispute email; "-R<n>" for a reply
+    kind: Literal["dispute", "reply"]
+    run_id: str
+    account_id: str
+    dispute_id: str
+    to: str
+    from_addr: str
+    reply_to: str | None = None
+    subject: str
+    body: str
+    attachments: list[str] = []
+    in_reply_to: str | None = None
+    status: Literal["held", "ready", "sent", "outbox", "failed"]
+    written_by: Literal["claude", "template", "admin", "negotiator", "code"]
+    problems: list[str] = []
+    message_id: str | None = None
+    sent_at: datetime | None = None
+    detail: str | None = None  # how the send went ("Queued. Thank you.", "in the outbox (DEMO_MODE)", the error)
+    portal_url: str | None = None
+    charge_ids: list[str] = []
+    evidence_ids: list[str] = []
+    replying_to: str | None = None  # the distributor's message (PortalMessage id) a reply answers
+
+
+class DisputeEmailEdit(Contract):
+    """PUT /disputes/{id}/email: the admin's edit. Checked by the outbound filter before it's saved as ready."""
+
+    subject: str | None = Field(default=None, max_length=300)
+    body: str = Field(max_length=20000)
+
+
+class DisputeSendRequest(Contract):
+    """POST /disputes/{id}/send and POST /disputes/{id}/replies/{email_id}/send: optionally the edit to send."""
+
+    subject: str | None = Field(default=None, max_length=300)
+    body: str | None = Field(default=None, max_length=20000)
+
+
+class DisputeThread(Contract):
+    """GET /disputes/{id}/thread: the dispute as it stands, every message on it (portal and email), and its emails."""
+
+    dispute: Dispute
+    run_id: str
+    messages: list[PortalMessage]
+    emails: list[DisputeEmail]
+
+
+class DisputeSendResponse(Contract):
+    """POST /disputes/{id}/send: the dispute (filed once the email went) and its email (sent, outbox or failed)."""
+
+    dispute: Dispute
+    email: DisputeEmail
+
+
+class SupplierNotification(Contract):
+    """GET /notifications: something the supplier should know, e.g. a distributor replied to a dispute."""
+
+    id: str
+    account_id: str
+    run_id: str | None = None
+    dispute_id: str | None = None
+    text: str
+    at: datetime
 
 
 class ReplyClassification(Contract):
