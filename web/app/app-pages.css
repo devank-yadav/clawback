@@ -1,6 +1,6 @@
 /* App pages read data: a compact left-aligned header (PageHeader in components/ui/kit.tsx), sans titles, no sky
-   wash, no serif pitch. Fraunces stays on the public site; the run's result heading keeps it, smaller, as a report
-   heading. Loaded last by the console and workspace layouts. */
+   wash, no headline pitch. The public site keeps the large headlines; the run's result heading keeps one, smaller,
+   as a report heading. Loaded last by the console and workspace layouts. */
 
 /* the page header */
 .ph { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; padding: 8px 0 4px; }

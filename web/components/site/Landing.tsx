@@ -129,7 +129,7 @@ export default function Landing() {
 
         <section id="problem" className="st-section">
           <div className="st-head is-center">
-            <h2 className="display">Distributors take money<br />out of every payment</h2>
+            <h2 className="display">Distributors take money <br />out of every payment</h2>
             <p>Small brands rarely have the hours to check each deduction.<br />Two suppliers took theirs to court.</p>
           </div>
           <div className="st-cases">

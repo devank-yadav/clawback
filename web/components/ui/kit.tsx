@@ -12,7 +12,7 @@ export function HeroPill({ children, live = false }: { children: ReactNode; live
   return <span className={`bw-pill ${live ? "is-live" : ""}`}>{children}</span>;
 }
 
-/** A centered page opening: pill, a two-line serif headline, a subline, then whatever actions follow. */
+/** A centered page opening: pill, a two-line headline, a subline, then whatever actions follow. */
 export function PageHero({ pill, title, sub, children, align = "center" }: { pill?: ReactNode; title: ReactNode; sub?: ReactNode; children?: ReactNode; align?: "center" | "left" }) {
   return (
     <header className={`bw-hero is-${align}`}>
@@ -25,7 +25,7 @@ export function PageHero({ pill, title, sub, children, align = "center" }: { pil
 }
 
 /** An app page's header: a plain title, one line of context when it helps, and the page's actions on the right.
- * App pages read data; the serif hero (PageHero) belongs to the public site. */
+ * App pages read data; the big hero (PageHero) belongs to the public site. */
 export function PageHeader({ title, line, actions }: { title: ReactNode; line?: ReactNode; actions?: ReactNode }) {
   return (
     <header className="ph">

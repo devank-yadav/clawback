@@ -62,10 +62,10 @@ body.st { margin: 0; font-family: var(--font-inter), ui-sans-serif, system-ui, s
 
 .st-card, .st-step, .st-form-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: 0 1px 2px rgba(0, 28, 46, 0.04); }
 
-/* the cases: billow's "first invoice" row: a centered serif head, then tall soft cards, each with a sky illustration
-   holding a small HTML vignette (faded skeleton, one crisp element, a floating chip), a serif title and a few lines */
+/* the cases: billow's "first invoice" row: a centered headline, then tall soft cards, each with a sky illustration
+   holding a small HTML vignette (faded skeleton, one crisp element, a floating chip), a title and a few lines */
 .st-head.is-center { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; margin-bottom: 40px; }
-.st-head.is-center h2.display { font-size: clamp(34px, 5vw, 60px); font-weight: 400; letter-spacing: -0.035em; line-height: 1.04; max-width: none; }
+.st-head.is-center h2.display { font-size: clamp(34px, 5vw, 60px); font-weight: 600; letter-spacing: -0.035em; line-height: 1.04; max-width: none; }
 .st-head.is-center p { font-size: 16.5px; line-height: 1.55; color: var(--sub); }
 .st-cases { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; max-width: 920px; margin: 0 auto; }
 .st-case { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-frame); background: linear-gradient(180deg, color-mix(in srgb, var(--sky) 55%, var(--card)) 0%, var(--card) 62%); box-shadow: var(--shadow-frame); }
@@ -96,7 +96,7 @@ body.st { margin: 0; font-family: var(--font-inter), ui-sans-serif, system-ui, s
 .st-vig-tl-labels { display: flex; justify-content: space-between; margin: 4px 16px 10px; font-size: 11.5px; color: var(--sub); }
 .st-vig-tl-labels .is-paid { color: var(--wait-ink); font-weight: 600; }
 .st-case-body { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 8px 30px 28px; }
-.st-case-body h3.display { font-size: 26px; font-weight: 400; letter-spacing: -0.025em; line-height: 1.15; color: var(--ink); }
+.st-case-body h3.display { font-size: 26px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.15; color: var(--ink); }
 .st-case-body p { font-size: 15px; line-height: 1.55; color: var(--sub); max-width: 32em; }
 .st-case-body .st-case-when { font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
 .st-fine { text-align: center; }
@@ -164,6 +164,8 @@ body.st { margin: 0; font-family: var(--font-inter), ui-sans-serif, system-ui, s
 }
 @media (max-width: 720px) {
   .st-top { padding: 10px 16px; gap: 8px; }
+  .st-head.is-center h2.display { text-wrap: balance; }
+  .st-head.is-center h2.display br { display: none; }
   .st-top-links { display: none; }
   .st-top-right { margin-left: auto; }
   .st-top-right .st-btn { padding: 0 12px; min-height: 36px; font-size: 13.5px; }

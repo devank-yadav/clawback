@@ -1,7 +1,6 @@
-import { Fraunces, Inter } from "next/font/google";
+import { Inter } from "next/font/google";
 
-// Inter for every UI word and number; Fraunces (a soft display serif) for page headlines only, through `.display`.
+// One font: Inter for every word and number. Headlines use it too, through `.display` (heavier, tighter).
 export const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
-export const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", axes: ["opsz"], display: "swap" });
 
-export const fontVars = `${inter.variable} ${fraunces.variable}`;
+export const fontVars = inter.variable;
