@@ -1,6 +1,6 @@
-// The two secrets this browser tab may hold, kept in sessionStorage (gone when the tab closes):
-// the signed-in role's access code (sent as X-Clawback-Role-Token) and the presenter's admin token
-// (sent as Authorization: Bearer on resets and on the calls the site limits per visitor).
+// The presenter's admin token, kept in sessionStorage (gone when the tab closes). The sign-in itself is the API's HttpOnly
+// session cookie, which this code never sees; the admin token (CLAWBACK_ADMIN_TOKEN) is sent as Authorization: Bearer
+// on the demo reset and on the calls the site limits per visitor.
 // No imports, so both the API client and the session store can use it.
 
 const ADMIN_KEY = "clawback-admin-token";

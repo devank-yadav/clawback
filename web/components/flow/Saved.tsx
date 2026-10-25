@@ -8,7 +8,7 @@ import { useCallback, useState } from "react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
-import { EmptyState, HeroPill, PageHero, SectionHead, StatTile } from "@/components/ui/kit";
+import { EmptyState, PageHero, SectionHead, StatTile } from "@/components/ui/kit";
 import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
 import { shortDate } from "@/lib/format";
@@ -45,7 +45,6 @@ export default function Saved() {
       <TopBar account={account} active="saved" />
       <main className="fl-main bp bp-sv">
         <PageHero
-          pill={<HeroPill>{account ? `${account.brand.name} · ${cast.distributor}` : "Saved"}</HeroPill>}
           title={<>What Clawback keeps<em>for {cast.distributor}.</em></>}
           sub="The documents the agents read, the rules you gave them once, the records they check against, and every step they took."
         />

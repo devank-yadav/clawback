@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import * as api from "./api";
-import { asRole, limitMessage } from "./session";
+import { asAdmin, limitMessage } from "./session";
 import type {
   Answer,
   Approval,
@@ -214,7 +214,7 @@ export function useRunEvents(account: string | null, runId: string = "latest", {
     const connect = () => {
       // The browser resends Last-Event-ID by itself when it reconnects. If it gives up, or on a fresh page, ask from the last id we hold.
       const url = `${eventsUrl}${eventsUrl.includes("?") ? "&" : "?"}after=${lastSeen.current}`;
-      const es = new EventSource(api.apiUrl(url));
+      const es = new EventSource(api.apiUrl(url), { withCredentials: true });
       stream = es;
       es.onmessage = (m) => {
         try {
@@ -262,11 +262,11 @@ export function useRunEvents(account: string | null, runId: string = "latest", {
 
   const fail = useCallback((e: Error) => setError(`Clawback didn't accept that action (${e.message}).`), []);
 
-  /** The admin's answer; saveRule false settles this charge only. The API checks the admin's access code. */
+  /** The admin's answer; saveRule false settles this charge only. The API checks the session. */
   const answerQuestion = useCallback(
     (questionId: string, text: string, saveRule = true) => {
       if (state.questions[questionId]?.answer || !text.trim()) return;
-      asRole("owner", (code) => api.answerQuestion(questionId, text.trim(), code, saveRule), fail);
+      asAdmin(() => api.answerQuestion(questionId, text.trim(), saveRule), fail);
     },
     [state.questions, fail],
   );
@@ -276,7 +276,7 @@ export function useRunEvents(account: string | null, runId: string = "latest", {
     (approve: boolean, note: string | null = null, autoPost = false) => {
       const approval = state.approval;
       if (approval?.status !== "pending") return;
-      asRole("owner", (code) => api.decideApproval(approval.id, approve, note, code, approve && autoPost), fail);
+      asAdmin(() => api.decideApproval(approval.id, approve, note, approve && autoPost), fail);
     },
     [state.approval, fail],
   );

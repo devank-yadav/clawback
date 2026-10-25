@@ -93,7 +93,7 @@ export default function Approval() {
             <strong style={{ fontWeight: 500, fontSize: 13 }}>QuickBooks</strong>
             <p className="cx-small cx-muted">{view.postingLabel}</p>
             {view.postingProblem && <p className="cx-small" style={{ color: "var(--amber)" }}>{view.postingProblem}</p>}
-            <p className="cx-tiny">Posts to QuickBooks only after approval. Only the admin can approve: you sign in with {CAST.owner}’s code.</p>
+            <p className="cx-tiny">Posts to QuickBooks only after approval. Only the admin can approve, signed in.</p>
           </aside>
         </div>
       )}

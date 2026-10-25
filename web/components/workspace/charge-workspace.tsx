@@ -127,7 +127,7 @@ function OwnerQuestion({ question, code, owner, role, onAnswer }: { question: Qu
     <textarea id="owner-answer" value={text} onChange={(event) => setText(event.target.value)} rows={2} />
     <label className="cx-check"><input type="checkbox" checked={saveRule} onChange={(event) => setSaveRule(event.target.checked)} /><span>Save as a rule for next time</span></label>
     <button className="primary full" disabled={!text.trim() || sent} onClick={() => { if (role === 'owner') setSent(true); onAnswer(question.id, text, saveRule) }}><Check /> {sent ? (saveRule ? 'Sent · saving the rule' : 'Sent · deciding this charge') : `Send as ${owner}`}</button>
-    {role !== 'owner' && <p className="role-hint">Only {firstName(owner)} can answer. You’ll be asked to sign in as the admin.</p>}
+    {role !== 'owner' && <p className="role-hint">Only {firstName(owner)} can answer. You’ll be asked to sign in first.</p>}
   </div>
 }
 

@@ -8,7 +8,7 @@ import { useCallback, useState } from "react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar, { DistributorMark, STATUS_TONE } from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
-import { EmptyState, HeroPill, PageHero, SectionHead } from "@/components/ui/kit";
+import { EmptyState, PageHero, SectionHead } from "@/components/ui/kit";
 import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
 import type { DistributorItem, SupplierItem } from "@/lib/types";
@@ -52,7 +52,6 @@ export default function Distributors() {
       <TopBar account={account} active="distributors" />
       <main className="fl-main bp bp-ds">
         <PageHero
-          pill={<HeroPill>{supplier?.brand.name ?? "Your distributors"}</HeroPill>}
           title={supplier ? <>You sell through {tracked.length} distributor{tracked.length === 1 ? "" : "s"}.<em>The agents watch every payment.</em></> : <>Loading your<em>distributors…</em></>}
           sub="The agents watch each one’s payments and check every deduction against its deal. Open one to see its whole workflow."
         />

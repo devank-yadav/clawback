@@ -1,35 +1,54 @@
 "use client";
 
-// The one bar on every page: the logo, the distributor you're looking at (a custom switcher showing each tracked
-// distributor's plain status), the three places that matter (Agents, Distributors, Results) and a More menu for the
-// rest. Everything keeps the account in the URL (withAccount).
+// The app's one frame, on every page under /app: a finance-style left sidebar with the supplier's name, the
+// distributor you're looking at (a switcher listing only this supplier's distributors, each with its plain status),
+// the places (Agents, Distributors, History, Contracts, Saved, Connections), a Tools group, and the user menu with
+// Sign out at the bottom. No top tab bar. On a phone the sidebar folds into a menu button. Signed-out visitors go to
+// /signin and come back. Every link keeps the account in the URL (withAccount). The name TopBar stays so every page
+// that rendered the old bar renders this frame unchanged.
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Bookmark, CalendarClock, ChevronsUpDown, ExternalLink, FileText, FlaskConical, History as HistoryIcon, LayoutDashboard,
+  LogIn, LogOut, Menu, PenLine, Plug, ShieldCheck, Truck, Workflow, X,
+} from "lucide-react";
 import { Logo } from "@/components/console/ui";
 import { inkOn, withAccount } from "@/lib/accounts";
-import { roleName } from "@/components/shell/SessionDialogs";
 import { signOut, useSession } from "@/lib/session";
+import { signInHref } from "@/lib/signin-route";
 import * as api from "@/lib/api";
 import type { Account, RelationshipStatus } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
 
-const MAIN = [
-  { key: "agents", href: "/", label: "Agents" },
-  { key: "distributors", href: "/distributors", label: "Distributors" },
-  { key: "history", href: "/history", label: "History" },
-  { key: "saved", href: "/saved", label: "Saved" },
+type Item = { key: string; href: string; label: string; icon: ReactNode; view?: string };
+
+const MAIN: Item[] = [
+  { key: "agents", href: "/", label: "Agents", icon: <Workflow /> },
+  { key: "distributors", href: "/distributors", label: "Distributors", icon: <Truck /> },
+  { key: "history", href: "/history", label: "History", icon: <HistoryIcon /> },
+  { key: "contracts", href: "/contracts", label: "Contracts", icon: <FileText /> },
+  { key: "saved", href: "/saved", label: "Saved", icon: <Bookmark /> },
+  { key: "connections", href: "/connections", label: "Connections", icon: <Plug /> },
 ];
 
-const MORE: { href: string; label: string; view?: string; hint: string }[] = [
-  { href: "/contracts", label: "Contracts", hint: "The signed deal, locked, with what the agents read" },
-  { href: "/connections", label: "Connections", hint: "Where payments, records and contracts come from" },
-  { href: "/workspace", label: "Overview & payments", hint: "This distributor, every charge and its evidence" },
-  { href: "/april", label: "Next month", hint: "The agents again, using your saved rules" },
-  { href: "/coach", label: "Deal coach", hint: "Fixes for the next deal" },
-  { href: "/scenario", label: "Try a clause", hint: "Paste a clause, watch the decision" },
+const TOOLS: Item[] = [
+  { key: "workspace", href: "/workspace", label: "Overview and payments", icon: <LayoutDashboard /> },
+  { key: "april", href: "/april", label: "Next month", icon: <CalendarClock /> },
+  { key: "coach", href: "/coach", label: "Deal coach", icon: <PenLine /> },
+  { key: "scenario", href: "/scenario", label: "Try a clause", icon: <FlaskConical /> },
+  { key: "audit", href: "/audit", label: "Audit", icon: <ShieldCheck /> },
 ];
+
+/** Which sidebar item the address is: /app → agents, /app/history → history, /app/results → history. */
+function activeKey(path: string): string | null {
+  if (path === "/app") return "agents";
+  const seg = path.replace(/^\/app\/?/, "").split("/")[0];
+  if (seg === "results") return "history";
+  if (seg === "upload") return "workspace";
+  return [...MAIN, ...TOOLS].some((i) => i.key === seg) ? seg : null;
+}
 
 export const STATUS_TONE: Record<RelationshipStatus, string> = {
   waiting_for_payment: "is-idle", checking: "is-live", needs_you: "is-amber", settled: "is-green", stopped: "is-red",
@@ -54,105 +73,141 @@ function usePopover() {
   return { open, setOpen, ref };
 }
 
-/** The distributor you're looking at, and the others this supplier tracks, each with its plain status. */
-function Switcher({ account }: { account: Account | null }) {
+/** The distributor you're looking at, and the others this supplier tracks (GET /suppliers answers only the signed-in
+ * supplier's), each with its plain status. */
+function Switcher({ account, onPick }: { account: Account | null; onPick: () => void }) {
   const router = useRouter();
   const path = usePathname();
+  const { supplier: mine } = useSession();
   const { open, setOpen, ref } = usePopover();
   const load = useCallback(() => api.fetchSuppliers(), []);
   const suppliers = useFetched(load, open ? "open" : "closed");
   const supplier = suppliers.data?.find((s) => s.distributors.some((d) => d.account_id === account?.id)) ?? null;
-  const mine = supplier?.distributors.find((d) => d.account_id === account?.id) ?? null;
-  const tracked = supplier?.distributors.filter((d) => d.tracked) ?? [];
+  const current = supplier?.distributors.find((d) => d.account_id === account?.id) ?? null;
+  const allowed = mine ? new Set(mine.account_ids) : null;
+  const tracked = supplier?.distributors.filter((d) => d.tracked && (!allowed || allowed.has(d.account_id))) ?? [];
 
   return (
-    <div className="tb-switch" ref={ref}>
-      <button className="tb-switch-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)} disabled={!account}>
-        <DistributorMark name={account?.distributor.name ?? "·"} color={account?.distributor.colors.primary} />
-        <span className="tb-switch-text">
-          <small>{account?.brand.name ?? "Loading…"}</small>
-          <strong>{account?.distributor.name ?? " "}</strong>
+    <div className="sb-switch" ref={ref}>
+      <button className="sb-switch-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)} disabled={!account}>
+        <DistributorMark name={account?.distributor.name ?? "·"} color={account?.distributor.colors.primary} size={26} />
+        <span className="sb-switch-text">
+          <small>Distributor</small>
+          <strong>{account?.distributor.name ?? "Loading…"}</strong>
         </span>
-        {mine && <i className={`tb-dot ${STATUS_TONE[mine.status]}`} aria-label={mine.status_label} />}
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+        {current && <i className={`tb-dot ${STATUS_TONE[current.status]}`} aria-label={current.status_label} />}
+        <ChevronsUpDown aria-hidden="true" />
       </button>
       {open && (
-        <div className="tb-menu tb-switch-menu" role="menu">
+        <div className="tb-menu sb-menu" role="menu">
           <span className="tb-menu-label">{supplier ? `${supplier.brand.name} sells through` : "Loading distributors…"}</span>
           {tracked.map((d) => (
             <button key={d.account_id} role="menuitemradio" aria-checked={d.account_id === account?.id} className="tb-row"
-              onClick={() => { setOpen(false); router.push(withAccount(path === "/distributors" ? "/" : path, d.account_id)); }}>
+              onClick={() => { setOpen(false); onPick(); router.push(withAccount(path === "/app/distributors" ? "/" : path, d.account_id)); }}>
               <DistributorMark name={d.distributor.name} color={d.distributor.colors.primary} size={26} />
               <span><strong>{d.distributor.name}</strong><small>{d.status_label}</small></span>
               <i className={`tb-dot ${STATUS_TONE[d.status]}`} />
             </button>
           ))}
-          <Link className="tb-menu-foot" href={withAccount("/distributors", account?.id)} onClick={() => setOpen(false)}>Add or manage distributors</Link>
+          <Link className="tb-menu-foot" href={withAccount("/distributors", account?.id)} onClick={() => { setOpen(false); onPick(); }}>Add or manage distributors</Link>
         </div>
       )}
     </div>
   );
 }
 
-function More({ account, extra }: { account: Account | null; extra?: ReactNode }) {
+const initials = (name: string) => name.split(/\s+/).filter(Boolean).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+
+/** Who's signed in, with Sign out (and the page's own extras: account details, the demo reset). */
+function UserMenu({ account, extra }: { account: Account | null; extra?: ReactNode }) {
+  const { status, user } = useSession();
   const { open, setOpen, ref } = usePopover();
+  const router = useRouter();
+  if (status === "out" || status === "unknown") {
+    return <Link className="sb-signin" href={signInHref(undefined)}><LogIn aria-hidden="true" /> Sign in</Link>;
+  }
+  // A laptop with no passwords: nobody signs in, the admin is the account's owner.
+  const name = user?.name ?? account?.brand.owner.name ?? " ";
+  const detail = user?.email ?? (status === "open" ? "Open laptop · no sign-in" : " ");
   return (
-    <div className="tb-more" ref={ref}>
-      <button className="tb-link" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>More</button>
+    <div className="sb-user" ref={ref}>
+      <button className="sb-user-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        <i aria-hidden="true">{initials(name)}</i>
+        <span><strong>{name}</strong><small>{detail}</small></span>
+        <ChevronsUpDown aria-hidden="true" />
+      </button>
       {open && (
-        <div className="tb-menu tb-more-menu" role="menu">
-          {MORE.map((m) => (
-            <Link key={m.label} role="menuitem" className="tb-row" href={withAccount(m.href, account?.id, m.view ? { view: m.view } : undefined)} onClick={() => setOpen(false)}>
-              <span><strong>{m.label}</strong><small>{m.hint}</small></span>
-            </Link>
-          ))}
-          {account && <a role="menuitem" className="tb-row" href={withAccount("/portal", account.id)} target="_blank" rel="noreferrer"><span><strong>{account.distributor.portal_name} ↗</strong><small>What the distributor sees</small></span></a>}
+        <div className="tb-menu sb-menu sb-user-menu" role="menu">
           {extra}
+          {status === "in" && <button role="menuitem" className="tb-row" onClick={() => void signOut().then(() => router.push("/"))}><LogOut aria-hidden="true" /><span><strong>Sign out</strong></span></button>}
         </div>
       )}
     </div>
   );
 }
 
-/** Who's signed in, only once someone is: signing in happens when an action needs it (answer or approve). */
-function Who({ account }: { account: Account | null }) {
-  const { role } = useSession();
-  const path = usePathname();
-  const router = useRouter();
-  if (!role) {
-    if (path === "/signin") return null;
-    // Back to this page after signing in; the address is read on click, so server and browser render the same link.
-    const go = (e: ReactMouseEvent) => {
-      e.preventDefault();
-      router.push(withAccount("/signin", account?.id, { next: `${window.location.pathname}${window.location.search}` }));
-    };
-    return <Link className="tb-signin" href={withAccount("/signin", account?.id)} onClick={go}>Sign in</Link>;
-  }
-  if (!account) return null;
-  const name = roleName(role, account);
-  return (
-    <span className="tb-who">
-      <i aria-hidden="true">{name.split(" ").map((p) => p[0]).join("").slice(0, 2)}</i>
-      <span>{name}</span>
-      <button onClick={signOut} title="Sign out" aria-label="Sign out">Sign out</button>
-    </span>
-  );
+/** Sends a signed-out visitor to /signin, and back here afterwards. */
+function useSignedInOnly() {
+  const { status } = useSession();
+  useEffect(() => {
+    if (status === "out") window.location.replace(signInHref(undefined, "needed"));
+  }, [status]);
 }
 
-export default function TopBar({ account, active, extra }: { account: Account | null; active?: string; right?: ReactNode; extra?: ReactNode }) {
+export default function TopBar({ account, extra }: { account: Account | null; active?: string; right?: ReactNode; extra?: ReactNode }) {
+  const path = usePathname();
+  const { supplier } = useSession();
+  const [open, setOpen] = useState(false);
+  useSignedInOnly();
+  const active = activeKey(path);
+  const close = () => setOpen(false);
+  const supplierName = supplier?.name ?? account?.brand.name ?? " ";
+
+  // The drawer closes on Escape; the page behind doesn't scroll while it's open.
+  useEffect(() => {
+    if (!open) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", esc);
+    document.body.classList.add("sb-locked");
+    return () => { document.removeEventListener("keydown", esc); document.body.classList.remove("sb-locked"); };
+  }, [open]);
+
+  const link = (i: Item) => (
+    <Link key={i.key} href={withAccount(i.href, account?.id)} className="sb-link" aria-current={active === i.key ? "page" : undefined} onClick={close}>
+      {i.icon}<span>{i.label}</span>
+    </Link>
+  );
+
   return (
-    <header className="tb">
-      <Link href={withAccount("/", account?.id, { home: "1" })} className="tb-logo" aria-label="Clawback home"><Logo /> clawback</Link>
-      <nav className="tb-nav" aria-label="Clawback">
-        {MAIN.map((m) => (
-          <Link key={m.key} href={withAccount(m.href, account?.id)} className="tb-link" aria-current={active === m.key ? "page" : undefined}>{m.label}</Link>
-        ))}
-        <More account={account} extra={extra} />
-      </nav>
-      <div className="tb-right">
-        <Who account={account} />
-        <Switcher account={account} />
-      </div>
-    </header>
+    <>
+      <header className="sb-mobile">
+        <button className="sb-menu-btn" aria-label="Open the menu" aria-expanded={open} aria-controls="sb" onClick={() => setOpen(true)}><Menu /></button>
+        <Link href={withAccount("/", account?.id, { home: "1" })} className="sb-logo" aria-label="Clawback, start screen"><Logo /> clawback</Link>
+        <span className="sb-mobile-who">{account?.distributor.name ?? ""}</span>
+      </header>
+      {open && <div className="sb-backdrop" onClick={close} role="presentation" />}
+      <aside id="sb" className={`sb ${open ? "is-open" : ""}`} aria-label="App">
+        <div className="sb-head">
+          <Link href={withAccount("/", account?.id, { home: "1" })} className="sb-logo" aria-label="Clawback, start screen" onClick={close}><Logo /> clawback</Link>
+          <button className="sb-close" aria-label="Close the menu" onClick={close}><X /></button>
+        </div>
+        <div className="sb-supplier">
+          <i aria-hidden="true" style={account ? { background: account.brand.colors.primary, color: inkOn(account.brand.colors.primary) } : undefined}>{account?.brand.initials ?? initials(supplierName)}</i>
+          <span><small>Supplier</small><strong>{supplierName}</strong></span>
+        </div>
+        <Switcher account={account} onPick={close} />
+        <nav className="sb-nav" aria-label="Clawback">
+          {MAIN.map(link)}
+          <span className="sb-label">Tools</span>
+          {TOOLS.map(link)}
+          {account && (
+            <a className="sb-link" href={withAccount("/portal", account.id)} target="_blank" rel="noreferrer" onClick={close}>
+              <ExternalLink /><span>{account.distributor.portal_name}</span>
+            </a>
+          )}
+        </nav>
+        <div className="sb-foot"><UserMenu account={account} extra={extra} /></div>
+      </aside>
+    </>
   );
 }

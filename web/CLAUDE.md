@@ -21,7 +21,12 @@ log {text, level} · stage {stage: read|check, status, done, total, label, charg
 · totals {disputed, accepted, waiting}
 
 ## Screens
-`/?account=…` is the agents' flow (`app/(console)/page.tsx`, `components/flow/`, `flow.css`): drop in the payment
+`/` is the public landing page and `/signin` the sign-in (`app/(site)/`, `components/site/`, email + password →
+the API's HttpOnly session cookie; every fetch sends `credentials: "include"`, and a 401 sends the visitor to
+`/signin?next=…`). The app lives under `/app` (older addresses redirect there, see next.config.ts); `withAccount()`
+maps the short paths below to `/app/...`. Every app page sits in one frame, `components/shell/TopBar.tsx` (the left
+sidebar, `app/shell.css`; a menu button on a phone).
+`/app?account=…` is the agents' flow (`app/(console)/page.tsx`, `components/flow/`, `flow.css`): drop in the payment
 advice or press "<distributor> pays", watch the seven stages on the rail (payment, read the deal, check each charge,
 file the dispute, your answer, your approval, QuickBooks) and the charge × agent matrix, answer and approve inline
 (one person, the admin: the brand's owner), then the result. Reading and checking progress comes from `stage` events (`state.stages`); the later stages

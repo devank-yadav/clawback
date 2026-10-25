@@ -1,78 +1,80 @@
 "use client";
 
-// Who is signed in to the workspace: the admin, the brand's owner, the one person who decides (answers the policy
-// questions and approves the accounting entries). On the deployed site the admin has an access code (OWNER_TOKEN on
-// the API); a local API has none, so the code may be left empty. Also the prompts that ask for a code or the
-// presenter's admin token (CLAWBACK_ADMIN_TOKEN: resets and per-visitor limits).
+// Who is signed in: GET /auth/me, read once per page load and shared by every component. The session itself is the
+// API's HttpOnly cookie (POST /auth/login sets it, POST /auth/logout ends it); this code never sees a password or a
+// code. Signing in happens on /signin only: any call the API answers 401 sends the visitor there and back
+// (lib/api.ts). Also the one prompt left in the app, the presenter's admin token (demo reset, per-visitor limits).
 
 import { useSyncExternalStore } from "react";
+import * as api from "./api";
 import { ApiError } from "./api";
 import { setAdminToken } from "./tokens";
 
+/** The one role in the app: the supplier's admin, who answers the questions and approves the credit memos. */
 export type Role = "owner";
 
-export type Prompt =
-  | { kind: "role"; role: Role; reason: string | null; then: (() => void) | null }
-  | { kind: "admin"; reason: string; then: (() => void) | null };
+export type Prompt ={ kind: "admin"; reason: string; then: (() => void) | null };
 
-export type Session = { role: Role | null; code: string | null; prompt: Prompt | null };
+export type Session = {
+  /** loading: not asked yet · in: a user is signed in · out: signed out on a site that needs sign-in ·
+   * open: a laptop with no passwords, where nobody needs to sign in · unknown: the API couldn't be reached. */
+  status: "loading" | "in" | "out" | "open" | "unknown";
+  user: api.SessionUser | null;
+  supplier: api.SessionSupplier | null;
+  prompt: Prompt | null;
+};
 
-const KEY = "clawback-session";
-const SERVER: Session = { role: null, code: null, prompt: null };
+const SERVER: Session = { status: "loading", user: null, supplier: null, prompt: null };
 let state: Session = SERVER;
-let loaded = false;
+let asked = false;
 const listeners = new Set<() => void>();
 
-function snapshot(): Session {
-  if (!loaded && typeof window !== "undefined") {
-    loaded = true;
-    try {
-      const saved = JSON.parse(window.sessionStorage.getItem(KEY) ?? "null");
-      if (saved?.role === "owner") state = { ...state, role: saved.role, code: typeof saved.code === "string" ? saved.code : null };
-    } catch {
-      /* nothing saved, or storage blocked */
-    }
-  }
-  return state;
+function emit(next: Partial<Session>) {
+  state = { ...state, ...next };
+  listeners.forEach((l) => l());
 }
 
-function emit(next: Partial<Session>) {
-  state = { ...snapshot(), ...next };
-  listeners.forEach((l) => l());
+/** Asks the API who is signed in (again, after a sign-in or sign-out). */
+export function refreshSession(): Promise<void> {
+  asked = true;
+  return api.me().then(
+    (me) => {
+      if (!me) emit({ status: "out", user: null, supplier: null });
+      else if (me.user) emit({ status: "in", user: me.user, supplier: me.supplier });
+      else emit({ status: me.auth_required ? "out" : "open", user: null, supplier: null });
+    },
+    () => emit({ status: "unknown" }),
+  );
 }
 
 export function useSession(): Session {
   return useSyncExternalStore(
     (cb) => {
       listeners.add(cb);
+      if (!asked) void refreshSession();
       return () => listeners.delete(cb);
     },
-    snapshot,
+    () => state,
     () => SERVER,
   );
 }
 
-export function signIn(role: Role, code: string | null) {
-  const then = state.prompt?.then ?? null;
-  try {
-    window.sessionStorage.setItem(KEY, JSON.stringify({ role, code }));
-  } catch {
-    /* kept in memory only */
-  }
-  emit({ role, code: code || null, prompt: null });
-  then?.();
+/** Signs in with an email and password; the API sets the cookie. Throws ApiError (401, 429, 503) for the form. */
+export async function signIn(email: string, password: string) {
+  const r = await api.login(email, password);
+  emit({ status: "in", user: r.user, supplier: r.supplier });
 }
 
-export function signOut() {
+/** Ends the session on the API; the caller then leaves the app (the landing page). */
+export async function signOut() {
   try {
-    window.sessionStorage.removeItem(KEY);
+    await api.logout();
   } catch {
-    /* nothing to clear */
+    /* the cookie may already be gone; leave anyway */
   }
-  emit({ role: null, code: null, prompt: null });
+  emit({ status: "out", user: null, supplier: null });
 }
 
-export const askSignIn = (role: Role, reason: string | null = null, then: (() => void) | null = null) => emit({ prompt: { kind: "role", role, reason, then } });
 export const askAdminToken = (reason: string, then: (() => void) | null = null) => emit({ prompt: { kind: "admin", reason, then } });
 export const closePrompt = () => emit({ prompt: null });
 
@@ -84,23 +86,14 @@ export function submitAdminToken(token: string) {
   then?.();
 }
 
-const REFUSED: Record<Role, string> = {
-  owner: "Only the admin can do this. Enter the admin’s access code.",
-};
-
 /**
- * Runs an action that only one role may take: asks that role to sign in first when someone else is signed in,
- * and asks again when the server refuses the code (401).
+ * Runs an action only the signed-in admin may take (an answer, an approval). Signed out, the API answers 401 and the
+ * visitor goes to /signin and back (lib/api.ts); any other failure goes to onError.
  */
-export function asRole(role: Role, action: (code: string | null) => Promise<unknown>, onError: (e: Error) => void) {
-  const run = () => {
-    action(snapshot().code).catch((e: Error) => {
-      if (e instanceof ApiError && e.status === 401) askSignIn(role, REFUSED[role], run);
-      else onError(e);
-    });
-  };
-  if (snapshot().role !== role) askSignIn(role, null, run);
-  else run();
+export function asAdmin(action: () => Promise<unknown>, onError: (e: Error) => void) {
+  action().catch((e: Error) => {
+    if (!(e instanceof ApiError && e.status === 401)) onError(e);
+  });
 }
 
 /** The friendly words for a 429 from the site's per-visitor limit, or null for any other error. */

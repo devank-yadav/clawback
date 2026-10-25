@@ -71,7 +71,7 @@ export function ApprovalCard() {
         <button className="cx-btn is-ghost" onClick={() => decideApproval(false, note || `Held by ${cast.owner}`)}>Hold</button>
       </div>
       <AutoPostBox checked={autoPost} onChange={setAutoPost} limit={a.amount} />
-      <p className="cx-tiny">Only the admin can approve: you sign in with {cast.owner}’s code.</p>
+      <p className="cx-tiny">Only the admin can approve, signed in.</p>
     </section>
   );
 }

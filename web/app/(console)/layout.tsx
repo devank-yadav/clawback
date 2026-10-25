@@ -8,6 +8,7 @@ import "../theme.css";
 import "../billow.css";
 import "../billow-pages.css";
 import "../billow-tools.css";
+import "../shell.css";
 
 export const metadata: Metadata = {
   title: "Clawback — agents that win back what distributors wrongly took",

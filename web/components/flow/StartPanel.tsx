@@ -8,7 +8,7 @@ import { useState, type DragEvent } from "react";
 import { useRun } from "@/components/console/RunProvider";
 import { readRemittance, runRemittance } from "@/components/upload/api";
 import { money } from "@/lib/format";
-import { HeroPill, PageHero } from "@/components/ui/kit";
+import { PageHero } from "@/components/ui/kit";
 
 const CREW: { name: string; tag: "AI" | "CODE" | "PERSON" }[] = [
   { name: "Payment reader", tag: "AI" },
@@ -68,7 +68,6 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
     <div className="fl-hero">
       <section className="fl-start" aria-label="Start a payment check">
         <PageHero
-          pill={<HeroPill live={!!account}>{account ? `${account.brand.name} · watching ${account.distributor.name}` : "Clawback"}</HeroPill>}
           title={<>Your agents are watching <em>{cast.distributor}’s payments.</em></>}
           sub={<>When a payment lands, they read the deal, check every deduction, <mark>dispute the wrong ones with proof</mark> and accept the fair ones. You’re asked only when the deal is unclear.</>}
         >

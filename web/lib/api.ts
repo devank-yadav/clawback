@@ -7,6 +7,7 @@ import type {
   Overview, PortalMessage, RunEvent, ScenarioExample, ScenarioRequest, ScenarioResponse, SupplierItem, RunSummary, SavedOverview, DocumentText, Connection, ContractLibrary, TraceStep, TraceSummary,
 } from "./types";
 import { adminToken } from "./tokens";
+import { goSignIn } from "./signin-route";
 
 /** `/api` behind Caddy on the deployed domain (set at build time by web/Dockerfile); the local API in dev. */
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000").replace(/\/$/, "");
@@ -28,23 +29,27 @@ type CallInit = {
   timeoutMs?: number;
   /** Send the presenter's admin token if this tab holds one (resets, and the calls limited per visitor). */
   admin?: boolean;
-  /** The admin's access code, for the answers and the approvals. */
-  roleCode?: string | null;
 };
+
+/** A 401 that means "sign in", not "the presenter's admin token": everything but /auth/* and the demo reset. */
+const signInOn401 = (path: string) => !path.startsWith("/auth/") && !path.startsWith("/demo/reset");
 
 async function call<T>(path: string, init?: CallInit): Promise<T> {
   const headers: Record<string, string> = {};
   if (init?.body !== undefined) headers["Content-Type"] = "application/json";
   const admin = init?.admin ? adminToken() : null;
   if (admin) headers.Authorization = `Bearer ${admin}`;
-  if (init?.roleCode) headers["X-Clawback-Role-Token"] = init.roleCode;
   const method = init?.method ?? "GET";
+  // The session is the HttpOnly cookie the API set at sign-in (POST /auth/login); every call carries it.
   const res = await fetch(apiUrl(path), {
     method,
     headers,
+    credentials: "include",
     body: init?.body === undefined ? undefined : JSON.stringify(init.body),
     signal: AbortSignal.timeout(init?.timeoutMs ?? TIMEOUT_MS),
   });
+  // Signed out (or the 12-hour session ended): off to /signin, and back here afterwards.
+  if (res.status === 401 && signInOn401(path) && !admin) goSignIn("needed");
   if (!res.ok) {
     let detail = "";
     try {
@@ -63,9 +68,27 @@ const q = encodeURIComponent;
 /** What every screen says when the API can't be reached. */
 export const unreachable = (e: Error) => `Can't reach Clawback right now (${e.message}). Try again in a moment.`;
 
-// ---- The admin's sign-in: an ID and password in, the access code the admin's actions carry out
-export const login = (username: string, password: string) =>
-  call<{ role: "owner"; code: string | null }>("/auth/login", { method: "POST", body: { username, password } });
+// ---- Sign-in (api/routes/auth.py): an email and password in, the HttpOnly session cookie back
+export type SessionUser = { id: string; email: string; name: string; role: string };
+export type SessionSupplier = { id: string; name: string; account_ids: string[] };
+export type Me = { user: SessionUser | null; supplier: SessionSupplier | null; auth_required: boolean };
+
+/** POST /auth/login: 401 wrong email or password, 429 too many tries, 503 sign-in isn't set up on this server. */
+export const login = (email: string, password: string) =>
+  call<{ role: string; user: SessionUser; supplier: SessionSupplier }>("/auth/login", { method: "POST", body: { email, password } });
+
+/** POST /auth/logout: always ok; the cookie is gone after it. */
+export const logout = () => call<{ ok: boolean }>("/auth/logout", { method: "POST" });
+
+/** GET /auth/me: who is signed in; null when signed out (401). An open laptop answers auth_required false. */
+export async function me(): Promise<Me | null> {
+  try {
+    return await call<Me>("/auth/me");
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 401) return null;
+    throw e;
+  }
+}
 
 // ---- Accounts
 export const fetchAccounts = () => call<Account[]>("/accounts");
@@ -114,7 +137,7 @@ export const runRef = (runId: string): StartedRun => ({ run_id: runId, events_ur
  * never says why a stream closed; this tells a run the API no longer has (404) from a restart still in progress. */
 export async function runEventsStatus(eventsUrl: string, after: number): Promise<number> {
   try {
-    const res = await fetch(apiUrl(`${eventsUrl}${eventsUrl.includes("?") ? "&" : "?"}keepalive=false&delay_ms=0&after=${after}`), { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    const res = await fetch(apiUrl(`${eventsUrl}${eventsUrl.includes("?") ? "&" : "?"}keepalive=false&delay_ms=0&after=${after}`), { credentials: "include", signal: AbortSignal.timeout(TIMEOUT_MS) });
     void res.body?.cancel().catch(() => undefined);
     return res.status;
   } catch {
@@ -124,7 +147,7 @@ export async function runEventsStatus(eventsUrl: string, after: number): Promise
 
 /** Every event a run has so far, read once (no live follow). For screens that need one fact from a run, like its dispute id. */
 export async function runEventsOnce(runId: string): Promise<RunEvent[]> {
-  const res = await fetch(apiUrl(`/runs/${q(runId)}/events?keepalive=false&delay_ms=0`), { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  const res = await fetch(apiUrl(`/runs/${q(runId)}/events?keepalive=false&delay_ms=0`), { credentials: "include", signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!res.ok) throw new ApiError(res.status, `GET /runs/${runId}/events answered ${res.status}`);
   const events: RunEvent[] = [];
   for (const line of (await res.text()).split("\n")) {
@@ -138,15 +161,15 @@ export async function runEventsOnce(runId: string): Promise<RunEvent[]> {
   return events;
 }
 
-/** POST /questions/{id}/answer: the admin's reply (admin's access code); the rule and new decisions arrive as events.
+/** POST /questions/{id}/answer: the admin's reply (the signed-in session); the rule and new decisions arrive as events.
  * saveRule false settles this charge only: no rule is saved, so the next charge like it asks again. */
-export const answerQuestion = (questionId: string, text: string, roleCode: string | null, saveRule = true) =>
-  call<unknown>(`/questions/${q(questionId)}/answer`, { method: "POST", body: { text, from_role: "owner", save_rule: saveRule }, roleCode });
+export const answerQuestion = (questionId: string, text: string, saveRule = true) =>
+  call<unknown>(`/questions/${q(questionId)}/answer`, { method: "POST", body: { text, from_role: "owner", save_rule: saveRule } });
 
-/** POST /approvals/{id}: the admin's yes or no (admin's access code). Refusing posts nothing and keeps the note.
+/** POST /approvals/{id}: the admin's yes or no (the signed-in session). Refusing posts nothing and keeps the note.
  * autoPost with a yes: fair-charge memos up to this one's amount post without asking from now on. */
-export const decideApproval = (approvalId: string, approve: boolean, note: string | null, roleCode: string | null, autoPost = false) =>
-  call<{ approval: Approval; ledger_post: LedgerPost | null }>(`/approvals/${q(approvalId)}`, { method: "POST", body: { approve, note, auto_post: autoPost }, roleCode });
+export const decideApproval = (approvalId: string, approve: boolean, note: string | null, autoPost = false) =>
+  call<{ approval: Approval; ledger_post: LedgerPost | null }>(`/approvals/${q(approvalId)}`, { method: "POST", body: { approve, note, auto_post: autoPost } });
 
 /** POST /demo/reset. On the deployed site it needs the admin token; a 401 surfaces as ApiError(401) so the screen can ask for it. */
 export const resetWorkspace = () => call<unknown>("/demo/reset", { method: "POST", admin: true, timeoutMs: 30_000 });

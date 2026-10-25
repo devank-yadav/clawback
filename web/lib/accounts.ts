@@ -53,8 +53,17 @@ export function useCurrentAccount(): AccountsState & { account: Account | null; 
   return { ...state, account, requested };
 }
 
-/** A link that keeps the account: withAccount("/results", "peak-bar") → "/results?account=peak-bar". */
-export function withAccount(path: string, accountId: string | null | undefined, extra?: Record<string, string>): string {
+/** The app's screens, which live under /app since the landing page took `/`. */
+const APP_SCREENS = new Set(["/", "/distributors", "/history", "/saved", "/contracts", "/connections", "/home", "/review", "/approval",
+  "/activity", "/workspace", "/results", "/april", "/coach", "/scenario", "/upload", "/audit"]);
+
+/** Where an app screen lives: appPath("/history") → "/app/history", appPath("/") → "/app". Other paths are unchanged. */
+export const appPath = (path: string) => (APP_SCREENS.has(path) ? (path === "/" ? "/app" : `/app${path}`) : path);
+
+/** A link that keeps the account: withAccount("/results", "peak-bar") → "/app/results?account=peak-bar". Screens are
+ * named by their short paths and land under /app (appPath); /portal, /signin and the rest stay as they are. */
+export function withAccount(rawPath: string, accountId: string | null | undefined, extra?: Record<string, string>): string {
+  const path = appPath(rawPath);
   const params = new URLSearchParams();
   if (accountId) params.set("account", accountId);
   for (const [k, v] of Object.entries(extra ?? {})) params.set(k, v);

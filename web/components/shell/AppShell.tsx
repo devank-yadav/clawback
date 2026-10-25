@@ -4,10 +4,10 @@ import { useState, type ReactNode } from 'react'
 import { Check, Info, X } from 'lucide-react'
 import { inkOn } from '@/lib/accounts'
 import { ApiError, resetWorkspace } from '@/lib/api'
-import { askAdminToken, useSession } from '@/lib/session'
+import { askAdminToken } from '@/lib/session'
 import type { Account } from '@/lib/types'
 import TopBar from './TopBar'
-import SessionDialogs, { roleName } from './SessionDialogs'
+import SessionDialogs from './SessionDialogs'
 
 export type View = 'overview' | 'payments' | 'approvals' | 'rules'
 
@@ -36,8 +36,7 @@ type Props = {
 
 /** The frame every brand screen shares: brand menu, navigation, who is viewing, and the page. */
 // `accounts` and `approvalsWaiting` stay in the props for the callers; the top bar's switcher loads its own list.
-export default function AppShell({ account, active, crumb, onReset, children }: Props) {
-  const { role } = useSession()
+export default function AppShell({ account, crumb, onReset, children }: Props) {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [resetState, setResetState] = useState<{ busy: boolean; message: string | null; error: boolean }>({ busy: false, message: null, error: false })
 
@@ -59,13 +58,12 @@ export default function AppShell({ account, active, crumb, onReset, children }: 
     }
   }
 
-  const person = role ? roleName(role, account) : null
 
   return (
     <div className="app-shell">
       <TopBar
         account={account}
-        active={active === '/results' ? 'history' : undefined}
+
         extra={<>
           <button role="menuitem" className="tb-row" onClick={() => setDetailsOpen(true)}><span><strong>Account details</strong><small>{account?.brand.name ?? ''} · {account?.distributor.name ?? ''}</small></span></button>
           <button role="menuitem" className="tb-row" disabled={resetState.busy} onClick={() => void reset()}><span><strong>{resetState.busy ? 'Resetting…' : 'Reset the demo'}</strong><small>Every distributor back to waiting for its payment</small></span></button>
@@ -75,7 +73,6 @@ export default function AppShell({ account, active, crumb, onReset, children }: 
       <div className="main-shell">
         <header className="topbar">
           <span>{account?.brand.name ?? 'Clawback'} <span className="slash">/</span> <strong>{crumb}</strong></span>
-          {account && <span className="topbar-note"><span className="tiny-dot" /> {person ? `Signed in as ${person} · Admin` : 'Not signed in'}</span>}
         </header>
         {resetState.message && <div className={`feedback shell-feedback ${resetState.error ? 'error' : ''}`} role="status">{resetState.error ? <Info /> : <Check />}{resetState.message}<button className="icon-button" aria-label="Dismiss" onClick={() => setResetState((s) => ({ ...s, message: null }))}><X /></button></div>}
         {children}

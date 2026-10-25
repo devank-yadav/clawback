@@ -1,0 +1,89 @@
+/* The app's frame (components/shell/TopBar.tsx): a fixed left sidebar on every page under /app, a menu button on a
+   phone. Loaded last by the console and workspace layouts. The page keeps its own layout; the body makes room. */
+
+:root { --sb-w: 0px; }
+body:has(.sb) { --sb-w: 252px; padding-left: var(--sb-w); }
+
+.sb { position: fixed; inset: 0 auto 0 0; z-index: 45; width: 252px; display: flex; flex-direction: column; gap: 14px;
+  padding: 18px 14px 14px; background: var(--side); border-right: 1px solid var(--line); overflow-y: auto; overscroll-behavior: contain; }
+.sb-head { display: flex; align-items: center; justify-content: space-between; padding: 0 6px; }
+.sb-logo { display: inline-flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 700; letter-spacing: -0.5px; color: var(--ink); }
+.sb-close, .sb-menu-btn { display: none; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); cursor: pointer; }
+.sb-close:hover, .sb-menu-btn:hover { background: var(--raised); }
+.sb-close svg, .sb-menu-btn svg { width: 20px; height: 20px; }
+
+/* the supplier, then the distributor you're looking at */
+.sb-supplier { display: flex; align-items: center; gap: 10px; padding: 10px 8px 2px; }
+.sb-supplier > i { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--raised-2); color: var(--ink); font-style: normal; font-weight: 600; font-size: 13px; }
+.sb-supplier span, .sb-switch-text, .sb-user-btn > span { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.sb-supplier small, .sb-switch-text small { font-size: 11px; color: var(--faint); }
+.sb-supplier strong { font-size: 14.5px; font-weight: 600; letter-spacing: -0.2px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-switch { position: relative; }
+.sb-switch-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px 8px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); font: inherit; text-align: left; cursor: pointer; box-shadow: 0 1px 2px rgba(0, 28, 46, 0.04); }
+.sb-switch-btn:hover, .sb-switch-btn[aria-expanded="true"] { border-color: var(--line-strong); }
+.sb-switch-btn .tb-mark { border-radius: 8px; }
+.sb-switch-text { flex: 1; }
+.sb-switch-text strong { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-switch-btn > svg, .sb-user-btn > svg { width: 15px; height: 15px; color: var(--faint); flex: none; }
+.sb-menu { left: 0; right: 0; min-width: 0; }
+.sb-user-menu { top: auto; bottom: calc(100% + 8px); }
+.sb-user-menu .tb-row svg { width: 16px; height: 16px; color: var(--sub); }
+
+/* the places, then the tools */
+.sb-nav { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.sb-link { display: flex; align-items: center; gap: 11px; min-height: 38px; padding: 0 10px; border-radius: 10px; color: var(--sub); font-size: 14px; font-weight: 500; }
+.sb-link svg { width: 17px; height: 17px; flex: none; color: var(--faint); }
+.sb-link span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-link:hover { background: var(--raised); color: var(--ink); }
+.sb-link[aria-current="page"] { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(0, 28, 46, 0.05); }
+.sb-link[aria-current="page"] svg { color: var(--accent); }
+.sb-label { padding: 18px 10px 6px; font-size: 11.5px; font-weight: 500; color: var(--faint); }
+
+/* who's signed in, at the bottom */
+.sb-foot { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); }
+.sb-user { position: relative; }
+.sb-user-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border: 0; border-radius: 12px; background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.sb-user-btn:hover, .sb-user-btn[aria-expanded="true"] { background: var(--raised); }
+.sb-user-btn > i { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink); font-style: normal; font-size: 12px; font-weight: 600; }
+.sb-user-btn > span { flex: 1; }
+.sb-user-btn strong { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-user-btn small { font-size: 11.5px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-signin { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; border-radius: 999px; background: var(--button); color: #fff; font-size: 13.5px; font-weight: 500; }
+.sb-signin:hover { background: var(--button-hover); color: #fff; }
+.sb-signin svg { width: 16px; height: 16px; }
+
+.sb-mobile, .sb-backdrop { display: none; }
+
+/* the sky wash behind a product frame stays inside the page's side gutter, which no longer centers in the viewport
+   once the sidebar takes its share (billow.css's rule, with the sidebar subtracted) */
+body:has(.sb) .bw-stage::before { left: calc(-1 * min(10vw, max(16px, (100vw - var(--sb-w) - 100%) / 2 - 8px))); right: calc(-1 * min(10vw, max(16px, (100vw - var(--sb-w) - 100%) / 2 - 8px))); }
+
+/* a visually hidden input that a wider input rule stretched to the viewport: kept 1px, so it can't push the page
+   sideways now that the page starts after the sidebar */
+input.sr-only { width: 1px; max-width: 1px; }
+
+/* the pages' old frames: the console's own sidebar and the workspace's crumb bar step aside */
+.cx-shell { display: block; }
+.cx-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.cx-tabs a { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; color: var(--sub); font-size: 13px; font-weight: 500; }
+.cx-tabs a:hover { background: var(--raised); color: var(--ink); }
+.cx-tabs a[aria-current="page"] { background: var(--card); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
+.cx-tabs .cx-count { margin-left: 2px; }
+
+/* a phone or small tablet: the sidebar becomes a drawer behind a menu button */
+@media (max-width: 960px) {
+  body:has(.sb) { --sb-w: 0px; }
+  .sb { width: min(300px, 86vw); transform: translateX(-102%); transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: none; }
+  .sb.is-open { transform: none; box-shadow: var(--shadow-pop); }
+  .sb-close, .sb-menu-btn { display: grid; }
+  .sb-mobile { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); }
+  .sb-mobile-who { margin-left: auto; font-size: 13px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .sb-backdrop { display: block; position: fixed; inset: 0; z-index: 44; background: rgba(0, 28, 46, 0.28); }
+  body.sb-locked { overflow: hidden; }
+}
+@media (max-width: 720px) {
+  .cx-top > span { display: none; }
+  .cx-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -4px; }
+  .cx-tabs a { white-space: nowrap; }
+}
+@media (prefers-reduced-motion: reduce) { .sb { transition: none; } }

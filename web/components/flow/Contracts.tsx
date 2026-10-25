@@ -9,7 +9,7 @@ import { useCallback, useState } from "react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
-import { EmptyState, HeroPill, PageHero } from "@/components/ui/kit";
+import { EmptyState, PageHero } from "@/components/ui/kit";
 import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
 import type { LibraryDocument, LibraryTerm } from "@/lib/types";
@@ -66,7 +66,6 @@ export default function Contracts() {
       <TopBar account={account} active="contracts" />
       <main className="fl-main bp bp-ct">
         <PageHero
-          pill={<HeroPill>{account ? `${account.brand.name} · ${cast.distributor}` : "Contracts"}</HeroPill>}
           title={<>The deal with {cast.distributor},<em>and what changes it.</em></>}
           sub={lib.data?.read_in_run ? "Highlighted: every term the two deal readers agreed on, found word for word. Click one to see what the agents took from it." : "The terms light up here once the agents have read the deal (run them from Agents)."}
         />

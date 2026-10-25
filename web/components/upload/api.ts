@@ -26,7 +26,7 @@ export async function readRemittance(input: { file: File } | { text: string }, a
     "file" in input
       ? { method: "POST", body: (() => { const f = new FormData(); f.append("file", input.file); return f; })() }
       : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: input.text }) };
-  const res = await fetch(apiUrl(base(account)), { ...init, signal: AbortSignal.timeout(90_000) });
+  const res = await fetch(apiUrl(base(account)), { ...init, credentials: "include", signal: AbortSignal.timeout(90_000) });
   if (!res.ok) throw await failure(res, "Reading the remittance");
   return (await res.json()) as RemittanceRead;
 }
@@ -36,6 +36,7 @@ export async function runRemittance(readId: string, account = ACCOUNT): Promise<
   const res = await fetch(apiUrl(`${base(account)}/run`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({ read_id: readId }),
     signal: AbortSignal.timeout(15_000),
   });
@@ -47,7 +48,7 @@ export async function runRemittance(readId: string, account = ACCOUNT): Promise<
 export const sampleUrl = (name = SAMPLE_PDF, account = ACCOUNT) => apiUrl(`${base(account)}/samples/${encodeURIComponent(name)}`);
 
 export async function sampleFile(name = SAMPLE_PDF, account = ACCOUNT): Promise<File> {
-  const res = await fetch(sampleUrl(name, account), { signal: AbortSignal.timeout(15_000) });
+  const res = await fetch(sampleUrl(name, account), { credentials: "include", signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw await failure(res, "The sample");
   return new File([await res.blob()], name, { type: res.headers.get("content-type") ?? "application/pdf" });
 }

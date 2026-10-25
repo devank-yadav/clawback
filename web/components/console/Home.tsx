@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { useCallback } from "react";
 import * as api from "@/lib/api";
+import { withAccount } from "@/lib/accounts";
 import { useFetched } from "@/lib/useFetched";
 import type { Overview } from "@/lib/types";
 import { useRun } from "./RunProvider";
@@ -116,7 +117,7 @@ export default function Home() {
           {(accounts ?? []).map((a) => {
             const current = a.id === account?.id;
             return (
-              <Link key={a.id} href={`/review?account=${encodeURIComponent(a.id)}`}>
+              <Link key={a.id} href={withAccount("/review", a.id)}>
                 <b>{a.distributor.name[0]}</b>
                 <span>
                   <span className="cx-dist-name">{a.distributor.name}</span><br />

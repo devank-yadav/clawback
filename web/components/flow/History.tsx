@@ -9,7 +9,7 @@ import { useCallback } from "react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar, { DistributorMark } from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
-import { EmptyState, HeroPill, PageHero } from "@/components/ui/kit";
+import { EmptyState, PageHero } from "@/components/ui/kit";
 import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
 import { money } from "@/lib/format";
@@ -32,7 +32,6 @@ export default function History() {
       <TopBar account={account} active="history" />
       <main className="fl-main bp bp-hs">
         <PageHero
-          pill={<HeroPill>{account ? `${account.brand.name} · ${cast.distributor}` : "History"}</HeroPill>}
           title={!runs.data ? <>Every run<em>of the agents.</em></> : list.length ? <>{list.length} run{list.length === 1 ? "" : "s"} of the agents.<em>Every payment, checked.</em></> : <>No runs yet.<em>The first payment starts one.</em></>}
           sub={`Every time a payment from ${cast.distributor} arrives, the agents run. Open any run to see what each agent did and what it concluded.`}
         />
