@@ -13,6 +13,10 @@ import { useRun } from "@/components/console/RunProvider";
 import { DisputeCard } from "./Spotlight";
 import { MoneyBar } from "@/components/ui/kit";
 import { AuditDrawer } from "./AuditDrawer";
+import { Claw, landPulse } from "@/components/ui/Claw";
+
+// The claw pulls the disputed money back once per run in this tab, and again after Replay.
+const clawed = new Set<string>();
 
 function Pile({ title, tone, total, charges, amount, onOpen }: { title: string; tone: "dispute" | "fair" | "wait"; total: number; charges: ChargeView[]; amount: (c: ChargeView) => number; onOpen: (id: string) => void }) {
   const still = useReducedMotion();
@@ -37,6 +41,8 @@ function Pile({ title, tone, total, charges, amount, onOpen }: { title: string; 
 export function DonePanel({ onOpen, onNew, onReplay, next, disputeInNext = false, failed }: { onOpen: (id: string) => void; onNew: () => void; onReplay?: () => void; rail?: ReactNode; next: ReactNode; disputeInNext?: boolean; failed: boolean }) {
   const { view, state, cast } = useRun();
   const [audit, setAudit] = useState(false);
+  const [sum, setSum] = useState<HTMLElement | null>(null);
+  const [clawDone, setClawDone] = useState(false);
   const closeAudit = useCallback(() => setAudit(false), []);
   const t = view.totals;
   const v = view.value;
@@ -59,15 +65,23 @@ export function DonePanel({ onOpen, onNew, onReplay, next, disputeInNext = false
     view.charges.length ? `${view.charges.length} charges checked${seconds !== null ? ` in ${seconds} s` : ""}` : null,
   ].filter(Boolean).join(" · ");
 
+  const runId = state.run?.run_id;
+  const claw = !failed && !!r && !!t && t.disputed > 0 && !!runId && !clawDone && !clawed.has(runId);
+
   return (
     <>
-      <section className="fl-sum" aria-live="polite">
+      <section className="fl-sum cw-host" aria-live="polite" ref={setSum}>
+        {claw && (
+          <Claw host={sum} from=".fl-sum-taken" to=".bw-bar-track i.is-dispute" label={`${money(t.disputed)} disputed`} delay={0.35}
+            onLand={() => landPulse(document.querySelector(".bw-bar-legend li:first-child b"))}
+            onDone={() => { clawed.add(runId); setClawDone(true); }} />
+        )}
         <div className="fl-sum-text">
           {failed ? (
             <h1>The agents stopped before finishing</h1>
           ) : (
             <h1>
-              {r ? <>{distributor} kept {money(r.taken)}.</> : <>{distributor}’s charges.</>}
+              {r ? <>{distributor} kept <span className="fl-sum-taken">{money(r.taken)}</span>.</> : <>{distributor}’s charges.</>}
               {second && <em>{second}</em>}
             </h1>
           )}
@@ -107,7 +121,7 @@ export function DonePanel({ onOpen, onNew, onReplay, next, disputeInNext = false
 
       <div className="fl-foot">
         <span className="fl-foot-left">
-          {state.run && onReplay && <button className="cx-btn is-ghost" onClick={onReplay}><Play aria-hidden="true" />Replay the run</button>}
+          {state.run && onReplay && <button className="cx-btn is-ghost" onClick={() => { if (runId) clawed.delete(runId); setClawDone(false); onReplay(); }}><Play aria-hidden="true" />Replay the run</button>}
           {state.run && <button className="cx-btn is-ghost" onClick={() => setAudit(true)}><ScrollText aria-hidden="true" />Audit trail</button>}
         </span>
         <button className="cx-btn is-ghost" onClick={onNew}>Back to the start</button>
