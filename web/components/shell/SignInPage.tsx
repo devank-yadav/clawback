@@ -68,11 +68,6 @@ export default function SignInPage() {
               <button className="st-btn is-dark is-wide" onClick={() => router.replace(next)}>Continue</button>
               <button className="st-btn is-ghost is-wide" onClick={() => void signOut()}>Sign out</button>
             </div>
-          ) : status === "open" ? (
-            <div className="st-auth-done">
-              <p>This server doesn’t ask for a sign-in.</p>
-              <button className="st-btn is-dark is-wide" onClick={() => router.replace(next)}>Continue</button>
-            </div>
           ) : (
             <form className="st-form" onSubmit={(event) => { event.preventDefault(); void submit(); }} noValidate>
               <p className="st-auth-sub">See what your distributors took, and what your agents did about it.</p>
