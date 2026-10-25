@@ -133,7 +133,49 @@ export type QuestionRisk = {
   reason: string;
 };
 
-export type Answer ={ question_id: string; from_role: Role; text: string; answered_at: string; rule_id: string | null };
+/** GET /overview (branch supplier-overview): the signed-in supplier across all its distributors. Every amount is the
+ * API's; the web adds nothing up. Read defensively: a field the API hasn't sent shows as a gap. */
+export type CompanyOverview = {
+  totals?: {
+    taken?: Money | null;
+    disputed?: Money | null;
+    fair?: Money | null;
+    accepted?: Money | null;
+    /** Only what evidence shows came back (a distributor's reply agreeing, or a credit), never a projection. */
+    recovered?: Money | null;
+    recovered_evidence?: { kind?: string; label?: string; href?: string | null; dispute_id?: string | null; run_id?: string | null; account_id?: string | null }[] | null;
+  } | null;
+  needs_you?: NeedsYou[] | null;
+  open_disputes?: OpenDispute[] | null;
+  recent?: { at: string; text: string; account_id?: string | null; run_id?: string | null; dispute_id?: string | null }[] | null;
+};
+
+/** One thing waiting on the admin: answer a question, review and send a dispute, or approve a credit memo. */
+export type NeedsYou = {
+  kind: "answer" | "send" | "approve" | (string & {});
+  account_id: string;
+  run_id?: string | null;
+  distributor?: string | null;
+  title: string;
+  amount?: Money | null;
+  risk?: QuestionRisk | null;
+  question_id?: string | null;
+  dispute_id?: string | null;
+};
+
+export type OpenDispute = {
+  account_id: string;
+  run_id?: string | null;
+  dispute_id: string;
+  distributor?: string | null;
+  amount: Money;
+  status: string;
+  /** Days left in the distributor's dispute window, counted by the API; null when it doesn't know. */
+  days_left?: number | null;
+  file_by?: string | null;
+};
+
+export type Answer = { question_id: string; from_role: Role; text: string; answered_at: string; rule_id: string | null };
 
 export type Rule = {
   id: string;

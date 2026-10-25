@@ -1,30 +1,31 @@
 "use client";
 
-// The result, on the same page the run played on. Facts only, never a forecast: what the distributor kept, what the deal
-// didn't allow and what was done about it, what was fair, how fast and how many AI calls, the charges in their piles (each opens how it was decided), and where to go next. The dispute card stays
-// live, so a reply from the distributor's portal shows up here with the Negotiator's answer.
+// A run's result, on the page the run played on. Facts only, never a forecast: what the distributor took and what
+// the deal didn't allow, where the money went, the one thing that needs the admin first, the charges in their piles
+// (each opens how it was decided), the dispute, and the run's audit trail. Nothing else.
 
 import { motion, useReducedMotion } from "framer-motion";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { ScrollText } from "lucide-react";
 import { money } from "@/lib/format";
 import type { ChargeView } from "@/lib/workspace";
 import { useRun } from "@/components/console/RunProvider";
-import { Money } from "@/components/console/ui";
 import { DisputeCard } from "./Spotlight";
-import { MoneyBar, StatTile } from "@/components/ui/kit";
+import { MoneyBar } from "@/components/ui/kit";
+import { AuditDrawer } from "./AuditDrawer";
 
 function Pile({ title, tone, total, charges, amount, onOpen }: { title: string; tone: "dispute" | "fair" | "wait"; total: number; charges: ChargeView[]; amount: (c: ChargeView) => number; onOpen: (id: string) => void }) {
   const still = useReducedMotion();
   if (charges.length === 0) return null;
   return (
     <section className={`fl-pile is-${tone}`} aria-label={title}>
-      <h3><span>{title}</span><Money value={total} /></h3>
+      <h3><span>{title}</span><span className="fl-pile-total">{money(total)}</span></h3>
       <ul>
         {charges.map((c, k) => (
           <motion.li key={c.id} initial={still ? false : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: k * 0.08 }}>
             <button className="fl-pcard" onClick={() => onOpen(c.id)}>
               <span><strong style={{ fontWeight: 500 }}>{c.id} · {c.title}</strong><span>{money(amount(c))}</span></span>
-              <small>{c.ruleId ? `${c.ruleId.replace("rule-", "Rule #")} · ` : ""}{c.reason}</small>
+              <small>{(c.disputed ?? 0) > 0 && (c.accepted ?? 0) > 0 ? `Split: ${money(c.disputed ?? 0)} disputed, ${money(c.accepted ?? 0)} fair · ` : ""}{c.ruleId ? `${c.ruleId.replace("rule-", "Rule #")} · ` : ""}{c.reason}</small>
             </button>
           </motion.li>
         ))}
@@ -33,11 +34,9 @@ function Pile({ title, tone, total, charges, amount, onOpen }: { title: string; 
   );
 }
 
-/** "<$0.01" for tiny costs, so a real number never reads as free. */
-const cost = (usd: number) => (usd > 0 && usd < 0.01 ? "<$0.01" : money(usd));
-
-export function DonePanel({ onOpen, onNew, rail, next, disputeInNext = false, failed }: { onOpen: (id: string) => void; onNew: () => void; rail: ReactNode; next: ReactNode; disputeInNext?: boolean; failed: boolean }) {
-  const { view, state, cast, link } = useRun();
+export function DonePanel({ onOpen, onNew, next, disputeInNext = false, failed }: { onOpen: (id: string) => void; onNew: () => void; rail?: ReactNode; next: ReactNode; disputeInNext?: boolean; failed: boolean }) {
+  const { view, state, cast } = useRun();
+  const [audit, setAudit] = useState(false);
   const t = view.totals;
   const v = view.value;
   const r = view.remittance;
@@ -46,24 +45,23 @@ export function DonePanel({ onOpen, onNew, rail, next, disputeInNext = false, fa
   const disputed = view.charges.filter((c) => (c.disputed ?? 0) > 0);
   const fair = view.charges.filter((c) => (c.accepted ?? 0) > 0);
   const waiting = view.charges.filter((c) => (c.waiting ?? 0) > 0);
-  const held = state.dispute?.status === "draft" || state.dispute?.status === "ready_to_send";
-  // Facts about what already happened, never a forecast.
-  const facts = [
-    t && t.questions ? `${t.questions} question${t.questions === 1 ? "" : "s"} for you` : t ? "No questions needed" : null,
-  ].filter(Boolean) as string[];
-  const seconds = v && v.seconds_to_decided !== null && v.seconds_to_decided !== undefined ? Math.round(v.seconds_to_decided) : null;
+  const unsent = state.dispute?.status === "draft" || state.dispute?.status === "ready_to_send";
+  const seconds = v && v.seconds_to_decided != null ? Math.round(v.seconds_to_decided) : null;
   // The headline's second line: the one fact that matters most, already decided.
   const second = !t ? null
     : t.disputed > 0 ? `${money(t.disputed)} of it isn’t allowed by the deal.`
     : t.waiting > 0 ? `${money(t.waiting)} of it waits on your call.`
     : "Every charge matches the deal.";
-  const posting = view.postingProblem ?? (view.approval ? view.postingLabel : (t?.accepted ?? 0) > 0 ? "Fair charges are waiting for your approval before anything posts" : "Nothing to post to QuickBooks");
+  const disputedLabel = unsent ? "To dispute, ready to send" : `Disputed, awaiting ${distributor}’s reply`;
+  const meta = [
+    r ? `${distributor} paid ${money(r.received)} of ${money(r.expected)}` : null,
+    view.charges.length ? `${view.charges.length} charges checked${seconds !== null ? ` in ${seconds} s` : ""}` : null,
+  ].filter(Boolean).join(" · ");
 
   return (
     <>
       <section className="fl-sum" aria-live="polite">
         <div className="fl-sum-text">
-          {r && <p className="fl-sum-meta">Payment of {money(r.received)} from {distributor}, checked</p>}
           {failed ? (
             <h1>The agents stopped before finishing</h1>
           ) : (
@@ -72,11 +70,7 @@ export function DonePanel({ onOpen, onNew, rail, next, disputeInNext = false, fa
               {second && <em>{second}</em>}
             </h1>
           )}
-          <div className="fl-facts">
-            {failed && <span>{state.feed.filter((l) => l.level === "error").at(-1)?.text ?? "See the activity"}</span>}
-            {facts.map((f) => <span key={f}>{f}</span>)}
-            <span>{posting}</span>
-          </div>
+          {failed ? <p className="fl-sum-meta">{state.feed.filter((l) => l.level === "error").at(-1)?.text ?? "See the activity"}</p> : meta && <p className="fl-sum-meta">{meta}</p>}
         </div>
       </section>
 
@@ -84,29 +78,25 @@ export function DonePanel({ onOpen, onNew, rail, next, disputeInNext = false, fa
         <MoneyBar
           label={r ? `Where the ${money(r.taken)} went` : "Where the charges went"}
           parts={[
-            { tone: "dispute", label: held ? "To dispute, ready to send" : "Disputed with proof", value: t.disputed },
+            { tone: "dispute", label: disputedLabel, value: t.disputed },
             { tone: "fair", label: "Fair, accepted", value: t.accepted },
             { tone: "wait", label: "Waits on you", value: t.waiting },
           ]}
         />
       )}
 
-      <div className={`fl-result ${next ? "" : "is-solo"}`}>
-        {next && <section className="fl-nextstep" aria-label="Your next step"><span className="cx-eyebrow">Your next step</span>{next}</section>}
-        <div className="bw-stats">
-          <StatTile label="Charges checked" value={view.charges.length} />
-          <StatTile label="Decided in" value={seconds !== null ? `${seconds} s` : "—"} hint="From the payment landing to every charge decided" />
-          <StatTile label="AI calls" value={v ? v.ai_calls : "—"} hint={v?.ai_cost_usd ? `${cost(v.ai_cost_usd)} in model costs` : undefined} />
-        </div>
-      </div>
-
-      {rail}
+      {next && (
+        <section className="fl-nextstep" aria-labelledby="fl-next-h">
+          <h2 id="fl-next-h">Needs you</h2>
+          {next}
+        </section>
+      )}
 
       {disputed.length + fair.length + waiting.length === 0 ? (
         <p className="cx-small cx-muted">No charge has a decision yet.</p>
       ) : (
         <div className="fl-piles">
-          <Pile title="Disputed, with proof" tone="dispute" total={t?.disputed ?? 0} charges={disputed} amount={(c) => c.disputed ?? 0} onOpen={onOpen} />
+          <Pile title={disputedLabel} tone="dispute" total={t?.disputed ?? 0} charges={disputed} amount={(c) => c.disputed ?? 0} onOpen={onOpen} />
           <Pile title="Fair, accepted" tone="fair" total={t?.accepted ?? 0} charges={fair} amount={(c) => c.accepted ?? 0} onOpen={onOpen} />
           <Pile title="Waiting on your decision" tone="wait" total={t?.waiting ?? 0} charges={waiting} amount={(c) => c.waiting ?? 0} onOpen={onOpen} />
         </div>
@@ -114,37 +104,11 @@ export function DonePanel({ onOpen, onNew, rail, next, disputeInNext = false, fa
 
       {!disputeInNext && <DisputeCard />}
 
-      <nav className="fl-next" aria-label="What next">
-        {state.dispute && (
-          <a href={link("/portal")} target="_blank" rel="noreferrer">
-            <strong>Argue as {distributor}</strong>
-            <small>Reply on their portal. The Negotiator answers with the evidence, or concedes to a signed change.</small>
-            <em>Open the portal ↗</em>
-          </a>
-        )}
-        <a href={link("/april")}>
-          <strong>Next month</strong>
-          <small>The next charges, decided by the rules you saved. No question asked twice.</small>
-          <em>Run next month →</em>
-        </a>
-        <a href={link("/coach")}>
-          <strong>Fix the next deal</strong>
-          <small>Redlines for the next contract, each with what its clause cost this month.</small>
-          <em>Open the Deal coach →</em>
-        </a>
-        <a href={link("/workspace")}>
-          <strong>Past payments</strong>
-          <small>The last six months, checked the same way: what the deal didn’t allow.</small>
-          <em>Open the overview →</em>
-        </a>
-      </nav>
-
-      <div className="cx-head" style={{ alignItems: "center" }}>
-        <span className="cx-small cx-muted">
-          Every decision is traceable: <a href={link("/workspace", { view: "payments" })}>every charge</a> · <a href={link("/audit")}>audit trail</a>
-        </span>
-        <button className="cx-btn" onClick={onNew}>Check a new payment</button>
+      <div className="fl-foot">
+        {state.run && <button className="cx-btn is-ghost" onClick={() => setAudit(true)}><ScrollText aria-hidden="true" />Audit trail</button>}
+        <button className="cx-btn is-ghost" onClick={onNew}>Back to the start</button>
       </div>
+      {audit && state.run && <AuditDrawer runId={state.run.run_id} onClose={() => setAudit(false)} />}
     </>
   );
 }

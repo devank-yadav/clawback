@@ -3,7 +3,7 @@
 // `npm run dev:mock` serves the same shapes from web/mock/.
 
 import type {
-  Account, Approval, Lookback, AuditEntry, AuditVerify, ChargeDetail, CoachResponse, Dispute, DisputeEmail, DisputeThread, SupplierNotification, EvalReport, Evidence, LedgerPost,
+  Account, Approval, Lookback, AuditEntry, AuditVerify, ChargeDetail, CoachResponse, CompanyOverview, Dispute, DisputeEmail, DisputeThread, SupplierNotification, EvalReport, Evidence, LedgerPost,
   Overview, PortalMessage, RunEvent, ScenarioExample, ScenarioRequest, ScenarioResponse, SupplierItem, RunSummary, SavedOverview, DocumentText, Connection, ContractLibrary, TraceStep, TraceSummary,
 } from "./types";
 import { adminToken } from "./tokens";
@@ -220,6 +220,16 @@ export const sendDispute = (id: string, runId: string | null | undefined, subjec
 export const sendDisputeReply = (id: string, emailId: string, runId: string | null | undefined, subject: string, body: string) =>
   call<DisputeEmail>(`/disputes/${q(id)}/replies/${q(emailId)}/send${runQ(runId)}`, { method: "POST", body: { subject, body }, timeoutMs: 30_000 });
 export const fetchNotifications = () => call<SupplierNotification[]>("/notifications");
+
+/** GET /overview: the signed-in supplier across all its distributors; null while the API doesn't serve it yet (404). */
+export async function fetchCompanyOverview(): Promise<CompanyOverview | null> {
+  try {
+    return await call<CompanyOverview>("/overview");
+  } catch (e) {
+    if (e instanceof ApiError && (e.status === 404 || e.status === 405)) return null;
+    throw e;
+  }
+}
 
 // ---- Next month, coach, scenario, accuracy, audit
 /** POST /replay/april: next month's charges under the rules saved so far. */

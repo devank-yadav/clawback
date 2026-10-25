@@ -11,8 +11,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  Bell, Bookmark, House, CalendarClock, ChevronsUpDown, Gavel, ExternalLink, FileText, FlaskConical, History as HistoryIcon, LayoutDashboard,
-  LogIn, LogOut, Menu, PenLine, Plug, ShieldCheck, Truck, Workflow, X,
+  Bell, Bookmark, House, ChevronsUpDown, Gavel, ExternalLink, FileText, History as HistoryIcon,
+  LogIn, LogOut, Menu, Plug, Truck, Workflow, X,
 } from "lucide-react";
 import { Logo } from "@/components/console/ui";
 import { inkOn, withAccount } from "@/lib/accounts";
@@ -35,22 +35,16 @@ const MAIN: Item[] = [
   { key: "connections", href: "/connections", label: "Connections", icon: <Plug /> },
 ];
 
-const TOOLS: Item[] = [
-  { key: "workspace", href: "/workspace", label: "Overview and payments", icon: <LayoutDashboard /> },
-  { key: "april", href: "/april", label: "Next month", icon: <CalendarClock /> },
-  { key: "coach", href: "/coach", label: "Deal coach", icon: <PenLine /> },
-  { key: "scenario", href: "/scenario", label: "Try a clause", icon: <FlaskConical /> },
-  { key: "audit", href: "/audit", label: "Audit", icon: <ShieldCheck /> },
-];
-
-/** Which sidebar item the address is: /app → agents, /app/history → history, /app/results → history. */
+/** Which sidebar item the address is: /app → home, /app/history → history; a run's own pages are the agents'. */
 function activeKey(path: string): string | null {
   if (path === "/app") return "home";
   const seg = path.replace(/^\/app\/?/, "").split("/")[0];
-  if (seg === "results") return "history";
-  if (seg === "upload") return "workspace";
-  return [...MAIN, ...TOOLS].some((i) => i.key === seg) ? seg : null;
+  if (["review", "activity", "approval", "upload"].includes(seg)) return "agents";
+  return MAIN.some((i) => i.key === seg) ? seg : null;
 }
+
+/** Pages about the whole company, not one distributor: the switcher reads "All distributors" there. */
+const COMPANY_WIDE = new Set(["/app", "/app/distributors"]);
 
 export const STATUS_TONE: Record<RelationshipStatus, string> = {
   waiting_for_payment: "is-idle", checking: "is-live", needs_you: "is-amber", settled: "is-green", stopped: "is-red",
@@ -88,24 +82,25 @@ function Switcher({ account, onPick }: { account: Account | null; onPick: () => 
   const current = supplier?.distributors.find((d) => d.account_id === account?.id) ?? null;
   const allowed = mine ? new Set(mine.account_ids) : null;
   const tracked = supplier?.distributors.filter((d) => d.tracked && (!allowed || allowed.has(d.account_id))) ?? [];
+  const all = COMPANY_WIDE.has(path);
 
   return (
     <div className="sb-switch" ref={ref}>
       <button className="sb-switch-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)} disabled={!account}>
-        <DistributorMark name={account?.distributor.name ?? "·"} color={account?.distributor.colors.primary} size={26} />
+        {all ? <span className="tb-mark sb-all" aria-hidden="true">∗</span> : <DistributorMark name={account?.distributor.name ?? "·"} color={account?.distributor.colors.primary} size={26} />}
         <span className="sb-switch-text">
           <small>Distributor</small>
-          <strong>{account?.distributor.name ?? "Loading…"}</strong>
+          <strong>{all ? "All distributors" : account?.distributor.name ?? "Loading…"}</strong>
         </span>
-        {current && <i className={`tb-dot ${STATUS_TONE[current.status]}`} aria-label={current.status_label} />}
+        {current && !all && <i className={`tb-dot ${STATUS_TONE[current.status]}`} aria-label={current.status_label} />}
         <ChevronsUpDown aria-hidden="true" />
       </button>
       {open && (
         <div className="tb-menu sb-menu" role="menu">
           <span className="tb-menu-label">{supplier ? `${supplier.brand.name} sells through` : "Loading distributors…"}</span>
           {tracked.map((d) => (
-            <button key={d.account_id} role="menuitemradio" aria-checked={d.account_id === account?.id} className="tb-row"
-              onClick={() => { setOpen(false); onPick(); router.push(withAccount(path === "/app/distributors" ? "/" : path, d.account_id)); }}>
+            <button key={d.account_id} role="menuitemradio" aria-checked={!all && d.account_id === account?.id} className="tb-row"
+              onClick={() => { setOpen(false); onPick(); router.push(withAccount(all ? "/" : path, d.account_id)); }}>
               <DistributorMark name={d.distributor.name} color={d.distributor.colors.primary} size={26} />
               <span><strong>{d.distributor.name}</strong><small>{d.status_label}</small></span>
               <i className={`tb-dot ${STATUS_TONE[d.status]}`} />
@@ -259,8 +254,6 @@ export default function TopBar({ account, extra }: { account: Account | null; ac
         <Switcher account={account} onPick={close} />
         <nav className="sb-nav" aria-label="Clawback">
           {MAIN.map(link)}
-          <span className="sb-label">Tools</span>
-          {TOOLS.map(link)}
           {account && (
             <a className="sb-link" href={withAccount("/portal", account.id)} target="_blank" rel="noreferrer" onClick={close}>
               <ExternalLink /><span>{account.distributor.portal_name}</span>

@@ -27,7 +27,6 @@ export function Shell({ crumbs, right, children }: { crumbs: string[]; right?: R
   const asking = view.stage === "owner" ? 1 : 0;
   const approving = view.approval?.status === "pending" ? 1 : 0;
   const items = [
-    { href: "/home", label: "Summary", d: I.home, count: 0 },
     { href: "/review", label: "Payment review", d: I.review, count: asking },
     { href: "/activity", label: "Agent activity", d: I.agents, count: 0 },
     { href: "/approval", label: "Your approval", d: I.approval, count: approving },
