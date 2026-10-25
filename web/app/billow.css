@@ -158,7 +158,8 @@ i.is-dispute { background: var(--dispute); } i.is-fair { background: var(--fair)
 
 @media (max-width: 860px) {
   .tb { padding: 10px 16px; }
-  .tb-nav { margin: 0; }
+  .tb-nav { margin: 0 -8px; gap: 0; }
+  .tb-link { padding: 7px 9px; font-size: 13px; }
   .fl-watch, .fl-result { grid-template-columns: minmax(0, 1fr); }
   .bw-frame { padding: 14px; border-radius: 20px; }
   .bw-hero { padding-top: 28px; }
