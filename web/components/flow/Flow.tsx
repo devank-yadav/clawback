@@ -17,16 +17,19 @@ import { useRun } from "@/components/console/RunProvider";
 import { DonePanel } from "./DonePanel";
 import { ChargeMatrix } from "./ChargeMatrix";
 import { Elapsed, Meter, ACTOR } from "./parts";
-import { ReaderCard, Spotlight } from "./Spotlight";
+import { NeedsYou, ReaderCard } from "./Spotlight";
 import { StageRail } from "./StageRail";
 import { StageHero } from "./StageHero";
 import { AgentTalk } from "./AgentTalk";
 import { AgentStrip } from "./AgentStrip";
 import { StartPanel } from "./StartPanel";
-import { buildStages, focusStage } from "./stages";
+import { buildStages, focusStage, type Stage, type StageKey } from "./stages";
 import { money } from "@/lib/format";
 
 const noop = () => () => {};
+// The decisions that wait on the admin, in the order to take them: the question first (its answer can change the
+// memo), then the credit memo's approval, then the dispute to send. All of them show at once, never one at a time.
+const NEEDS: StageKey[] = ["owner", "approval", "file"];
 /** ?run=latest opens the account's last run instead of the start screen. */
 function useOpenLatest() {
   return useSyncExternalStore(noop, () => !!new URLSearchParams(window.location.search).get("run"), () => false);
@@ -115,8 +118,7 @@ function FlowFor() {
 
   const stages = buildStages(state, view, { distributor: cast.distributor, owner: cast.owner }, starting || (mine && !state.run));
   const focus = focusStage(stages);
-  // On the result, the one thing that needs the admin first: their question (it blocks the books), else whatever waits.
-  const nextUp = stages.find((s) => s.key === "owner" && s.state === "waiting") ?? (focus?.state === "waiting" ? focus : null);
+  const pending = NEEDS.map((k) => stages.find((s) => s.key === k && s.state === "waiting")).filter((s): s is Stage => !!s);
   const r = view.remittance;
   const t = view.totals;
   const charge = drawer ? view.charges.find((c) => c.id === drawer) ?? null : null;
@@ -132,7 +134,7 @@ function FlowFor() {
       )}
 
       {phase === "run" && (
-        <main className="fl-main">
+        <main className="fl-main fl-run">
           <div className="fl-pay">
             <p className="fl-pay-line">
               {r
@@ -145,33 +147,38 @@ function FlowFor() {
               <Elapsed from={r?.received_at ?? state.feed[0]?.at ?? null} running={status === "started"} decidedIn={view.value?.seconds_to_decided ?? null} />
             )}
           </div>
+          {/* Top to bottom: the seven steps, the totals, then the charges with what's happening now beside them, all
+              above the fold; the agents and the full activity below. */}
           <div className="bw-stage">
             <div className="bw-frame">
-              <AgentStrip state={state} view={view} owner={cast.owner} distributor={cast.distributor} />
-              <StageHero stage={focus} stages={stages} feed={state.feed} done={status === "finished"} />
-              <AgentTalk />
-              <Spotlight focus={focus} />
               <StageRail stages={stages} compact />
               <div className="fl-meters">
                 <Meter label="Disputing, with proof" value={t?.disputed ?? 0} tone="dispute" />
                 <Meter label="Fair, accepted" value={t?.accepted ?? 0} tone="fair" />
                 <Meter label={`Waiting on ${cast.owner}`} value={(t?.waiting ?? 0) + (view.stage === "approval" ? view.approval?.amount ?? 0 : 0)} tone="wait" />
               </div>
+              <div className="fl-now">
+                <div className="fl-now-main">
+                  <NeedsYou stages={pending} />
+                  {(state.order.length > 0 || state.stages.check || (r?.charge_count ?? 0) > 0) && <ChargeMatrix state={state} view={view} owner={cast.owner} onOpen={setDrawer} />}
+                </div>
+                <div className="fl-now-side">
+                  <StageHero stage={focus} stages={stages} feed={state.feed} done={status === "finished"} compact />
+                  {focus?.key === "read" ? <ReaderCard live={focus.state === "active"} /> : <AgentTalk />}
+                </div>
+              </div>
             </div>
           </div>
-          {state.order.length > 0 || state.stages.check ? (
-            <div className="fl-work">
-              <ChargeMatrix state={state} view={view} owner={cast.owner} onOpen={setDrawer} />
-              <Feed />
-            </div>
-          ) : state.stages.docs.length > 0 && focus?.key !== "read" ? <ReaderCard live={false} /> : null}
           {status === "failed" && <div className="fl-problem" role="alert">The run stopped. {state.feed.filter((l) => l.level === "error").at(-1)?.text}</div>}
+          <AgentStrip state={state} view={view} owner={cast.owner} distributor={cast.distributor} />
+          <Feed />
         </main>
       )}
 
       {phase === "done" && (
         <main className="fl-main">
-          <DonePanel onOpen={setDrawer} onNew={restart} onReplay={() => { setOpened(true); window.scrollTo({ top: 0 }); void replay(); }} next={nextUp ? <Spotlight focus={nextUp} /> : null} disputeInNext={nextUp?.key === "file"} failed={status === "failed"} />
+          <DonePanel onOpen={setDrawer} onNew={restart} onReplay={() => { setOpened(true); window.scrollTo({ top: 0 }); void replay(); }}
+            rail={<StageRail stages={stages} compact />} next={<NeedsYou stages={pending} />} disputeInNext={pending.some((s) => s.key === "file")} failed={status === "failed"} />
         </main>
       )}
 

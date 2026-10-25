@@ -1,8 +1,9 @@
 "use client";
 
-// The run's centerpiece: the stage the agents are on right now, big. Its step, who is working (pulsing while they
-// work), what they're doing this second, their own last lines streaming in, and how far along they are. The rail of
-// all seven stages sits under it as context. Wording only: every line and count arrived in an event.
+// What the agents are doing right now: the stage they're on, who is working (pulsing while they work), what they're
+// doing this second, their own last lines streaming in, and how far along they are. `compact` is the panel beside
+// the charges during a run; the rail of all seven stages sits above it. Wording only: every line and count arrived
+// in an event.
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { FeedLine } from "@/lib/useRunEvents";
@@ -18,11 +19,11 @@ const VERB: Partial<Record<StageKey, string>> = {
   books: "Posting to QuickBooks",
 };
 
-export function StageHero({ stage, stages, feed, done }: { stage: Stage | null; stages: Stage[]; feed: FeedLine[]; done: boolean }) {
+export function StageHero({ stage, stages, feed, done, compact = false }: { stage: Stage | null; stages: Stage[]; feed: FeedLine[]; done: boolean; compact?: boolean }) {
   const still = useReducedMotion();
   if (!stage) {
     return (
-      <section className="sh is-done" aria-live="polite">
+      <section className={`sh is-done ${compact ? "is-compact" : ""}`} aria-live="polite">
         <span className="sh-step">All {stages.length} stages</span>
         <h2>{done ? "The agents are finished" : "The agents are getting ready"}</h2>
         <p className="sh-line">{done ? "Every charge has a decision with its proof. The result is below." : "Starting up…"}</p>
@@ -33,11 +34,11 @@ export function StageHero({ stage, stages, feed, done }: { stage: Stage | null; 
   const person = stage.who === "PERSON";
   const waiting = stage.state === "waiting";
   const agents = stage.agent.split(/\s[·+]\s/).filter(Boolean);
-  const mine = feed.filter((l) => ACTORS[stage.key].includes(l.actor)).slice(-4);
+  const mine = feed.filter((l) => ACTORS[stage.key].includes(l.actor)).slice(compact ? -3 : -4);
   const pct = stage.total ? Math.max(4, Math.round(((stage.done ?? 0) / stage.total) * 100)) : null;
 
   return (
-    <section className={`sh ${waiting ? "is-waiting" : "is-working"} ${stage.state === "failed" ? "is-failed" : ""}`} aria-live="polite" aria-label="What the agents are doing now">
+    <section className={`sh ${waiting ? "is-waiting" : "is-working"} ${stage.state === "failed" ? "is-failed" : ""} ${compact ? "is-compact" : ""}`} aria-live="polite" aria-label="What the agents are doing now">
       <div className="sh-top">
         <span className="sh-step">Step {index} of {stages.length}</span>
         <span className={`sh-badge ${waiting ? "is-amber" : ""}`}>{waiting ? (person ? "Waiting on you" : "Paused") : stage.state === "failed" ? "Stopped" : "Working now"}</span>
