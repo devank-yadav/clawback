@@ -482,10 +482,12 @@
         "C4"
       ],
       "evidence_ids": [],
-      "created_at": "2026-10-24T10:31:41-07:00"
+      "created_at": "2026-10-24T10:31:41-07:00",
+      "channel": "portal",
+      "email_message_id": null
     },
     "prev_hash": "eeaecaed4a91aee6cebb44535364ed6e5ce46f02adc6265d559cf0b7839ee21c",
-    "hash": "c2846640bcebc3cb20a69196f32471ade629fa31b56d10d2872b2000116ea35c"
+    "hash": "d1db8007a82018b2a64baecec07ebc0929e7804b87c67b3ec583ed55df7f2bfe"
   },
   {
     "id": 17,
@@ -511,9 +513,11 @@
         "ev-sales-w3",
         "ev-sales-w4"
       ],
-      "created_at": "2026-10-24T10:31:45-07:00"
+      "created_at": "2026-10-24T10:31:45-07:00",
+      "channel": "portal",
+      "email_message_id": null
     },
-    "prev_hash": "c2846640bcebc3cb20a69196f32471ade629fa31b56d10d2872b2000116ea35c",
-    "hash": "787111e5cc057ec467a0c54f7cd250107c6783a0c097b90aab0dac5494868008"
+    "prev_hash": "d1db8007a82018b2a64baecec07ebc0929e7804b87c67b3ec583ed55df7f2bfe",
+    "hash": "52b9412b6d801662afa8cf93cbb4eb5471efa8cb04920b7a11503ac6664a1436"
   }
 ]

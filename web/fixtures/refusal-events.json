@@ -1310,7 +1310,9 @@
           "C4"
         ],
         "evidence_ids": [],
-        "created_at": "2026-10-24T10:31:37-07:00"
+        "created_at": "2026-10-24T10:31:37-07:00",
+        "channel": "portal",
+        "email_message_id": null
       }
     },
     {
@@ -1347,7 +1349,9 @@
           "ev-sales-w3",
           "ev-sales-w4"
         ],
-        "created_at": "2026-10-24T10:31:41-07:00"
+        "created_at": "2026-10-24T10:31:41-07:00",
+        "channel": "portal",
+        "email_message_id": null
       }
     },
     {

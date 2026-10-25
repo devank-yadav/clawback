@@ -177,7 +177,9 @@ def test_f8_f11_full_demo_over_the_api_with_wifi_off(client):
     assert (totals.taken, totals.disputed, totals.accepted, totals.waiting, totals.questions) == (
         D(6850), D(4120), D(2730), D(0), 1)
     dispute = next(e.data for e in march.events if e.type == "dispute")
-    assert (dispute.id, dispute.total, dispute.status) == ("D-0417", D(4120), "filed")
+    assert (dispute.id, dispute.total, dispute.status) == ("D-0417", D(4120), "ready_to_send")
+    sent = client.post(f"/disputes/D-0417/send?run_id={march.id}").json()  # the admin's "Review and send"
+    assert (sent["dispute"]["status"], sent["email"]["status"]) == ("filed", "outbox")  # Wi-Fi off: the in-app outbox
     approval = next(e.data for e in march.events if e.type == "approval")
     assert (approval.amount, approval.approver_role, approval.status, len(approval.lines)) == (
         D(2730), "owner", "pending", 3)

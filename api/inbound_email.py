@@ -67,7 +67,7 @@ REMITTANCE_WORDS = re.compile(r"\bremittance\b|\bremit advice\b|\bpayment advice
 HANDLED = "_handled"  # under the inbound root: one file per email handled, so a restart still knows it
 BACKGROUND = True  # the remittance read and its run happen off the request's thread (tests turn it off)
 
-Status = Literal["reading", "started", "matched", "kept", "claim", "not_run", "unrouted", "duplicate"]
+Status = Literal["reading", "started", "matched", "kept", "claim", "not_run", "unrouted", "duplicate", "dispute_reply"]
 
 
 class Refused(Exception):
@@ -85,6 +85,7 @@ class InboundResult(Contract):
     routed_by: str | None = None  # address · sender · invoice · payer
     run_id: str | None = None
     document_id: str | None = None
+    dispute_id: str | None = None  # a reply to one of our dispute emails (api/dispute_email.py)
 
 
 @dataclass(frozen=True)
@@ -426,6 +427,15 @@ def handle(msg: Message, client: anthropic.Anthropic | None = None, background: 
 
 def _handle(msg: Message, key: str, client: anthropic.Anthropic | None, background: bool) -> InboundResult:
     who = _who(msg)
+    from api import dispute_email  # a reply to a dispute email (d-<n>+<token>@, or In-Reply-To one we sent)
+
+    if (found := dispute_email.route(msg)) is not None:
+        run, dispute = found
+        dispute_email.on_reply(run, dispute, msg, client)
+        sources.saw("inbox", f"{who}: a reply to dispute {dispute.id}")
+        return _remember(key, InboundResult(status="dispute_reply", detail=f"added to {dispute.id}'s thread",
+                                            account=run.account.id, routed_by="dispute", run_id=run.id,
+                                            dispute_id=dispute.id))
     account, how = route(msg)
     if account is None:
         domain = os.getenv(DOMAIN, "").strip()

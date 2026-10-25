@@ -58,8 +58,8 @@ def thread(dispute_id: str) -> list[PortalMessage]:
     return THREADS.setdefault((found[0].id if found else "", dispute_id), [])
 
 
-def _message(dispute_id: str, from_party: str, text: str, **kw) -> PortalMessage:
-    t = thread(dispute_id)
+def _message(dispute_id: str, from_party: str, text: str, thread_of: pipeline.Run | None = None, **kw) -> PortalMessage:
+    t = THREADS.setdefault((thread_of.id, dispute_id), []) if thread_of else thread(dispute_id)
     m = PortalMessage(id=f"PM-{dispute_id}-{len(t) + 1}", dispute_id=dispute_id, from_party=from_party, text=text,
                       created_at=datetime.now().astimezone(), **kw)
     t.append(m)
@@ -74,25 +74,38 @@ def post(dispute_id: str, text: str, attachment_doc_id: str | None = None,
         return _post(run, dispute, text, attachment_doc_id, client)
 
 
-def _post(run: pipeline.Run, dispute: Dispute, text: str, attachment_doc_id: str | None, client) -> list[PortalMessage]:
+def _deliver_portal(run: pipeline.Run, dispute: Dispute, text: str, charge_ids: list[str],
+                    evidence_ids: list[str]) -> PortalMessage | None:
+    """Clawback's answer on the portal: posted at once (an email reply instead waits for the admin, dispute_email)."""
+    ours = _message(dispute.id, "clawback", text, charge_ids=charge_ids, evidence_ids=evidence_ids)
+    run.emit("portal_message", ours)
+    return ours
+
+
+def _post(run: pipeline.Run, dispute: Dispute, text: str, attachment_doc_id: str | None, client, deliver=None,
+          channel: str = "portal", email_message_id: str | None = None) -> list[PortalMessage]:
+    """The distributor's reply and Clawback's answer. `deliver` sends the answer (the portal's posts it; the email
+    channel's drafts it for the admin and returns None); `channel` marks where the reply came from."""
     dispute_id, them = dispute.id, run.distributor
+    deliver = deliver or _deliver_portal
+    via = {"channel": channel, "email_message_id": email_message_id}
     if attachment_doc_id:
         theirs = _message(dispute_id, "northmart", text, attachment_doc_id=attachment_doc_id,
-                          classification="new_document")
+                          classification="new_document", **via)
         run.emit("portal_message", theirs)
-        ours = _new_document(run, dispute, attachment_doc_id, client)
+        ours = _new_document(run, dispute, attachment_doc_id, client, deliver)
         return [theirs] + ([ours] if ours else [])
     draft = negotiator.answer_reply(dispute, text, run.evidence, run.terms, client, account=run.account)
     theirs = _message(dispute_id, "northmart", text, classification=draft.classification if draft else "other",
-                      charge_ids=draft.charge_ids if draft else [])
+                      charge_ids=draft.charge_ids if draft else [], **via)
     run.emit("portal_message", theirs)
     owner = run.name("owner")
     if draft is None or draft.classification == "other" or not draft.answer:
         run.log(f"{them}'s reply on {dispute_id} needs a person: held for {owner}.", "warn", "negotiator")
         return [theirs]
-    ours = _message(dispute_id, "clawback", draft.answer, charge_ids=draft.charge_ids,
-                    evidence_ids=draft.evidence_ids)
-    run.emit("portal_message", ours)
+    ours = deliver(run, dispute, draft.answer, draft.charge_ids, draft.evidence_ids)
+    if ours is None:
+        return [theirs]
     if draft.classification == "agrees":
         run.log(f"{them} agreed on {', '.join(draft.charge_ids)}.", "good", "negotiator")
     else:
@@ -101,7 +114,7 @@ def _post(run: pipeline.Run, dispute: Dispute, text: str, attachment_doc_id: str
     return [theirs, ours]
 
 
-def _new_document(run: pipeline.Run, dispute: Dispute, doc_id: str, client) -> PortalMessage | None:
+def _new_document(run: pipeline.Run, dispute: Dispute, doc_id: str, client, deliver=None) -> PortalMessage | None:
     owner, policy, them = run.name("owner"), load_policy(), run.distributor
     if doc_id not in run.account.docs:
         run.log(f"{them} attached a document Clawback doesn't have ({doc_id}): held for {owner}.", "warn", "negotiator")
@@ -111,7 +124,7 @@ def _new_document(run: pipeline.Run, dispute: Dispute, doc_id: str, client) -> P
     if not documents.can_change_deal(r.doc):
         msg = (f"Thanks. The attached document isn't signed by both parties or sent by {run.account.brand.name}'s "
                f"approved representatives, so under §6.1 it doesn't change the deal. {dispute.id} stands.")
-        return _send(run, dispute, msg, [], [])
+        return _send(run, dispute, msg, [], [], deliver)
     new_terms = [t for t in r.terms if t.status == "verified"]
     if not new_terms:
         why = "; ".join(r.disagreements) or "no quote was found word for word"
@@ -137,7 +150,7 @@ def _new_document(run: pipeline.Run, dispute: Dispute, doc_id: str, client) -> P
             conceded.append((ln.charge_id, given))
     if not conceded:
         msg = f"Thanks for the document. It doesn't change any line on {dispute.id}, which stands."
-        return _send(run, dispute, msg, [], [])
+        return _send(run, dispute, msg, [], [], deliver)
     lines = [ln.model_copy(update={"amount": run.decisions[ln.charge_id].disputed,
                                    "math": " ".join(run.allowances[ln.charge_id].steps)})
              for ln in dispute.lines if run.decisions[ln.charge_id].disputed > 0]
@@ -149,7 +162,7 @@ def _new_document(run: pipeline.Run, dispute: Dispute, doc_id: str, client) -> P
     msg = (f"Thanks for the signed amendment{f', which raises the cap to {int(cap):,} units' if cap else ''}. "
            f"Under it, {'; '.join(parts)}. {dispute.id} now totals ${total:,.0f}.")
     ours = _send(run, dispute, msg, [cid for cid, _ in conceded],
-                 [evidence_mod.clause_id(t) for t in new_terms])
+                 [evidence_mod.clause_id(t) for t in new_terms], deliver)
     run.log(f"Conceded ${totals.total_of(a for _, a in conceded):,.0f} after {them}'s signed amendment.", "good",
             "negotiator")
     pipeline._request_credit_memo(run, policy, conceded)
@@ -171,19 +184,24 @@ def _refresh_finding(run: pipeline.Run, charge_id: str, a, client) -> None:
             independent_sources=len(kinds), comeback_answered=old.comeback_answered, type=f.type, finding=f.finding)
 
 
-def _send(run: pipeline.Run, dispute: Dispute, text: str, charge_ids: list[str], evidence_ids: list[str]) -> PortalMessage | None:
-    """Every outgoing message passes the outbound filter; one built by code that fails is held, never sent."""
-    amounts = [x for cid in run.charges for x in (run.decisions[cid].disputed, run.decisions[cid].accepted,
-                                                  run.allowances[cid].allowed, run.charges[cid].amount)]
+def outbound_context(run: pipeline.Run, dispute: Dispute) -> outbound_filter.OutboundContext:
+    """What a message to the distributor about this dispute may say: the run's engine numbers and verified terms."""
+    amounts = [x for cid in run.charges if cid in run.decisions and cid in run.allowances
+               for x in (run.decisions[cid].disputed, run.decisions[cid].accepted, run.allowances[cid].allowed,
+                         run.charges[cid].amount)]
     amounts += [dispute.total, totals.total_of(ln.amount for ln in dispute.lines)]
     amounts += [e.data.total for e in run.events if e.type == "dispute"]
-    ctx = outbound_filter.OutboundContext.build(amounts=amounts,
-                                                terms=[t.model_dump(mode="json") for t in run.terms if t.status == "verified"])
-    result = outbound_filter.check_message(text, ctx)
+    return outbound_filter.OutboundContext.build(
+        amounts=amounts, terms=[t.model_dump(mode="json") for t in run.terms if t.status == "verified"],
+        findings=[ln.quote for ln in dispute.lines if ln.quote] + [ln.reason for ln in dispute.lines])
+
+
+def _send(run: pipeline.Run, dispute: Dispute, text: str, charge_ids: list[str], evidence_ids: list[str],
+          deliver=None) -> PortalMessage | None:
+    """Every outgoing message passes the outbound filter; one built by code that fails is held, never sent."""
+    result = outbound_filter.check_message(text, outbound_context(run, dispute))
     if not result.ok:
         run.log(f"Held a message to {run.distributor} for {run.name('owner')}: {result.feedback()}", "warn",
                 "negotiator")
         return None
-    ours = _message(dispute.id, "clawback", text, charge_ids=charge_ids, evidence_ids=evidence_ids)
-    run.emit("portal_message", ours)
-    return ours
+    return (deliver or _deliver_portal)(run, dispute, text, charge_ids, evidence_ids)
