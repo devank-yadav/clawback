@@ -453,3 +453,8 @@ button.fl-row:hover { background: var(--card-2); }
 .ct-mark.is-disputed, .ct-mark.is-rejected { background: color-mix(in srgb, var(--red) 22%, transparent); }
 .ct-mark.is-active { outline: 2px solid var(--accent); }
 @media (max-width: 860px) { .ct { grid-template-columns: 1fr; } .ct-list { position: static; } }
+
+/* the run screen's Back: beside the timer, small, back to the start screen */
+.fl-pay-actions { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.fl-pay-actions .fl-back { min-height: 32px; padding: 0 12px; font-size: 13px; gap: 6px; }
+.fl-pay-actions .fl-back svg { width: 14px; height: 14px; }

@@ -7,6 +7,7 @@
 // A run started anywhere else (the Nessie deposit, another device) switches the page to it by itself.
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { ArrowLeft } from "lucide-react";
 import { SlideOver } from "@/components/ui/SlideOver";
 import { useRouter, useSearchParams } from "next/navigation";
 import { withAccount } from "@/lib/accounts";
@@ -151,11 +152,15 @@ function FlowFor() {
                 ? <>{r.counterparty} paid {money(r.received)} of {money(r.expected)} and <b>kept {money(r.taken)}</b> in {r.charge_count} charges</>
                 : state.run ? `${cast.distributor}’s charges` : `Waiting for ${cast.distributor}’s payment…`}
             </p>
-            {replaying ? (
-              <span className="fl-replay" role="status"><span className="fl-replay-tag">Replaying the run</span><button className="cx-btn is-ghost" onClick={skipReplay}>Skip to the result</button></span>
-            ) : (
-              <Elapsed from={r?.received_at ?? state.feed[0]?.at ?? null} running={status === "started"} decidedIn={view.value?.seconds_to_decided ?? null} />
-            )}
+            <span className="fl-pay-actions">
+              {replaying ? (
+                <span className="fl-replay" role="status"><span className="fl-replay-tag">Replaying the run</span><button className="cx-btn is-ghost" onClick={skipReplay}>Skip to the result</button></span>
+              ) : (
+                <Elapsed from={r?.received_at ?? state.feed[0]?.at ?? null} running={status === "started"} decidedIn={view.value?.seconds_to_decided ?? null} />
+              )}
+              {/* Back to the start screen; the agents keep going on the server, and the run stays one click away. */}
+              <button className="cx-btn is-ghost fl-back" onClick={restart}><ArrowLeft aria-hidden="true" />Back</button>
+            </span>
           </div>
           {/* Top to bottom: the seven steps (each opens what its agents did), the totals, then the charges with what's
               happening now beside them, all above the fold; the full activity below. */}
