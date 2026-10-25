@@ -38,14 +38,19 @@ esac
 
 # 4. The event stream: right content type, no compression, and events arrive one by one (not in a burst at the end).
 stream="$API/runs/$FIXTURE_RUN/events?keepalive=false&delay_ms=150"
-headers=$(curl -s -m 30 -D - -o /dev/null -H 'Accept-Encoding: gzip, zstd' "${stream/delay_ms=150/delay_ms=0}" | tr -d '\r')
-if printf '%s\n' "$headers" | grep -qi '^content-type: text/event-stream'; then pass "stream content type"; else fail "stream content type: $(printf '%s\n' "$headers" | head -1)"; fi
-if printf '%s\n' "$headers" | grep -qi '^content-encoding:'; then
-	warn "stream is compressed ($(printf '%s\n' "$headers" | grep -i '^content-encoding:')); check deploy/Caddyfile"
+# With sign-in on (any password set, the deployed site), the stream answers 401 without a session: say so and skip.
+status=$(curl -s -m 10 -o /dev/null -w '%{http_code}' "${stream/delay_ms=150/delay_ms=0}")
+if [ "$status" = "401" ]; then
+	warn "stream: sign-in is on (401 without a session), so its content type and timing aren't checked from here"
 else
-	pass "stream not compressed"
-fi
-timing=$(curl -sN -m 40 "$stream" | python3 -c '
+	headers=$(curl -s -m 30 -D - -o /dev/null -H 'Accept-Encoding: gzip, zstd' "${stream/delay_ms=150/delay_ms=0}" | tr -d '\r')
+	if printf '%s\n' "$headers" | grep -qi '^content-type: text/event-stream'; then pass "stream content type"; else fail "stream content type: $(printf '%s\n' "$headers" | head -1)"; fi
+	if printf '%s\n' "$headers" | grep -qi '^content-encoding:'; then
+		warn "stream is compressed ($(printf '%s\n' "$headers" | grep -i '^content-encoding:')); check deploy/Caddyfile"
+	else
+		pass "stream not compressed"
+	fi
+	timing=$(curl -sN -m 40 "$stream" | python3 -c '
 import sys, time
 t0, seen = time.monotonic(), []
 for line in sys.stdin:
@@ -53,11 +58,12 @@ for line in sys.stdin:
         seen.append(time.monotonic() - t0)
 print(len(seen), round(seen[0], 1) if seen else -1, round(seen[-1], 1) if seen else -1)
 ')
-read -r n first last <<<"$timing"
-if [ "${n:-0}" -ge 60 ] && python3 -c "import sys; f, l = float(sys.argv[1]), float(sys.argv[2]); sys.exit(0 if f < 3 and l - f > 5 else 1)" "$first" "$last"; then
-	pass "stream: $n events, first after ${first}s, last after ${last}s (unbuffered)"
-else
-	fail "stream: $n events, first after ${first}s, last after ${last}s (expected about 67, spread over about 10 s)"
+	read -r n first last <<<"$timing"
+	if [ "${n:-0}" -ge 60 ] && python3 -c "import sys; f, l = float(sys.argv[1]), float(sys.argv[2]); sys.exit(0 if f < 3 and l - f > 5 else 1)" "$first" "$last"; then
+		pass "stream: $n events, first after ${first}s, last after ${last}s (unbuffered)"
+	else
+		fail "stream: $n events, first after ${first}s, last after ${last}s (expected about 67, spread over about 10 s)"
+	fi
 fi
 
 # 5. Twilio's webhook reaches the API unprefixed. An unsigned POST gets 403 while TWILIO_AUTH_TOKEN is set (good);
