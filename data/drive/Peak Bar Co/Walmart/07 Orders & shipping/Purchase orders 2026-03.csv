@@ -1,0 +1,8 @@
+po,written_on,po_type,ship_to,product,units,unit_cost,po_cost,must_arrive_by,received_on,received_units
+9127112,2026-02-23,Regular,DC 6094,Peak Bar Original 12-Pack,1200,15.60,18720.00,2026-03-06,2026-03-05,1200
+9127135,2026-02-25,New Store,Store 5821,Peak Bar Chocolate 12-Pack,240,15.60,3744.00,2026-03-09,2026-03-09,240
+9127151,2026-02-27,Regular,DC 6094,Peak Bar Chocolate 12-Pack,900,15.60,14040.00,2026-03-11,2026-03-10,900
+9127177,2026-03-02,New Distribution Center,DC 6099,Peak Bar Variety 24-Pack,800,28.80,23040.00,2026-03-13,2026-03-12,800
+9127190,2026-03-09,Regular,DC 6094,Peak Bar Variety 24-Pack,400,28.80,11520.00,2026-03-17,2026-03-16,400
+9127204,2026-03-12,Regular,DC 6094,Peak Bar Original 12-Pack,600,15.60,9360.00,2026-03-20,2026-03-24,600
+9127229,2026-03-16,Regular,DC 6094,Peak Bar Chocolate 12-Pack,500,15.60,7800.00,2026-03-24,2026-03-23,500

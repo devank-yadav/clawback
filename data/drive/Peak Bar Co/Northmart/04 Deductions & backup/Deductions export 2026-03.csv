@@ -1,0 +1,7 @@
+charge_id,ref,code,description,product,units,rate,amount,period_start,period_end
+C1,NM-2229,PA,Spring promo week 1,Original+Chocolate,1200,1.50,1800.00,2026-03-01,2026-03-07
+C2,NM-2231,PA,Spring promo week 2,Original+Chocolate,980,1.00,980.00,2026-03-08,2026-03-14
+C3,NM-2240,PA,Spring promo Apr 1 to 7,Original+Chocolate,330,1.00,330.00,2026-04-01,2026-04-07
+C4,NM-2236,PA,Spring promo week 4,Original+Chocolate,1540,1.00,1540.00,2026-03-22,2026-03-31
+C5,NM-2237,PA,Spring promo Mint,Mint,1000,1.00,1000.00,2026-03-01,2026-03-31
+C6,NM-2238,DF,Display fee (notice Mar 11),none,1,1200.00,1200.00,2026-03-01,2026-03-31

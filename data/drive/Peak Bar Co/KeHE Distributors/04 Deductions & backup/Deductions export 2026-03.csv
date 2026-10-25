@@ -1,0 +1,10 @@
+charge_id,ref,code,description,product,units,rate,amount,period_start,period_end,line_ref,deducted_on
+K1,IA2603101,OI,Off-invoice allowance not taken: POs Mar 1-14,Peak Bar Original+Peak Bar Chocolate,2350,1.50,3525.00,2026-03-01,2026-03-14,,2026-04-10
+K2,IA2603102,OI,Off-invoice allowance not taken: POs Mar 15-28,Peak Bar Original+Peak Bar Chocolate,2250,1.50,3375.00,2026-03-15,2026-03-28,,2026-04-10
+K3,IA2603103,OI,Off-invoice allowance not taken: POs Mar 29-Apr 4,Peak Bar Original+Peak Bar Chocolate,410,1.50,615.00,2026-03-29,2026-04-04,,2026-04-10
+K4,MCBF-26-0314,MCBF,MCB processing fee: Mar 1-14,none,1,65.00,65.00,2026-03-01,2026-03-14,,2026-04-10
+K5,MCBF-26-0328,MCBF,MCB processing fee: Mar 15-28,none,1,312.00,312.00,2026-03-15,2026-03-28,,2026-04-10
+K6,EP-26-55120,EP,Extra Performance admin charge: retailer invoice R-55120,none,1,270.00,270.00,2026-03-01,2026-03-31,,2026-04-10
+K7,EP-26-55188,EP,Extra Performance admin charge: retailer invoice R-55188,none,1,182.00,182.00,2026-03-01,2026-03-31,,2026-04-10
+K8,P26032207,FP,Free placements: 48 cases at 24 new stores,Peak Bar Original,48,30.09,1444.32,2026-03-01,2026-03-31,,2026-04-10
+K9,G26088120,SPL,Spoils credited to a retailer: 240 units,Peak Bar Chocolate,240,2.59,621.60,2026-03-01,2026-03-31,,2026-04-10

@@ -15,7 +15,7 @@ brand:
 distributor:
   name: Walmart
   desk_email: supplierdeductions@walmart.example
-  portal_name: Walmart Retail Link
+  portal_name: Retail Link APDP
   colors: {primary: "#0071ce", accent: "#ffc220"}
 invoice:
   id: PBW-2603

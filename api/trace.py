@@ -68,6 +68,7 @@ AGENTS = {
     "gemini-reader": "Deal reader (Gemini)",
     "claude-reader-b": "Deal reader (second Claude read)",
     "claude-investigator": "Investigator",
+    "claude-investigator-ops": "Investigator (operations)",
     "claude-rehearsal": "Negotiator: comeback",
     "claude-portal-reply": "Negotiator: portal reply",
     "claude-coach": "Deal Coach",

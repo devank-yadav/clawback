@@ -1,0 +1,7 @@
+charge_id,ref,code,description,product,units,rate,amount,period_start,period_end,line_ref
+U1,60412281,PA,"MCB promo week 1 (UNFI MCB deal PB-MCB-0326), billed at $1.50",Peak Bar Original+Peak Bar Chocolate,900,1.50,1350.00,2026-03-01,2026-03-07,
+U2,60412297,PA,MCB promo week 2 (UNFI MCB deal PB-MCB-0326),Peak Bar Original+Peak Bar Chocolate,1050,1.00,1050.00,2026-03-08,2026-03-14,
+U3,60412305,PA,MCB promo week 3 (UNFI MCB deal PB-MCB-0326),Peak Bar Original+Peak Bar Chocolate,1600,1.00,1600.00,2026-03-15,2026-03-21,
+U4,60412318,PA,MCB promo week 4 (UNFI MCB deal PB-MCB-0326),Peak Bar Original+Peak Bar Chocolate,850,1.00,850.00,2026-03-22,2026-03-28,
+U5,60412326,PA,"MCB promo Peak Bar Peanut Butter, Mar 1-28",Peak Bar Peanut Butter,420,1.00,420.00,2026-03-01,2026-03-28,
+U6,60418830CV,DF,"ClearVue program fee, Q1 2026",none,1,1250.00,1250.00,2026-03-01,2026-03-31,

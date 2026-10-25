@@ -15,7 +15,7 @@ brand:
 distributor:
   name: KeHE Distributors
   desk_email: vendorperformance@kehe.example
-  portal_name: KeHE Vendor Portal
+  portal_name: KeHE CONNECT (K-Solve)
   colors: {primary: "#00573f", accent: "#e8f1ec"}
 invoice:
   id: PBK-2603
