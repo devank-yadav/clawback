@@ -73,6 +73,14 @@ def status(a: accounts.Account) -> tuple[str, str, str | None]:
         return "needs_you", f"{waiting} decision{'s' if waiting > 1 else ''} for you", now.run_id
     if runs and runs[-1].status in ("started",):
         return "checking", "Agents are checking a payment", now.run_id
+    disputes: dict = {}
+    for e in now.events:
+        if e.type == "dispute":
+            disputes[e.data.id] = e.data
+    open_ = [d for d in disputes.values() if d.status in ("filed", "answered")]
+    if open_:
+        names = ", ".join(d.id for d in open_)
+        return "dispute_open", f"Dispute {names} open, awaiting reply", now.run_id
     return "settled", "All settled", now.run_id
 
 

@@ -217,3 +217,18 @@ def test_an_open_laptop_stays_open(monkeypatch):
     assert client.get("/auth/me").json() == {"user": None, "supplier": None, "auth_required": False}
     r = client.post("/auth/login", json={"email": "anyone", "password": "x"})
     assert r.status_code == 200 and r.json()["supplier"]["id"] == "peak-bar"
+
+
+def test_the_demo_id_testuser_signs_in_as_dana(monkeypatch):
+    from api.main import app
+
+    monkeypatch.setenv("DEMO_USER_PASSWORD", "fake-pass-for-tests")
+    users.reset()
+    client = TestClient(app)
+    for login in ("testuser", "TestUser ", "TESTUSER"):
+        r = client.post("/auth/login", json={"email": login, "password": "fake-pass-for-tests"})
+        assert r.status_code == 200 and r.json()["user"]["email"] == DANA, login
+        assert r.json()["supplier"]["id"] == "peak-bar"
+    assert client.post("/auth/login", json={"username": "testuser", "password": "fake-pass-for-tests"}).status_code == 200
+    assert client.post("/auth/login", json={"email": "testuser", "password": "wrong"}).status_code == 401
+    assert client.post("/auth/login", json={"email": "testuser2", "password": "fake-pass-for-tests"}).status_code == 401

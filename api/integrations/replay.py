@@ -149,6 +149,22 @@ def _secrets(env: Mapping[str, str]) -> list[str]:
     return [v for k, v in env.items() if k.upper().endswith(_SECRET_SUFFIXES) and len(v) >= 8]
 
 
+def _equivalent_fixture(service: str, request: Any, equivalent: Callable[[Any], Any],
+                        fixtures_dir: Path | None = None) -> Any | None:
+    try:
+        want = canonical(equivalent(request))
+    except Exception:  # noqa: BLE001 - a request the normalizer can't read has no equivalent
+        return None
+    for p in sorted((fixtures_dir or FIXTURES).joinpath(service).glob("*.json")):
+        try:
+            saved = json.loads(p.read_text())
+            if canonical(equivalent(saved["request"])) == want:
+                return saved["response"]
+        except Exception:  # noqa: BLE001 - not this one
+            continue
+    return None
+
+
 def save_fixture(service: str, key: str, request: Any, response: Any, fixtures_dir: Path | None = None,
                  env: Mapping[str, str] | None = None) -> Path:
     body = json.dumps({"service": service, "request_hash": key, "request": request, "response": response,
@@ -225,8 +241,11 @@ def call_outside(
     demo: bool | None = None,
     record: bool | None = None,
     delay: float = DEMO_DELAY_S,
+    equivalent: Callable[[Any], Any] | None = None,
 ) -> CallResult:
-    """Run fn(request, timeout) with the project's outside-call rules. See the module docstring."""
+    """Run fn(request, timeout) with the project's outside-call rules. See the module docstring.
+    `equivalent`: when no recording matches the request exactly, one whose request is the same once both pass through
+    it is replayed instead (the Negotiator's replies: the same reply and evidence, before or after a rule was saved)."""
     demo = demo_mode() if demo is None else demo
     record = recording() if record is None else record
     timeout = timeout if timeout is not None else (LIVE_FIRST_TIMEOUT_S if live_first else TIMEOUT_S)
@@ -236,6 +255,8 @@ def call_outside(
 
     def from_fixture(why: str) -> CallResult:
         saved = load_fixture(service, key, fixtures_dir)
+        if saved is None and equivalent is not None:
+            saved = _equivalent_fixture(service, request, equivalent, fixtures_dir)
         if saved is None:
             raise OutsideCallFailed(f"{service}/{key}: {why}; no fixture at {fixture_path(service, key, fixtures_dir)}")
         if demo and delay and not _forced.get():

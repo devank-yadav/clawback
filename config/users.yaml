@@ -9,7 +9,7 @@ users:
     role: admin
     password_env: [DEMO_USER_PASSWORD, ADMIN_PASSWORD]
     phone_env: OWNER_PHONE
-    aliases: [admin]  # the ID the old sign-in used (ADMIN_USERNAME, default "admin")
+    aliases: [admin, testuser]  # IDs that sign in as Dana too: the old sign-in's "admin", and the demo's "testuser"
   # A second supplier, so isolation can be shown: signed in as Teresa, nothing of Peak Bar's is there.
   - email: teresa@lanternhillsoda.example
     name: Teresa Quan
