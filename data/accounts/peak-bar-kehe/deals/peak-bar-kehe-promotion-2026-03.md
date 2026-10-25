@@ -1,7 +1,7 @@
 # KeHE Promotion Submission: Peak Bar Co., March 2026
 
 **Vendor:** Peak Bar Co., 2250 Embarcadero, Oakland, CA 94606
-**Submitted to:** KeHE Distributors, LLC, through the KeHE Vendor Portal
+**Submitted to:** KeHE Distributors, LLC, through the KeHE CONNECT
 **From:** Dana Okafor, Founder (dana@peakbar.example)
 **Date:** February 9, 2026
 **Promotion ID:** PB-OI-2603

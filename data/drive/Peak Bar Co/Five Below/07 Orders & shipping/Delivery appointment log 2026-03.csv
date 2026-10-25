@@ -1,0 +1,9 @@
+po,appointment_made_at,appointment_for,rescheduled_by,rescheduled_to,cancel_date,arrived_on,late_or_missed,cause,note
+4612788,2026-03-20 10:15,2026-03-26 08:00,,,2026-03-31,2026-03-26,no,,
+4612815,2026-03-04 11:20,2026-03-10 09:00,,,2026-03-13,2026-03-10,no,,
+4612861,2026-03-09 14:05,2026-03-13 10:00,Five Below DC004,2026-03-19 10:00,2026-03-16,2026-03-19,yes,retailer,"Booked Mar 9 for Mar 13, before the Mar 16 cancel date; DC004 moved it to Mar 19 for dock capacity (email of Mar 11)"
+4612877,2026-03-16 09:00,2026-03-20 07:00,,,2026-03-27,2026-03-20,no,,
+4612893,2026-03-16 13:30,2026-03-19 13:00,,,2026-03-27,2026-03-23,yes,supplier,"Our carrier missed the Mar 19 appointment and did not call; rebooked for Mar 23"
+4612902,2026-03-17 09:30,2026-03-18 08:00,,,2026-03-27,2026-03-18,yes,supplier,"Appointment made 22.5 hours before the appointment time"
+4612912,2026-03-18 16:00,2026-03-24 06:00,,,2026-03-27,2026-03-24,no,,
+4612920,2026-03-20 12:10,2026-03-25 11:00,,,2026-03-27,2026-03-25,no,,

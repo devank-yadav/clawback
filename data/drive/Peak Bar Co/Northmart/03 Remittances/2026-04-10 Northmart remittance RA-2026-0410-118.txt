@@ -1,0 +1,23 @@
+NORTHMART DISTRIBUTION, INC.                                                                                 REMITTANCE ADVICE
+Accounts Payable, 2200 Harbor Industrial Pkwy, Oakland, CA 94607                                       FICTIONAL DEMO DOCUMENT
+
+Payee:          PEAK BAR CO.                              Vendor no.:     V-40917
+Payment ref:    ACH 7731-0410                             Payment date:   04/10/2026
+Payment amount: 41,350.00 USD                             Remit no.:      RA-2026-0410-118
+
+INVOICES PAID
+Invoice      Inv date      Gross amount    Deductions      Net paid
+INV-3102     03/31/2026       48,200.00     -6,850.00     41,350.00
+
+DEDUCTIONS TAKEN AGAINST INV-3102
+Ded no.   Code          Description                   Item                Qty      Rate      Amount  Period          Promo/ref
+NM-2229   PROMO ALLOW   Spring promo week 1           PB ORIGINAL/CHOC  1,200      1.50   -1,800.00  03/01-03/07/26  SPRING-26
+NM-2231   PROMO ALLOW   Spring promo week 2           PB ORIGINAL/CHOC    980      1.00     -980.00  03/08-03/14/26  SPRING-26
+NM-2240   PROMO ALLOW   Spring promo Apr 1 to 7       PB ORIGINAL/CHOC    330      1.00     -330.00  04/01-04/07/26  SPRING-26
+NM-2236   PROMO ALLOW   Spring promo week 4           PB ORIGINAL/CHOC  1,540      1.00   -1,540.00  03/22-03/31/26  SPRING-26
+NM-2237   PROMO ALLOW   Spring promo Mint             PB MINT           1,000      1.00   -1,000.00  03/01-03/31/26  SPRING-26
+NM-2238   DISPLAY FEE   Display fee (notice Mar 11)                         1  1,200.00   -1,200.00  03/01-03/31/26  DSP-0311
+                                                                     Total deductions:    -6,850.00
+
+Deductions are final unless disputed within 30 days through the Northmart vendor portal.
+Questions: deductions@northmart.example. Please quote the deduction number on all correspondence.
