@@ -659,22 +659,22 @@ def _file_dispute(run: Run, charge_ids: list[str], policy: eng.Policy) -> None:
     by_policy = total <= policy.auto_dispute_limit
     filed_before = len({e.data.id for e in run.events if e.type == "dispute"})
     dispute_id = f"D-{run.account.dispute_start(run.kind) + filed_before:04d}"
-    # Every dispute starts as a draft the admin reviews and puts in Gmail Drafts (api/dispute_email.py, POST
-    # /disputes/{id}/draft); a person sends it. With policy.yaml auto_draft on, one within the auto-dispute limit goes to
-    # Gmail Drafts at once. It's filed once it's sent.
+    # Every dispute starts as a draft the admin reviews and sends (api/dispute_email.py, POST /disputes/{id}/send);
+    # with policy.yaml auto_send on, one within the auto-dispute limit is filed and emailed at once.
     from api import dispute_email  # it reads runs from here
 
-    auto = by_policy and dispute_email.auto_draft()
+    auto = by_policy and dispute_email.auto_send()
     dispute = Dispute(id=dispute_id, remittance_id=next(iter(run.charges.values())).remittance_id or "",
-                      counterparty=run.distributor, lines=lines, total=total, status="ready_to_send",
-                      approved_by="policy" if auto else "owner", filed_at=None)
+                      counterparty=run.distributor, lines=lines, total=total,
+                      status="filed" if auto else "ready_to_send", approved_by="policy" if auto else "owner",
+                      filed_at=_now() if auto else None)
     run.emit("dispute", dispute)
     owner = run.name("owner")
     if auto:
-        run.log(f"Drafted dispute {dispute_id}: {len(lines)} lines, ${total:,.0f}. Within the "
-                f"${policy.auto_dispute_limit:,.0f} limit {owner} set: straight to Gmail Drafts for {owner} to send.",
+        run.log(f"Filed dispute {dispute_id}: {len(lines)} lines, ${total:,.0f}. Within the "
+                f"${policy.auto_dispute_limit:,.0f} limit {owner} set, and {owner} lets those send on their own.",
                 "good", "negotiator")
-        dispute_email.draft_dispute(run, dispute, by="policy")
+        dispute_email.send_dispute(run, dispute, by="policy")
     elif by_policy:
         run.log(f"Drafted dispute {dispute_id}: {len(lines)} lines, ${total:,.0f}. Ready for {owner} to review and "
                 "send.", "good", "negotiator")

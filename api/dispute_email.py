@@ -1,24 +1,24 @@
-"""Dispute email (Phase E): Clawback drafts each dispute email into the supplier's Gmail; a person sends it from
-Gmail. The distributor's replies come back to that inbox and are answered the same way.
+"""Dispute email (Phase E): the admin reviews each dispute's email in the app and Clawback sends it, from the
+supplier's own Gmail; the distributor's replies come back to that inbox and are answered the same way.
 
-1. Drafting. A run files each dispute as `ready_to_send` (api/pipeline._file_dispute). Its email is written when
-   first asked for (GET /disputes/{id}/email): the email writer (api/agents/email_writer.py, Claude) writes it from
-   the dispute's lines; code adds the subject ("Dispute: [Brand], Remittance [#], Deductions [refs], [Amount] [D-n]"),
-   the greeting and signature, and the outbound filter checks every figure and quote. A draft that fails twice is
-   held; the admin edits it (PUT), which is checked again.
-2. Into Gmail. POST /disputes/{id}/draft ("Create Gmail draft") is the admin's approval: the email, to the
-   distributor's desk_email with the packet PDF attached and its own Message-Id, is put in the supplier's Gmail Drafts
-   over IMAP (api/integrations/gmail.py). Clawback never sends. The dispute is filed when Gmail shows the email in Sent
-   (the poller) or the admin says "I sent it" (POST /disputes/{id}/sent). No Gmail keys, or DEMO_MODE: the email is
-   kept in the in-app outbox instead. policy.yaml `auto_draft: true` drafts a dispute within the auto-dispute limit
-   on its own (default off).
-3. Replies. The poller (GMAIL_POLL, every 30 s) reads new INBOX mail and matches it to a dispute by In-Reply-To /
-   References against a Message-Id we drafted, or by "[D-n]" in the subject (route()). on_reply() makes it a dispute
-   message and runs api/disputes._post: an attachment that is one of the account's documents is re-read, recomputed
-   and conceded if valid; text gets the Negotiator's answer as a reply email that the admin reviews and puts in Gmail
-   Drafts (POST /disputes/{id}/replies/{email_id}/draft); anything unclear is held for the owner. Each reply notifies
-   the supplier in the app (GET /notifications) and by text. The remittance inbox's webhook (Mailgun, dormant behind
-   its own keys) still hands replies to the same route().
+1. Drafting (in the app). A run files each dispute as `ready_to_send` (api/pipeline._file_dispute). Its email is
+   written when first asked for (GET /disputes/{id}/email): the email writer (api/agents/email_writer.py, Claude)
+   writes it from the dispute's lines; code adds the subject ("Dispute: [Brand], Remittance [#], Deductions [refs],
+   [Amount] [D-n]"), the greeting and signature, and the outbound filter checks every figure and quote. A draft that
+   fails twice is held; the admin edits it (PUT), which is checked again.
+2. Sending. POST /disputes/{id}/send is the admin's approval. With GMAIL_ADDRESS and GMAIL_APP_PASSWORD the email
+   goes out over Gmail's SMTP (api/integrations/gmail.py) from the supplier's address to the distributor's desk_email,
+   with the packet PDF attached and our own Message-ID, which is saved; then the dispute is filed. Without Gmail keys,
+   Mailgun's sender (api/integrations/mailgun.py) is used if its keys are set. Neither, or DEMO_MODE: the email goes to
+   the in-app outbox instead. policy.yaml `auto_send: true` sends a dispute within the auto-dispute limit on its own
+   (default off).
+3. Replies. The Gmail poller (GMAIL_POLL, every 30 s) reads new INBOX mail; route() matches it to a dispute by
+   In-Reply-To / References against a Message-ID we sent, or by "[D-n]" in the subject (the Mailgun inbound webhook's
+   d-<n>+<token>@ address still works too). on_reply() makes it a dispute message and runs api/disputes._post: an
+   attachment that is one of the account's documents is re-read, recomputed and conceded if valid; text gets the
+   Negotiator's answer as a reply email for the admin to review and send (POST /disputes/{id}/replies/{email_id}/send);
+   anything unclear is held for the owner. Each reply notifies the supplier in the app (GET /notifications) and by
+   text.
 4. Saved. Emails, tokens, dispute messages and notifications are written to Postgres (migration 007) when there is a
    database; disputes themselves are already in the events table. Memory otherwise.
 
@@ -43,7 +43,7 @@ from api import accounts, disputes, lookback, packet, pipeline
 from api.agents import email_writer
 from api.contracts import Dispute, DisputeEmail, PortalMessage, SupplierNotification
 from api.engine import outbound_filter
-from api.integrations import gmail, sms
+from api.integrations import gmail, mailgun, replay, sms
 
 log = logging.getLogger("clawback.dispute_email")
 
@@ -54,7 +54,6 @@ EMAILS: dict[str, DisputeEmail] = {}
 TOKENS: dict[str, tuple[str, str]] = {}  # reply token -> (run id, dispute id)
 MESSAGE_IDS: dict[str, tuple[str, str]] = {}  # Message-Id we sent -> (run id, dispute id)
 NOTIFICATIONS: list[SupplierNotification] = []
-OUTBOX: list[tuple[str, bytes]] = []  # (email id, RFC 822) kept in the app with no Gmail keys
 _lock = threading.RLock()
 
 
@@ -62,11 +61,10 @@ class NotReady(ValueError):
     """The email can't go: it's held (failed its checks) or was already sent."""
 
 
-def auto_draft() -> bool:
-    """policy.yaml `auto_draft`: a dispute within the auto-dispute limit goes to Gmail Drafts without the admin's
-    review (it is still a person who sends it)."""
+def auto_send() -> bool:
+    """policy.yaml `auto_send`: a dispute within the auto-dispute limit is emailed without the admin's review."""
     try:
-        return bool((yaml.safe_load(POLICY.read_text()) or {}).get("auto_draft", False))
+        return bool((yaml.safe_load(POLICY.read_text()) or {}).get("auto_send", False))
     except OSError:
         return False
 
@@ -90,13 +88,19 @@ def token(run: pipeline.Run, dispute_id: str) -> str:
 
 
 def reply_to(run: pipeline.Run, dispute_id: str) -> str | None:
+    """Mailgun's sender only: replies to d-<n>+<token>@ reach the inbound webhook. From Gmail, replies come back to
+    the supplier's own inbox, so there is no Reply-To."""
+    if gmail.configured():
+        return None
     domain = (os.getenv("INBOUND_EMAIL_DOMAIN") or "").strip().lower()
     return f"{dispute_id.lower()}+{token(run, dispute_id)}@{domain}" if domain else None
 
 
 def from_addr(account: accounts.Account) -> str:
-    """The supplier's own Gmail: the person sends from it."""
-    return f"{account.brand.owner.name} <{gmail.address() or account.brand.owner.email or 'owner@clawback.local'}>"
+    """The supplier's own Gmail when it's set up; else Mailgun's disputes@ address."""
+    if gmail.configured():
+        return f"{account.brand.owner.name} <{gmail.address()}>"
+    return f"{account.brand.name} <disputes@{mailgun.domain() or 'clawback.local'}>"
 
 
 def portal_url(run: pipeline.Run, dispute_id: str) -> str | None:
@@ -141,14 +145,14 @@ def email_for(run: pipeline.Run, dispute: Dispute, client=None, redraft: bool = 
     eid = _email_id(run, dispute.id)
     with _lock:
         have = EMAILS.get(eid)
-    if have and (not redraft or have.status in ("drafted", "sent", "outbox")):
+    if have and (not redraft or have.status in ("sent", "outbox")):
         return have
     url = portal_url(run, dispute.id)
     with accounts.using(run.account):
         d = email_writer.draft(dispute, run.terms, run.account, client, portal_url=url)
     e = DisputeEmail(id=eid, kind="dispute", run_id=run.id, account_id=run.account.id, dispute_id=dispute.id,
                      to=run.account.distributor.desk_email, from_addr=from_addr(run.account),
-                     reply_to=None, subject=d.subject, body=d.body,
+                     reply_to=reply_to(run, dispute.id), subject=d.subject, body=d.body,
                      attachments=[f"{dispute.id}-packet.pdf"], status="held" if d.held else "ready",
                      written_by=d.written_by, problems=d.problems, portal_url=url,
                      charge_ids=[ln.charge_id for ln in dispute.lines])
@@ -161,14 +165,14 @@ def forget_draft(run: pipeline.Run, dispute_id: str) -> None:
     """The dispute changed before it was sent: the next look drafts its email again from the new lines."""
     with _lock:
         e = EMAILS.get(_email_id(run, dispute_id))
-        if e and e.status not in ("drafted", "sent", "outbox"):
+        if e and e.status not in ("sent", "outbox"):
             del EMAILS[e.id]
 
 
 def edit(e: DisputeEmail, subject: str | None, body: str) -> DisputeEmail:
     """The admin's edit. Ready if it passes the outbound filter, held with the problems if not."""
-    if e.status in ("drafted", "sent", "outbox"):
-        raise NotReady(f"{e.id} is already in Gmail Drafts or sent; edit it there")
+    if e.status in ("sent", "outbox"):
+        raise NotReady(f"{e.id} was already sent")
     found = find(e.dispute_id, e.run_id)
     if not found:
         raise NotReady(f"the run that filed {e.dispute_id} isn't here any more")
@@ -178,7 +182,7 @@ def edit(e: DisputeEmail, subject: str | None, body: str) -> DisputeEmail:
     return _put(changed.model_copy(update={"problems": problems, "status": "held" if problems else "ready"}))
 
 
-# ---------------------------------------------------------------- 2. drafting in Gmail (Clawback never sends)
+# ---------------------------------------------------------------- 2. sending
 
 def _packet(run: pipeline.Run, dispute: Dispute) -> bytes:
     math = {cid: [p.text for p in f.math] for cid, f in run.findings.items() if f.math}
@@ -186,12 +190,12 @@ def _packet(run: pipeline.Run, dispute: Dispute) -> bytes:
 
 
 def tag(dispute_id: str) -> str:
-    """The reply token every subject carries, so a reply can be matched even if Gmail rewrites the Message-Id."""
+    """The tag every subject carries, so a reply can be matched even without its In-Reply-To."""
     return f"[{dispute_id}]"
 
 
-def mime(e: DisputeEmail, run: pipeline.Run, dispute: Dispute, message_id: str) -> bytes:
-    """The RFC 822 email the draft is: From the supplier's Gmail, To the desk, the packet PDF attached."""
+def mime(e: DisputeEmail, run: pipeline.Run, dispute: Dispute, message_id: str, packet_pdf: bytes | None) -> bytes:
+    """The RFC 822 email Gmail sends: From the supplier's address, To the desk, our Message-ID, the packet attached."""
     m = EmailMessage()
     m["From"] = e.from_addr
     m["To"] = e.to
@@ -199,95 +203,78 @@ def mime(e: DisputeEmail, run: pipeline.Run, dispute: Dispute, message_id: str) 
     m["Date"] = email.utils.formatdate(localtime=True)
     m["Message-ID"] = message_id
     if e.in_reply_to:
-        m["In-Reply-To"] = e.in_reply_to
         refs = [x.message_id for x in emails_of(run.id, dispute.id) if x.message_id and x.message_id != message_id]
+        m["In-Reply-To"] = e.in_reply_to
         m["References"] = " ".join(dict.fromkeys([*refs, e.in_reply_to]))
     m["X-Clawback-Dispute"] = dispute.id
     m.set_content(e.body)
-    if e.kind == "dispute":
-        m.add_attachment(_packet(run, dispute), maintype="application", subtype="pdf",
-                         filename=f"{dispute.id}-packet.pdf")
+    if packet_pdf is not None:
+        m.add_attachment(packet_pdf, maintype="application", subtype="pdf", filename=f"{dispute.id}-packet.pdf")
     return m.as_bytes()
 
 
-def _make_draft(e: DisputeEmail, run: pipeline.Run, dispute: Dispute) -> DisputeEmail:
-    """Put it in the supplier's Gmail Drafts (or the in-app outbox with no Gmail keys / in DEMO_MODE)."""
-    domain = (gmail.address() or "clawback.local").rsplit("@", 1)[-1]
-    message_id = email.utils.make_msgid(idstring=dispute.id.lower(), domain=domain)
-    raw = mime(e, run, dispute, message_id)
-    why = gmail.why_simulated()
+def transport() -> str:
+    """How the next email goes: gmail (its keys, outside DEMO_MODE), else mailgun (its keys), else the outbox."""
+    if gmail.why_simulated() is None:
+        return "gmail"
+    if mailgun.why_simulated() is None:
+        return "mailgun"
+    return "outbox"
+
+
+def _deliver(e: DisputeEmail, run: pipeline.Run, dispute: Dispute) -> DisputeEmail:
+    pdf = _packet(run, dispute) if e.kind == "dispute" else None
+    via = transport()
+    if via == "gmail":
+        message_id = email.utils.make_msgid(idstring=dispute.id.lower(), domain=gmail.address().rsplit("@", 1)[-1])
+        try:
+            gmail.send(mime(e, run, dispute, message_id, pdf), e.to)
+        except gmail.GmailError as err:
+            run.log(f"The {dispute.id} email to {run.distributor} didn't go out ({err}). Sending again retries.",
+                    "error", "negotiator")
+            return _put(e.model_copy(update={"status": "failed", "detail": str(err)}))
+        sent = mailgun.Sent(message_id, False, f"sent from {gmail.address()} through Gmail", _now())
+    else:
+        refs = tuple(x.message_id for x in emails_of(run.id, dispute.id) if x.message_id)
+        out = mailgun.Outgoing(
+            to=e.to, from_addr=e.from_addr, subject=e.subject, text=e.body, reply_to=e.reply_to,
+            in_reply_to=e.in_reply_to, references=refs if e.kind == "reply" else (),
+            attachments=((f"{dispute.id}-packet.pdf", pdf, "application/pdf"),) if pdf is not None else (),
+            tags={"X-Clawback-Dispute": dispute.id})
+        try:
+            sent = mailgun.send(out)
+        except mailgun.SendFailed as err:
+            run.log(f"The {dispute.id} email to {run.distributor} didn't go out ({err}). Sending again retries.",
+                    "error", "negotiator")
+            return _put(e.model_copy(update={"status": "failed", "detail": str(err)}))
+        if sent.simulated:
+            why = "DEMO_MODE" if replay.demo_mode() else "no Gmail or Mailgun keys"
+            sent = mailgun.Sent(sent.message_id, True, f"in the in-app outbox ({why})", sent.at)
     with _lock:
-        MESSAGE_IDS[message_id] = (run.id, dispute.id)
-    if why:
-        with _lock:
-            OUTBOX.append((e.id, raw))
-        return _put(e.model_copy(update={"status": "outbox", "message_id": message_id, "drafted_at": _now(),
-                                         "detail": f"in the in-app outbox ({why}); send it yourself, then mark it sent"}))
-    try:
-        box = gmail.append_draft(raw)
-    except gmail.GmailError as err:
-        run.log(f"Couldn't put the {dispute.id} email in Gmail Drafts ({err}). Try again.", "error", "negotiator")
-        return _put(e.model_copy(update={"status": "failed", "detail": str(err)}))
-    return _put(e.model_copy(update={"status": "drafted", "message_id": message_id, "drafted_at": _now(),
-                                     "detail": f"in Gmail {box}, to send from {gmail.address()}"}))
+        MESSAGE_IDS[sent.message_id] = (run.id, dispute.id)
+    return _put(e.model_copy(update={"status": "outbox" if sent.simulated else "sent", "message_id": sent.message_id,
+                                     "sent_at": sent.at, "detail": sent.detail}))
 
 
-def _ready(e: DisputeEmail, what: str) -> None:
-    if e.status in ("drafted", "outbox", "sent"):
-        raise NotReady(f"{what} is already {'sent' if e.status == 'sent' else 'drafted'}")
-    if e.status == "held":
-        raise NotReady(f"{what}'s email is held: {'; '.join(e.problems)[:400]}. Edit it first.")
-
-
-def draft_dispute(run: pipeline.Run, dispute: Dispute, by: str = "owner", subject: str | None = None,
-                  body: str | None = None, client=None) -> tuple[Dispute, DisputeEmail]:
-    """The admin's "Create Gmail draft" (or the policy's, with auto_draft). The dispute stays a draft until the
-    email shows in Gmail's Sent, or the admin says "I sent it" (mark_sent)."""
+def send_dispute(run: pipeline.Run, dispute: Dispute, by: str = "owner", subject: str | None = None,
+                 body: str | None = None, client=None) -> tuple[Dispute, DisputeEmail]:
+    """The admin's "send" (or the policy's, with auto_send): email it, then file the dispute."""
     with _lock:
         e = email_for(run, dispute, client)
         if body is not None:
             e = edit(e, subject, body)
-        _ready(e, dispute.id)
-        e = _make_draft(e, run, dispute)
-    if e.status != "failed":
-        where = "the in-app outbox" if e.status == "outbox" else "Gmail Drafts"
-        who = run.name("owner") if by == "owner" else "policy (auto-draft)"
-        run.log(f"Put the {dispute.id} email to {run.distributor} in {where}, with the packet ({who}). "
-                f"{run.name('owner')} sends it from Gmail.", "good", "negotiator")
-    return latest(run, dispute.id) or dispute, e
-
-
-def mark_sent(email_id: str, how: str = "owner") -> tuple[Dispute | None, DisputeEmail]:
-    """The email went out: seen in Gmail's Sent (how="gmail") or the admin's "I sent it". A dispute email files the
-    dispute; a reply joins the thread."""
-    with _lock:
-        e = EMAILS.get(email_id)
-        if e is None:
-            raise KeyError(email_id)
-        if e.status == "sent":
-            raise NotReady(f"{email_id} is already marked sent")
-        if e.status not in ("drafted", "outbox"):
-            raise NotReady(f"{email_id} isn't drafted yet: create the Gmail draft first")
-        found = find(e.dispute_id, e.run_id)
-        if not found:
-            raise NotReady(f"the run that filed {e.dispute_id} isn't here any more")
-        run, dispute = found
-        e = _put(e.model_copy(update={"status": "sent", "sent_at": _now(),
-                                      "detail": "seen in Gmail's Sent" if how == "gmail" else "marked sent by the admin"}))
-        filed = None
-        if e.kind == "dispute" and dispute.status not in ("filed", "withdrawn", "resolved"):
-            by = "policy" if dispute.approved_by == "policy" else "owner"
-            filed = dispute.model_copy(update={"status": "filed", "approved_by": by, "filed_at": _now()})
-            run.emit("dispute", filed)
-        elif e.kind == "reply":
-            ours = disputes._message(dispute.id, "clawback", e.body, charge_ids=e.charge_ids,
-                                     evidence_ids=e.evidence_ids, channel="email", email_message_id=e.message_id,
-                                     thread_of=run)
-            run.emit("portal_message", ours)
-            _save_message(run, ours)
-    seen = "Gmail shows it in Sent" if how == "gmail" else f"{run.name('owner')} marked it sent"
-    run.log(f"{'Filed ' + dispute.id if filed else 'Answered ' + run.distributor + ' on ' + dispute.id}: {seen}.",
-            "good", "negotiator")
+        if e.status in ("sent", "outbox"):
+            raise NotReady(f"{dispute.id} was already sent")
+        if e.status == "held":
+            raise NotReady(f"{dispute.id}'s email is held: {'; '.join(e.problems)[:400]}. Edit it, then send.")
+        e = _deliver(e, run, dispute)
+        if e.status == "failed":
+            return dispute, e
+        filed = dispute.model_copy(update={"status": "filed", "approved_by": by, "filed_at": _now()})
+        run.emit("dispute", filed)
+    where = "the in-app outbox" if e.status == "outbox" else e.to
+    who = run.name("owner") if by == "owner" else "policy (auto-send)"
+    run.log(f"Filed {dispute.id}: emailed {where} with the packet, approved by {who}.", "good", "negotiator")
     return filed, e
 
 
@@ -299,7 +286,7 @@ def emails_of(run_id: str, dispute_id: str) -> list[DisputeEmail]:
 
 
 def _reply_deliverer(replying_to: list[PortalMessage], in_reply_to: str | None):
-    """disputes._post's `deliver` for the email channel: the answer becomes a reply email for the admin to draft."""
+    """disputes._post's `deliver` for the email channel: the answer becomes a reply email for the admin to send."""
 
     def deliver(run: pipeline.Run, dispute: Dispute, text: str, charge_ids: list[str], evidence_ids: list[str]):
         first = next((x for x in emails_of(run.id, dispute.id) if x.kind == "dispute"), None)
@@ -309,45 +296,51 @@ def _reply_deliverer(replying_to: list[PortalMessage], in_reply_to: str | None):
                             email_writer.signature(run.account, portal_url(run, dispute.id))])
         e = DisputeEmail(id=f"{_email_id(run, dispute.id)}-R{n}", kind="reply", run_id=run.id,
                          account_id=run.account.id, dispute_id=dispute.id, to=run.account.distributor.desk_email,
-                         from_addr=from_addr(run.account), reply_to=None,
+                         from_addr=from_addr(run.account), reply_to=reply_to(run, dispute.id),
                          subject=subject if subject.lower().startswith("re:") else f"Re: {subject}", body=body,
                          in_reply_to=in_reply_to, status="ready", written_by="negotiator", charge_ids=charge_ids,
                          evidence_ids=evidence_ids, replying_to=replying_to[0].id if replying_to else None)
         problems = _check(e, run, dispute)
         e = _put(e.model_copy(update={"problems": problems, "status": "held" if problems else "ready"}))
-        if auto_draft() and not problems:
-            draft_reply(e.id)
+        if auto_send() and not problems:
+            send_reply(e.id)
         else:
-            run.log(f"Drafted the answer to {run.distributor}'s email on {dispute.id}: {run.name('owner')} reviews it "
-                    "and puts it in Gmail Drafts.", "info", "negotiator")
+            run.log(f"Drafted the answer to {run.distributor}'s email on {dispute.id}: waits for {run.name('owner')} "
+                    "to send it.", "info", "negotiator")
         return None
 
     return deliver
 
 
-def draft_reply(email_id: str, subject: str | None = None, body: str | None = None) -> DisputeEmail:
-    """The Negotiator's answer into Gmail Drafts (it joins the thread once it's sent: mark_sent)."""
+def send_reply(email_id: str, subject: str | None = None, body: str | None = None) -> DisputeEmail:
     with _lock:
         e = EMAILS.get(email_id)
         if e is None or e.kind != "reply":
             raise KeyError(email_id)
         if body is not None:
             e = edit(e, subject, body)
-        _ready(e, email_id)
+        if e.status in ("sent", "outbox"):
+            raise NotReady(f"{email_id} was already sent")
+        if e.status == "held":
+            raise NotReady(f"{email_id} is held: {'; '.join(e.problems)[:400]}. Edit it, then send.")
         found = find(e.dispute_id, e.run_id)
         if not found:
             raise NotReady(f"the run that filed {e.dispute_id} isn't here any more")
         run, dispute = found
-        e = _make_draft(e, run, dispute)
-    if e.status != "failed":
-        run.log(f"Put the answer to {run.distributor} on {dispute.id} in "
-                f"{'the in-app outbox' if e.status == 'outbox' else 'Gmail Drafts'}.", "good", "negotiator")
+        e = _deliver(e, run, dispute)
+        if e.status == "failed":
+            return e
+        ours = disputes._message(dispute.id, "clawback", e.body, charge_ids=e.charge_ids, evidence_ids=e.evidence_ids,
+                                 channel="email", email_message_id=e.message_id, thread_of=run)
+        run.emit("portal_message", ours)
+        _save_message(run, ours)
+    run.log(f"Answered {run.distributor} on {dispute.id} by email.", "good", "negotiator")
     return e
 
 
 def route(msg) -> tuple[pipeline.Run, Dispute] | None:
     """An inbound email (api/inbound_email.Message) that answers one of our dispute emails: by the d-<n>+<token>
-    address, else by In-Reply-To / References naming a Message-Id we sent."""
+    address, else by In-Reply-To / References naming a Message-Id we sent, else by the [D-n] tag in the subject."""
     to = " ".join([msg.recipient, *msg.header("To"), *msg.header("Cc")])
     where = None
     for m in ADDRESS.finditer(to):
@@ -364,10 +357,10 @@ def route(msg) -> tuple[pipeline.Run, Dispute] | None:
             where = next((MESSAGE_IDS[i] for i in re.findall(r"<[^>]+>", ids) if i in MESSAGE_IDS), None)
     if where is None and (m := TAG.search(msg.subject or "")):
         dispute_id = m.group(1).upper()
-        with _lock:  # the newest run that drafted an email for it, else any run that filed it
-            drafted = [e.run_id for e in EMAILS.values() if e.dispute_id == dispute_id and e.message_id]
-        if drafted and drafted[-1] in pipeline.RUNS:
-            where = (drafted[-1], dispute_id)
+        with _lock:  # the newest run that emailed it, else any run that filed it
+            emailed = [e.run_id for e in EMAILS.values() if e.dispute_id == dispute_id and e.message_id]
+        if emailed and emailed[-1] in pipeline.RUNS:
+            where = (emailed[-1], dispute_id)
         elif (found := find(dispute_id)) is not None:
             return found
     if where is None:
@@ -479,7 +472,7 @@ def outbox(only=None) -> list[DisputeEmail]:
     return out
 
 
-# ---------------------------------------------------------------- 5. watching Gmail (replies and Sent)
+# ---------------------------------------------------------------- 5. reading replies from Gmail
 
 TAG = re.compile(r"\[(D-\d{4,})\]", re.IGNORECASE)
 
@@ -505,34 +498,17 @@ _seen: set[str] = set()  # Message-Ids already handled
 _last_uid: dict[str, int | None] = {"inbox": None}
 
 
-def check_sent() -> list[str]:
-    """Drafted emails that now show in Gmail's Sent: marked sent (a dispute email files its dispute)."""
-    if gmail.why_simulated():
-        return []
-    with _lock:
-        waiting = [e for e in EMAILS.values() if e.status == "drafted"]
-    done = []
-    for e in waiting:
-        try:
-            if gmail.in_sent(e.message_id, tag(e.dispute_id) if e.kind == "dispute" else None):
-                mark_sent(e.id, how="gmail")
-                done.append(e.id)
-        except (gmail.GmailError, NotReady, KeyError) as err:
-            log.warning("gmail sent check for %s: %s", e.id, err)
-    return done
-
-
 def poll_once(client=None) -> dict:
-    """One look at the Gmail inbox: each new reply to a dispute goes through on_reply; then the Sent check."""
+    """One look at the Gmail inbox: each new reply to a dispute goes through on_reply."""
     if gmail.why_simulated():
-        return {"ok": False, "detail": gmail.why_simulated(), "replies": 0, "sent": 0}
+        return {"ok": False, "detail": gmail.why_simulated(), "replies": 0}
     own = (gmail.address() or "").lower()
-    replies = 0
     try:
         new, top = gmail.new_inbox_messages(_last_uid["inbox"])
     except gmail.GmailError as e:
-        return {"ok": False, "detail": str(e), "replies": 0, "sent": 0}
+        return {"ok": False, "detail": str(e), "replies": 0}
     _last_uid["inbox"] = top
+    replies = 0
     for _, raw in new:
         msg = as_message(raw)
         if msg.sender == own or (msg.message_id and msg.message_id in _seen):
@@ -542,7 +518,7 @@ def poll_once(client=None) -> dict:
         if (found := route(msg)) is not None:
             on_reply(*found, msg, client)
             replies += 1
-    return {"ok": True, "detail": "checked", "replies": replies, "sent": len(check_sent())}
+    return {"ok": True, "detail": "checked", "replies": replies}
 
 
 class Poller:
@@ -574,7 +550,7 @@ poller: Poller | None = None
 
 
 def start_poller() -> bool:
-    """GMAIL_POLL (on by default once the Gmail keys are set; never in DEMO_MODE): every 30 s."""
+    """GMAIL_POLL (on by default once the Gmail keys are set; never in DEMO_MODE): every GMAIL_POLL_SECONDS (30)."""
     global poller
     if gmail.why_simulated() or os.getenv("GMAIL_POLL", "on").lower() == "off":
         return False
@@ -632,6 +608,7 @@ def _load_token(t: str) -> tuple[str, str] | None:
 
 def reset() -> None:
     with _lock:
-        EMAILS.clear(), TOKENS.clear(), MESSAGE_IDS.clear(), NOTIFICATIONS.clear(), OUTBOX.clear()
+        EMAILS.clear(), TOKENS.clear(), MESSAGE_IDS.clear(), NOTIFICATIONS.clear()
+    mailgun.reset()
     _seen.clear()
     _last_uid["inbox"] = None

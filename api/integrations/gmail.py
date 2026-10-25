@@ -1,24 +1,25 @@
-"""The supplier's Gmail over IMAP (dispute email): Clawback only ever writes drafts; a person sends them from Gmail.
+"""The supplier's own Gmail (dispute email): Clawback sends the email the admin approved, and reads the replies.
 
-Gmail's IMAP server is imap.gmail.com:993 over SSL (Google's "IMAP, POP, and SMTP" page). Sign-in is the account's
-address and an app password (GMAIL_ADDRESS, GMAIL_APP_PASSWORD; no OAuth). Standard library only: imaplib.
+Sending is SMTP to smtp.gmail.com:465 over SSL; reading is IMAP to imap.gmail.com:993 over SSL (Google's "IMAP, POP,
+and SMTP" page and its "send email from a printer, scanner or app" page). Both sign in with the full address and an
+app password (GMAIL_ADDRESS, GMAIL_APP_PASSWORD; no OAuth). Standard library only: smtplib and imaplib.
 
-- append_draft(): APPEND the email to the Drafts mailbox, flagged \\Draft. The mailbox is found by its RFC 6154
-  special-use flag in LIST (Gmail's is "[Gmail]/Drafts" in English, but the name can vary), never by name.
-- in_sent(): is the email in the \\Sent mailbox yet (by Message-ID, else by the [D-n] tag in its subject)?
+- send(): the RFC 822 email, from GMAIL_ADDRESS to the distributor's desk. It carries our own Message-ID, which is
+  saved so a reply threads back. Gmail files the sent copy in Sent itself.
 - new_inbox_messages(): messages that arrived in INBOX since the last look (by UID; the first look only notes where
   INBOX stands, so old mail is never replayed).
 
-Every connection has a 30 s timeout and one retry when it can't connect. With no keys, or in DEMO_MODE, nothing
-connects: callers keep the in-app outbox instead (why_simulated()).
+Every connection has a 30 s timeout. Sending is retried once only when the connection couldn't be made, so an email
+is never sent twice; IMAP connections are retried once. With no keys, or in DEMO_MODE, nothing connects: callers keep
+the in-app outbox instead (why_simulated()).
 """
 
 from __future__ import annotations
 
 import imaplib
 import os
-import re
-import time
+import smtplib
+import ssl
 from collections.abc import Callable
 from contextlib import contextmanager
 
@@ -26,8 +27,9 @@ from api.integrations import replay
 
 HOST = "imap.gmail.com"
 PORT = 993
+SMTP_HOST = "smtp.gmail.com"
+SMTP_PORT = 465  # SSL (587 is STARTTLS)
 TIMEOUT_S = 30
-_LIST = re.compile(rb'\((?P<flags>[^)]*)\)\s+(?:"[^"]*"|NIL)\s+(?P<name>"(?:[^"\\]|\\.)*"|\S+)')
 
 
 class GmailError(Exception):
@@ -54,7 +56,41 @@ def _real() -> imaplib.IMAP4:
     return imaplib.IMAP4_SSL(HOST, PORT, timeout=TIMEOUT_S)
 
 
+def _real_smtp() -> smtplib.SMTP:
+    return smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=TIMEOUT_S, context=ssl.create_default_context())
+
+
 connect_fn: Callable[[], imaplib.IMAP4] = _real  # the tests put a fake IMAP server here
+smtp_fn: Callable[[], smtplib.SMTP] = _real_smtp  # and a fake SMTP server here
+
+
+def send(raw: bytes, to: str) -> None:
+    """Send it from GMAIL_ADDRESS. Raises GmailError when Gmail refuses it or can't be reached twice."""
+    last = None
+    for _ in range(2):
+        try:
+            conn = smtp_fn()
+            break
+        except OSError as e:  # never connected: safe to try again
+            last = e
+    else:
+        raise GmailError(f"can't reach Gmail's SMTP server ({type(last).__name__})")
+    try:
+        try:
+            conn.login(address(), os.environ["GMAIL_APP_PASSWORD"])
+        except smtplib.SMTPAuthenticationError:
+            raise GmailError("Gmail refused the sign-in (check GMAIL_ADDRESS and the app password)") from None
+        try:
+            refused = conn.sendmail(address(), [to], raw)
+        except smtplib.SMTPException as e:  # may or may not have gone: not retried
+            raise GmailError(f"Gmail didn't take it ({type(e).__name__}: {str(e)[:200]})") from None
+        if refused:
+            raise GmailError(f"Gmail refused the recipient {to}")
+    finally:
+        try:
+            conn.quit()
+        except Exception:  # noqa: BLE001 - closing a connection that already broke
+            pass
 
 
 @contextmanager
@@ -80,54 +116,6 @@ def session():
             conn.logout()
         except Exception:  # noqa: BLE001 - closing a connection that already broke
             pass
-
-
-def _unquote(name: bytes) -> str:
-    s = name.decode("utf-8", "replace")
-    return s[1:-1].replace('\\"', '"').replace("\\\\", "\\") if s.startswith('"') else s
-
-
-def _quote(name: str) -> str:
-    return '"' + name.replace("\\", "\\\\").replace('"', '\\"') + '"'
-
-
-def mailbox(conn, flag: str) -> str:
-    """The mailbox carrying this RFC 6154 special-use flag (\\Drafts, \\Sent)."""
-    typ, rows = conn.list()
-    if typ != "OK":
-        raise GmailError("Gmail's LIST failed")
-    for row in rows or []:
-        raw = row if isinstance(row, bytes) else (row[0] if isinstance(row, tuple) else b"")
-        m = _LIST.search(raw)
-        if m and flag.lower().encode() in m.group("flags").lower().split():
-            return _unquote(m.group("name"))
-    raise GmailError(f"no {flag} mailbox in this Gmail account (is IMAP on?)")
-
-
-def append_draft(raw: bytes) -> str:
-    """Put the email in Drafts. Returns the Drafts mailbox it went to."""
-    with session() as conn:
-        drafts = mailbox(conn, "\\Drafts")
-        typ, data = conn.append(_quote(drafts), "(\\Draft \\Seen)", imaplib.Time2Internaldate(time.time()), raw)
-        if typ != "OK":
-            raise GmailError(f"Gmail didn't take the draft ({data!r:.200})")
-        return drafts
-
-
-def _search(conn, *criteria: str) -> list[bytes]:
-    typ, data = conn.search(None, *criteria)
-    return (data[0] or b"").split() if typ == "OK" and data else []
-
-
-def in_sent(message_id: str | None, tag: str | None) -> bool:
-    """Is it in Sent: by Message-ID, else by the subject's [D-n] tag."""
-    with session() as conn:
-        typ, _ = conn.select(_quote(mailbox(conn, "\\Sent")), readonly=True)
-        if typ != "OK":
-            raise GmailError("can't open Sent")
-        if message_id and _search(conn, "HEADER", "Message-ID", _quote(message_id)):
-            return True
-        return bool(tag and _search(conn, "SUBJECT", _quote(tag)))
 
 
 def new_inbox_messages(after_uid: int | None) -> tuple[list[tuple[int, bytes]], int]:

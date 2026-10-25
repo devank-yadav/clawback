@@ -79,16 +79,15 @@ decision gate and approvals; Data model; API, live updates and integrations.
   and checks ids with tenancy.account_or_404 / can_see_run: another supplier's ids are 404, signed out 401 once any
   password is set; no password anywhere (laptops, tests) stays open. Tokens (OWNER_TOKEN, CLAWBACK_ADMIN_TOKEN) see
   every supplier. api/tests/test_tenancy.py walks every Peak Bar route as Lantern Hill.
-- Dispute email (api/dispute_email.py, api/agents/email_writer.py, api/integrations/gmail.py, routes
-  api/routes/dispute_mail.py, migration 007): Clawback never sends email. Runs file disputes as ready_to_send; GET
-  /disputes/{id}/email writes the email (Claude, checked by the outbound filter, one retry, then held; the code template
-  when the call fails); PUT edits it; POST /disputes/{id}/draft puts it, with the packet PDF and a Message-Id and the
-  [D-n] subject tag, in the supplier's Gmail Drafts by IMAP APPEND (GMAIL_ADDRESS, GMAIL_APP_PASSWORD; the mailbox found
-  by its \Drafts flag), else the in-app outbox. It's filed when the poller (GMAIL_POLL, 30 s) sees it in Sent or on
-  POST /disputes/{id}/sent ("I sent it"). The poller reads INBOX replies, matched by In-Reply-To / References or [D-n],
-  through disputes._post; the Negotiator's answer becomes a reply email (POST .../replies/{email_id}/draft, then
-  /sent); GET /notifications. policy.yaml auto_draft (default false). The Mailgun inbound webhook still reaches the same
-  reply logic, dormant behind its keys.
+- Dispute email (api/dispute_email.py, api/agents/email_writer.py, api/integrations/gmail.py, mailgun.py, routes
+  api/routes/dispute_mail.py, migration 007): runs file disputes as ready_to_send; GET /disputes/{id}/email drafts the
+  email in the app (Claude, checked by the outbound filter, one retry, then held; the code template when the call
+  fails); PUT edits it; POST /disputes/{id}/send is the admin's approval: sent over Gmail SMTP (smtp.gmail.com:465 SSL,
+  GMAIL_ADDRESS + GMAIL_APP_PASSWORD) from the supplier's address with the packet PDF, our Message-ID saved and [D-n]
+  in the subject; Mailgun when only its keys are set; the in-app outbox with neither or in DEMO_MODE; then filed. The
+  Gmail poller (GMAIL_POLL, IMAP, 30 s) matches replies by In-Reply-To / References or [D-n] and runs disputes._post;
+  the Negotiator's answer waits as a reply email (POST /disputes/{id}/replies/{email_id}/send); GET /notifications.
+  policy.yaml auto_send (default false).
 - Google Drive (api/drive.py, routes api/routes/drive.py, migration 008): with GOOGLE_SERVICE_ACCOUNT_JSON and
   DRIVE_ROOT_FOLDER_ID, a poller (30 s, Changes API) versions each file in <Supplier>/<Distributor>/{Contracts,
   Promotions, Remittances, Correspondence, Sales data} by sha256; contracts and notices become account documents under
