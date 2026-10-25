@@ -4,7 +4,7 @@
 
 import type {
   Account, Approval, Lookback, AuditEntry, AuditVerify, ChargeDetail, CoachResponse, Dispute, EvalReport, Evidence, LedgerPost,
-  Overview, PortalMessage, RunEvent, ScenarioExample, ScenarioRequest, ScenarioResponse, SupplierItem, RunSummary, SavedOverview, DocumentText, TraceStep, TraceSummary,
+  Overview, PortalMessage, RunEvent, ScenarioExample, ScenarioRequest, ScenarioResponse, SupplierItem, RunSummary, SavedOverview, DocumentText, Connection, ContractLibrary, TraceStep, TraceSummary,
 } from "./types";
 import { adminToken } from "./tokens";
 
@@ -66,6 +66,8 @@ export const unreachable = (e: Error) => `Can't reach Clawback right now (${e.me
 // ---- Accounts
 export const fetchAccounts = () => call<Account[]>("/accounts");
 export const fetchSuppliers = () => call<SupplierItem[]>("/suppliers");
+export const fetchConnections = () => call<Connection[]>("/connections");
+export const fetchContract = (account: string) => call<ContractLibrary>(`/accounts/${q(account)}/contract`);
 export const fetchRuns = (account: string) => call<RunSummary[]>(`/accounts/${q(account)}/runs`);
 export const fetchSaved = (account: string) => call<SavedOverview>(`/accounts/${q(account)}/saved`);
 export const fetchDocument = (account: string, doc: string) => call<DocumentText>(`/accounts/${q(account)}/documents/${q(doc)}`);

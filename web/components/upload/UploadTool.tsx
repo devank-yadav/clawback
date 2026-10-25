@@ -10,7 +10,7 @@ export default function UploadTool() {
       title="Bring in your remittance"
       lead={() => "Drop the statement that came with the payment. Clawback reads every deduction, checks each one against the page, and runs from there."}
     >
-      {() => <UploadApp />}
+      {(account) => <UploadApp account={account.id} distributor={account.distributor.name} />}
     </ToolFrame>
   );
 }

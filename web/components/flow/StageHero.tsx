@@ -9,7 +9,7 @@ import type { Stage, StageKey } from "./stages";
 
 const ACTORS: Record<StageKey, string[]> = {
   payment: ["system"], read: ["reader"], check: ["investigator", "negotiator", "gate", "policy"], file: ["negotiator"],
-  owner: ["owner", "gate", "policy"], controller: ["controller", "bookkeeper"], books: ["bookkeeper"],
+  owner: ["owner", "gate", "policy"], approval: ["owner", "bookkeeper"], books: ["bookkeeper"],
 };
 
 const VERB: Partial<Record<StageKey, string>> = {

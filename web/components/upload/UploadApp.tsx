@@ -164,7 +164,8 @@ function Result({ r, onReset }: { r: RemittanceRead; onReset: () => void }) {
   );
 }
 
-export default function UploadApp() {
+/** `account` is the distributor relationship in view; only Peak Bar ← Northmart ships a sample remittance. */
+export default function UploadApp({ account = api.ACCOUNT, distributor = "the distributor" }: { account?: string; distributor?: string }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -176,7 +177,7 @@ export default function UploadApp() {
     setError(null);
     setResult(null);
     try {
-      setResult(await api.readRemittance(input));
+      setResult(await api.readRemittance(input, account));
     } catch (e) {
       setError(`${(e as Error).message}`);
     } finally {
@@ -223,15 +224,17 @@ export default function UploadApp() {
           className="font-mono text-[12px]" placeholder={"DEDUCTIONS TAKEN AGAINST INV-3102\nNM-2229   PROMO ALLOW   Spring promo week 1 ..."} />
         <div className="tool-actions">
           <button type="button" className="primary" disabled={!text.trim() || !!busy} onClick={() => read({ text }, "the pasted text")}>Read this text</button>
-          <button type="button" className="secondary" disabled={!!busy} onClick={sample}>Try Northmart&apos;s March remittance</button>
-          <a className="text-button" href={api.sampleUrl()} download>Download it (PDF)</a>
+          {account === api.ACCOUNT && <>
+            <button type="button" className="secondary" disabled={!!busy} onClick={sample}>Try Northmart&apos;s March remittance</button>
+            <a className="text-button" href={api.sampleUrl()} download>Download it (PDF)</a>
+          </>}
         </div>
         {busy && (
           <p className="muted" role="status"><span className="spinner" aria-hidden /> Reading {busy}. Claude lists every deduction line; then plain code checks each one against the page. Up to a minute.</p>
         )}
       </section>
       {error && <p className="feedback error" role="alert">{error}</p>}
-      <p className="muted text-[13px]">Fictional demo: Peak Bar Co. and Northmart are made up. Clawback never edits a line: it reads, checks and asks.</p>
+      <p className="muted text-[13px]">The payment advice {distributor} sent. Clawback never edits a line: it reads, checks and asks.</p>
     </>
   );
 }

@@ -418,3 +418,40 @@ button.fl-row:hover { background: var(--card-2); }
 .sv-doc header strong { flex: 1; font-weight: 500; }
 .sv-doc pre { margin: 0; padding: 18px; overflow: auto; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 12.5px; line-height: 1.6; color: var(--ink); }
 @media (max-width: 760px) { .hs-row { grid-template-columns: 1fr; gap: 8px; } .sv-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Connections and the contract library ---------- */
+.cn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.cn-card { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); }
+.cn-card.is-connected { border-color: #2c4a40; }
+.cn-card.is-coming_soon { opacity: 0.7; border-style: dashed; }
+.cn-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.cn-top strong { font-weight: 500; font-size: 15px; }
+.cn-brings { margin: 0; font-size: 13.5px; color: var(--ink); }
+.cn-status { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; padding: 3px 9px; border-radius: 999px; background: var(--raised); color: var(--sub); white-space: nowrap; }
+.cn-status i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.cn-status.is-connected { background: var(--green-bg); color: var(--green); }
+.cn-status.is-ready { background: var(--accent-soft); color: var(--accent-ink); }
+.cn-status.is-not_connected { background: var(--amber-bg); color: var(--amber); }
+.cn-soon { display: flex; flex-direction: column; gap: 10px; }
+.cn-soon h2 { font-size: 16px; font-weight: 500; margin: 0; }
+.ct { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 14px; align-items: start; }
+.ct-list { display: flex; flex-direction: column; gap: 6px; position: sticky; top: 76px; }
+.ct-doc { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink); text-align: left; font: inherit; cursor: pointer; }
+.ct-doc:hover { background: var(--raised); }
+.ct-doc.is-on { border-color: var(--accent); background: var(--selected); }
+.ct-doc strong { font-size: 13px; font-weight: 500; text-transform: capitalize; }
+.ct-doc small { font-size: 11.5px; color: var(--sub); }
+.ct-view { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); min-width: 0; }
+.ct-view header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ct-view header strong { flex: 1; font-weight: 500; text-transform: capitalize; }
+.ct-terms { display: flex; flex-wrap: wrap; gap: 6px; }
+.ct-term { display: inline-flex; gap: 6px; align-items: baseline; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--raised); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
+.ct-term b { font-weight: 500; color: var(--accent-ink); text-transform: capitalize; }
+.ct-term.is-on { border-color: var(--accent); }
+.ct-term.is-disputed b, .ct-term.is-rejected b { color: var(--amber); }
+.ct-text { margin: 0; padding: 16px; border-radius: 12px; background: var(--bg); white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 12.5px; line-height: 1.7; color: var(--sub); max-height: 70vh; overflow: auto; }
+.ct-mark { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--ink); border-radius: 4px; padding: 1px 2px; cursor: pointer; }
+.ct-mark.is-discretion { background: color-mix(in srgb, var(--amber) 24%, transparent); }
+.ct-mark.is-disputed, .ct-mark.is-rejected { background: color-mix(in srgb, #ff8f86 22%, transparent); }
+.ct-mark.is-active { outline: 2px solid var(--accent); }
+@media (max-width: 860px) { .ct { grid-template-columns: 1fr; } .ct-list { position: static; } }

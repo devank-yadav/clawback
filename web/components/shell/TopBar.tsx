@@ -23,6 +23,8 @@ const MAIN = [
 ];
 
 const MORE: { href: string; label: string; view?: string; hint: string }[] = [
+  { href: "/contracts", label: "Contracts", hint: "The signed deal, locked, with what the agents read" },
+  { href: "/connections", label: "Connections", hint: "Where payments, records and contracts come from" },
   { href: "/workspace", label: "Overview & payments", hint: "This distributor, every charge and its evidence" },
   { href: "/april", label: "Next month", hint: "The agents again, using your saved rules" },
   { href: "/coach", label: "Deal coach", hint: "Fixes for the next deal" },

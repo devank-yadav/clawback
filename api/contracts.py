@@ -1281,3 +1281,43 @@ class DocumentText(Contract):
     kind: DocumentKind
     locked: bool
     text: str
+
+
+# ---- connections and the contract library
+
+class Connection(Contract):
+    """GET /connections: one place payments, records and contracts come from, as it really is on this server."""
+
+    id: str
+    name: str
+    brings: str  # what it brings in
+    status: Literal["connected", "not_connected", "ready", "coming_soon"]
+    detail: str
+
+
+class LibraryTerm(Contract):
+    type: TermType
+    quote: str
+    char_start: int
+    char_end: int
+    status: TermStatus
+    discretion: bool
+    label: str  # "$1.00 per unit", "at most 5,000 units"
+
+
+class LibraryDocument(Contract):
+    id: str
+    title: str
+    kind: DocumentKind
+    locked: bool  # signed: nobody edits it, agents included
+    sender: str | None
+    approved_sender: bool
+    text: str
+    terms: list[LibraryTerm]
+
+
+class ContractLibrary(Contract):
+    """GET /accounts/{id}/contract: the deal and what changes it, with the terms the agents read highlighted."""
+
+    read_in_run: str | None  # the run whose readers produced the terms (None until the agents have read it)
+    documents: list[LibraryDocument]

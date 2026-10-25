@@ -477,3 +477,9 @@ export type RunSummary = {
 export type SavedDocument = { id: string; kind: string; title: string; sender: string | null; locked: boolean; chars: number };
 export type SavedOverview = { documents: SavedDocument[]; rules: Rule[]; records: { label: string; rows: number }[] };
 export type DocumentText = { id: string; title: string; kind: string; locked: boolean; text: string };
+
+// ---- Connections and the contract library (GET /connections, /accounts/{id}/contract)
+export type Connection = { id: string; name: string; brings: string; status: "connected" | "not_connected" | "ready" | "coming_soon"; detail: string };
+export type LibraryTerm = { type: string; quote: string; char_start: number; char_end: number; status: string; discretion: boolean; label: string };
+export type LibraryDocument = { id: string; title: string; kind: string; locked: boolean; sender: string | null; approved_sender: boolean; text: string; terms: LibraryTerm[] };
+export type ContractLibrary = { read_in_run: string | null; documents: LibraryDocument[] };
