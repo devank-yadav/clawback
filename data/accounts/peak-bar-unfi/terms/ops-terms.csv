@@ -1,0 +1,7 @@
+key,value,source_doc,quote
+promo_rate,1.00,peak-bar-unfi-mcb-promotion-2026-03,"Supplier will fund a manufacturer chargeback of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 28, 2026."
+promo_products,Peak Bar Original; Peak Bar Chocolate,peak-bar-unfi-mcb-promotion-2026-03,"Supplier will fund a manufacturer chargeback of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 28, 2026."
+promo_start,2026-03-01,peak-bar-unfi-mcb-promotion-2026-03,"Supplier will fund a manufacturer chargeback of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 28, 2026."
+promo_end,2026-03-28,peak-bar-unfi-mcb-promotion-2026-03,"Supplier will fund a manufacturer chargeback of $1.00 per unit on Peak Bar Original and Peak Bar Chocolate sold between March 1 and March 28, 2026."
+promo_cap_units,4000,peak-bar-unfi-mcb-promotion-2026-03,"The manufacturer chargeback applies to a maximum of 4,000 units in total."
+claim_once,billed once,peak-bar-unfi-mcb-promotion-2026-03,A week billed once is not billed again.

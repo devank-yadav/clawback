@@ -1,0 +1,12 @@
+month,ref,code,description,amount,outcome,recovered,deducted_on,product,units,rate,period_start,period_end,line_ref
+2025-10,60391204SP,SP,"Spoils credited to retailers, October",516.00,accepted,0.00,2025-11-19,none,1,516.00,2025-10-01,2025-10-31,
+2025-11,60398812SP,SP,"Spoils credited to retailers, November",432.00,written_off,0.00,2025-12-18,none,1,432.00,2025-11-01,2025-11-30,
+2025-12,60402230CV,DF,"ClearVue program fee, Q4 2025",1250.00,accepted,0.00,2026-01-20,none,1,1250.00,2025-10-01,2025-12-31,
+2026-01,60406617SP,SP,"Spoils credited to retailers, January",380.00,accepted,0.00,2026-02-19,none,1,380.00,2026-01-01,2026-01-31,
+2026-02,60409914,PA,MCB promo week 2 (UNFI MCB deal PB-MCB-0326),1050.00,accepted,0.00,2026-03-20,Peak Bar Original+Peak Bar Chocolate,1050,1.00,2026-03-08,2026-03-14,
+2026-03,60412281,PA,"MCB promo week 1 (UNFI MCB deal PB-MCB-0326), billed at $1.50",1350.00,open,0.00,2026-04-20,Peak Bar Original+Peak Bar Chocolate,900,1.50,2026-03-01,2026-03-07,
+2026-03,60412297,PA,MCB promo week 2 (UNFI MCB deal PB-MCB-0326),1050.00,open,0.00,2026-04-20,Peak Bar Original+Peak Bar Chocolate,1050,1.00,2026-03-08,2026-03-14,
+2026-03,60412305,PA,MCB promo week 3 (UNFI MCB deal PB-MCB-0326),1600.00,open,0.00,2026-04-20,Peak Bar Original+Peak Bar Chocolate,1600,1.00,2026-03-15,2026-03-21,
+2026-03,60412318,PA,MCB promo week 4 (UNFI MCB deal PB-MCB-0326),850.00,open,0.00,2026-04-20,Peak Bar Original+Peak Bar Chocolate,850,1.00,2026-03-22,2026-03-28,
+2026-03,60412326,PA,"MCB promo Peak Bar Peanut Butter, Mar 1-28",420.00,open,0.00,2026-04-20,Peak Bar Peanut Butter,420,1.00,2026-03-01,2026-03-28,
+2026-03,60418830CV,DF,"ClearVue program fee, Q1 2026",1250.00,open,0.00,2026-04-20,none,1,1250.00,2026-03-01,2026-03-31,

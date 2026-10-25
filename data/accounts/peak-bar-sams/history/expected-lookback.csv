@@ -1,0 +1,8 @@
+ref,allowed,wrongly_taken,status,why
+0029811362,,,not_checked,"Swell allowance: not a promo, shortage or price claim, so the lookback doesn't check it."
+0030122047,,,not_checked,"Swell allowance: not a promo, shortage or price claim, so the lookback doesn't check it."
+0030455618,,,not_checked,"Swell allowance: not a promo, shortage or price claim, so the lookback doesn't check it."
+0030455626,,,not_checked,"Sampling fee: a fee, not a promo, shortage or price claim, so the lookback doesn't check it."
+0030781904,,,not_checked,"Swell allowance: not a promo, shortage or price claim, so the lookback doesn't check it."
+0031264400,,,not_checked,"Swell allowance: not a promo, shortage or price claim, so the lookback doesn't check it."
+0031264418,3200.00,0.00,fair,"Matches the event: the week of Mar 16's 1,600 units x $2.00 (PB-IS-0326), under the 6,000-unit cap."

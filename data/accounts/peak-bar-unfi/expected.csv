@@ -1,0 +1,7 @@
+charge_id,decision,disputed,accepted,why
+U1,split,450.00,900.00,"UNFI billed $1.50 a unit on the strength of its own Mar 24 email, a claim from a sender who can't change the deal (deal sheet 3.3); at the deal's $1.00, 900 units x $1.00 = $900.00 is owed."
+U2,dispute,1050.00,0.00,"Week 2 (Mar 8 to 14, 1,050 units) was already billed as 60409914 on the Mar 20 remittance; deal sheet 3.2 bills a week once."
+U3,accept,0.00,1600.00,"Week 3 matches the deal: 1,600 units of Original and Chocolate x $1.00, still under the 4,000-unit cap."
+U4,split,400.00,450.00,"The 4,000-unit cap (deal sheet 1.2) leaves 450 units after weeks 1 to 3's 3,550: 450 x $1.00 = $450.00 is owed, the other 400 units are over the cap."
+U5,dispute,420.00,0.00,Peak Bar Peanut Butter is not part of the deal (deal sheet 1.3); only Original and Chocolate are covered.
+U6,ask,0.00,0.00,"The fee rests on Exhibit B of the ClearVue Supplier Agreement, whose amount is blacked out ([***]) in the agreement; nothing on file states it, so Clawback can't verify the deal and the owner decides."

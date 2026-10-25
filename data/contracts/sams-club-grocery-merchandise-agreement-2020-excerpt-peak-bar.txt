@@ -1,0 +1,635 @@
+Effective
+Date: 02/03/2020
+
+SAM’S
+CLUB GROCERY
+
+MERCHANDISE
+AGREEMENT
+
+General
+Supplier Information
+
+Agreement Number: | SAP Supplier Number: | Supplier ID: | Category:
+
+607499-64-2 | 1400560216 | 44-Frozen Foods
+
+Specialty
+Group: None
+
+Company
+Legal Name: Ittella International LLC
+
+Doing
+Business As: STONEGATE FOODS INC
+
+Legal
+Entity: Corporation
+
+Taxpayer
+Identification Number ( TIN ): XX-XXX5710
+
+Company Contacts
+
+Supplier Agreement Accepted By: Al Galletti | Phone: 15624084829
+
+CEO/President: Sam Galletti | Phone: (562)602-0822
+
+CFO: Stephanie Dieckmann | Phone: (562)602-0822
+
+Corporate Address | Remit Address
+
+Address Line 1: 6305 ALONDRA BLVD | Address Line 1: 6305 ALONDRA BLVD
+
+Address Line 2: | Address Line 2:
+
+City: PARAMOUNT | City: PARAMOUNT
+
+State: CA | State: CA
+
+Zip: 90723-3750 | Zip: 90723-3750
+
+The
+Supplier Agreement detailed below has been accepted on behalf of the supplier by:
+
+Al Galletti - (RLID : 6vf2l12 )
+
+1
+
+Supplier Number: 607499 | Agreement Number: 607499-64-2 | Effective Date: 02/03/2020
+
+SUPPLIER AGREEMENT
+
+(Standard
+Terms and Conditions for Suppliers)
+
+This
+Supplier Agreement, (“Agreement”) is between supplier indicated on the GENERAL SUPPLIER INFORMATION form that is part
+of the supplier registration process (“Supplier” or “you”) and Walmart Inc., and its direct and indirect
+US and Puerto Rico operating subsidiaries (collectively, “Company”). This Agreement consists of (1) these Standard
+Terms and Conditions for Suppliers (“Terms and Conditions”), (2) the Company policies and guidelines referenced in
+this Agreement; (3) the Appendix and any Schedule(s) attached hereto and (4) Company’s minimum requirements and Standards
+for Suppliers posted at http://corporate.walmart.com/suppliers/minimum-requirements and http://corporate.walmart.com/sourcing-standards-resources,
+each as may be amended from time to time by Company (collectively, the “Standards”), each of which is incorporated
+in this Agreement.
+
+BY
+CLICKING “I ACCEPT” AND “SUBMIT” BELOW, BY OFFERING TO SELL, SELLING, OR DELIVERING ANY MERCHANDISE
+TO COMPANY OR ITS CUSTOMERS, INCLUDING THROUGH ANY COMPANY WEBSITE OR APPLICATION, OR PROVIDING DIRECT SHIP SERVICES ON BEHALF
+OF COMPANY, YOU AGREE THAT YOU HAVE READ AND UNDERSTAND AND AGREE TO BE BOUND BY ALL TERMS AND CONDITIONS OF THIS AGREEMENT WITHOUT
+CHANGE. YOU FURTHER REPRESENT AND WARRANT THAT (1) ALL THE INFORMATION YOU PROVIDE AS PART OF THE REGISTRATION PROCESS WILL BE
+ACCURATE AND COMPLETE AND (2) IF YOU ARE EXECUTING THIS AGREEMENT ON BEHALF OF AN ENTITY, YOU HAVE THE REQUISITE RIGHT, POWER,
+AND AUTHORITY TO ENTER INTO THIS AGREEMENT ON BEHALF OF THE ENTITY YOU REGISTER AS SUPPLIER.
+
+By
+clicking the “I ACCEPT” button below, you understand that execution of this Agreement by both Supplier and Company
+does not impose on Company any obligation (and Company has no obligation) to purchase or take delivery of Merchandise (or to enable
+the sale or delivery of Merchandise to any customer) or to use any services of Supplier.
+
+2
+
+Supplier Number: 607499 | Agreement Number: 607499-64-2 | Effective Date: 02/03/2020
+
+STANDARD TERMS AND CONDITIONS
+
+1.
+DEFINITIONS. As used in this Agreement or any Order (defined below), the following capitalized words shall have the meanings
+set forth below:
+
+(a)
+“Account” means any right to receive payments arising under this Agreement.
+
+(b)
+“Authorized Buyer” means any buyer or category lead (or successor or equivalent titles) of Company assigned
+to the category/department corresponding to the purchased Merchandise.
+
+(c)
+“Change of Control” of Supplier means an event by which any person or entity, other than person(s) or entity(ies)
+having Control of Supplier as of the Effective Date, acquires Control of Supplier. “Control” means having direct or
+indirect power to direct, or cause the direction of, the management and policies of an entity, whether through the ownership of
+voting securities (even if less than majority ownership), contract, or otherwise.
+
+(d) “Content”
+means product images, product descriptions, Supplier name, logo, trademarks, service marks, copyrights, trade dress, and other
+information and materials, and content for marketing and promoting Merchandise in connection with Company’s marketing
+of the Merchandise. Content also includes any product information collected by Company from your website, or otherwise made available
+to Company by Supplier (or by a third party at Supplier’s direction).
+
+(e) “Effective
+Date” means the date this Agreement becomes effective as to both Company and Supplier.
+
+(f)
+“Law” means any applicable international, foreign, or domestic law, regulation, order or other requirement
+imposed or compelled by a governing or regulatory authority having legal force (whether federal, state or local), including any
+treaty, statute, common law, judicial decision, rule, regulation, code or ordinance.
+
+(g) “Merchandise”
+means all products, goods, materials, equipment, displays, articles, and tangible items supplied by Supplier to Company within
+the Territory, and all packaging, instructions, warnings, warranties, advertising and other services included therewith.
+
+(h) “Order”
+means any written or electronic purchase order for Merchandise issued by Company through an Authorized Buyer.
+
+(i) “Recall”
+means any removal of Merchandise from the stream of commerce or the issuance of a corrective action plan or other remedial action
+initiated by Supplier, a government entity, or Company.
+
+(j) “Territory”
+means the United States of America, its territories and possessions and APO/FPO military addresses.
+
+2.
+ORDERS; CANCELLATION. Supplier shall receive Orders and send Company invoices electronically unless otherwise agreed to by
+Company in writing. Supplier shall comply with Company electronic transmission requirements set forth here https://gsm.wal-mart.com/GSM_Web/Supplier Policies and Requirements/#EDI requirements. No Company representative has authority to order Merchandise except
+an Authorized Buyer through an Order issued pursuant to and subject to the terms of this Agreement. Supplier may ship only after
+receipt of an Order. Supplier may accept an Order only as follows: (i) a written confirmation notice to Company, if such notice
+is requested by Company, or (ii) shipping conforming Merchandise in accordance with this Agreement and the Order. Supplier is
+responsible for verifying the accuracy of all terms of sale on all Orders. Supplier shall notify Company of any inaccuracies not
+less than twenty-four (24) hours before shipment. If a change is necessary, no shipment is to commence without written confirmation
+of the change from an Authorized Buyer. If Merchandise ships before discovery of an error on the Order, the parties shall confer
+within forty-eight (48) hours of such discovery to determine the actions to be taken regarding the erroneous Order. Shipments
+made contrary to Company's routing instructions will be deemed F.O.B. destination (store, club or warehouse). Supplier's invoice,
+confirmation memorandum or other writing may not vary the terms of any Order. Supplier's failure to comply with one or more terms
+of an Order shall constitute breach of this Agreement. Company may cancel all or any part of an Order at any time before shipment.
+
+3.
+DELIVERY TIME. THE TIME SPECIFIED IN AN ORDER FOR SHIPMENT AND/OR DELIVERY OF MERCHANDISE IS OF THE ESSENCE OF THIS AGREEMENT.
+If Merchandise is not shipped and/or delivered within the time specified, Company may, at its option and without limitation,
+cancel the order and/or reject any merchandise delivered after the time specified. Company may assess and collect reasonable damages
+for any deliveries of Merchandise not received by the time specified in the Order. Notwithstanding Company's remedies, Supplier
+shall inform Company immediately of any actual or anticipated failure to ship all or any part of an Order on the shipment date
+specified. Acceptance of any Merchandise shipped after or before the time specified shall not be construed as a waiver of any
+of Company's rights or remedies resulting from the untimely shipment.
+
+4.
+SUPPLIER FINANCIAL INFORMATION; SUPPLIER NUMBER Supplier authorizes Company to obtain a current Dun & Bradstreet report
+(or such other risk evaluation report as may be designated by Company) for Supplier. The supplier number assigned to Supplier
+in connection with this Agreement is unique and personal to Supplier and is non-transferable. Any person other than Supplier that
+purports to transact business with Company under Supplier's vendor number will be jointly and severally liable with Supplier for
+all Supplier obligations to Company arising under this Agreement and any Order.
+
+3
+
+Supplier Number: 607499 | Agreement Number: 607499-64-2 | Effective Date: 02/03/2020
+
+5. PAYMENT
+TERMS; CASH DISCOUNT; AUDITS. Payment terms shall be as set forth in Business Terms. Supplier shall comply with the
+Payment Process requirements set forth https://gsm.wal-mart.com/GSM_Web/Supplier Policies
+and Requirements/#Payment Process Requirements. Company or its auditors may inspect and audit Supplier's financial and
+other account records relating to the sale and return of Merchandise. Supplier shall provide reasonable assistance in such
+audits by providing supplemental records as reasonably requested by Company or its auditors to validate audit
+results.
+
+6. SET-OFF.
+Company may recoup, set off, or credit against amounts payable to Supplier all present and future indebtedness of Supplier to
+Company arising from this or any other transaction with Supplier or any of its affiliates whether or not related to this Agreement.
+Company also may establish a reserve or place a hold on Supplier’s Account as set forth https://gsm.wal-mart.com/GSM_Web/Supplier Policies and Requirements/#Reservation of Account.
+
+7. TAXES.
+Unless otherwise agreed, Company is purchasing Merchandise under this Agreement for resale and will supply necessary resale
+certificates to Supplier upon request. The Order price includes all taxes and fees which may be imposed upon Supplier by a taxing
+jurisdiction on the sale of Merchandise under this Agreement. The Order price does not include: (i) sales, excise or use tax for
+which Company is liable upon the sale or use of the Merchandise or (ii) taxes or fees that Supplier is required by Law to separately
+state on invoices to Company. If Supplier receives a refund of any taxes included in the Order price or otherwise collected from
+Company by Supplier, Supplier shall promptly pay or credit Company the amount of the refund, including any interest.
+
+8. PRICE
+PROTECTION; PRICE GUARANTEE AND NOTICE OF PRICE INCREASES. Supplier guarantees its prices against manufacturer's or Supplier's
+own price decline. If Supplier reduces its price on any Merchandise sold to Company, which Merchandise has not yet been delivered
+to Company by Supplier or, if consistent with Supplier's practice, which Merchandise is currently in Company's inventory (including
+Merchandise on hand, in warehouses and in transit), Supplier shall at Company's discretion either issue a check or give Company
+a credit equal to the price difference for such Merchandise, multiplied by the units of such Merchandise to be delivered by Supplier
+and/or currently in Company's inventory. If at a reasonably close point in time with Supplier's sale of Merchandise to the Company,
+Supplier sells or offers to any competitor of Company any merchandise of like grade and quality at lower prices and/or on terms
+more favorable than those stated on the Order, then, except as prohibited by Law, the prices and/or terms of the Order shall be
+deemed automatically revised to equal the lowest prices and most favorable terms at which Supplier shall have sold or shall have
+offered such Merchandise, and payment shall be made accordingly. If Company becomes entitled to lower prices under this Section,
+but has already made payment at a higher price, Supplier shall promptly refund the difference in price to Company. Supplier shall
+give Company written notice of any proposed Merchandise price increase at least sixty (60) days before the effective date of the
+increase.
+
+9. CONTENT.
+Supplier shall comply with Supplier Content requirements set forth https://gsm.wal-mart.com/GSM_ Web/Supplier Policies
+and Requirements/#Supplier Content Obligations. All right, title and interest in the underlying Content as originally provided
+by Supplier to Company will remain the exclusive property of Supplier or the original licensor of the Content. Supplier hereby
+grants Company a limited, royalty-free, non-exclusive, non-transferable right to publish, use, reproduce, distribute, transmit,
+display, modify, edit and create derivative works based on the Content on the Company website(s) or in the Company apps and in
+connection with the marketing and promotion thereof, in connection with the retail sale and rental of its products and services
+(including without limitation, all Company’s businesses). The rights in this Section include the right to have third parties
+exercise Company’s rights on its behalf, including third party service providers, and will not expire or terminate for so
+long as needed for marketing and fulfillment of the Merchandise (including handling of customer returns and warranties).
+
+All
+Merchandise shall have an accurate UPC barcode (also known as an EAN/UPC symbol) that includes a valid Global Trade Item Number®
+(GTIN®) and will comply with GS1 US standards (found at http://www.gs1us.org) or such other of Company's UPC requirements,
+as amended from time to time. Where applicable, Supplier shall provide Company with a current, complete, and accurate Material
+Safety Data Sheet (“MSDS”) for the Merchandise.
+
+4
+
+Supplier Number: 607499 | Agreement Number: 607499-64-2 | Effective Date: 02/03/2020
+
+10. INSURANCE
+REQUIREMENTS. During the term of this Agreement and for at least two (2) years thereafter, Supplier at its own cost and expense
+will procure and maintain insurance coverage from qualified underwriters meeting or exceeding the requirements posted at http://corporate.walmart.com/suppliers,
+which are incorporated into this Agreement, and comply with the Insurance requirements https://gsm.wal-mart.com/GSM_Web/Supplier Policies and Requirements/#Insurance. Company may change the requirements for insurance posted at http://corporate.walmart.com/suppliers at any time. Changes to the insurance requirements posted after the Effective Date of this
+Agreement, however, will not be applicable to Supplier until twelve (12) months after Company's posting of such changes. The requirements
+in this Section are not intended to and will not in any manner limit or qualify Seller’s obligations under this Agreement
+including, but not limited to, Supplier’s defense and indemnity obligations under Section 12.
+
+11.
+REPRESENTATIONS AND WARRANTIES. By acceptance of an Order, Supplier represents, warrants and covenants that:
+
+(a) Supplier
+is in compliance with and will continue to comply with Company’s Standards;
+
+(b) Supplier
+and the Merchandise are in compliance with and shall continue to comply with all Laws applicable to the manufacture, mining, sourcing,
+distribution, assembly, packaging, transportation, and sale of the Merchandise;
+
+(c) The
+Merchandise will be new and not used, remanufactured, reconditioned or refurbished, and will comply with all specifications contained
+in such Order and will be of equal or better quality as all samples delivered to Company;
+
+(d) The
+Merchandise is genuine and is not counterfeit, adulterated, misbranded, falsely labeled or advertised or falsely invoiced within
+the meaning of any Laws;
+
+(e) The
+Merchandise has been labeled, advertised and invoiced in accordance with the requirements of all Laws, and the Merchandise, and
+its sale by Company anywhere within the Territory does not violate any Law;
+
+(f) The
+Merchandise shall be delivered in good and undamaged condition and shall, when delivered, be merchantable and fit and safe for
+the purposes for which the Merchandise is intended to be used, including but not limited to consumer use;
+
+(g) The
+Merchandise and Content does not infringe upon or violate any patent, copyright, trademark, trade name, trade dress, trade secret,
+or any other rights belonging to others, and all royalties owed by Supplier, if any, have been paid to the appropriate licensor;
+
+(h) All
+information regarding the Merchandise and Content, provided by or on behalf of Supplier to Company, including all weights, measures,
+sizes, legends or descriptions printed, stamped, attached or otherwise indicated with regard to the Merchandise, is true and correct,
+and conforms and complies with all Laws relating to the Merchandise;
+
+(i) Where
+required by Law, or by Company’s policies, the Merchandise has been tested by third-party testing bodies approved by Company,
+found compliant with all applicable standards and Laws, and the results of such tests will be provided to Company at Company's
+request;
+
+(j) There
+is no other impediment or restriction, legal or otherwise, that restricts prevents Supplier from selling and delivering the Merchandise
+to Company or Company from reselling the Merchandise to its customers;
+
+(k) Supplier
+has all necessary rights to grant the rights and licenses granted under this Agreement, including with respect to Content; Supplier
+has secured and will secure all rights and licenses from the respective intellectual property rights holders of the Content provided
+under this Agreement;
+
+(l) The
+Content does not and Supplier’s and Company’s permitted use of the Content does not infringe or misappropriate any
+third party intellectual property rights, privacy rights or publicity rights or violate any Law; and the Content is not deceptive,
+misleading or inaccurate or defame or otherwise injure any party, and
+
+(m) The
+Merchandise is not transshipped for the purpose of mislabeling, evading quota or country of origin restrictions or avoiding compliance
+with the Standards and all Laws.
+
+Nothing
+contained in this Agreement or an Order shall be deemed a waiver of any representations, warranties, or guarantees implied by
+Law.
+
+12.
+INDEMNIFICATION. Supplier shall protect, defend, hold harmless and indemnify Company, including its affiliates, officers,
+directors, employees and agents, from and against any and all lawsuits, claims, demands, actions, liabilities, injuries, losses,
+damages, expenses, and attorneys’ fees and costs, regardless of whether such matters are groundless, fraudulent, or false,
+regardless of the cause or alleged cause thereof, and regardless of whether such matters arise out of or were caused by the alleged
+or actual joint or concurrent negligence of Company, its affiliates or their officers, directors, employees or agents arising
+in whole or in part out of any actual or alleged:
+
+(a) Misappropriation
+or infringement of any patent, trademark, trade dress, trade secret, copyright or other right relating to any Merchandise or Content;
+
+(b) Death
+of or injury to any person, damage to any property, or any other damage or loss, by whomsoever suffered, arising out of any actual
+or alleged defect in the Merchandise (whether latent or patent), or assembly, sale, delivery, loading or unloading of the Merchandise,
+including but not limited to: (i) any actual or alleged failure to provide adequate warnings, labeling or instructions; (ii) any
+actual or alleged improper design, manufacture, construction, assembly, or installation of the Merchandise; (iii) any display
+or demonstration by Supplier or Supplier’s vendors or representatives on the Company’s premises; or (iv) any actual
+or alleged failure of the Merchandise to comply with specifications or with any express or implied warranties of Supplier;
+
+5
+
+Supplier Number: 607499 | Agreement Number: 607499-64-2 | Effective Date: 02/03/2020
+
+(c) Violation
+of any Law relating to the Merchandise, or to any of its components or ingredients, or to its manufacture, shipment, labeling,
+use or sale, or to any failure to provide a Material Safety Data Sheet or certification;
+
+(d) Act,
+activity or omission of Supplier or any of its employees, representatives or agents, including but not limited to activities on
+Company's premises;
+
+(e) Use
+of any vehicle, equipment, fixture or material of Supplier or Company in connection with any sale to or service for the Company;
+and
+
+(f) Any
+in-store product demonstrator, point of sale display, promotional exhibit, other advertising display or material, pallet or other
+tangible materials, equipment or fixtures provided by Supplier and related to Merchandise or services under this Agreement.
+
+Supplier
+shall promptly notify Company of the assertion, filing or service of any lawsuit, claim, or other matter that is or may be covered
+by this indemnity, and shall immediately take such action as necessary or appropriate to protect the interests of Company, its
+affiliates, officers, directors, employees and agents. On Company’s request, Supplier will promptly provide reasonable cooperation
+and assistance to Company with respect to any claim, lawsuit, demand, or investigation involving Company. Supplier shall have
+an obligation and duty to defend Company and its affiliates, officers, directors, employees and agents against any lawsuit, claim
+or other matter that is potentially within Supplier’s indemnity obligation as described in this Section until final adjudication
+of Supplier’s indemnity obligation. Supplier shall promptly notify Company of the legal counsel Supplier proposes to engage
+to defend and otherwise protect Company’s interest in such matter and such counsel shall be subject to Company’s approval,
+which Company shall not unreasonably withhold. Any counsel proposed, selected or provided by Supplier or its insurer to represent
+or defend Company or any of its affiliates, officers, directors, employees or agents shall follow the requirements set forth in
+Company’s Indemnity Counsel Guidelines. If Company determines that such legal counsel has not represented, defended or protected
+Company’s interests in accordance with the Indemnity Counsel Guidelines, or reasonably believes Supplier’s legal counsel
+is unwilling or unable to do so, Company may replace such counsel with other counsel of Company’s own choosing. In such
+event, any fees and expenses of Company’s new counsel, together with all expenses or costs incurred because of the change
+of counsel, shall be paid or reimbursed by Supplier as part of its indemnity obligation under this Agreement. Company shall at
+all times have the right to direct the defense of, and to accept or reject any offer to compromise or settle, any lawsuit, claim,
+demand or liability asserted against Company or any of its officers, directors, employees or agents, and Supplier will not settle
+or resolve any portion of any such claim or lawsuit without Company’s written approval, which Company will not unreasonably
+withhold. The duties and obligations of Supplier created here shall not be affected or limited in any way by Supplier’s
+fulfillment of its insurance requirements under this Agreement, or Company’s extension of express or implied warranties
+to its customers.
+
+13. FORUM
+SELECTION; CHOICE OF LAW; STATUTE OF LIMITATIONS. This Agreement, any and all Orders, and any and all disputes arising under
+or relating to this Agreement, whether sounding in contract or tort, shall be governed by and construed in accordance with the
+laws of the State of Arkansas without regard to the internal law of Arkansas regarding conflicts of law. The federal and/or state
+courts of Benton and Washington County, Arkansas shall have exclusive venue and jurisdiction over any actions or suits relating
+to this Agreement, except where Company expressly agrees otherwise in writing, and except where Company brings any action or suit
+against Supplier under or with respect to Section 10 (Insurance Requirements) or Section 12 (Indemnification). The parties shall
+not raise, and expressly waive, any defenses based on venue, inconvenience of forum or lack of personal jurisdiction in any action
+or suit brought in accordance with the foregoing. Any legal action brought by Supplier against Company must be filed within two
+(2) years after the date payment on the Order was due or it shall be deemed forever waived. The parties acknowledge that they
+have read and understand this clause and agree willingly to its terms.
+
+14. RECALLS;
+REPORTING OF DEFECTS; TESTING. If Merchandise is the subject of a Recall, Supplier shall be responsible for all matters and
+costs associated with the Recall, including but not limited to:
+
+(a) Consumer
+notification and contact;
+
+(b) All
+expenses and losses incurred by Company in connection with such Recall (and where applicable, any products with which the Recalled
+Merchandise has been packaged, consolidated or commingled), including but not limited to refunds to customers, lost profits, transportation
+costs, the cost to Company of its associates' time, systems expenses in processing any Recall, and all other costs associated
+therewith; and
+
+(c) Initial
+and subsequent contact and reporting of the Recall to any government agency having jurisdiction over the affected Recalled Merchandise.
+Supplier shall promptly, and in no event later than twenty-four (24) hours after its decision to initiate a Recall or its receipt
+of a Recall notice from a government entity, inform Company of the Recall. Supplier shall promptly inform Company of its becoming
+aware of any defect in the Merchandise that could reasonably be expected to cause damage, illness, injury or death to humans,
+animals, or property, or the noncompliance of the Merchandise with any applicable safety or regulatory standard or Law, whether
+imposed by a government entity or by Company.
+
+6
+
+Supplier Number: 607499 | Agreement Number: 607499-64-2 | Effective Date: 02/03/2020
+
+If
+a government agency initiates any inquiry or investigation relating to the Merchandise or similar or related goods of Supplier,
+Supplier shall notify Company immediately and take reasonable steps to resolve the matter without exposing Company to any liability
+or risk. After acceptance of delivery, Company may periodically conduct testing of Merchandise for compliance with Laws, and other
+standards and specifications, the costs of which shall be paid or reimbursed to Company by Supplier.
+
+15.
+LIMITATION OF DAMAGES. IN NO EVENT SHALL EITHER PARTY BE LIABLE TO THE OTHER PARTY FOR ANY PUNITIVE, SPECIAL, INCIDENTAL OR
+CONSEQUENTIAL DAMAGES OF ANY KIND (INCLUDING BUT NOT LIMITED TO LOST PROFITS, BUSINESS REVENUES, BUSINESS INTERRUPTION AND THE
+LIKE), ARISING FROM OR RELATING TO THE RELATIONSHIP BETWEEN SUPPLIER AND COMPANY, INCLUDING ALL PRIOR DEALINGS AND AGREEMENTS,
+OR THE CONDUCT OF BUSINESS UNDER OR BREACH OF THIS AGREEMENT OR ANY ORDER, CANCELLATION OF ANY ORDER OR ORDERS OR THE TERMINATION
+OF BUSINESS RELATIONS, REGARDLESS OF WHETHER THE CLAIM UNDER WHICH SUCH DAMAGES ARE SOUGHT IS BASED UPON BREACH OF WARRANTY, BREACH
+OF CONTRACT, NEGLIGENCE, TORT, STRICT LIABILITY, STATUTE, REGULATION OR ANY OTHER LEGAL THEORY OR LAW, EVEN IF COMPANY OR SUPPLIER
+HAS BEEN ADVISED BY THE OTHER PARTY OF THE POSSIBILITY OF SUCH DAMAGES; PROVIDED, HOWEVER, THE FOREGOING SHALL NOT LIMIT THE SPECIFIC
+RIGHTS AND REMEDIES EXPRESSLY PROVIDED IN THIS AGREEMENT, INCLUDING SECTIONS 12 (INDEMNIFICATION) AND 14 (RECALLS),OR LIMIT LIABILITY
+FOR NEGLIGENT OR WILLFUL BREACH OF THE USER AGREEMENT.
+
+16.
+REMEDIES. Supplier's breach of or failure to comply with any of the Terms and Conditions of this Agreement or any Order shall
+be grounds for Company to exercise any one or more of the following remedies:
+
+(a) Cancellation
+of all or any part of any undelivered Order without notice, including but not limited to the balance of any remaining installments
+on a multiple-shipment Order;
+
+(b) Rejection
+(or revocation of acceptance) of all or any part of any delivered shipment. Upon rejection or revocation of acceptance of any
+part of or all of a shipment, Company may return the Merchandise or hold it at Supplier's risk and expense. Payment of any invoice
+shall not limit Company’s right to reject or revoke acceptance. Company shall be under no duty to inspect the Merchandise,
+and notice to Supplier of rejection shall be deemed given within a reasonable time if given within a reasonable time after notice
+of defects or deficiencies has been given to Company by its customers. Unless Company otherwise agrees in writing, Supplier shall
+not have the right to make a conforming delivery within the contract time;
+
+(c)
+Termination or suspension of all current and future business relationships;
+
+(d) Recovery
+from Supplier of any damages or expenses sustained by Company as a result of Supplier's breach; and
+
+(e) Buyer's
+remedies under the Uniform Commercial Code and such other remedies as are provided under applicable Law.
+
+These
+remedies are not exclusive and are in addition to all other remedies available to Company at Law or in equity.
+
+17.
+FORCE MAJEURE. If any place of business or other premises of Company or Supplier shall be affected by lockouts, strikes, riots,
+war, acts of terrorism, fire, civil insurrection, flood, earthquake, acts of God, or any other casualty beyond that party's control
+(but not including market fluctuations other than those caused by reason of the foregoing), which might reasonably tend to impede
+or delay the delivery, receipt, handling, inspection, processing, sale or marketing of the Merchandise covered by this Agreement,
+the party so impacted may, at its option, cancel all or any part of the undelivered Order hereunder by giving prompt written notice
+to the other party.
+
+18.
+ASSIGNMENT. Except as specifically set forth in the https://gsm.wal-mart.com/GSM_Web/Supplier
+Policies and Requirements/#Payment Process Requirements regarding factoring, Supplier may not assign, delegate, or otherwise
+transfer to any entity any of its rights or obligations under this Agreement or under any Order (including any rights to any Company
+vendor number) without Company’s written consent. For purposes of and without limiting the foregoing, a Change of Control
+of Supplier will be deemed to constitute an assignment (or purported assignment) of this Agreement by Supplier. Any purported
+assignment in violation of this provision will be void.
+
+19.
+INTELLECTUAL PROPERTY. Supplier shall not produce, distribute, sell or dispose of Merchandise, or apply for, assign, license,
+or abandon, any intellectual property right, that incorporates intellectual property that is owned by or licensed to Company,
+including Company’s name, logo, trademarks, trade secrets, service marks, patents, copyrights or trade dress, without the
+prior written approval of Company.
+
+7
+
+Supplier Number: 607499 | Agreement Number: 607499-64-2 | Effective Date: 02/03/2020
+
+20. COMPLIANCE
+WITH STANDARDS FOR SUPPLIER. Supplier will comply with the requirements set forth in the Standards located at http://corporate.walmart.com/sourcing-standards-resources,
+and as may be amended from time to time by Company.
+
+21. SEVERABILITY;
+WAIVER. No finding that a part of this Agreement is invalid or unenforceable shall affect the validity of any other part of
+the Agreement. A party's failure to enforce at any time any provision of this Agreement will not be construed as or constitute
+a continuing waiver of such provision. Any waiver of any of the Terms and Conditions of this Agreement or any Order must be in
+writing signed by an authorized representative of Company or Supplier.
+
+22. NOTICES.
+Except as otherwise specifically provided in this Agreement, any notice or demand which under the terms of this Agreement or under
+any Law must or may be given or made shall be in writing and shall be given or made by overnight express service addressed as
+follows: if to Company: to the address as instructed by Walmart If to Supplier: to Supplier's address set forth in the General
+Supplier Information form that is part of the supplier registration process. Such notice or demand shall be deemed given on the
+second business day after deposit of such notice or demand with the overnight express service.
+
+23. TERM;
+TERMINATION. This Agreement will commence on the Effective Date and continue in effect until terminated. This Agreement will
+not become effective as to Company until Company notifies you in writing that you have been approved as a supplier of Company.
+If Company has notified you in writing that you have been approved as a supplier for Company, then this Agreement will become
+effective as to both Company and Supplier on the date you click or clicked “I ACCEPT” and such action by you shall
+be execution of this Agreement by, and the same as, your physical signature on this Agreement. If Company does not approve you
+as a supplier of Company in writing after you have clicked “I ACCEPT”, then this Agreement will be considered null
+and void ab initio and will be of no force and effect. If Company has accepted Supplier as a supplier but Company has not yet
+issued an Order to Supplier, Company may terminate this Agreement immediately for any or no reason and without penalty by providing
+written notice to Supplier.
+
+Either
+party may terminate this Agreement for any or no reason and without penalty on thirty (30) days’ notice. This Agreement
+will continue to apply to any Order dated before the termination of this Agreement, even if the Merchandise is delivered or accepted
+after termination of this Agreement.
+
+24. NO
+THIRD PARTY BENEFICIARIES. Except as expressly provided in this Agreement, Company and Supplier intend the Terms and Conditions
+of this Agreement and any Order to solely benefit Company and Supplier. Company and Supplier do not otherwise intend to, and do
+not, confer third-party beneficiary rights on any other person or entity.
+
+25. SURVIVAL
+OF PROVISIONS. Sections 6, 11-16, and 18-19, and any other provisions of this Agreement that by their nature are reasonably
+intended to survive termination, will survive the termination of this Agreement.
+
+26. CHANGES
+TO TERMS; BUSINESS PROGRAMS AND PROCESSES. From time to time, Company may modify this Agreement, ands alter, amend,
+or create business programs, processes, directives and policies. When it does, Company will provide notice to Supplier of such
+changes via its Retail Link system, its corporate website (http://corporate.walmart.com/suppliers),
+and/or by such other means of direct notification to Supplier as Company may determine. After receiving such notice(s),
+Supplier's acceptance of Orders will serve as confirmation of its acceptance of Company’s modifications, and/or new or amended
+business programs, processes, directives and policies. If you do not agree to such changes after receiving notice of them, you
+will notify Company in writing and may not continue to offer to sell, sell, or make deliveries of Merchandise to Company or its
+customers.
+
+27. NO
+BUSINESS EXPECTATION. Company has no obligation and makes no promises to purchase any minimum amount of Merchandise from Supplier.
+Projections, past purchasing history and representations about quantities to be purchased are not binding on Company, and Company
+shall not be liable for any act or expenditure (including but not limited to expenditures for equipment, labor, materials, packaging
+or capital expenditures) by Supplier in reliance on them.
+
+28. INTEGRATED
+AGREEMENT. This Agreement (and all linked Supplier policies and requirements https://gsm.wal-mart.com/GSM_Web/Supplier Policies
+and Requirements, each as may be amended from time to time), the Standards (as may be amended from time to time), any Order,
+and the User Agreement constitute the full understanding of the parties, a complete allocation of risks between them and a complete
+and exclusive statement of the terms and conditions of their agreement. All prior agreements, negotiations, dealings and understandings,
+whether written (including any electronic record) or oral, regarding the subject matter hereof, are superseded by this Agreement.
+Any changes to this Agreement shall be in writing and executed by both parties. If there is a conflict of terms between this Agreement,
+an Order, the Standards, the User Agreement, business terms, business programs, processes, directives or policies incorporated
+into this Agreement, this Agreement shall be the controlling document.
+
+8
+
+Supplier Number: 607499 | Agreement Number: 607499-64-2 | Effective Date: 02/03/2020
+
+Sam’s
+Club Supplier Agreement Appendix
+
+This
+Appendix constitutes and is part and incorporated into the Supplier Agreement. The terms of the Supplier Agreement are binding
+and enforceable as to this Appendix.
+
+1.
+STANDARD PURCHASE ORDER ALLOWANCE
+
+These
+allowances apply to each Order issued, unless otherwise agreed to by the parties.
+
+Purchase Order Allowance | % | Payment Method | Payment Frequency
+
+SW - Swell Allowance (SW or DM) | 1.0 | Off Invoice | Each Invoice
+
+2. PAYMENT
+TERMS
+
+2.0% | Cash Discount
+
+30 | Cash Discount Days Available
+
+45 | Net Payment Days Available
+
+3. SHIPPING
+TERMS
+
+Prepaid - F.O.B. Supplier
+
+No
+minimum purchase is required for prepaid freight terms. No freight charges are to be added to invoices. Refer to the current Routing
+Instructions for detailed instructions.
+
+4. CONDITION
+OF SALE
+
+Condition of Sale | Definition
+
+N/A | N/A
+
+5. PRODUCT
+CHEMICAL INFORMATION
+
+Does
+Supplier currently sell, or anticipate selling, to Company under this Agreement any item of Merchandise that contains a powder,
+gel, paste, or liquid that is not intended for human consumption or any of the following products that are intended for human
+inhalation, consumption, or absorption: Lozenges, pills or capsules (e.g. pain relievers, vitamins); Medicated swabs, wipes and
+bandages; Patches (heated and/or medicated); Energy bars, diet supplements and vitamin drinks; Liquids (e.g. cough medicine, eye
+drops, ear drops, nasal spray and inhalers); Medicated shampoos, gums, ointments and creams; Lip balm, lip creams and petroleum
+jelly; Contraceptive foam, films, and spermicides; and Product/Equipment sold with chemicals (e.g. vaporizer sold with medication),
+and electronic cigarettes?
+
+YES ✔ NO
+
+6. RETURN
+POLICY
+
+Company
+may return to Supplier, at Supplier’s expense, Merchandise that is: (i) defective or nonconforming; (ii) returned to Company
+by customer (either in−store or online); (iii) subject to Conditions of a Guaranteed Sale or Overstock/Stock
+Balancing; or (iv) subject to a Recall or product withdrawal under Section 14 of the Supplier Agreement (in any case “Returned
+Merchandise”). Returned Merchandise will remain returnable for sixty (60) days after Company and Supplier mutually agree
+to shut−off returns. Company will manage Returned Merchandise as follows: Supplier will be charged the greater
+of the landed price of the Merchandise or the current Merchandise cost plus a 10% handling charge for all Returned Merchandise.
+Returned Merchandise will be shipped with return freight charges billed back to Supplier. Returns are F.O.B Company’s dock.
+
+9
+
+Supplier Number: 607499 | Agreement Number: 607499-64-2 | Effective Date: 02/03/2020
+
+Swell
+Allowance
+
+Supplier
+will allow the Member Satisfaction Merchandise Allowance stated in this Agreement. The percentage must be adequate to cover all
+costs associated with Returned Merchandise, including but not limited to defective/returned merchandise and handling costs, or
+additional claims will be filed by the Company at its fiscal year end.
+
+NOTWITHSTANDING
+THE FOREGOING (AND UNDER ANY OPTION), SUPPLIER AUTHORIZES COMPANY TO PROCESS AND MANAGE RETURNED MERCHANDISE AS COMPANY CHOOSES
+IN ITS DISCRETION (BUT WITHOUT AFFECTING RESPONSIBILITY FOR RETURN COSTS), IF COMPANY DETERMINES, FOR WHATEVER REASON (INCLUDING
+THE CONDITION OF THE MERCHANDISE AND ITS PACKAGING), THAT THE OPTION SELECTED BY SUPPLIER IS UNSUITABLE. IN ADDITION, COMPANY
+IS NOT REQUIRED TO RETURN EMPTY OR DAMAGED PACKAGING TO SUPPLIER (OR RETURN CENTER) TO SUPPORT A CLAIM FOR RETURNED MERCHANDISE.
+
+7.
+Distribution Method
+
+DC
+(Warehouse) ASN - No DSDC - No
+
+10
