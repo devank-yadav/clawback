@@ -1,6 +1,7 @@
 """Record the AI answers an account's run is missing, live, once, under a hard cost cap. Never overwrites a recording.
 
     .venv/bin/python scripts/record_missing.py peak-bar-kehe peak-bar-walmart --cap 3.00
+    .venv/bin/python scripts/record_missing.py --story --cap 1.00   # the startup history's steps (api/story.py)
 
 Run it from a checkout with .env. It reads .env for ANTHROPIC_API_KEY only, and turns everything else off for the
 process, so a recording run can't text a phone, write to QuickBooks, save to the database or call Moss or Gemini.
@@ -34,7 +35,8 @@ class OverBudget(RuntimeError):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("accounts", nargs="+")
+    ap.add_argument("accounts", nargs="*")
+    ap.add_argument("--story", action="store_true", help="also run api/story.py's steps live: the history's replies")
     ap.add_argument("--cap", type=Decimal, default=Decimal("3.00"), help="USD for every live call together")
     args = ap.parse_args()
 
@@ -69,6 +71,12 @@ def main() -> int:
         return out
 
     claude._parse = capped
+    if args.story:
+        from api import story
+
+        before = spent["usd"]
+        made = story.steps()
+        print(f"story: {len(made)} runs and their replies; ${spent['usd'] - before:.2f} spent")
     for aid in args.accounts:
         a = accounts.get(aid)
         before = spent["usd"]

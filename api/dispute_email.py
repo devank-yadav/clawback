@@ -248,7 +248,8 @@ def _deliver(e: DisputeEmail, run: pipeline.Run, dispute: Dispute) -> DisputeEma
                     "error", "negotiator")
             return _put(e.model_copy(update={"status": "failed", "detail": str(err)}))
         if sent.simulated:
-            why = "DEMO_MODE" if replay.demo_mode() else "no Gmail or Mailgun keys"
+            why = ("part of the history replayed before email was connected" if replay.forced() else
+                   "DEMO_MODE" if replay.demo_mode() else "no Gmail or Mailgun keys")
             sent = mailgun.Sent(sent.message_id, True, f"in the in-app outbox ({why})", sent.at)
     with _lock:
         MESSAGE_IDS[sent.message_id] = (run.id, dispute.id)

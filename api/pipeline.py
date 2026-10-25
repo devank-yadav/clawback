@@ -226,7 +226,7 @@ def _guarded(run: Run, client) -> None:
     except Exception as e:  # noqa: BLE001 - a crash shows on the board instead of hanging the stream
         log.exception("run %s failed", run.id)
         run.log(f"The run stopped: {type(e).__name__}: {e}", "error")
-        run.emit("run", RunInfo(run_id=run.id, kind=run.kind, status="failed", demo_mode=replay.demo_mode()))
+        run.emit("run", RunInfo(run_id=run.id, kind=run.kind, status="failed", demo_mode=replay._flag("DEMO_MODE")))
         run.done = True
 
 
@@ -377,7 +377,7 @@ def _process(run: Run, client) -> None:
                                 charge_count=len(charges), received_at=_now(),
                                 nessie_tx_id=dep.id if dep is not None and _source_of(dep) == "nessie" else None)
     run.emit("run", RunInfo(run_id=run.id, kind=run.kind, status="started", remittance=remittance,
-                            demo_mode=replay.demo_mode()))
+                            demo_mode=replay._flag("DEMO_MODE")))
     if remittance:
         short = totals.remittance_short(inv.expected, remittance.received)
         if run.deposit:
@@ -638,14 +638,14 @@ def _after_decisions(run: Run, policy: eng.Policy) -> None:
     if disputed:  # the first pass files D-0417; a line settled later (an owner's DISPUTE) gets its own
         _file_dispute(run, disputed, policy)
     if any(d.kind == eng.DecisionKind.ASK for d in run.decisions.values()):
-        run.emit("run", RunInfo(run_id=run.id, kind=run.kind, status="waiting", demo_mode=replay.demo_mode()))
+        run.emit("run", RunInfo(run_id=run.id, kind=run.kind, status="waiting", demo_mode=replay._flag("DEMO_MODE")))
         return
     if not any(e.type == "approval" for e in run.events):
         _request_credit_memo(run, policy)
     if run.kind != run.account.invoice.month:  # a later month, replayed with the saved rules (Peak Bar's April)
         run.log("0 questions asked: every fee was decided by a saved rule." if not run.questions
                 else f"{len(run.questions)} question(s) asked.", "good" if not run.questions else "info", "gate")
-    run.emit("run", RunInfo(run_id=run.id, kind=run.kind, status="finished", demo_mode=replay.demo_mode()))
+    run.emit("run", RunInfo(run_id=run.id, kind=run.kind, status="finished", demo_mode=replay._flag("DEMO_MODE")))
     run.done = True
 
 

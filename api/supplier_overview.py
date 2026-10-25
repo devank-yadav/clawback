@@ -167,10 +167,11 @@ def _recent(runs: list[pipeline.Run]) -> list[RecentItem]:
     out = []
     for run in runs:
         a, them = run.account, run.distributor
-        sent = set()
+        sent, decided = set(), False
         for e in run.events:
             d = e.data
-            if e.type == "run" and d.status in ("waiting", "finished"):
+            if e.type == "run" and d.status in ("waiting", "finished") and not decided:
+                decided = True  # once per run: when the gate first decided it
                 out.append(RecentItem(at=e.at, kind="run_decided", account_id=a.id, distributor=them,
                                       text=f"Agents decided {them}'s {run.kind} payment",
                                       link=OverviewLink(page="run", run_id=run.id)))

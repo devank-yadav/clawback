@@ -350,8 +350,15 @@ def _refreshing_token() -> Callable[[], str]:
     return token
 
 
+_history_books: StandInBooks | None = None
+
+
 def books() -> LiveBooks | StandInBooks:
-    global _books
+    global _books, _history_books
+    if replay.forced():  # the replayed history (api/story.py): its own stand-in, never the live books' cache
+        if _history_books is None:
+            _history_books = StandInBooks("part of the history replayed before this payment, not written to QuickBooks")
+        return _history_books
     if _books is None:
         if not all(os.getenv(k) for k in KEYS):
             _books = StandInBooks()
@@ -363,5 +370,5 @@ def books() -> LiveBooks | StandInBooks:
 
 
 def reset() -> None:
-    global _books
-    _books = None
+    global _books, _history_books
+    _books = _history_books = None
