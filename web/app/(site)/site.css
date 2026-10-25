@@ -191,3 +191,83 @@ body.st { margin: 0; font-family: var(--font-inter), ui-sans-serif, system-ui, s
   .st-auth-card { padding: 24px 20px; border-radius: 22px; }
 }
 @media (prefers-reduced-motion: reduce) { .st-btn { transition: none; } .st-btn.is-blue:hover { transform: none; } }
+
+/* The hero's actions: Sign in is the one glowing blue pill; Request access is a quiet text link with an arrow. */
+.st-btn.is-glow { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 10px 28px -10px color-mix(in srgb, var(--button-blue) 80%, transparent), 0 0 0 6px color-mix(in srgb, var(--button-blue) 10%, transparent); }
+.st-textlink { display: inline-flex; align-items: center; gap: 6px; min-height: 48px; padding: 0 10px; font-size: 15px; font-weight: 500; color: var(--ink); text-decoration: none; border-radius: 999px; }
+.st-textlink svg { width: 16px; height: 16px; transition: transform 0.2s; }
+.st-textlink:hover { color: var(--accent-ink); }
+.st-textlink:hover svg { transform: translateX(3px); }
+.st-textlink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* The one-glance explainer: three pictures, left to right, thin arrows between; stacked with down arrows on a phone. */
+.st-stage:has(.hx) { max-width: 1040px; }
+.hx { position: relative; margin: 0; padding: 28px 24px 26px; background: color-mix(in srgb, var(--card) 92%, transparent); border: 1px solid var(--line); border-radius: var(--radius-frame); box-shadow: var(--shadow-frame); }
+.hx-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr) 56px minmax(0, 1.15fr); align-items: start; gap: 0 6px; }
+.hx-step { display: flex; flex-direction: column; align-items: center; gap: 12px; min-width: 0; }
+.hx-n { font: 400 34px/1 var(--font-display); color: var(--accent); letter-spacing: -0.5px; }
+.hx-cap { margin: 0; max-width: 16em; font-size: 14.5px; line-height: 1.35; font-weight: 500; color: var(--ink); text-wrap: balance; }
+.hx-arrow { align-self: center; display: grid; place-items: center; margin-top: -28px; }
+.hx-arrow svg { display: block; overflow: visible; }
+.hx-arrow path { fill: none; stroke: var(--line-strong); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+.hx-vis { position: relative; width: 100%; max-width: 236px; height: 156px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px 16px; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 1px 2px rgba(0, 28, 46, 0.04), 0 12px 28px -18px rgba(0, 28, 46, 0.28); }
+.hx-tiny { font-size: 11.5px; font-weight: 500; color: var(--faint); letter-spacing: 0.1px; }
+
+/* 1 · the remittance stub: a torn top edge, what came in, what was taken */
+.hx-stub { border-top: 2px dashed var(--line-strong); border-radius: 4px 4px 16px 16px; }
+.hx-paid { font-size: 30px; line-height: 1.05; font-weight: 600; letter-spacing: -0.6px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.hx-of { font-size: 13px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.hx-cut { margin-top: auto; display: inline-flex; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--dispute-ink); background: var(--dispute-bg); font-variant-numeric: tabular-nums; }
+
+/* 2 · the contract page: a folded corner, text lines, one highlighted clause, the AI and code marks */
+.hx-doc { gap: 7px; }
+.hx-doc::after { content: ""; position: absolute; top: -1px; right: -1px; width: 22px; height: 22px; border-radius: 0 16px 0 8px; background: linear-gradient(225deg, var(--bg) 50%, var(--raised-2) 50%); }
+.hx-doc i { display: block; height: 6px; border-radius: 3px; background: var(--raised-2); }
+.hx-hl { display: inline-block; padding: 2px 6px; margin: 1px 0; border-radius: 4px; font-size: 11.5px; font-weight: 600; color: var(--ink); background: var(--hl); box-shadow: 0 0 0 1px color-mix(in srgb, var(--wait) 35%, transparent); }
+.hx-marks { margin-top: auto; display: flex; gap: 6px; }
+.hx-marks b { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+.hx-marks svg { width: 13px; height: 13px; }
+.hx-marks .is-ai { color: var(--accent-ink); background: var(--accent-soft); }
+.hx-marks .is-code { color: var(--green); background: var(--green-bg); }
+
+/* 3 · the outcome: the $6,850 as one bar, fair in blue, wrong in red; the one question */
+.hx-out { max-width: 280px; gap: 8px; }
+.hx-bar { display: flex; gap: 3px; width: 100%; height: 14px; }
+.hx-bar i { display: block; height: 100%; border-radius: 4px; transform-origin: left center; }
+.hx-bar .is-fair { background: var(--fair); }
+.hx-bar .is-wrong { background: var(--dispute); }
+.hx-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--sub); }
+.hx-legend li { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.hx-legend li::before { content: ""; width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.hx-legend .is-fair::before { background: var(--fair); }
+.hx-legend .is-wrong::before { background: var(--dispute); }
+.hx-legend b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.hx-q { margin-top: auto; display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--wait-ink); background: var(--wait-bg); }
+.hx-q svg { width: 14px; height: 14px; }
+
+@media (max-width: 860px) {
+  .hx { padding: 22px 16px; }
+  .hx-steps { grid-template-columns: minmax(0, 1fr); gap: 4px; justify-items: center; }
+  .hx-vis, .hx-out { max-width: 300px; }
+  .hx-arrow { margin: 2px 0; }
+  .hx-arrow svg { transform: rotate(90deg); width: 32px; }
+}
+
+/* The explainer's build-in, about 1.5 s: each piece waits for its `--d`, then rises in; the bar grows from the left.
+   Transform and opacity only. Reduced motion: no build-in, the finished picture. */
+@keyframes hx-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes hx-slide { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+@keyframes hx-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes hx-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.hx-step { animation: hx-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0s) both; }
+.hx-arrow { animation: hx-slide 0.3s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0s) both; }
+.hx-bar i { animation: hx-grow 0.4s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0s) both; }
+.hx-legend, .hx-q { animation: hx-fade 0.3s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0s) both; }
+@media (max-width: 860px) {
+  @keyframes hx-slide { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hx-step, .hx-arrow, .hx-bar i, .hx-legend, .hx-q { animation: none; }
+  .st-textlink svg { transition: none; }
+}

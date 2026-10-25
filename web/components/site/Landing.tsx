@@ -1,12 +1,12 @@
 // The public landing page (/), in billow's design language: one claim, the product doing it, the problem in public
 // court records, how it works in four steps, why it can be trusted, and a request-access form. Facts about the cases
-// come from the cited filings and trade press; the product example uses the fictional demo brand and says so.
+// come from the cited filings and trade press; the hero's explainer shows one payment with the demo's own figures.
 
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Calculator, FileCheck2, Landmark, MessageSquareReply, Scale, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/console/ui";
 import RequestAccess from "./RequestAccess";
-import { LandingClaw } from "./LandingClaw";
+import { HeroExplainer } from "./HeroExplainer";
 
 const STEPS = [
   {
@@ -22,7 +22,7 @@ const STEPS = [
   {
     icon: <FileCheck2 />,
     title: "Disputes go out with proof, after your OK",
-    body: "Each wrong charge is disputed with the clause, the sales rows and the math. Fair ones are accepted. When the deal leaves it to judgment, you’re asked once.",
+    body: "Each wrong charge is disputed with the clause, the sales rows and the math. Fair ones are accepted. When the contract leaves it to judgment, you’re asked once.",
   },
   {
     icon: <MessageSquareReply />,
@@ -76,39 +76,10 @@ function TopNav() {
         <a href="#trust">Trust</a>
       </nav>
       <div className="st-top-right">
-        <Link href="/signin" className="st-btn is-ghost">Sign in</Link>
-        <a href="#access" className="st-btn is-dark">Request access</a>
+        <a href="#access" className="st-btn is-ghost">Request access</a>
+        <Link href="/signin" className="st-btn is-dark">Sign in</Link>
       </div>
     </header>
-  );
-}
-
-/** The product doing its job on one payment: the fictional demo brand, labeled as an example. */
-function Example() {
-  return (
-    <div className="st-stage">
-      <figure className="st-frame cw-host" aria-label="Example: two charges from one payment, checked against the deal">
-        <figcaption className="st-frame-head">
-          <span>Example · a payment from a distributor, <span className="st-short">$6,850</span> short</span>
-        </figcaption>
-        <LandingClaw />
-        <div className="st-check is-dispute">
-          <div className="st-check-top">
-            <strong>Promo allowance, week 4</strong>
-            <span className="st-chip is-dispute">Dispute · $1,540</span>
-          </div>
-          <blockquote>§3.2 “The promotional allowance applies to a maximum of 5,000 units in total.”</blockquote>
-          <p>Weeks 1 to 3 already used all 5,000 units, so none of these 1,540 qualify. Filed with the clause, the sales rows and the math.</p>
-        </div>
-        <div className="st-check is-fair">
-          <div className="st-check-top">
-            <strong>Promo allowance, Apr 1 to 7</strong>
-            <span className="st-chip is-fair">Fair · $330</span>
-          </div>
-          <p>Outside the deal’s dates, but the broker extended the promo by email on Mar 28, and the broker is an approved sender. Accepted.</p>
-        </div>
-      </figure>
-    </div>
   );
 }
 
@@ -118,13 +89,13 @@ export default function Landing() {
       <TopNav />
       <main>
         <section className="st-hero">
-          <h1 className="display">Get paid what the deal says.</h1>
+          <h1 className="display">Get paid what the contract says.</h1>
           <p className="st-sub">Clawback checks every deduction your distributors take against the contract you signed, disputes the wrong ones with proof, and accepts the fair ones.</p>
           <div className="st-actions">
-            <a href="#access" className="st-btn is-blue">Request access <ArrowRight aria-hidden="true" /></a>
-            <Link href="/signin" className="st-btn is-ghost">Sign in</Link>
+            <Link href="/signin" className="st-btn is-blue is-glow">Sign in <ArrowRight aria-hidden="true" /></Link>
+            <a href="#access" className="st-textlink">Request access <ArrowRight aria-hidden="true" /></a>
           </div>
-          <Example />
+          <HeroExplainer />
         </section>
 
         <section id="problem" className="st-section">
@@ -217,7 +188,7 @@ export default function Landing() {
       </main>
       <footer className="st-foot">
         <span className="st-logo is-small"><Logo size={18} /> clawback</span>
-        <span>Get paid what the deal says.</span>
+        <span>Get paid what the contract says.</span>
         <Link href="/signin">Sign in</Link>
       </footer>
     </div>

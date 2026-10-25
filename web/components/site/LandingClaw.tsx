@@ -1,7 +1,8 @@
 "use client";
 
-// The landing page's example, once on load: the claw takes the overcharge out of the short payment and drops it on
-// the Dispute chip. It sits inside the example frame and draws over it; the frame is complete without it.
+// The hero explainer's last beat, once on load: the claw takes the money out of what the distributor deducted and
+// drops it on the wrong part of the bar, the part disputed with proof. It draws over the explainer, which is complete
+// without it; reduced motion shows no claw.
 
 import { useState } from "react";
 import { Claw, landPulse } from "@/components/ui/Claw";
@@ -13,8 +14,8 @@ export function LandingClaw() {
     <>
       <span hidden ref={(el) => setFrame(el?.parentElement ?? null)} />
       {!done && (
-        <Claw host={frame} from=".st-short" to=".st-check.is-dispute .st-chip" delay={0.6}
-          onLand={() => landPulse(document.querySelector(".st-check.is-dispute .st-chip"))}
+        <Claw host={frame} from=".hx-cut" to=".hx-bar .is-wrong" delay={1.6}
+          onLand={() => landPulse(document.querySelector(".hx-legend .is-wrong"))}
           onDone={() => setDone(true)} />
       )}
     </>
