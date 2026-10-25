@@ -47,7 +47,8 @@ export function AgentRoster({ account, working }: { account: string | null | und
   }, []);
   const fetched = useFetched(load, String(tick));
   const overview = fetched.data?.[0] ?? null;
-  const sources = (fetched.data?.[1] ?? []).filter((c) => c.status === "connected" || c.status === "ready" || c.checked_at);
+  // The sources that bring payments in by themselves: the bank, QuickBooks and the mailbox (not the manual upload).
+  const sources = (fetched.data?.[1] ?? []).filter((c) => ["bank", "quickbooks", "inbox", "gmail"].includes(c.id));
 
   const decided = overview?.recent.find((r) => r.kind === "run_decided") ?? null;
   const reply = overview?.recent.find((r) => r.kind === "reply" || r.kind === "sent") ?? null;
@@ -76,8 +77,8 @@ export function AgentRoster({ account, working }: { account: string | null | und
           {(sources.length ? sources : []).map((c) => (
             <li key={c.id}>
               <span className="ar-src-icon" aria-hidden="true">{SOURCE_ICON[c.id] ?? <Landmark />}</span>
-              <span><strong>{c.name}</strong><small>{c.checked_at ? `Checked ${ago(c.checked_at, now)}` : c.status === "connected" ? "Connected" : "Ready"}</small></span>
-              <i className="tb-dot is-live" aria-label="Watching" />
+              <span><strong>{c.name}</strong><small>{c.checked_at ? `Checked ${ago(c.checked_at, now)}` : c.status === "connected" ? "Connected" : "Not connected"}</small></span>
+              <i className={`tb-dot ${c.status === "connected" || c.checked_at ? "is-live" : "is-idle"}`} aria-label={c.status === "connected" || c.checked_at ? "Watching" : "Not connected"} />
             </li>
           ))}
           {fetched.data && sources.length === 0 && <li className="ar-src-none">No source connected yet. Connect the bank, QuickBooks or Gmail on Connections.</li>}

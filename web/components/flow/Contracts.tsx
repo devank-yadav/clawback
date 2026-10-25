@@ -101,12 +101,6 @@ export default function Contracts() {
                   ))}
                 </div>
               ))}
-              {outline.length > 1 && (
-                <div className="dr-outline">
-                  <h2>On this page</h2>
-                  {outline.map((o) => <a key={o.id} href={`#${o.id}`} className={`is-l${o.level}`}>{o.label}</a>)}
-                </div>
-              )}
             </nav>
 
             <article className="bp-paper">
@@ -122,6 +116,12 @@ export default function Contracts() {
             </article>
 
             <aside className="bp-terms" aria-label="Terms the agents read">
+              {outline.length > 1 && (
+                <details className="dr-outline" open>
+                  <summary>On this page</summary>
+                  {outline.map((o) => <a key={o.id} href={`#${o.id}`} className={`is-l${o.level}`}>{o.label}</a>)}
+                </details>
+              )}
               <h2>Terms the agents read <small>{doc.terms.length}</small></h2>
               {doc.terms.length === 0 && <p>{lib.data?.read_in_run ? "No terms highlighted in this document." : "None yet: the agents haven’t read the deal."}</p>}
               {doc.terms.map((t, i) => (

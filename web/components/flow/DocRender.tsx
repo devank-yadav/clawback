@@ -209,6 +209,7 @@ export function renderDocument(text: string, terms: LibraryTerm[], active: numbe
     while (i < lines.length) {
       const l = lines[i];
       if (!l.text.trim() || HEADING.test(l.text) || (RULE.test(l.text) && l.text.trim().length >= 3) || l.text.trimStart().startsWith("|") || BULLET.test(l.text)) break;
+      if (para.length && l.text.trimStart().startsWith("**")) break; // "**Label:** value" lines stand on their own
       para.push(trim(text, { start: l.start, end: l.start + l.text.length }));
       i++;
       if (para.length && /^\d+(\.\d+)*[.)]?\s/.test(lines[i]?.text ?? "")) break; // a numbered clause starts its own paragraph

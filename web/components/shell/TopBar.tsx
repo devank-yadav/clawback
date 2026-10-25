@@ -12,7 +12,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Bell, Bookmark, House, ChevronsUpDown, Gavel, ExternalLink, FileText, History as HistoryIcon,
-  Landmark, Layers, LogIn, LogOut, Menu, Plug, RotateCcw, Truck, UserRound, Workflow, X,
+  Landmark, Layers, LogIn, LogOut, Menu, MessagesSquare, Plug, RotateCcw, Truck, UserRound, Workflow, X,
 } from "lucide-react";
 import { Logo } from "@/components/console/ui";
 import { inkOn, withAccount } from "@/lib/accounts";
@@ -138,6 +138,30 @@ function usePresenter(account: Account | null) {
       setNote(`The payment didn’t go through (${(e as Error).message}).`);
     }
   }, [account, router]);
+  /** The distributor answers the newest dispute on its portal with a preset reply (the "no cap" claim when there is
+   * one), the way a real reply arrives. The dispute goes out first (to the outbox, with no mail account) if it hasn't. */
+  const reply = useCallback(async () => {
+    if (!account) return;
+    setNote(`${account.distributor.name} is replying…`);
+    try {
+      const threads = await api.fetchDisputes(account.id);
+      const t = threads[0];
+      if (!t) { setNote("No dispute to reply to yet."); return; }
+      if (t.dispute.status === "ready_to_send" || t.dispute.status === "draft") {
+        const email = await api.fetchDisputeEmail(t.dispute.id, t.run_id);
+        await api.sendDispute(t.dispute.id, t.run_id, email.subject, email.body);
+      }
+      const presets = await api.fetchPortalPresets(account.id, t.dispute.id);
+      const pick = presets.find((p) => /cap/i.test(`${p.label} ${p.text}`)) ?? presets[0];
+      if (!pick) { setNote("No reply to post."); return; }
+      await api.postPortalMessage(t.dispute.id, pick.text, pick.attachment_doc_id);
+      setNote(null);
+      window.dispatchEvent(new Event("clawback:notify"));
+      router.push(withAccount("/disputes", account.id, { id: t.dispute.id, run: t.run_id }));
+    } catch (e) {
+      setNote(`The reply didn’t go through (${(e as Error).message}).`);
+    }
+  }, [account, router]);
   const reset = useCallback(async () => {
     setNote("Resetting every distributor…");
     try {
@@ -158,7 +182,7 @@ function usePresenter(account: Account | null) {
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
   }, [simulate]);
-  return { simulate, reset, note };
+  return { simulate, reply, reset, note };
 }
 
 /** Who's signed in. The menu opens upward with the account's details, the presenter's controls when this tab holds
@@ -225,6 +249,7 @@ function UserMenu({ account }: { account: Account | null }) {
           {presenting && account && (
             <>
               <button role="menuitem" className="tb-row" onClick={() => { close(false); void presenter.simulate(); }}><Landmark aria-hidden="true" /><span><strong>Presenter: simulate {account.distributor.name}’s payment</strong><small>Posts the bank deposit; the agents start on their own</small></span></button>
+              <button role="menuitem" className="tb-row" onClick={() => { close(false); void presenter.reply(); }}><MessagesSquare aria-hidden="true" /><span><strong>Presenter: {account.distributor.name} replies to the dispute</strong><small>Posts their reply on the portal; you’re notified and the Negotiator answers</small></span></button>
               <button role="menuitem" className="tb-row" onClick={() => { close(false); void presenter.reset(); }}><RotateCcw aria-hidden="true" /><span><strong>Presenter: reset every distributor</strong></span></button>
             </>
           )}
@@ -256,7 +281,10 @@ function Notifications({ account, onPick }: { account: Account | null; onPick: (
   useEffect(() => {
     if (!on) return;
     const t = window.setInterval(() => setTick((n) => n + 1), 20_000);
-    return () => window.clearInterval(t);
+    // Something just happened here (a reply posted): look again shortly, while the agents answer it.
+    const soon = () => { window.setTimeout(() => setTick((n) => n + 1), 1500); window.setTimeout(() => setTick((n) => n + 1), 6000); };
+    window.addEventListener("clawback:notify", soon);
+    return () => { window.clearInterval(t); window.removeEventListener("clawback:notify", soon); };
   }, [on]);
   if (!on) return null;
   const items = [...(list.data ?? [])].sort((a, b) => b.at.localeCompare(a.at));
