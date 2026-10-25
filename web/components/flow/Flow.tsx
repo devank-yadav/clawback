@@ -167,7 +167,7 @@ function FlowFor() {
 
       {phase === "done" && (
         <main className="fl-main">
-          <DonePanel onOpen={setDrawer} onNew={restart} onReplay={() => { setOpened(true); void replay(); }} next={nextUp ? <Spotlight focus={nextUp} /> : null} disputeInNext={nextUp?.key === "file"} failed={status === "failed"} />
+          <DonePanel onOpen={setDrawer} onNew={restart} onReplay={() => { setOpened(true); window.scrollTo({ top: 0 }); void replay(); }} next={nextUp ? <Spotlight focus={nextUp} /> : null} disputeInNext={nextUp?.key === "file"} failed={status === "failed"} />
         </main>
       )}
 
