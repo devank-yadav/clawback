@@ -38,6 +38,7 @@ services:
       - "443:443/udp"
     environment:
       DOMAIN: ${DOMAIN:?set DOMAIN in .env, e.g. clawback.example.com}
+      DEMO_VIDEO_URL: ${DEMO_VIDEO_URL:-/}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

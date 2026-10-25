@@ -8,6 +8,9 @@
 	# One access line per request in `docker compose logs caddy`, e.g. to see whether Twilio's webhook arrived.
 	log
 
+	# /video: the demo video (DEMO_VIDEO_URL in .env; the home page until it's set). Changing it reloads only Caddy.
+	redir /video {$DEMO_VIDEO_URL} 302
+
 	# The event stream (/api/runs/<id>/events) goes out frame by frame: flushed at once, never compressed.
 	handle_path /api/* {
 		reverse_proxy api:8000 {
