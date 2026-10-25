@@ -374,7 +374,7 @@ def test_context_pool_carries_the_run_into_its_threads(tmp_path):
 
 
 def test_every_service_has_a_plain_name():
-    services = {"claude-reader", "gemini-reader", "claude-reader-b", "claude-investigator", "claude-rehearsal",
+    services = {"claude-reader", "gemini-reader", "claude-reader-b", "claude-investigator", "claude-investigator-ops", "claude-rehearsal",
                 "claude-portal-reply", "claude-coach", "claude-rule-writer", "moss", "qbo"}
     assert set(trace.AGENTS) == services
     assert {d.name for d in (replay.ROOT / "data" / "fixtures").iterdir() if d.is_dir()} <= services

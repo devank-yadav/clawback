@@ -885,6 +885,9 @@ class AnswerResponse(Contract):
 class PortalReplyRequest(Contract):
     text: str
     attachment_doc_id: str | None = None  # "amendment-1" when the judge attaches the signed amendment
+    # The portal's line-level "Accept" action: the desk accepts these dispute lines (charge ids). Read by code, not
+    # by the Negotiator: the click says what it agrees to.
+    agree_charge_ids: list[str] = []
 
 
 class PortalPreset(Contract):
@@ -1553,3 +1556,20 @@ class SupplierOverview(Contract):
     needs_you: list[NeedsYou]
     open_disputes: list[OpenDispute]
     recent: list[RecentItem]
+
+
+class FoundPayment(Contract):
+    source: Literal["bank", "quickbooks", "remittance"]
+    account_id: str
+    distributor: str
+    amount: Money | None
+    invoice_id: str
+    run_id: str | None
+
+
+class PaymentSync(Contract):
+    """POST /payments/sync ("Check for new payments"): what the bank and QuickBooks had, and the runs they started."""
+
+    checked: list[str]  # the sources looked at just now
+    found: list[FoundPayment]
+    message: str

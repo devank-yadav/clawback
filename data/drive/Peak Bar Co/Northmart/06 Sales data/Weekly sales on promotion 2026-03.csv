@@ -1,0 +1,15 @@
+week_start,week_end,product,promo_units,total_units
+2026-03-01,2026-03-07,Peak Bar Original,700,820
+2026-03-01,2026-03-07,Peak Bar Chocolate,500,590
+2026-03-01,2026-03-07,Peak Bar Mint,250,300
+2026-03-08,2026-03-14,Peak Bar Original,540,650
+2026-03-08,2026-03-14,Peak Bar Chocolate,440,520
+2026-03-08,2026-03-14,Peak Bar Mint,250,290
+2026-03-15,2026-03-21,Peak Bar Original,1600,1780
+2026-03-15,2026-03-21,Peak Bar Chocolate,1220,1370
+2026-03-15,2026-03-21,Peak Bar Mint,250,310
+2026-03-22,2026-03-31,Peak Bar Original,880,1010
+2026-03-22,2026-03-31,Peak Bar Chocolate,660,760
+2026-03-22,2026-03-31,Peak Bar Mint,250,320
+2026-04-01,2026-04-07,Peak Bar Original,190,260
+2026-04-01,2026-04-07,Peak Bar Chocolate,140,200

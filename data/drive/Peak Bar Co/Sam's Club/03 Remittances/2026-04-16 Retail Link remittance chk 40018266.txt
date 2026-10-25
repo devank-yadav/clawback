@@ -1,0 +1,22 @@
+SAM'S CLUB, A DIVISION OF WALMART INC.                                       RETAIL LINK REMITTANCE DETAIL
+Supplier Accounts Payable
+
+Payee:          PEAK BAR CO.                     Supplier no.:   0712284
+Check no.:      40018266                         Payment date:   04/16/2026
+Payment amount: 103,190.40 USD
+
+INVOICES PAID
+Invoice      Inv date      Gross amount    Deductions      Net paid
+PBS-2603     03/31/2026      116,640.00    -13,449.60    103,190.40
+
+DEDUCTIONS TAKEN AGAINST PBS-2603
+Ded no.       Code  Description                                                               Item                                                         Qty       Rate       Amount  Period
+0031270451    PA    Code 51 Instant Savings week of Mar 2 (PB-IS-0326)                        Peak Bar Original Club Pack+Peak Bar Chocolate Club Pack   1,200       2.00    -2,400.00  03/02-03/08/26
+0031270469    PA    Code 51 Instant Savings week of Mar 9 (PB-IS-0326), funded at $2.50       Peak Bar Original Club Pack+Peak Bar Chocolate Club Pack   1,400       2.50    -3,500.00  03/09-03/15/26
+0031270477    PA    Code 51 Instant Savings week of Mar 23 (PB-IS-0326)                       Peak Bar Original Club Pack+Peak Bar Chocolate Club Pack   2,000       2.00    -4,000.00  03/23-03/29/26
+0031270485    PA    Code 51 Instant Savings Variety Club Pack, Mar 2-29                       Peak Bar Variety Club Pack                                   300       2.00      -600.00  03/02-03/29/26
+0031270493    SP    SW Swell Allowance, 1.5% of March invoices                                                                                                               -1,749.60  03/01-03/31/26
+0031270507    DF    Club sampling fee, March                                                                                                                                 -1,200.00  03/01-03/31/26
+                                                                                                                              Total deductions:   -13,449.60
+
+Supplier deductions are researched in APDP in Retail Link. Code 80 (cash discount) is not disputable in APDP.

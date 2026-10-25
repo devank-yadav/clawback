@@ -1,0 +1,42 @@
+# Peak Bar Co. <- UNFI. UNFI's real ClearVue Supplier Agreement (the one UNFI signed with Annie's, filed with the SEC
+# with its numbers blacked out as [***]) is in data/contracts/unfi-clearvue-supplier-agreement-2010-peak-bar.txt, this
+# account's byte-identical copy, named in `contracts` so it sits in the contract library unedited. The promotion the
+# charges claim is our own MCB deal sheet, signed by UNFI; everything else is our side's records or UNFI's own
+# notices. See README.md.
+id: peak-bar-unfi
+supplier: peak-bar
+brand:
+  name: Peak Bar Co.
+  kind: snack brand
+  city: Oakland, CA
+  initials: PB
+  colors: {primary: "#b4462b", accent: "#f2b552"}
+  owner: {name: Dana Okafor, email: dana@peakbar.example}
+  controller: {name: Sam Reyes}
+distributor:
+  name: UNFI
+  desk_email: deductions@unfi.example
+  portal_name: myUNFI Dispute Center
+  colors: {primary: "#00704a", accent: "#e3f1ea"}
+invoice:
+  id: PBU-2603
+  expected: 124800.00
+  received: 118280.00
+  month: march
+  period_start: 2026-03-01
+  period_end: 2026-03-31
+contracts: [unfi-clearvue-supplier-agreement-2010-peak-bar.txt]
+# Our MCB deal sheet (signed by UNFI) first, then UNFI's deductions desk email claiming a different rate: a claim
+# from a sender who can't change the deal, shown and never applied.
+deal_docs: [peak-bar-unfi-mcb-promotion-2026-03, peak-bar-unfi-deductions-2026-03-24]
+approved_senders: [dana@peakbar.example, jordan@peakbar-broker.example]
+dispute_start: 1030
+qbo:
+  customer: UNFI
+  invoice_no: PBU-2603
+  lines:
+    - {item: Peak Bar Original, qty: 2600, unit_price: 24.00}
+    - {item: Peak Bar Chocolate, qty: 2000, unit_price: 24.00}
+    - {item: Peak Bar Peanut Butter, qty: 600, unit_price: 24.00}
+  payment_date: 2026-04-20
+nessie_description: UNFI remittance PBU-2603

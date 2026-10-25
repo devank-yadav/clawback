@@ -1,0 +1,6 @@
+ref,allowed,wrongly_taken,status,why
+60391204SP,,,not_checked,"Spoils: not a promo, shortage or price claim, so the lookback doesn't check it."
+60398812SP,,,not_checked,"Spoils: not a promo, shortage or price claim, so the lookback doesn't check it."
+60402230CV,,,not_checked,"ClearVue program fee: a fee, not a promo, shortage or price claim, so the lookback doesn't check it."
+60406617SP,,,not_checked,"Spoils: not a promo, shortage or price claim, so the lookback doesn't check it."
+60409914,1050.00,0.00,fair,"Matches the deal: week 2's 1,050 units x $1.00 (PB-MCB-0326), under the 4,000-unit cap."

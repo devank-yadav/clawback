@@ -1,6 +1,6 @@
 # KeHE MCB invoice backup: Peak Bar Co.
 
-**From:** KeHE Vendor Portal (vendorportal@kehe.example)
+**From:** KeHE CONNECT (vendorportal@kehe.example)
 **Period:** March 1 to March 14, 2026
 **Reference:** MCBF-26-0314
 

@@ -130,6 +130,19 @@ def _needs_you(runs: list[pipeline.Run]) -> list[NeedsYou]:
                                 link=OverviewLink(page="dispute", run_id=run.id, dispute_id=d.id)))
         replies = [x for d in _latest_disputes(run) for x in dispute_email.emails_of(run.id, d)
                    if x.kind == "reply" and x.status in ("ready", "held")]
+        drafted_for = {x.dispute_id for x in replies}
+        for dispute_id in _latest_disputes(run):
+            thread = dispute_email.thread(run, dispute_id)
+            last_theirs = max((i for i, m in enumerate(thread) if m.from_party == "northmart"), default=None)
+            if last_theirs is None or dispute_id in drafted_for:
+                continue
+            if any(m.from_party == "clawback" for m in thread[last_theirs + 1:]):
+                continue
+            m = thread[last_theirs]
+            out.append(NeedsYou(kind="reply_email", account_id=a.id, distributor=them,
+                                title=f"{them} replied on {dispute_id}: needs your answer", risk_level="medium",
+                                since=m.created_at, link=OverviewLink(page="dispute", run_id=run.id,
+                                                                      dispute_id=dispute_id)))
         for x in replies:
             out.append(NeedsYou(kind="reply_email", account_id=a.id, distributor=them,
                                 title=f"Answer to {them} on {x.dispute_id}: "
@@ -167,10 +180,11 @@ def _recent(runs: list[pipeline.Run]) -> list[RecentItem]:
     out = []
     for run in runs:
         a, them = run.account, run.distributor
-        sent = set()
+        sent, decided = set(), False
         for e in run.events:
             d = e.data
-            if e.type == "run" and d.status in ("waiting", "finished"):
+            if e.type == "run" and d.status in ("waiting", "finished") and not decided:
+                decided = True  # once per run: when the gate first decided it
                 out.append(RecentItem(at=e.at, kind="run_decided", account_id=a.id, distributor=them,
                                       text=f"Agents decided {them}'s {run.kind} payment",
                                       link=OverviewLink(page="run", run_id=run.id)))

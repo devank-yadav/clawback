@@ -67,11 +67,37 @@ def _message(dispute_id: str, from_party: str, text: str, thread_of: pipeline.Ru
 
 
 def post(dispute_id: str, text: str, attachment_doc_id: str | None = None,
-         client: anthropic.Anthropic | None = None) -> list[PortalMessage]:
-    """The distributor's reply and Clawback's answer (if one goes out). Both also stream on the run."""
+         client: anthropic.Anthropic | None = None, agree_charge_ids: list[str] | None = None) -> list[PortalMessage]:
+    """The distributor's reply and Clawback's answer (if one goes out). Both also stream on the run, and the supplier
+    is told (api/dispute_email.notify_reply)."""
+    from api import dispute_email
+
     run, dispute = find(dispute_id)
     with accounts.using(run.account), trace.run_context(run.id):  # the run's files; AI calls traced to the run
-        return _post(run, dispute, text, attachment_doc_id, client)
+        if agree_charge_ids and not attachment_doc_id:
+            got = _agreed(run, dispute, text, agree_charge_ids)
+        else:
+            got = _post(run, dispute, text, attachment_doc_id, client)
+    dispute_email.notify_reply(run, dispute, got, "the portal")
+    return got
+
+
+def _agreed(run: pipeline.Run, dispute: Dispute, text: str, charge_ids: list[str], deliver=None) -> list[PortalMessage]:
+    """The desk accepted these lines with the portal's Accept action: an agreement, by code, and a thank-you."""
+    lines = {ln.charge_id: ln for ln in dispute.lines}
+    cids = [c for c in dict.fromkeys(charge_ids) if c in lines]
+    theirs = _message(dispute.id, "northmart", text, classification="agrees" if cids else "other", charge_ids=cids)
+    run.emit("portal_message", theirs)
+    if not cids:
+        run.log(f"{run.distributor}'s reply on {dispute.id} names no line of it: held for {run.name('owner')}.", "warn",
+                "negotiator")
+        return [theirs]
+    named = ", ".join(f"{lines[c].ref} ({c})" for c in cids)
+    total = totals.total_of(lines[c].amount for c in cids)
+    ours = _send(run, dispute, f"Thank you for accepting {named}, ${total:,.2f} of {dispute.id}.", cids,
+                 [i for c in cids for i in lines[c].evidence_ids][:3], deliver)
+    run.log(f"{run.distributor} accepted {named} on {dispute.id}.", "good", "negotiator")
+    return [theirs] + ([ours] if ours else [])
 
 
 def _deliver_portal(run: pipeline.Run, dispute: Dispute, text: str, charge_ids: list[str],

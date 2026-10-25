@@ -13,7 +13,7 @@ from dataclasses import asdict
 from fastapi import APIRouter, Header, HTTPException
 
 from api import pipeline
-from api import auth, drive
+from api import auth, drive, story
 from api.db import events as saved_events, state as saved_state
 from api.integrations import qbo
 from api.routes import approvals, portal
@@ -37,5 +37,6 @@ def reset(authorization: str | None = Header(default=None)) -> dict:
     saved_events.reset()  # and the saved runs, which GET /runs/latest would otherwise fall back to
     saved_state.reset()  # and the saved rules and audit chain, which a restart would otherwise bring back
     drive.reset()  # and Drive's versions and page token: the next look walks the folder again
+    story.build_later()  # then Peak Bar's history again, replayed (api/story.py), so Home isn't empty
     return {"ok": error is None, "stub": False, "quickbooks": [asdict(u) for u in undone],
             **({"error": error} if error else {})}

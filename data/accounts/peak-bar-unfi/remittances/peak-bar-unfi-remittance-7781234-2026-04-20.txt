@@ -1,0 +1,23 @@
+UNITED NATURAL FOODS, INC.                                              SUPPLIER REMITTANCE ADVICE
+Accounts Payable, Natural East and West
+
+Payee:          PEAK BAR CO.                     Vendor no.:     PB-44102
+Check/EFT no.:  7781234                          Payment date:   04/20/2026
+Payment amount: 118,280.00 USD
+
+INVOICES PAID
+Invoice      Inv date      Gross amount    Deductions      Net paid
+PBU-2603     03/31/2026      124,800.00     -6,520.00    118,280.00
+
+DEDUCTIONS TAKEN AGAINST PBU-2603
+Ded no.       Code  Description                                                               Item                                                         Qty       Rate       Amount  Period
+60412281      PA    MCB promo week 1 (UNFI MCB deal PB-MCB-0326), billed at $1.50             Peak Bar Original+Peak Bar Chocolate                         900       1.50    -1,350.00  03/01-03/07/26
+60412297      PA    MCB promo week 2 (UNFI MCB deal PB-MCB-0326)                              Peak Bar Original+Peak Bar Chocolate                       1,050       1.00    -1,050.00  03/08-03/14/26
+60412305      PA    MCB promo week 3 (UNFI MCB deal PB-MCB-0326)                              Peak Bar Original+Peak Bar Chocolate                       1,600       1.00    -1,600.00  03/15-03/21/26
+60412318      PA    MCB promo week 4 (UNFI MCB deal PB-MCB-0326)                              Peak Bar Original+Peak Bar Chocolate                         850       1.00      -850.00  03/22-03/28/26
+60412326      PA    MCB promo Peak Bar Peanut Butter, Mar 1-28                                Peak Bar Peanut Butter                                       420       1.00      -420.00  03/01-03/28/26
+60418830CV    DF    ClearVue program fee, Q1 2026                                                                                                                            -1,250.00  03/01-03/31/26
+                                                                                                                              Total deductions:    -6,520.00
+
+Dispute deductions through the Dispute Center in myUNFI, or email deductions@unfi.example with the deduction
+number, check number and amount.

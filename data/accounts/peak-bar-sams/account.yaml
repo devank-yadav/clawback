@@ -1,0 +1,42 @@
+# Peak Bar Co. <- Sam's Club. The Sam's Club Grocery Merchandise Agreement (Walmart Inc., effective 02/03/2020,
+# Agreement No. 607499-64-2) is real and unedited: a verbatim excerpt of its SEC filing, this account's copy in
+# data/contracts/sams-club-grocery-merchandise-agreement-2020-excerpt-peak-bar.txt. Its Swell Allowance (1.0%, off each
+# invoice) prices the unsaleables charge (terms/ops-terms.csv quotes it). The promotion and the sampling program are our
+# own agreements, accepted by Sam's Club; everything else is our side's records or Sam's Club's own notices. See README.md.
+id: peak-bar-sams
+supplier: peak-bar
+brand:
+  name: Peak Bar Co.
+  kind: snack brand
+  city: Oakland, CA
+  initials: PB
+  colors: {primary: "#b4462b", accent: "#f2b552"}
+  owner: {name: Dana Okafor, email: dana@peakbar.example}
+  controller: {name: Sam Reyes}
+distributor:
+  name: Sam's Club
+  desk_email: wmgbs@samsclub.example
+  portal_name: Retail Link APDP
+  colors: {primary: "#0067a0", accent: "#e5f0f7"}
+invoice:
+  id: PBS-2603
+  expected: 116640.00
+  received: 103190.40
+  month: march
+  period_start: 2026-03-01
+  period_end: 2026-03-31
+contracts: [sams-club-grocery-merchandise-agreement-2020-excerpt-peak-bar.txt]
+# Our Instant Savings agreement (accepted by Sam's Club) first, then the sampling program agreement, then Sam's Club's
+# accounts payable email claiming a different rate: a claim, shown and never applied.
+deal_docs: [peak-bar-sams-instant-savings-2026-03, peak-bar-sams-sampling-program-2026, peak-bar-sams-ap-2026-03-20]
+approved_senders: [dana@peakbar.example, jordan@peakbar-broker.example]
+dispute_start: 1040
+qbo:
+  customer: Sam's Club
+  invoice_no: PBS-2603
+  lines:
+    - {item: Peak Bar Original Club Pack, qty: 2400, unit_price: 24.00}
+    - {item: Peak Bar Chocolate Club Pack, qty: 1800, unit_price: 24.00}
+    - {item: Peak Bar Variety Club Pack, qty: 600, unit_price: 26.40}
+  payment_date: 2026-04-16
+nessie_description: Sam's Club remittance PBS-2603

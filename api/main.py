@@ -16,7 +16,7 @@ from api.routes import remittance as remittance_routes
 from api.routes import auth as auth_routes
 from api.routes import dispute_mail
 from api.routes import drive as drive_routes
-from api import dispute_email, drive
+from api import dispute_email, drive, story
 
 load_dotenv()
 log = logging.getLogger("clawback")
@@ -28,6 +28,7 @@ async def lifespan(_app: FastAPI):
     keys set, not DEMO_MODE, NESSIE_POLL not "off") and QuickBooks' payments (api/integrations/qbo_source.py; the QBO_*
     keys, not DEMO_MODE, QBO_POLL not "off"). The remittance inbox is a webhook (POST /webhooks/inbound-email)."""
     saved_state.restore()
+    story.build_later()  # Peak Bar's month so far, replayed from recordings on a background thread (api/story.py)
     client = nessie.client()
     if client and not replay.demo_mode() and os.getenv("NESSIE_POLL", "on").lower() != "off":
         nessie.poller = nessie.Poller(client, pipeline.start_for_deposit)

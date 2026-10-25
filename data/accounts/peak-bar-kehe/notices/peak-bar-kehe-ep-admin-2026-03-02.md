@@ -1,6 +1,6 @@
-# KeHE Vendor Portal: Vendor Policies & Procedures update
+# KeHE CONNECT: Vendor Policies & Procedures update
 
-**From:** KeHE Vendor Portal (vendorportal@kehe.example)
+**From:** KeHE CONNECT (vendorportal@kehe.example)
 **To:** All vendors
 **Notice date:** March 2, 2026
 **Section:** 6.5 Extra Performance

@@ -45,6 +45,7 @@ LIVE = (
 for _name in LIVE:
     os.environ[_name] = ""
 os.environ["PYTHON_DOTENV_DISABLED"] = "1"
+os.environ.setdefault("DEMO_STORY", "off")  # api/story.py: tests build the history only when they ask for it
 PROXIES = {k: os.environ.pop(k) for k in list(os.environ) if k.lower() in ("http_proxy", "https_proxy", "all_proxy")}
 
 _real = {"load_dotenv": dotenv.load_dotenv, "Anthropic": anthropic.Anthropic}

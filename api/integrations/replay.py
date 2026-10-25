@@ -27,6 +27,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
 from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -80,8 +81,34 @@ def _flag(name: str) -> bool:
     return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+_forced: ContextVar[bool] = ContextVar("clawback_forced_replay", default=False)
+
+
 def demo_mode() -> bool:
-    return _flag("DEMO_MODE")
+    return _flag("DEMO_MODE") or _forced.get()
+
+
+def forced() -> bool:
+    """Inside replaying(): the recordings answer every call, whatever the server's mode."""
+    return _forced.get()
+
+
+@contextmanager
+def replaying() -> Iterator[None]:
+    """Replay only, on this thread (and the pools that copy its context): every AI and outside call is answered from
+    data/fixtures/ at once, nothing calls out, no text or QuickBooks write leaves. The startup history (api/story.py)
+    is built this way, so it costs nothing and never depends on the network."""
+    token = _forced.set(True)
+    try:
+        yield
+    finally:
+        _forced.reset(token)
+
+
+def record_missing() -> bool:
+    """RECORD_MISSING=1 with RECORD_FIXTURES=1: a call that already has a recording replays it; only the missing ones
+    go live and get saved (scripts/record_missing.py). Never overwrites a recording."""
+    return _flag("RECORD_MISSING")
 
 
 def recording() -> bool:
@@ -211,15 +238,17 @@ def call_outside(
         saved = load_fixture(service, key, fixtures_dir)
         if saved is None:
             raise OutsideCallFailed(f"{service}/{key}: {why}; no fixture at {fixture_path(service, key, fixtures_dir)}")
-        if demo and delay:
+        if demo and delay and not _forced.get():
             time.sleep(delay)
         result.response, result.source = saved, "fixture"
         result.latency_ms = int((time.monotonic() - started) * 1000)
         return result
 
     with _traced(service, request, result, demo):  # GET /runs/{id}/trace
-        if demo and not live_first:
+        if demo and (not live_first or _forced.get()):
             return from_fixture("DEMO_MODE is on")
+        if record and record_missing() and load_fixture(service, key, fixtures_dir) is not None:
+            return from_fixture("recorded already")
 
         for _ in range(1 + max(0, retries)):
             result.attempts += 1

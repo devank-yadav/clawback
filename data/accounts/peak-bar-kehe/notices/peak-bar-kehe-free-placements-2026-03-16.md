@@ -1,6 +1,6 @@
 # KeHE Free Placements: Peak Bar Co.
 
-**From:** KeHE Vendor Portal (vendorportal@kehe.example)
+**From:** KeHE CONNECT (vendorportal@kehe.example)
 **To:** Peak Bar Co.
 **Notice date:** March 16, 2026
 **Reference:** FP-2207

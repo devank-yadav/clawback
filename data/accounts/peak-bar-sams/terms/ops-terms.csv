@@ -1,0 +1,9 @@
+key,value,source_doc,quote
+promo_rate,2.00,peak-bar-sams-instant-savings-2026-03,"Supplier will fund an instant savings allowance of $2.00 per unit on Peak Bar Original Club Pack and Peak Bar Chocolate Club Pack sold between March 2 and March 29, 2026."
+promo_products,Peak Bar Original Club Pack; Peak Bar Chocolate Club Pack,peak-bar-sams-instant-savings-2026-03,"Supplier will fund an instant savings allowance of $2.00 per unit on Peak Bar Original Club Pack and Peak Bar Chocolate Club Pack sold between March 2 and March 29, 2026."
+promo_start,2026-03-02,peak-bar-sams-instant-savings-2026-03,"Supplier will fund an instant savings allowance of $2.00 per unit on Peak Bar Original Club Pack and Peak Bar Chocolate Club Pack sold between March 2 and March 29, 2026."
+promo_end,2026-03-29,peak-bar-sams-instant-savings-2026-03,"Supplier will fund an instant savings allowance of $2.00 per unit on Peak Bar Original Club Pack and Peak Bar Chocolate Club Pack sold between March 2 and March 29, 2026."
+promo_cap_units,6000,peak-bar-sams-instant-savings-2026-03,"The instant savings allowance applies to a maximum of 6,000 units in total."
+claim_once,deducted once,peak-bar-sams-instant-savings-2026-03,A week deducted once is not deducted again.
+spoils_allowance_pct,1.0,sams-club-grocery-merchandise-agreement-2020-excerpt-peak-bar,SW - Swell Allowance (SW or DM) | 1.0 | Off Invoice | Each Invoice
+payment_terms_days,45,sams-club-grocery-merchandise-agreement-2020-excerpt-peak-bar,45 | Net Payment Days Available

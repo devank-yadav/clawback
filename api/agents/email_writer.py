@@ -12,6 +12,7 @@ Agents never compute amounts: every figure is the dispute's own.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
@@ -110,6 +111,11 @@ def assemble(dispute: Dispute, account: accounts.Account, opening: str, paragrap
                         signature(account, portal_url)])
 
 
+def _math(math: str) -> str:
+    """The line's math without the engine's own dispute-window step: our deadline, not an argument for the desk."""
+    return " ".join(s for s in re.split(r"(?<=\.)\s+", math) if not s.startswith("Disputes are due")).strip()
+
+
 def template(dispute: Dispute, account: accounts.Account, portal_url: str | None = None) -> str:
     """The draft written by code from the dispute lines alone: every figure is the line's, every quote the clause's."""
     opening = (f"{account.brand.name} is disputing deductions taken on remittance {dispute.remittance_id or account.invoice.id} "
@@ -119,8 +125,10 @@ def template(dispute: Dispute, account: accounts.Account, portal_url: str | None
     for ln in dispute.lines:
         clause = f" The deal ({ln.clause_ref}) says: \"{ln.quote}\"" if ln.quote and ln.clause_ref else (
             f" The deal says: \"{ln.quote}\"" if ln.quote else "")
-        paras.append(f"{ln.ref} ({ln.charge_id}), {usd(ln.amount)} disputed. {ln.reason.rstrip('.')}.{clause} "
-                     f"Calculation: {ln.math}".rstrip())
+        # The finding goes in as written, quoted: it's the line's own reason, so the outbound filter checks it as a
+        # quote of the finding rather than reading its words ("within 90 days") as our promise or deadline.
+        paras.append(f"{ln.ref} ({ln.charge_id}), {usd(ln.amount)} disputed. Our finding: \"{ln.reason.rstrip('.')}\"."
+                     f"{clause} Calculation: {_math(ln.math)}".rstrip())
     closing = ("Please review the attached packet and reverse the disputed amounts. If you see any line differently, "
                "reply with the signed document that supports it.")
     return assemble(dispute, account, opening, paras, closing, portal_url)

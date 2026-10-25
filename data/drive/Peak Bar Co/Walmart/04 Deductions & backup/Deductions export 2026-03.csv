@@ -1,0 +1,10 @@
+charge_id,ref,code,description,product,units,rate,amount,period_start,period_end,line_ref,deducted_on
+W1,9127135-SA,SA,New Store/Club Discount 10%: PO 9127135 (Store 5821),Peak Bar Chocolate 12-Pack,1,374.40,374.40,2026-03-01,2026-03-31,,2026-04-10
+W2,9127151-SA,SA,New Store/Club Discount 10%: PO 9127151,Peak Bar Chocolate 12-Pack,1,1404.00,1404.00,2026-03-01,2026-03-31,,2026-04-10
+W3,9127177-NW,NW,New Distribution Center discount 12%: PO 9127177 (DC 6099),Peak Bar Variety 24-Pack,1,2764.80,2764.80,2026-03-01,2026-03-31,,2026-04-10
+W4,PBW-2603-DM,DM,Defective/Returned Mdse. Allowance 1.5%: invoice PBW-2603,none,1,1323.36,1323.36,2026-03-01,2026-03-31,,2026-04-10
+W5,RJ-26-031804,RJ,Rejection: 60 Variety 24-Packs on PO 9127190 at price + 15%,Peak Bar Variety 24-Pack,1,1987.20,1987.20,2026-03-01,2026-03-31,,2026-04-10
+W6,FN-26-032611,FN,Late delivery assessment 3%: PO 9127204,none,1,280.80,280.80,2026-03-01,2026-03-31,,2026-04-10
+W7,FN-26-032714,FN,ASN compliance assessment: PO 9127229,none,1,250.00,250.00,2026-03-01,2026-03-31,,2026-04-10
+W8,RC-FY26-0305,RT,Return Center fiscal year-end claim FY2026,none,1,1974.48,1974.48,2025-02-01,2026-01-31,,2026-04-10
+W9,IN-26-033102,IN,Interest 18% per annum: debit balance DB-2512-0097,none,1,216.69,216.69,2026-01-15,2026-03-08,,2026-04-10
