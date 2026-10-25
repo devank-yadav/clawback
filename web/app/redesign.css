@@ -215,7 +215,26 @@ h4.dr-h { font-size: 15px; font-weight: 600; color: var(--sub); }
 .fl-run > .fl-feed { position: static; max-height: 420px; }
 .fl-rail.is-compact .fl-stage-head { align-items: flex-start; }
 .fl-rail.is-compact .fl-stage-head strong { white-space: normal; line-height: 1.25; }
-.fl-rail.is-compact .fl-who { display: none; }
+.fl-rail.is-compact .fl-who { white-space: nowrap; }
+/* the seven steps are the agents too: a step opens what its agents did and concluded */
+.fl-rail.is-open-able .fl-stage { padding: 0; transition: border-color 0.2s, box-shadow 0.2s; }
+.fl-rail.is-open-able .fl-stage:hover { border-color: var(--line-strong); }
+.fl-stage-btn { display: flex; flex-direction: column; gap: 6px; width: 100%; height: 100%; min-width: 0; padding: 11px 12px 12px; border: 0; border-radius: inherit; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.fl-stage.is-open { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
+.as-cols.is-agents { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.as-agentcol { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 12px; border-radius: 12px; background: var(--card-2); border: 1px solid var(--line); }
+.as-agentcol .as-concl { -webkit-line-clamp: 3; }
+.as-agentcol h4 { margin: 6px 0 2px; }
+.as-agentcol.is-working .as-top i { background: var(--accent); }
+.as-agentcol.is-done .as-top i { background: var(--green); }
+.as-agentcol.is-waiting .as-top i { background: var(--wait); }
+.fl-received { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.fl-received li { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 16px; border-radius: var(--radius-card); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); background: linear-gradient(90deg, var(--accent-soft), var(--card) 70%); }
+.fl-received-chip { flex: none; padding: 3px 10px; border-radius: 999px; background: var(--card); color: var(--accent-ink); font-size: 12px; font-weight: 600; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
+.fl-received-text { display: flex; flex-direction: column; gap: 2px; flex: 1 1 240px; min-width: 0; }
+.fl-received-text strong { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.fl-received-text small { font-size: 12.5px; color: var(--sub); }
+.fl-runbtn svg { width: 16px; height: 16px; }
 .fl-rail-now { display: none; }
 .fl-done-rail { display: flex; flex-direction: column; gap: 8px; }
 @media (max-width: 1100px) {
@@ -231,6 +250,9 @@ h4.dr-h { font-size: 15px; font-weight: 600; color: var(--sub); }
   .fl-rail.is-compact .fl-stage { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0; border: 0; background: none; box-shadow: none; }
   .fl-rail.is-compact .fl-stage-head { justify-content: center; }
   .fl-rail.is-compact .fl-stage-head strong, .fl-rail.is-compact .fl-count, .fl-rail.is-compact .fl-who, .fl-rail.is-compact .fl-line { display: none; }
+  .fl-rail.is-compact .fl-stage-btn { align-items: center; gap: 6px; padding: 2px 0 4px; }
+  .fl-stage.is-open { box-shadow: none; }
+  .fl-stage.is-open .fl-mark { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
   .fl-rail.is-compact .fl-bar { display: block; width: 100%; margin-top: 0; }
   .fl-rail-now { display: flex; flex-direction: column; gap: 2px; margin: -4px 0 0; font-size: 13px; line-height: 1.4; color: var(--sub); }
   .fl-rail-now b { font-weight: 600; color: var(--ink); }

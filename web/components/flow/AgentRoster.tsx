@@ -1,8 +1,9 @@
 "use client";
 
-// The Agents tab when no payment is being checked: the sources the agents watch (each with when it last looked,
+// The Agents tab when no payment is being checked here: the sources payments come from (each with when it last looked,
 // from GET /connections) and the roster, one row per agent with what it does, its state and its last action, read
-// from the company overview (GET /overview: recent, needs_you, open disputes). Payments arrive by themselves.
+// from the company overview (GET /overview: recent, needs_you, open disputes). "Watching" only while a source is
+// connected; "Working" while any of the supplier's payments is being checked; a received payment waits on you.
 
 import { useCallback, useEffect, useState } from "react";
 import { Bot, Calculator, FileSearch, Landmark, Mail, MessagesSquare, ScrollText, Scale, BookOpenCheck, Gavel } from "lucide-react";
@@ -33,7 +34,7 @@ function useNow() {
 
 const SOURCE_ICON: Record<string, React.ReactNode> = { bank: <Landmark />, quickbooks: <BookOpenCheck />, inbox: <Mail />, gmail: <Mail /> };
 
-export function AgentRoster({ account, working }: { account: string | null | undefined; working: boolean }) {
+export function AgentRoster({ account, working, received = null }: { account: string | null | undefined; working: boolean; received?: string | null }) {
   const now = useNow();
   const load = useCallback(() => Promise.all([
     api.fetchCompanyOverview().catch(() => null as CompanyOverview | null),
@@ -49,6 +50,7 @@ export function AgentRoster({ account, working }: { account: string | null | und
   const overview = fetched.data?.[0] ?? null;
   // The sources that bring payments in by themselves: the bank, QuickBooks and the mailbox (not the manual upload).
   const sources = (fetched.data?.[1] ?? []).filter((c) => ["bank", "quickbooks", "inbox", "gmail"].includes(c.id));
+  const watching = sources.some((c) => c.status === "connected" || !!c.checked_at);
 
   const decided = overview?.recent.find((r) => r.kind === "run_decided") ?? null;
   const reply = overview?.recent.find((r) => r.kind === "reply" || r.kind === "sent") ?? null;
@@ -60,7 +62,7 @@ export function AgentRoster({ account, working }: { account: string | null | und
   const who = decided?.distributor ?? null;
 
   const roster: { name: string; tag: "AI" | "CODE"; icon: React.ReactNode; does: string; state: State; last: string }[] = [
-    { name: "Payment reader", tag: "AI", icon: <FileSearch />, does: "Lists every deduction in a payment and checks the lines add up", state: working ? "Working" : "Watching", last: last(who ? `read ${who}’s payment` : null, decided?.at) },
+    { name: "Payment reader", tag: "AI", icon: <FileSearch />, does: "Lists every deduction in a payment and checks the lines add up", state: working ? "Working" : received ? "Waiting on you" : watching ? "Watching" : "Idle", last: received ? `Received ${received}’s payment: run the agents to read it` : last(who ? `read ${who}’s payment` : null, decided?.at) },
     { name: "Deal readers · Claude + Gemini", tag: "AI", icon: <ScrollText />, does: "Read the contract twice; a term counts only if both agree word for word", state: working ? "Working" : "Idle", last: last(who ? `read ${who}’s deal` : null, decided?.at) },
     { name: "Calculator", tag: "CODE", icon: <Calculator />, does: "Works out what the deal allows for each charge, in tested code", state: working ? "Working" : "Idle", last: last(who ? `checked ${who}’s charges` : null, decided?.at) },
     { name: "Investigator", tag: "AI", icon: <Bot />, does: "Explains each difference with the clause, the sales rows and the math", state: working ? "Working" : "Idle", last: last(who ? `explained ${who}’s charges` : null, decided?.at) },
@@ -72,7 +74,7 @@ export function AgentRoster({ account, working }: { account: string | null | und
   return (
     <div className="ar">
       <section className="ar-sources" aria-label="Where payments come from">
-        <h2>Watching for payments</h2>
+        <h2>{watching ? "Watching for payments" : "Where payments come from"}</h2>
         <ul>
           {(sources.length ? sources : []).map((c) => (
             <li key={c.id}>

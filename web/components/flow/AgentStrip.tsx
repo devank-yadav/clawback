@@ -1,13 +1,15 @@
 "use client";
 
-// The agents across the top of the run and its result: who is working, who is done, who is waiting, each with its
-// one-line conclusion. Click one to see what it did, step by step, and what it concluded. Built only from the run's
-// events: its own log lines (LogLine.actor) and its outputs (terms read, findings, math, decisions, dispute, posts).
+// What each agent did and concluded, for the step the admin opens on the seven-step row (StageRail): a step's agents
+// side by side, each with its one-line conclusion, its outputs (terms read, findings, math, decisions, dispute,
+// posts) and its own log lines (LogLine.actor). Built only from the run's events.
 
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { useRun } from "@/components/console/RunProvider";
 import { money } from "@/lib/format";
 import type { RunState } from "@/lib/useRunEvents";
 import type { WorkspaceView } from "@/lib/workspace";
+import type { StageKey } from "./stages";
 
 type Agent = {
   key: string;
@@ -17,6 +19,12 @@ type Agent = {
   state: "idle" | "working" | "done" | "waiting";
   conclusion: string;
   outputs: ReactNode[];
+};
+
+/** The agents who do each step: the Calculator, Investigator, Negotiator (rehearsing) and Rules check the charges. */
+const STAGE_AGENTS: Record<StageKey, string[]> = {
+  payment: ["payment"], read: ["read"], check: ["calc", "investigate", "negotiate", "rules"], file: ["negotiate"],
+  owner: ["you"], approval: ["you", "books"], books: ["books"],
 };
 
 function build(state: RunState, view: WorkspaceView, owner: string, distributor: string): Agent[] {
@@ -95,40 +103,26 @@ function build(state: RunState, view: WorkspaceView, owner: string, distributor:
   ];
 }
 
-export function AgentStrip({ state, view, owner, distributor }: { state: RunState; view: WorkspaceView; owner: string; distributor: string }) {
-  const [open, setOpen] = useState<string | null>(null);
-  const agents = build(state, view, owner, distributor);
-  const agent = agents.find((x) => x.key === open) ?? null;
-  const lines = agent ? state.feed.filter((l) => agent.actors.includes(l.actor)) : [];
+/** The open step's agents: who they are (AI, code or you), what each concluded and what each did. */
+export function StageAgents({ stage }: { stage: StageKey }) {
+  const { state, view, cast } = useRun();
+  const all = build(state, view, cast.owner, cast.distributor);
+  const agents = STAGE_AGENTS[stage].map((k) => all.find((a) => a.key === k)).filter((a): a is Agent => !!a);
   return (
-    <section className="as" aria-label="The agents">
-      <div className="as-row">
-        {agents.map((x) => (
-          <button key={x.key} className={`as-agent is-${x.state} ${open === x.key ? "is-open" : ""}`} onClick={() => setOpen(open === x.key ? null : x.key)} aria-expanded={open === x.key}>
-            <span className="as-top"><i aria-hidden="true" /><strong>{x.name}</strong><em>{x.kind}</em></span>
-            <span className="as-concl">{x.conclusion}</span>
-          </button>
-        ))}
-      </div>
-      {agent && (
-        <div className="as-detail" role="region" aria-label={`${agent.name}: what it did`}>
-          <div className="as-detail-head">
-            <strong>{agent.name}</strong>
-            <span>{agent.conclusion}</span>
-            <button className="cx-btn is-ghost" onClick={() => setOpen(null)}>Close</button>
-          </div>
-          <div className="as-cols">
-            <div>
-              <h4>What it concluded</h4>
-              {agent.outputs.length ? <div className="as-outputs">{agent.outputs}</div> : <p className="cx-small cx-muted">Nothing yet.</p>}
-            </div>
-            <div>
-              <h4>What it did</h4>
-              {lines.length ? <ol className="as-log">{lines.map((l) => <li key={l.id} className={l.level}>{l.text}</li>)}</ol> : <p className="cx-small cx-muted">{agent.kind === "CODE" ? "Plain code: no AI calls, so no log of its own." : "No steps yet."}</p>}
-            </div>
-          </div>
-        </div>
-      )}
-    </section>
+    <div className="as-cols is-agents">
+      {agents.map((agent) => {
+        const lines = state.feed.filter((l) => agent.actors.includes(l.actor));
+        return (
+          <section key={agent.key} className={`as-agentcol is-${agent.state}`} aria-label={`${agent.name}: what it did`}>
+            <span className="as-top"><i aria-hidden="true" /><strong>{agent.name}</strong><em>{agent.kind === "YOU" ? "you" : agent.kind === "CODE" ? "code" : "AI"}</em></span>
+            <p className="as-concl">{agent.conclusion}</p>
+            <h4>What it concluded</h4>
+            {agent.outputs.length ? <div className="as-outputs">{agent.outputs}</div> : <p className="cx-small cx-muted">Nothing yet.</p>}
+            <h4>What it did</h4>
+            {lines.length ? <ol className="as-log">{lines.map((l) => <li key={l.id} className={l.level}>{l.text}</li>)}</ol> : <p className="cx-small cx-muted">{agent.kind === "CODE" ? "Plain code: no AI calls, so no log of its own." : "No steps yet."}</p>}
+          </section>
+        );
+      })}
+    </div>
   );
 }

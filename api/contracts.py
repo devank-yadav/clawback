@@ -1572,6 +1572,21 @@ class FoundPayment(Contract):
     run_id: str | None
 
 
+class PendingPayment(Contract):
+    """A payment that has arrived and waits for the admin's "Run the agents" (GET /payments/pending): one the
+    distributor sent from its portal (POST /portal/payments/{account}). The bank's and QuickBooks' pollers still start
+    their runs on their own (F15); this is the payment the presenter hands to the distributor's side."""
+
+    id: str  # "PAY-<account>-<n>"
+    account_id: str
+    distributor: str
+    invoice_id: str
+    expected: Money  # the invoice
+    received: Money  # what the distributor paid on it
+    source: Literal["portal"]
+    received_at: datetime
+
+
 class PaymentSync(Contract):
     """POST /payments/sync ("Check for new payments"): what the bank and QuickBooks had, and the runs they started."""
 
