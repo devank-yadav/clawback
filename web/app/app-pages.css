@@ -109,3 +109,7 @@
   .ap-recent a { flex-direction: column; gap: 2px; }
   .fl-main { padding-top: 18px; }
 }
+
+/* the Agents header's small "Upload": a remittance by hand, beside the main button */
+.ph-actions .fl-upload { min-height: 34px; padding: 0 12px; font-size: 13px; gap: 6px; }
+.ph-actions .fl-upload svg { width: 14px; height: 14px; }

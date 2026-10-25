@@ -1,12 +1,13 @@
 "use client";
 
-// The first screen, saying what is true right now: payments received and waiting for "Run the agents" (sent from a
-// distributor's portal), a run going on for another distributor, or no new payment (then "Check for new payments").
-// Also one place to drop the payment advice the distributor sent (PDF, CSV or pasted text): the Payment reader reads
+// The first screen, saying what is true right now: payments received and waiting for "Run the agents" (shown by the
+// button and the list alone), a run going on for another distributor, or no new payment (then "Check for new payments").
+// A small "Upload" opens one place to drop the payment advice the distributor sent (PDF, CSV or pasted text): the Payment reader reads
 // it (POST /accounts/{id}/remittance) and, if its lines add up, the run starts (POST …/remittance/run). Nothing here
 // computes money.
 
 import Link from "next/link";
+import { Upload } from "lucide-react";
 import { useCallback, useEffect, useState, type DragEvent } from "react";
 import { useRun } from "@/components/console/RunProvider";
 import { readRemittance, runRemittance } from "@/components/upload/api";
@@ -77,17 +78,17 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
       <section className="fl-start" aria-label="Start a payment check">
         <PageHeader
           title="Agents"
-          line={<>
-            {pending.length > 0
-              ? <>New payment{pending.length === 1 ? "" : "s"} received. Run the agents to check {pending.length === 1 ? "it" : "them"} against the contract.</>
-              : elsewhere.length > 0
-                ? <>The agents are checking {elsewhere.map((d) => `${d.distributor.name}’s`).join(" and ")} payment now. <Link className="ph-link" href={withAccount("/", elsewhere[0].account_id, elsewhere[0].latest_run_id ? { run: elsewhere[0].latest_run_id } : undefined)}>Watch it</Link></>
-                : <>No new payment from {cast.distributor}. New payments show up here; once the bank or QuickBooks is connected, they start the agents on their own.</>}
-            {" "}<button className="ph-link" onClick={() => setPasting((v) => !v)} disabled={busy} aria-expanded={pasting}>Upload a remittance manually</button>
+          line={pending.length > 0 ? undefined : <>
+            {elsewhere.length > 0
+              ? <>The agents are checking {elsewhere.map((d) => `${d.distributor.name}’s`).join(" and ")} payment now. <Link className="ph-link" href={withAccount("/", elsewhere[0].account_id, elsewhere[0].latest_run_id ? { run: elsewhere[0].latest_run_id } : undefined)}>Watch it</Link></>
+              : <>No new payment from {cast.distributor}. New payments show up here; once the bank or QuickBooks is connected, they start the agents on their own.</>}
           </>}
-          actions={!reading && (pending.length > 0
-            ? <RunAgentsButton received={received} />
-            : <CheckPayments account={account?.id} />)}
+          actions={!reading && <>
+            <button className="cx-btn is-ghost fl-upload" onClick={() => setPasting((v) => !v)} disabled={busy} aria-expanded={pasting}>
+              <Upload aria-hidden="true" />Upload
+            </button>
+            {pending.length > 0 ? <RunAgentsButton received={received} /> : <CheckPayments account={account?.id} />}
+          </>}
         />
         <ReceivedList received={received} />
         {reading && (
