@@ -136,3 +136,19 @@ def test_the_weekly_loop_sends_on_monday_once(monkeypatch):
     autopilot.update(PEAK, None, digest_last_sent=monday)
     assert digest.tick(monday) == []  # not twice in one week
     assert digest.tick(datetime(2026, 11, 3, 16, tzinfo=timezone.utc)) == []  # Tuesday: no
+
+
+def test_a_fee_with_no_notice_gets_no_notice_rule_and_an_honest_tap(monkeypatch):
+    monkeypatch.setattr(accounts, "ONLY", None)  # Peak Bar Co.'s six distributors, Sam's Club among them
+    accounts.clear()
+    run = pipeline.start(account="peak-bar-sams", background=False)
+    q = next(q for q in run.questions.values() if pipeline.is_open(q))
+    assert "fee_discretion" in run.allowances[q.charge_id].missing  # the club sampling deal has no verified fee clause
+    d = digest.build(tenancy.Caller(supplier_id=PEAK))
+    item = next(i for i in d.items if i.distributor == "Sam's Club" and i.actions)
+    assert [a.label for a in item.actions] == ["Accept this one", "Dispute this one"]
+    # an answer that can't become a rule leaves the question open, and the tap page says so
+    out = digest.act({"k": "q", "id": q.id, "t": "accept if notice is at least 14 days", "r": True})
+    assert not out.ok and "didn’t fit" in out.title and pipeline.is_open(run.questions[q.id])
+    assert digest.act({"k": "q", "id": q.id, "t": "dispute it", "r": False}).title == "Done"
+    accounts.clear()

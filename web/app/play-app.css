@@ -144,3 +144,16 @@ p a:not(.cx-btn):not([class*="cb-"]), small a:not(.cx-btn), .ph-link, .cx-link, 
 .st2-taps em.is-open { border-color: var(--outline); color: var(--ink); background: var(--card); }
 .st2-more { display: flex; flex-direction: column; gap: var(--space-3); }
 .st2-doors { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-4); padding-bottom: var(--edge); }
+
+/* A payment's own record: every step the agents took, in order (was the audit trail). */
+.cb-steps { padding: var(--space-4) var(--space-5); }
+.cb-steps summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 18px; color: var(--ink); display: flex; align-items: center; gap: var(--space-3); }
+.cb-steps summary span { font-family: var(--font-body); font-size: 13px; font-weight: 800; color: var(--faint); }
+.cb-steps ol { list-style: none; margin: var(--space-4) 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow: auto; }
+.cb-steps li { display: grid; grid-template-columns: 92px 120px 1fr; gap: var(--space-3); font-size: 14px; line-height: 1.4; padding: 6px 0; border-bottom: var(--border-hair) solid var(--line); }
+.cb-steps time { color: var(--faint); font-weight: 700; font-variant-numeric: tabular-nums; }
+.cb-steps b { font-weight: 900; color: var(--ink); }
+.cb-steps li span { color: var(--sub); font-weight: 600; }
+.cb-steps li.is-warn span, .cb-steps li.is-error span { color: var(--red); }
+.cb-steps li.is-good span { color: var(--green); }
+@media (max-width: 720px) { .cb-steps li { grid-template-columns: 1fr; gap: 2px; } }

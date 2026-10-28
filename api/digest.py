@@ -30,6 +30,8 @@ from pathlib import Path
 
 from api import accounts, autopilot, pipeline, suppliers, tenancy
 from api.contracts import Contract
+from api.engine import gate
+from api.engine.policy import load_policy
 
 log = logging.getLogger("clawback.digest")
 
@@ -126,8 +128,11 @@ def tap_url(payload: dict) -> str:
 
 # The same choices the app offers for a question (web/components/console/Review.tsx choicesFor): a display fee can
 # become a rule; anything else is settled for this charge only.
-def choices_for(code: str) -> list[tuple[str, str, str, bool]]:
-    rule = [("rule", "Accept when notice is at least 14 days", "accept if notice is at least 14 days", True)] if code == "DF" else []
+def choices_for(code: str, has_clause: bool = True) -> list[tuple[str, str, str, bool]]:
+    """The one-tap answers. The notice rule is offered only when the deal has a verified discretion clause for the
+    fee (pipeline._answer hangs the rule on it): without one, that answer can't become a rule and the owner would
+    just be asked again."""
+    rule = [("rule", "Accept when notice is at least 14 days", "accept if notice is at least 14 days", True)] if code == "DF" and has_clause else []
     return [*rule, ("accept", "Accept this one", "accept" if code == "DF" else "accept it this time", False),
             ("dispute", "Dispute this one", "dispute it", False)]
 
@@ -149,6 +154,7 @@ def build(who: tenancy.Caller) -> Digest:
     runs = so._runs(so._tracked(who))
     by_run = {r.id: r for r in runs}
     items: list[DigestItem] = []
+    policy = load_policy()
     for n in o.needs_you:
         run = by_run.get(n.link.run_id or "")
         open_url = f"{_app_base()}/app"
@@ -157,8 +163,10 @@ def build(who: tenancy.Caller) -> Digest:
             q = next((q for q in run.questions.values() if pipeline.is_open(q)), None)
             if q:
                 code = run.charges[q.charge_id].code if q.charge_id and q.charge_id in run.charges else ""
+                a = run.allowances.get(q.charge_id or "")
+                has_clause = a is not None and any(gate.uses_discretion(t, policy) for t in a.terms)
                 actions = [TapAction(label=label, url=tap_url({"k": "q", "id": q.id, "t": text, "r": rule, "l": label}))
-                           for _cid, label, text, rule in choices_for(code)]
+                           for _cid, label, text, rule in choices_for(code, has_clause)]
         elif n.kind == "approval" and run:
             ap = next((e.data for e in reversed(run.events) if e.type == "approval" and e.data.status == "pending"), None)
             if ap:
@@ -273,6 +281,9 @@ def act(payload: dict) -> TapResult:
             ans, rule = pipeline.answer(target, str(payload.get("t") or ""), "owner", save_rule=bool(payload.get("r")))
         except pipeline.QuestionClosed:
             return TapResult(ok=False, title="That question was closed", detail="A newer run of the same payment asked it again. Open Clawback to answer it.")
+        if pipeline.is_open(pipeline.RUNS[pipeline.QUESTIONS[target][0]].questions[target]):  # the answer didn't fit
+            return TapResult(ok=False, title="That answer didn’t fit this charge",
+                             detail="Nothing changed and the question is still open. Open Clawback to answer it in your own words.")
         return TapResult(ok=True, title="Done", detail=f"Your answer is in: “{describe(payload)}”." + (" Saved as a rule, so you won’t be asked again." if rule else ""))
     if kind == "a":
         run = next((r for r in pipeline.RUNS.values() for e in r.events if e.type == "approval" and e.data.id == target), None)

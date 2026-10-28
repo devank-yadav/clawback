@@ -1392,6 +1392,8 @@ class RunSummary(Contract):
     replaced: bool  # a newer run of the same payment replaced it (its open questions closed)
     invoice_id: str | None
     taken: Money | None  # what the distributor kept from the payment
+    paid: Money | None = None  # what the distributor paid (the payment's own remittance)
+    invoiced: Money | None = None  # the invoice it paid
     charges: int
     disputed: Money | None
     accepted: Money | None

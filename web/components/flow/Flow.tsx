@@ -6,6 +6,7 @@
 //  done:  this tab's run finished and nobody is waiting.
 // A run started anywhere else (the Nessie deposit, another device) switches the page to it by itself.
 
+import Link from "next/link";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { ArrowLeft } from "lucide-react";
 import { SlideOver } from "@/components/ui/SlideOver";
@@ -77,7 +78,6 @@ function FlowFor() {
   const [fresh, setFresh] = useState(false);
   const [drawer, setDrawer] = useState<string | null>(null);
   const closeDrawer = useCallback(() => setDrawer(null), []);
-  const [, setCleared] = useState(0); // a re-render after forgetting the watched run
 
   const mine = startedFrom !== undefined && runId !== startedFrom.run && gone.length === startedFrom.lost;
   const status = state.run?.status;
@@ -103,15 +103,6 @@ function FlowFor() {
   useEffect(() => {
     if (followed && gone.includes(followed)) writeFollowed(account?.id, null);
   }, [followed, gone, account?.id]);
-
-  /** Back to the start screen: forget the watched run for this tab. */
-  const restart = () => {
-    writeFollowed(account?.id, null);
-    setStartedFrom(undefined);
-    setOpened(false);
-    setFresh(true);
-    setCleared((n) => n + 1);
-  };
 
   const stages = buildStages(state, view, { distributor: cast.distributor, owner: cast.owner }, starting || (mine && !state.run));
   const pending = NEEDS.map((k) => stages.find((s) => s.key === k && s.state === "waiting")).filter((s): s is Stage => !!s);
@@ -146,8 +137,8 @@ function FlowFor() {
                 ) : pending.length === 0 ? (
                   <button className="cx-btn is-ghost is-small" onClick={() => { setOpened(true); window.scrollTo({ top: 0 }); void replay(); }}>Replay</button>
                 ) : null}
-                {/* Back to the start screen; the agents keep going on the server, and the run stays one click away. */}
-                <button className="cx-btn is-ghost is-small fl-back" onClick={restart}><ArrowLeft aria-hidden="true" />{phase === "done" ? "Back to the start" : "Back"}</button>
+                {/* Back to every payment; the agents keep going on the server, and this payment stays one click away. */}
+                <Link className="cx-btn is-ghost is-small fl-back" href={withAccount("/payments", account?.id)}><ArrowLeft aria-hidden="true" />All payments</Link>
               </span>
             } />
           {status === "failed" && <div className="fl-problem" role="alert">The run stopped. {state.feed.filter((l) => l.level === "error").at(-1)?.text}</div>}

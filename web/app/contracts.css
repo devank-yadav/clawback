@@ -1,0 +1,63 @@
+/* Contracts (components/contracts/AllContracts.tsx): every agreement with every distributor. Tokens only.
+   The highlight inside a document (.dr .ct-mark) is styled in redesign.css; nothing here redefines it. */
+.ct-page { max-width: 980px; display: flex; flex-direction: column; gap: var(--space-6); padding-bottom: var(--space-12); }
+
+/* filter chips */
+.ct-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.ct-chip { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 36px; padding: 0 var(--space-4); border: var(--border-chunky) solid var(--outline); border-radius: var(--radius-pill); background: var(--card); color: var(--ink); font-size: 14px; font-weight: 800; cursor: pointer; transition: background var(--duration-quick) var(--ease-out), transform var(--duration-quick) var(--ease-out); }
+.ct-chip:hover { background: var(--card-2); }
+.ct-chip:active { transform: translateY(1px); }
+.ct-chip small { font-size: 12px; font-weight: 800; color: var(--faint); }
+.ct-chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-ink); }
+.ct-chip[aria-pressed="true"] small { color: var(--accent-ink); }
+.ct-chip:focus-visible, .ct-card:focus-visible, .ct-term:focus-visible { outline: 3px solid var(--accent-ink); outline-offset: 2px; }
+
+/* groups and cards */
+.ct-group { display: flex; flex-direction: column; gap: var(--space-3); }
+.ct-group-h { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-display); font-weight: 600; font-size: 22px; line-height: 1.2; color: var(--ink); }
+.ct-group-h svg { width: 20px; height: 20px; color: var(--accent-ink); flex: none; }
+.ct-group-h small { margin-left: auto; font-family: inherit; font-size: 13px; font-weight: 800; color: var(--faint); }
+.ct-none { color: var(--sub); font-weight: 600; }
+.ct-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4); }
+.ct-list > li { display: flex; min-width: 0; }
+.ct-card { width: 100%; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
+.ct-card-top { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.ct-locked { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 800; color: var(--sub); }
+.ct-locked svg { width: 13px; height: 13px; }
+.ct-dist { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ct-card-title { font-family: var(--font-display); font-weight: 600; font-size: 18px; line-height: 1.25; color: var(--ink); overflow-wrap: anywhere; }
+.ct-card-meta { font-size: 13px; font-weight: 700; color: var(--faint); overflow-wrap: anywhere; }
+.ct-card-sum { margin-top: auto; padding: var(--space-2) var(--space-3); width: 100%; border-radius: var(--radius); background: var(--hl); color: var(--ink); font-size: 14px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+.ct-card-sum.is-none { background: var(--card-2); color: var(--sub); font-weight: 600; }
+
+/* loading */
+.ct-skel { cursor: default; }
+.ct-skel i { display: block; height: 14px; border-radius: var(--radius-sm); background: var(--card-2); }
+
+/* the document, in the slide-over */
+.ct-reader { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.ct-note { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; padding: var(--space-3) var(--space-4); border: var(--border-chunky) solid var(--outline); border-radius: var(--radius); background: var(--card-2); color: var(--ink); font-size: 14px; font-weight: 700; line-height: 1.4; }
+.ct-note svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.ct-note.is-claim { background: var(--amber-bg); border-color: var(--wait-edge); }
+.ct-read { display: flex; flex-direction: column; gap: var(--space-2); }
+.ct-read h3 { display: flex; align-items: baseline; gap: var(--space-2); font-family: var(--font-display); font-weight: 600; font-size: 18px; color: var(--ink); }
+.ct-read h3 small { font-family: inherit; font-size: 13px; font-weight: 800; color: var(--faint); }
+.ct-read ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.ct-term { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-3) var(--space-4); border: var(--border-chunky) solid var(--outline); border-radius: var(--radius); background: var(--card); color: var(--ink); font: inherit; text-align: left; cursor: pointer; transition: background var(--duration-quick) var(--ease-out); }
+.ct-term:hover { background: var(--card-2); }
+.ct-term.is-on { background: var(--hl); }
+.ct-term-line { font-size: 15px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
+.ct-term-line small { margin-left: var(--space-2); font-size: 12px; font-weight: 700; color: var(--faint); white-space: nowrap; }
+.ct-term-flags { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.ct-hint { margin: 0; font-size: 13px; font-weight: 600; color: var(--sub); }
+.ct-doc { max-width: none; padding: var(--space-4) var(--space-5); border: var(--border-chunky) solid var(--outline); border-radius: var(--radius-card); background: var(--card); box-shadow: var(--shadow-chunky); }
+
+@media (max-width: 560px) {
+  .ct-page { gap: var(--space-5); }
+  .ct-list { grid-template-columns: 1fr; }
+  .ct-group-h { font-size: 20px; flex-wrap: wrap; }
+  .ct-doc { padding: var(--space-3); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ct-chip, .ct-term { transition: none; }
+}

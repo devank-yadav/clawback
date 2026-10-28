@@ -93,7 +93,10 @@ function PlayQuestion({ charge }: { charge: ChargeView }) {
   const q = view.question!;
   const clause = detail?.evidence.find((e) => e.kind === "clause") ?? null;
   const level = q.risk?.level ? (String(q.risk.level).charAt(0).toUpperCase() + String(q.risk.level).slice(1).toLowerCase()) as "High" | "Medium" | "Low" : null;
-  const choices = choicesFor(charge.code).map((c) => ({
+  // The rule needs a discretion clause in the deal to hang on (the "Clause" detail). Older runs' questions carry no
+  // details; then it stays on offer as before.
+  const hasClause = !q.details?.length || q.details.some((d) => d.label === "Clause");
+  const choices = choicesFor(charge.code, hasClause).map((c) => ({
     value: c.id,
     label: c.label,
     consequence: c.id === "dispute" ? `${money(charge.amount)} goes in the dispute` : c.id === "accept" ? `${money(charge.amount)} counts as fair` : "The agents check the notice and decide",
@@ -111,7 +114,7 @@ function PlayQuestion({ charge }: { charge: ChargeView }) {
       busy={busy}
       goLabel="Decide"
       onDecide={(value, remember) => {
-        const pick = choicesFor(charge.code).find((c) => c.id === value);
+        const pick = choicesFor(charge.code, hasClause).find((c) => c.id === value);
         if (!pick) return;
         setBusy(true);
         answerQuestion(q.id, pick.text, remember);
@@ -163,7 +166,7 @@ function PlayDispute() {
       <div className="cb-play-dispute-head">
         <VerdictStamp verdict="dispute" amount={d.total} still />
         <div>
-          <h2>{unsent ? `Dispute ${d.id} is ready for ${cast.distributor}.` : `Dispute ${d.id} is with ${cast.distributor}.`}</h2>
+          <h2>{unsent ? `Your dispute is ready for ${cast.distributor}.` : `Your dispute is with ${cast.distributor}.`}</h2>
           <p>{d.lines.length} charge{d.lines.length === 1 ? "" : "s"}, each with the contract sentence, the data and the math. {unsent ? `Nothing goes to ${cast.distributor} until you send it.` : "Their reply lands here the moment it comes in."}</p>
         </div>
       </div>
@@ -255,6 +258,20 @@ export function PlayRun({ pending, done, onOpen, head }: { pending: Stage[]; don
       />
       <div className="cb-run-stage">{stage}</div>
       {charges.length > 0 && <CardQueue cards={cards} current={current && !showDone ? current.id : undefined} onPick={onOpen} label="Charges in this payment: open a decided one to see its proof" />}
+      {state.feed.length > 0 && (
+        <details className="cb-card cb-steps">
+          <summary>What happened, step by step <span>{state.feed.length} steps</span></summary>
+          <ol>
+            {state.feed.map((l) => (
+              <li key={l.id} className={`is-${l.level}`}>
+                <time dateTime={l.at}>{new Date(l.at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" })}</time>
+                <b>{ACTOR[l.actor] ?? l.actor}</b>
+                <span>{l.text}</span>
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
     </div>
   );
 }

@@ -550,7 +550,7 @@ export type SupplierItem = { id: string; brand: Account["brand"]; distributors: 
 // ---- History and storage (GET /accounts/{id}/runs, /saved, /documents/{doc})
 export type RunSummary = {
   run_id: string; kind: string; status: "started" | "waiting" | "finished" | "failed"; started_at: string; replaced: boolean;
-  invoice_id: string | null; taken: Money | null; charges: number; disputed: Money | null; accepted: Money | null; waiting: Money | null;
+  invoice_id: string | null; taken: Money | null; paid?: Money | null; invoiced?: Money | null; charges: number; disputed: Money | null; accepted: Money | null; waiting: Money | null;
   questions: number;
 };
 export type SavedDocument = { id: string; kind: string; title: string; sender: string | null; locked: boolean; chars: number };

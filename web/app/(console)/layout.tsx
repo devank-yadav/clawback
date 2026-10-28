@@ -16,6 +16,9 @@ import "../claw.css";
 import "../game-tokens.css";
 import "../game.css";
 import "../play-app.css";
+import "../payments.css";
+import "../contracts.css";
+import "../disputes-rules.css";
 
 export const metadata: Metadata = {
   title: "Clawback — agents that win back what distributors wrongly took",

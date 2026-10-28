@@ -2,7 +2,7 @@
 
 // /app: the company across all its distributors (GET /overview), kept to what a glance can take in: the money in three
 // numbers (being clawed back, recovered, fair), then the ONE thing that needs the admin next (the API ranks them:
-// highest risk, then the oldest) with its single button, and two doors to the rest (Disputes, History). Every amount
+// highest risk, then the oldest) with its single button, and two doors to the rest (Disputes, Payments). Every amount
 // is the API's: "recovered" counts only what evidence shows came back.
 
 import Link from "next/link";
@@ -101,7 +101,7 @@ export default function Dashboard() {
       <TopBar account={account} />
       <main className="fl-main hm2">
         <PageHeader title="Home" line={o ? `${account?.brand.name ?? "Your company"} across ${o.distributors} distributor${o.distributors === 1 ? "" : "s"}` : undefined}
-          actions={<><Link className="cx-btn is-ghost" href={withAccount("/upload", account?.id)}>Add a remittance</Link>{received.pending.length ? <RunAgentsButton received={received} /> : <CheckPayments account={account?.id} />}</>} />
+          actions={<><Link className="cx-btn is-ghost" href={withAccount("/upload", account?.id)}>Upload a payment slip</Link>{received.pending.length ? <RunAgentsButton received={received} /> : <CheckPayments account={account?.id} />}</>} />
         <ReceivedList received={received} />
         {fetched.error && <div className="fl-problem" role="alert">{fetched.error}</div>}
 
@@ -170,8 +170,8 @@ export default function Dashboard() {
           <Link className="cb-card hm2-door" href={withAccount("/disputes", account?.id)}>
             <strong>Disputes</strong><span>{openCount} open, waiting for replies</span><ArrowRight aria-hidden="true" />
           </Link>
-          <Link className="cb-card hm2-door" href={withAccount("/history", account?.id)}>
-            <strong>History</strong><span>Every payment the agents checked</span><ArrowRight aria-hidden="true" />
+          <Link className="cb-card hm2-door" href={withAccount("/payments", account?.id)}>
+            <strong>All payments</strong><span>Every payment from every distributor</span><ArrowRight aria-hidden="true" />
           </Link>
         </nav>
       </main>

@@ -117,10 +117,7 @@ function Form({ initial }: { initial: api.Autopilot }) {
 
   const doors = [
     { href: "/connections", title: "Connections", line: "The bank, QuickBooks, Gmail" },
-    { href: "/contracts", title: "Contracts", line: "The deals the agents check against" },
-    { href: "/saved", title: "Saved answers", line: "Your rules, documents and records" },
-    { href: "/distributors", title: "Distributors", line: "Who you sell through" },
-    { href: "/history", title: "History", line: "Every payment the agents checked" },
+    { href: "/distributors", title: "Distributors", line: "Who you sell through, and which ones the agents watch" },
   ];
 
   return (

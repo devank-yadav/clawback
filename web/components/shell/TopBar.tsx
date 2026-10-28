@@ -1,9 +1,9 @@
 "use client";
 
-// The app's one frame, on every page under /app: a finance-style left sidebar with the supplier's name, the
-// distributor you're looking at (a switcher listing only this supplier's distributors, each with its plain status),
-// four places (Home, Payments, Disputes, Settings; the rest open from Settings), and the user menu with
-// Sign out at the bottom. No top tab bar. On a phone the sidebar folds into a menu button. Signed-out visitors go to
+// The app's one frame, on every page under /app: a finance-style left sidebar with six places
+// (Home, Payments, Contracts, Disputes, Rules, Settings; every page lists all distributors and filters by one, so
+// there is no distributor switcher), and the company's own menu (its mark and name, not a person's) with Sign out at
+// the bottom. No top tab bar. On a phone the sidebar folds into a menu button. Signed-out visitors go to
 // /signin and come back. Every link keeps the account in the URL (withAccount). The name TopBar stays so every page
 // that rendered the old bar renders this frame unchanged.
 
@@ -11,8 +11,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  Bell, House, ChevronsUpDown, Gavel, Settings as SettingsIcon,
-  KeyRound, Landmark, Layers, LogIn, LogOut, Menu, MessagesSquare, RotateCcw, UserRound, Workflow, X,
+  Bell, BookCheck, Building2, FileText, House, ChevronsUpDown, Gavel, Settings as SettingsIcon, Wallet,
+  KeyRound, Landmark, LogIn, LogOut, Menu, MessagesSquare, RotateCcw, X,
 } from "lucide-react";
 import { Logo } from "@/components/console/ui";
 import { inkOn, withAccount } from "@/lib/accounts";
@@ -27,24 +27,25 @@ type Item = { key: string; href: string; label: string; icon: ReactNode; view?: 
 
 const MAIN: Item[] = [
   { key: "home", href: "/app", label: "Home", icon: <House /> },
-  { key: "agents", href: "/", label: "Payments", icon: <Workflow /> },
+  { key: "payments", href: "/payments", label: "Payments", icon: <Wallet /> },
+  { key: "contracts", href: "/contracts", label: "Contracts", icon: <FileText /> },
   { key: "disputes", href: "/disputes", label: "Disputes", icon: <Gavel /> },
+  { key: "rules", href: "/rules", label: "Rules", icon: <BookCheck /> },
   { key: "settings", href: "/settings", label: "Settings", icon: <SettingsIcon /> },
 ];
 /** Pages reached from Settings: the sidebar marks Settings while you're on one. */
-const UNDER_SETTINGS = ["settings", "distributors", "history", "contracts", "saved", "connections"];
+const UNDER_SETTINGS = ["settings", "distributors", "connections"];
 
-/** Which sidebar item the address is: /app → home, /app/history → history; a run's own pages are the agents'. */
+/** Which sidebar item the address is: /app → home, /app/payments → payments; a payment's own page (the agents' run) is Payments too. */
 function activeKey(path: string): string | null {
   if (path === "/app") return "home";
   const seg = path.replace(/^\/app\/?/, "").split("/")[0];
-  if (["review", "activity", "approval", "upload", "agents"].includes(seg)) return "agents";
+  // a payment's own page (the agents' run) and the old History are Payments; the old Saved is Rules
+  if (["review", "activity", "approval", "upload", "agents", "history", "payments"].includes(seg)) return "payments";
+  if (seg === "saved") return "rules";
   if (UNDER_SETTINGS.includes(seg)) return "settings";
   return MAIN.some((i) => i.key === seg) ? seg : null;
 }
-
-/** Pages about the whole company, not one distributor: the switcher reads "All distributors" there. */
-const COMPANY_WIDE = new Set(["/app", "/app/distributors"]);
 
 export const STATUS_TONE: Record<RelationshipStatus, string> = {
   waiting_for_payment: "is-idle", checking: "is-live", needs_you: "is-amber", dispute_open: "is-info", settled: "is-green", stopped: "is-red",
@@ -71,52 +72,8 @@ function usePopover() {
 
 /** The distributor you're looking at, and the others this supplier tracks (GET /suppliers answers only the signed-in
  * supplier's), each with its plain status. */
-function Switcher({ account, onPick }: { account: Account | null; onPick: () => void }) {
-  const router = useRouter();
-  const path = usePathname();
-  const { supplier: mine } = useSession();
-  const { open, setOpen, ref } = usePopover();
-  const load = useCallback(() => api.fetchSuppliers(), []);
-  const suppliers = useFetched(load, open ? "open" : "closed");
-  const supplier = suppliers.data?.find((s) => s.distributors.some((d) => d.account_id === account?.id)) ?? null;
-  const current = supplier?.distributors.find((d) => d.account_id === account?.id) ?? null;
-  const allowed = mine ? new Set(mine.account_ids) : null;
-  const tracked = supplier?.distributors.filter((d) => d.tracked && (!allowed || allowed.has(d.account_id))) ?? [];
-  const all = COMPANY_WIDE.has(path);
-
-  return (
-    <div className="sb-switch" ref={ref}>
-      <button className="sb-switch-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)} disabled={!account}>
-        {all ? <span className="tb-mark sb-all" aria-hidden="true"><Layers /></span> : <DistributorMark name={account?.distributor.name ?? "·"} color={account?.distributor.colors.primary} size={26} />}
-        <span className="sb-switch-text">
-          <small>Distributor</small>
-          <strong>{all ? "All distributors" : account?.distributor.name ?? "Loading…"}</strong>
-        </span>
-        {current && !all && <i className={`tb-dot ${STATUS_TONE[current.status]}`} aria-label={current.status_label} />}
-        <ChevronsUpDown aria-hidden="true" />
-      </button>
-      {open && (
-        <div className="tb-menu sb-menu" role="menu">
-          <span className="tb-menu-label">{supplier ? `${supplier.brand.name} sells through` : "Loading distributors…"}</span>
-          {tracked.map((d) => (
-            <button key={d.account_id} role="menuitemradio" aria-checked={!all && d.account_id === account?.id} className="tb-row"
-              onClick={() => { setOpen(false); onPick(); router.push(withAccount(all ? "/" : path, d.account_id)); }}>
-              <DistributorMark name={d.distributor.name} color={d.distributor.colors.primary} size={26} />
-              <span><strong>{d.distributor.name}</strong><small>{d.status_label}</small></span>
-              <i className={`tb-dot ${STATUS_TONE[d.status]}`} />
-            </button>
-          ))}
-          <Link className="tb-menu-foot" href={withAccount("/distributors", account?.id)} onClick={() => { setOpen(false); onPick(); }}>Add or manage distributors</Link>
-        </div>
-      )}
-    </div>
-  );
-}
-
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 
-/** The presenter's controls, for a tab holding the admin token (lib/tokens.ts): the distributor's payment arrives
- * through the bank deposit exactly as in production (POST /payments/{account}), and the reset. Judges never see them. */
 function usePresenter(account: Account | null) {
   const router = useRouter();
   const [note, setNote] = useState<string | null>(null);
@@ -184,8 +141,8 @@ function usePresenter(account: Account | null) {
   return { simulate, reply, reset, note };
 }
 
-/** Who's signed in. The menu opens upward with the account's details, the presenter's controls when this tab holds
- * the admin token, and Sign out. Enter or Space opens it, arrow keys and Tab move inside, Escape closes it. */
+/** The company using Clawback, not a person: its mark and name. The menu opens upward with the company's details,
+ * the presenter's controls when this tab holds the admin token, and Sign out. Enter or Space opens it, arrow keys and Tab move inside, Escape closes it. */
 function UserMenu({ account }: { account: Account | null }) {
   const { status, user, supplier } = useSession();
   const [open, setOpen] = useState(false);
@@ -224,25 +181,25 @@ function UserMenu({ account }: { account: Account | null }) {
   if (status === "out" || status === "unknown") {
     return <Link className="sb-signin" href={signInHref(undefined)}><LogIn aria-hidden="true" /> Sign in</Link>;
   }
-  // A server with no passwords: nobody signs in, and the admin is the account's owner.
-  const name = user?.name ?? account?.brand.owner.name ?? " ";
-  const detail = user?.email ?? account?.brand.owner.email ?? " ";
+  const company = supplier?.name ?? account?.brand.name ?? " ";
+  // The sign-in, for the details only. A server with no passwords has none: the account's owner address stands in.
+  const login = user?.email ?? account?.brand.owner.email ?? " ";
+  const color = account?.brand.colors.primary;
   return (
     <div className="sb-user" ref={wrap}>
       <button ref={button} className="sb-user-btn" aria-haspopup="menu" aria-expanded={open} aria-controls="sb-user-menu" onClick={() => { if (open) close(); else { setPresenting(!!adminToken()); setOpen(true); } }}>
-        <i aria-hidden="true">{initials(name)}</i>
-        <span><strong>{name}</strong><small>{detail}</small></span>
+        <i aria-hidden="true" style={color ? { background: color, color: inkOn(color) } : undefined}>{account?.brand.initials ?? initials(company)}</i>
+        <span><strong>{company}</strong><small>Supplier</small></span>
         <ChevronsUpDown aria-hidden="true" />
       </button>
       {open && (
-        <div id="sb-user-menu" ref={menu} className="tb-menu sb-user-menu" role="menu" aria-label="Your account">
-          <button role="menuitem" className="tb-row" aria-expanded={details} onClick={() => setDetails((v) => !v)}><UserRound aria-hidden="true" /><span><strong>Account details</strong></span></button>
+        <div id="sb-user-menu" ref={menu} className="tb-menu sb-user-menu" role="menu" aria-label="Company account">
+          <button role="menuitem" className="tb-row" aria-expanded={details} onClick={() => setDetails((v) => !v)}><Building2 aria-hidden="true" /><span><strong>Company details</strong></span></button>
           {details && (
             <dl className="sb-details">
-              <div><dt>Name</dt><dd>{name}</dd></div>
-              <div><dt>Email</dt><dd>{detail}</dd></div>
-              <div><dt>Company</dt><dd>{supplier?.name ?? account?.brand.name ?? " "}</dd></div>
-              <div><dt>Role</dt><dd>Admin: answers the questions and approves what posts</dd></div>
+              <div><dt>Company</dt><dd>{company}</dd></div>
+              <div><dt>Signed in with</dt><dd>{login}</dd></div>
+              <div><dt>Access</dt><dd>Admin: answers the questions and approves what posts</dd></div>
             </dl>
           )}
           <button role="menuitem" className="tb-row" onClick={() => { close(false); void presenter.reset(); }}><RotateCcw aria-hidden="true" /><span><strong>Reset the demo</strong><small>Every distributor back to the start, ready for the next payment</small></span></button>
@@ -359,7 +316,7 @@ export default function TopBar({ account }: { account: Account | null; active?: 
       <header className="sb-mobile">
         <button className="sb-menu-btn" aria-label="Open the menu" aria-expanded={open} aria-controls="sb" onClick={() => setOpen(true)}><Menu /></button>
         <Link href={withAccount("/app", account?.id)} className="sb-logo" aria-label="Clawback home"><Logo /> clawback</Link>
-        <span className="sb-mobile-who">{account?.distributor.name ?? ""}</span>
+        <span className="sb-mobile-who">{supplierName.trim()}</span>
       </header>
       {open && <div className="sb-backdrop" onClick={close} role="presentation" />}
       <aside id="sb" className={`sb ${open ? "is-open" : ""}`} aria-label="App">
@@ -370,11 +327,6 @@ export default function TopBar({ account }: { account: Account | null; active?: 
             <button className="sb-close" aria-label="Close the menu" onClick={close}><X /></button>
           </span>
         </div>
-        <div className="sb-supplier">
-          <i aria-hidden="true" style={account ? { background: account.brand.colors.primary, color: inkOn(account.brand.colors.primary) } : undefined}>{account?.brand.initials ?? initials(supplierName)}</i>
-          <span><small>Supplier</small><strong>{supplierName}</strong></span>
-        </div>
-        <Switcher account={account} onPick={close} />
         <nav className="sb-nav" aria-label="Clawback">
           {MAIN.map(link)}
         </nav>

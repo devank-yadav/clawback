@@ -55,7 +55,8 @@ export function useCurrentAccount(): AccountsState & { account: Account | null; 
 
 /** The app's screens, which live under /app since the landing page took `/`. */
 const APP_SCREENS = new Set(["/", "/distributors", "/history", "/saved", "/contracts", "/connections", "/home", "/review", "/approval",
-  "/activity", "/workspace", "/results", "/april", "/coach", "/scenario", "/upload", "/audit", "/disputes"]);
+  "/activity", "/workspace", "/results", "/april", "/coach", "/scenario", "/upload", "/audit", "/disputes", "/payments", "/rules",
+  "/settings"]);
 
 /** Where an app screen lives: appPath("/history") → "/app/history", appPath("/") → "/app/agents" (the agents' flow; the home is /app). Other paths are unchanged. */
 export const appPath = (path: string) => (APP_SCREENS.has(path) ? (path === "/" ? "/app/agents" : `/app${path}`) : path);

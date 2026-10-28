@@ -1,7 +1,6 @@
-import History from "@/components/flow/History";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "History · Clawback" };
-
+/** History is now Payments: every payment from every distributor in one list. */
 export default function Page() {
-  return <History />;
+  redirect("/app/payments");
 }

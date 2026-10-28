@@ -1,0 +1,94 @@
+/* Payments (/app/payments): every distributor's payments in one list. Class prefix pm-. Uses the global tokens and
+   the cb-card / cx-pill / cx-btn pieces; no colors of its own. */
+
+.pm { max-width: 980px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: var(--space-6); }
+
+/* ---------- filter chips ---------- */
+.pm-filters { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.pm-chip {
+  display: inline-flex; align-items: center; gap: var(--space-2); min-height: 40px; padding: 0 var(--space-4);
+  border: var(--border-chunky) solid var(--outline); border-radius: var(--radius-pill); background: var(--card);
+  color: var(--ink); font-weight: 800; font-size: 14px; cursor: pointer; max-width: 100%;
+  transition: transform var(--duration-quick) var(--ease-out), box-shadow var(--duration-quick) var(--ease-out), background var(--duration-quick) var(--ease-out);
+}
+.pm-chip:hover { transform: translateY(-1px); box-shadow: var(--shadow-chunky); }
+.pm-chip[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+.pm-chip:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.pm-chip .pm-mark { width: 22px; height: 22px; font-size: 11px; border-width: 1.5px; }
+.pm-count {
+  display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: var(--radius-pill);
+  background: var(--amber-bg); color: var(--wait-ink); font-size: 12px; font-weight: 900; line-height: 1;
+}
+.pm-chip[aria-pressed="true"] .pm-count { background: var(--card); color: var(--ink); }
+
+/* ---------- sections ---------- */
+.pm-section { display: flex; flex-direction: column; gap: var(--space-3); }
+.pm-h { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-display); font-weight: 600; font-size: 22px; color: var(--ink); }
+.pm-section.is-needs .pm-h { color: var(--wait-ink); }
+.pm-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.pm-item { display: flex; flex-direction: column; gap: var(--space-2); }
+.pm-calm { color: var(--sub); font-weight: 700; padding: var(--space-4) 0; }
+
+/* ---------- a payment card ---------- */
+.pm-card {
+  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) auto; align-items: center; gap: var(--space-4);
+  padding: var(--space-5) var(--space-6); color: var(--ink); text-decoration: none;
+  transition: transform var(--duration-quick) var(--ease-out), box-shadow var(--duration-quick) var(--ease-out);
+}
+a.pm-card:hover { transform: translateY(-2px); box-shadow: var(--depth-2); }
+a.pm-card:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.pm-card.is-flagged { border-color: var(--wait-ink); background: var(--amber-bg); }
+.pm-card.is-arrived { background: var(--card-2); }
+.pm-card.is-small { padding: var(--space-3) var(--space-5); box-shadow: none; background: var(--card-2); }
+.pm-card.is-small .pm-mark { width: 30px; height: 30px; font-size: 14px; }
+
+.pm-who { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.pm-who-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pm-who-text strong { font-family: var(--font-display); font-weight: 600; font-size: 20px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-who-text small { color: var(--sub); font-weight: 700; font-size: 13px; }
+.pm-mark {
+  flex: none; display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  border: var(--border-chunky) solid var(--outline); background: var(--card-2); color: var(--ink);
+  font-family: var(--font-display); font-weight: 600; font-size: 18px; line-height: 1;
+}
+
+.pm-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pm-paid { font-weight: 800; font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pm-line { color: var(--sub); font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; }
+.pm-card.is-flagged .pm-line { color: var(--wait-ink); font-weight: 700; }
+
+.pm-end { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-3); }
+.pm-go { width: 20px; height: 20px; color: var(--faint); transition: transform var(--duration-quick) var(--ease-out); }
+a.pm-card:hover .pm-go { transform: translateX(3px); color: var(--ink); }
+
+/* ---------- earlier checks of the same payment ---------- */
+.pm-earlier { margin-left: var(--space-8); }
+.pm-earlier summary { cursor: pointer; color: var(--sub); font-weight: 800; font-size: 13px; padding: var(--space-1) 0; }
+.pm-earlier[open] summary { margin-bottom: var(--space-2); }
+.pm-earlier .pm-list { gap: var(--space-2); }
+
+/* ---------- loading ---------- */
+.pm-card.is-skel { min-height: 88px; }
+.pm-card.is-skel i { display: block; height: 14px; border-radius: var(--radius-pill); background: var(--raised); animation: pm-shimmer 1.2s ease-in-out infinite alternate; }
+.pm-card.is-skel i:last-child { width: 90px; justify-self: end; }
+@keyframes pm-shimmer { from { opacity: 0.55; } to { opacity: 1; } }
+
+/* ---------- narrow screens ---------- */
+@media (max-width: 720px) {
+  .pm { gap: var(--space-5); }
+  .pm-card { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "who end" "body body"; gap: var(--space-3); padding: var(--space-4); }
+  .pm-who { grid-area: who; }
+  .pm-body { grid-area: body; }
+  .pm-end { grid-area: end; }
+  .pm-go { display: none; }
+  .pm-who-text strong { font-size: 18px; }
+  .pm-mark { width: 34px; height: 34px; font-size: 16px; }
+  .pm-earlier { margin-left: var(--space-4); }
+  .pm-card.is-skel { grid-template-areas: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pm-chip, .pm-card, .pm-go { transition: none; }
+  .pm-chip:hover, a.pm-card:hover, a.pm-card:hover .pm-go { transform: none; }
+  .pm-card.is-skel i { animation: none; }
+}

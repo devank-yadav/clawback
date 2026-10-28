@@ -1,7 +1,6 @@
-import Saved from "@/components/flow/Saved";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Saved · Clawback" };
-
+// Saved became Rules: the rules live at /app/rules, the contracts on the Contracts page.
 export default function Page() {
-  return <Saved />;
+  redirect("/app/rules");
 }
