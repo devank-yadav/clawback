@@ -1,16 +1,16 @@
 "use client";
 
-// /app: the company across all its distributors (GET /overview). First what needs the admin, one queue already ranked
-// by the API (highest risk, then the oldest), each row a link straight to its action; then the money at a glance; the
-// open disputes with the days left to file; and the latest activity. The distributor list lives on Distributors.
-// Every amount is the API's: "recovered" counts only what evidence shows came back, and each piece links to it.
+// /app: the company across all its distributors (GET /overview), kept to what a glance can take in: the money in three
+// numbers (being clawed back, recovered, fair), then the ONE thing that needs the admin next (the API ranks them:
+// highest risk, then the oldest) with its single button, and two doors to the rest (Disputes, History). Every amount
+// is the API's: "recovered" counts only what evidence shows came back.
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { AlertTriangle, ArrowRight, CircleAlert, Clock, MinusCircle } from "lucide-react";
+import { AlertTriangle, ArrowRight, CircleAlert, MinusCircle } from "lucide-react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
-import TopBar, { DistributorMark } from "@/components/shell/TopBar";
+import TopBar from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
 import { PageHeader } from "@/components/ui/kit";
 import { Claw, landPulse } from "@/components/ui/Claw";
@@ -22,7 +22,6 @@ import { money } from "@/lib/format";
 import type { NeedsYou, OverviewLink } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
 
-const STATUS: Record<string, string> = { ready_to_send: "Ready to send", draft: "Ready to send", filed: "Filed, awaiting reply", answered: "Replied" };
 const ACTION: Record<NeedsYou["kind"], string> = { question: "Answer", dispute_email: "Review and send", reply_email: "Send the reply", approval: "Approve" };
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
@@ -69,17 +68,11 @@ function Level({ level }: { level: NeedsYou["risk_level"] }) {
   return <span className="dc-level is-low"><MinusCircle aria-hidden="true" />Low</span>;
 }
 
-/** Days left in the dispute window: amber at 14 or fewer, red at 7 or fewer, always with the number and an icon. */
-function DaysLeft({ days }: { days: number | null }) {
-  if (days == null) return <span className="hm-none">Not known</span>;
-  const tone = days <= 7 ? "is-red" : days <= 14 ? "is-amber" : "";
-  return <span className={`hm-days ${tone}`}>{tone ? <AlertTriangle aria-hidden="true" /> : <Clock aria-hidden="true" />}{days} day{days === 1 ? "" : "s"}</span>;
-}
-
 export default function Dashboard() {
   const { account } = useRun();
   const still = useReducedMotion();
   const [tick, setTick] = useState(0);
+  const [showAll, setShowAll] = useState(false);
   // Home looks again every 15 seconds, so an answered item leaves and a new reply arrives without a reload.
   useEffect(() => {
     const id = window.setInterval(() => setTick((n) => n + 1), 15_000);
@@ -89,8 +82,6 @@ export default function Dashboard() {
   const fetched = useFetched(load, String(tick));
   const o = fetched.data;
   const t = o?.totals;
-  const evidence = t?.evidence ?? [];
-  const dash = <span className="hm-none">–</span>;
   const seenRaw = useSyncExternalStore(noSub, readSeen, () => "server");
   const seen = seenRaw === "server" ? null : Number(seenRaw ?? 0) || 0;
   const [moneyEl, setMoneyEl] = useState<HTMLElement | null>(null);
@@ -100,104 +91,89 @@ export default function Dashboard() {
   useEffect(() => { if (t && seen !== null && t.recovered < seen - 0.005) writeSeen(t.recovered); }, [t, seen]);
   // A payment sent from a distributor's portal waits here too: "Run the agents" takes "Check for new payments"' place.
   const received = useReceivedPayments();
+  const needs = o?.needs_you ?? [];
+  const next = needs[0] ?? null;
+  const rest = needs.slice(1);
+  const openCount = o?.open_disputes.length ?? 0;
 
   return (
     <div className="fl">
       <TopBar account={account} />
-      <main className="fl-main bp ap hm">
+      <main className="fl-main hm2">
         <PageHeader title="Home" line={o ? `${account?.brand.name ?? "Your company"} across ${o.distributors} distributor${o.distributors === 1 ? "" : "s"}` : undefined}
           actions={<><Link className="cx-btn is-ghost" href={withAccount("/upload", account?.id)}>Add a remittance</Link>{received.pending.length ? <RunAgentsButton received={received} /> : <CheckPayments account={account?.id} />}</>} />
         <ReceivedList received={received} />
         {fetched.error && <div className="fl-problem" role="alert">{fetched.error}</div>}
 
-        <section className="hm-block" aria-labelledby="hm-needs">
-          <h2 id="hm-needs">Needs you</h2>
-          {!o && !fetched.error && <div className="hm-skel" aria-hidden="true"><i /><i /></div>}
-          {o && o.needs_you.length === 0 && <p className="hm-empty">Nothing needs you. When a contract leaves a charge to your judgment, the question lands here.</p>}
-          {o && o.needs_you.length > 0 && (
-            <ol className="hm-queue">
-              {/* An answered item leaves the queue with a short slide, so it's clear it's done. */}
-              <AnimatePresence initial={false}>
-                {o.needs_you.map((n, i) => (
-                  <motion.li key={`${n.kind}-${n.account_id}-${n.link.run_id ?? ""}-${n.link.dispute_id ?? i}`}
-                    initial={still ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={still ? { opacity: 0 } : { opacity: 0, x: 40 }} transition={{ duration: 0.25 }}>
-                    <Link href={hrefOf(n.account_id, n.link)} className="hm-item">
-                      <Level level={n.risk_level} />
-                      <span className="hm-what"><strong>{n.title}</strong><small>{n.distributor}{n.since ? ` · waiting since ${when(n.since)}` : ""}</small></span>
-                      {n.amount != null && <span className="hm-amt">{money(n.amount)}</span>}
-                      <span className="hm-go">{ACTION[n.kind] ?? "Open"}<ArrowRight aria-hidden="true" /></span>
-                    </Link>
-                  </motion.li>
-                ))}
-              </AnimatePresence>
-            </ol>
-          )}
-        </section>
-
-        <section className="hm-block cw-host" aria-labelledby="hm-money" ref={setMoneyEl}>
+        {/* 1. The money, in three numbers. */}
+        <section className="cb-score hm2-money cw-host" aria-label="The money" ref={setMoneyEl}>
           {rising && t && seen !== null && (
             <Claw host={moneyEl} mode="drop" to=".hm-recovered" label={`+${money(t.recovered - seen)}`} tone="good" delay={0.5} maxWait={1.5}
               onLand={() => { setLanded(true); landPulse(document.querySelector(".hm-recovered")); }}
               onDone={() => { writeSeen(t.recovered); setLanded(false); }} />
           )}
-          <h2 id="hm-money">Money at a glance</h2>
-          <dl className="hm-money">
-            <div><dt>Taken from payments</dt><dd>{t ? <Count value={t.taken} /> : dash}</dd></div>
-            <div><dt><i className="is-dispute" aria-hidden="true" />Disputed, awaiting reply</dt><dd>{t ? <Count value={t.disputed_awaiting_reply} /> : dash}</dd></div>
-            <div><dt><i className="is-fair" aria-hidden="true" />Fair, accepted</dt><dd>{t ? <Count value={t.fair} /> : dash}</dd></div>
-            <div>
-              <dt>Recovered</dt>
-              <dd className="hm-recovered">{t ? (rising && seen !== null ? <Count value={t.recovered} from={seen} hold={!landed} /> : <Count value={t.recovered} />) : dash}</dd>
-              {t && (evidence.length === 0
-                ? <small>No reply or credit yet</small>
-                : <small>
-                    {evidence.length} piece{evidence.length === 1 ? "" : "s"} of evidence:{" "}
-                    {evidence.map((e, i) => (
-                      <span key={`${e.dispute_id ?? e.remittance_ref}-${i}`}>
-                        {i > 0 && ", "}
-                        {e.dispute_id
-                          ? <Link href={withAccount("/disputes", account?.id, { id: e.dispute_id })}>{e.message_id ? "reply" : "credit"} on {e.dispute_id}</Link>
-                          : <span>credit {e.remittance_ref}</span>}
-                      </span>
-                    ))}
-                  </small>)}
-            </div>
-          </dl>
+          <div className="cb-score-main">
+            <span className="cb-score-label">Clawing back</span>
+            <strong className="cb-score-big">{t ? <Count value={t.disputed_awaiting_reply} /> : "–"}</strong>
+            {t && <span className="cb-score-line">in {openCount} open dispute{openCount === 1 ? "" : "s"}, of {money(t.taken)} taken from payments</span>}
+          </div>
+          <div className="cb-score-cells">
+            <div className="cb-score-cell is-good"><span>Recovered</span><b className="hm-recovered">{t ? (rising && seen !== null ? <Count value={t.recovered} from={seen} hold={!landed} /> : <Count value={t.recovered} />) : "–"}</b></div>
+            <div className="cb-score-cell is-fair"><span>Fair, accepted</span><b>{t ? <Count value={t.fair} /> : "–"}</b></div>
+          </div>
         </section>
 
-        <section className="hm-block" aria-labelledby="hm-disputes">
-          <h2 id="hm-disputes">Open disputes</h2>
-          {o && o.open_disputes.length === 0 && <p className="hm-empty">No open disputes.</p>}
-          {o && o.open_disputes.length > 0 && (
-            <ul className="hm-rows">
-              {o.open_disputes.map((d) => (
-                <li key={`${d.run_id}-${d.dispute_id}`}>
-                  <Link href={withAccount("/disputes", d.account_id, { id: d.dispute_id, run: d.run_id })} className="hm-row">
-                    <DistributorMark name={d.distributor} size={30} />
-                    <span className="hm-what"><strong>{d.distributor} · {d.dispute_id}</strong><small>{d.file_by ? `File by ${new Date(`${d.file_by}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "Dispute window not known"}</small></span>
-                    <span className={`hm-chip ${d.status === "ready_to_send" || d.status === "draft" ? "is-ready" : ""}`}>{STATUS[d.status] ?? d.status}</span>
-                    <DaysLeft days={d.days_left} />
-                    <span className="hm-amt">{(d.agreed ?? 0) > 0 ? <>{money(d.amount)} awaiting<small>{money(d.agreed ?? 0)} agreed</small></> : money(d.amount)}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+        {/* 2. The one thing that needs you next. */}
+        <section className="hm2-next-wrap" aria-labelledby="hm2-next">
+          <h2 id="hm2-next" className="hm2-h">Next for you</h2>
+          {!o && !fetched.error && <div className="hm-skel" aria-hidden="true"><i /></div>}
+          {o && !next && (
+            <div className="cb-card hm2-calm"><strong>You’re all caught up.</strong><span>When a payment comes in short or a distributor replies, it shows up here.</span></div>
+          )}
+          <AnimatePresence initial={false} mode="popLayout">
+            {next && (
+              <motion.article key={`${next.kind}-${next.account_id}-${next.link.run_id ?? ""}-${next.link.dispute_id ?? ""}`} className="cb-card hm2-next"
+                initial={still ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={still ? { opacity: 0 } : { opacity: 0, x: 40 }} transition={{ duration: 0.25 }}>
+                <div className="hm2-next-top">
+                  <Level level={next.risk_level} />
+                  <span className="hm2-next-who">{next.distributor}{next.since ? ` · since ${when(next.since)}` : ""}</span>
+                  {needs.length > 1 && <span className="hm2-next-count">1 of {needs.length}</span>}
+                </div>
+                <h3>{next.title}</h3>
+                <div className="hm2-next-go">
+                  {next.amount != null && <span className="hm2-next-amt">{money(next.amount)}</span>}
+                  <Link className="cx-btn is-blue" href={hrefOf(next.account_id, next.link)}>{ACTION[next.kind] ?? "Open"}<ArrowRight aria-hidden="true" /></Link>
+                </div>
+              </motion.article>
+            )}
+          </AnimatePresence>
+          {rest.length > 0 && (
+            <div className="hm2-more">
+              <button type="button" className="cx-btn is-ghost is-small" aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}>
+                {showAll ? "Hide the rest" : `${rest.length} more after this`}
+              </button>
+              {showAll && (
+                <ol className="hm2-rest">
+                  {rest.map((n, i) => (
+                    <li key={`${n.kind}-${n.account_id}-${n.link.run_id ?? ""}-${n.link.dispute_id ?? i}`}>
+                      <Link href={hrefOf(n.account_id, n.link)}><Level level={n.risk_level} /><span>{n.distributor}: {ACTION[n.kind] ?? "Open"}</span><ArrowRight aria-hidden="true" /></Link>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
           )}
         </section>
 
-        {o && o.recent.length > 0 && (
-          <section className="hm-block" aria-labelledby="hm-recent">
-            <h2 id="hm-recent">Recent activity</h2>
-            <ol className="hm-recent">
-              {o.recent.slice(0, 6).map((r, i) => (
-                <li key={`${r.at}-${i}`}>
-                  <Link href={hrefOf(r.account_id, r.link)}>{r.text}</Link>
-                  <time dateTime={r.at}>{when(r.at)}</time>
-                </li>
-              ))}
-            </ol>
-          </section>
-        )}
+        {/* 3. Two doors to the rest. */}
+        <nav className="hm2-doors" aria-label="More">
+          <Link className="cb-card hm2-door" href={withAccount("/disputes", account?.id)}>
+            <strong>Disputes</strong><span>{openCount} open, waiting for replies</span><ArrowRight aria-hidden="true" />
+          </Link>
+          <Link className="cb-card hm2-door" href={withAccount("/history", account?.id)}>
+            <strong>History</strong><span>Every payment the agents checked</span><ArrowRight aria-hidden="true" />
+          </Link>
+        </nav>
       </main>
       <SessionDialogs account={account} />
     </div>

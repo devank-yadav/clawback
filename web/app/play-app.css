@@ -15,3 +15,33 @@
 .cb-play-dispute-head p { margin-top: 4px; color: var(--sub); font-weight: 600; }
 .cb-play-dispute .cb-run-next { justify-content: flex-start; }
 @media (max-width: 560px) { .cb-play-dispute-head { flex-direction: column; align-items: flex-start; } }
+
+/* Links: underlined only inside a sentence. Rows, cards, nav items and buttons that are links aren't. */
+a { text-decoration: none; }
+p a:not(.cx-btn):not([class*="cb-"]), small a:not(.cx-btn), .ph-link, .cx-link, .st-sources a { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+/* Home (components/app/Dashboard.tsx): three numbers, the next thing, two doors. */
+.hm2 { display: flex; flex-direction: column; gap: var(--space-6); max-width: 980px; }
+.hm2-h { font-family: var(--font-display); font-weight: 600; font-size: 22px; color: var(--ink); margin-bottom: var(--space-3); }
+.cb-score-cell.is-good { border-color: var(--green-edge); background: var(--green-bg); color: var(--green); }
+.hm2-next { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6); }
+.hm2-next-top { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.hm2-next-who { color: var(--sub); font-weight: 700; font-size: 14px; }
+.hm2-next-count { margin-left: auto; color: var(--faint); font-weight: 800; font-size: 13px; }
+.hm2-next h3 { font-family: var(--font-display); font-weight: 600; font-size: 24px; line-height: 1.25; color: var(--ink); max-width: 46ch; }
+.hm2-next-go { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; padding-bottom: var(--edge); }
+.hm2-next-amt { font-size: 32px; font-weight: 900; color: var(--ink); letter-spacing: -0.01em; }
+.hm2-calm { display: flex; flex-direction: column; gap: 4px; }
+.hm2-calm strong { font-family: var(--font-display); font-weight: 600; font-size: 20px; color: var(--ink); }
+.hm2-calm span { color: var(--sub); font-weight: 600; }
+.hm2-more { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); margin-top: var(--space-3); padding-bottom: var(--edge); }
+.hm2-rest { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); width: 100%; }
+.hm2-rest a { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: var(--border-chunky) solid var(--line-strong); border-radius: var(--radius); background: var(--card); color: var(--ink); font-weight: 800; }
+.hm2-rest a:hover { background: var(--raised); }
+.hm2-rest a svg:last-child { margin-left: auto; width: 18px; height: 18px; }
+.hm2-doors { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-4); padding-bottom: var(--edge); }
+.hm2-door { display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; align-items: center; column-gap: var(--space-3); color: var(--ink); transition: transform var(--duration-quick) var(--ease-out), box-shadow var(--duration-quick) var(--ease-out); }
+.hm2-door:hover { transform: translateY(-2px); box-shadow: var(--depth-2); }
+.hm2-door strong { font-family: var(--font-display); font-weight: 600; font-size: 20px; }
+.hm2-door span { grid-row: 2; color: var(--sub); font-weight: 700; font-size: 14px; }
+.hm2-door svg { grid-row: 1 / 3; grid-column: 2; width: 22px; height: 22px; }

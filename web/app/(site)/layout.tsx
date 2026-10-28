@@ -4,6 +4,8 @@ import { fontVars } from "../fonts";
 import "../theme.css";
 import "./site.css";
 import "../claw.css";
+import "../game-tokens.css";
+import "./site-game.css";
 
 // The public pages: the landing page (/) and sign-in (/signin). No account, no run, no API calls until you sign in.
 

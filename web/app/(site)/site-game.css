@@ -1,0 +1,30 @@
+/* The public site in the design system's game look: chunky 2px outlines, hard offset shadows, buttons on a 3D edge
+   that press down, Fredoka headlines and Nunito text (the tokens come from ../game-tokens.css). */
+body.st { font-family: var(--font-body); font-weight: 500; }
+.st a { text-decoration: none; }
+.st-sources a, .st-fine a, .st-auth-foot a { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.st .display, .st-hero h1, .st-head h2 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.01em; }
+.st-hero h1 { line-height: 1.02; }
+.st-sub, .st-head p { font-weight: 600; }
+
+.st-btn { min-height: 42px; border: var(--border-chunky) solid var(--outline); font-weight: 800; font-family: var(--font-body); transition: transform var(--duration-press) var(--ease-press), box-shadow var(--duration-press) var(--ease-press), background var(--duration-quick) var(--ease-out); }
+.st-btn.is-dark { background: var(--button); box-shadow: inset 0 2px 0 var(--shine), 0 var(--edge) 0 var(--button-edge); }
+.st-btn.is-blue, .st-btn.is-blue.is-glow { min-height: 52px; background: var(--button-blue); font-size: 16px; box-shadow: inset 0 2px 0 var(--shine), 0 var(--edge) 0 var(--button-blue-edge); }
+.st-btn.is-blue:hover { transform: none; }
+.st-btn.is-ghost { background: var(--card); box-shadow: 0 var(--edge) 0 var(--outline); }
+.st-btn:active:not(:disabled) { transform: translateY(var(--edge)); box-shadow: inset 0 2px 0 var(--shine), 0 0 0 var(--outline); }
+.st-actions, .st-top-right { padding-bottom: var(--edge); }
+.st-textlink { font-weight: 800; }
+
+.st-case, .st-card, .st-step, .st-form-card, .st-auth-card, .hx, .st-frame {
+  border: var(--border-chunky) solid var(--outline); border-radius: var(--radius-card); background: var(--card); box-shadow: var(--shadow-chunky);
+}
+.st-case { background: var(--card); }
+.st-step:not(:last-child)::after { border-color: var(--outline); border-width: 2.5px; }
+.st-step-n { font-weight: 900; color: var(--accent-ink); }
+.st-step h3, .st-card h3, .st-case-body h3.display { font-family: var(--font-display); font-weight: 600; font-size: 19px; }
+.st-icon { border: var(--border-chunky) solid var(--outline); border-radius: var(--radius); background: var(--accent-soft); color: var(--accent-ink); box-shadow: 0 2px 0 var(--outline); }
+.st-vig-chip, .st-chip { border: var(--border-chunky) solid currentColor; font-weight: 800; }
+.st-form input { border: var(--border-chunky) solid var(--outline); border-radius: var(--radius); font-weight: 600; }
+.st-form input:focus { outline: var(--border-heavy) solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .st-btn { transition: none; } }
