@@ -192,7 +192,7 @@ function nextLine(c: ChargeView, disputeLabel: string) {
 
 /** The owner's choices: the replies the API reads (api/replies.py). A rule is saved and remembered; "this one" settles
  * only this charge. The display-fee rule is the wording the recorded demo expects, word for word. */
-function choicesFor(code: string) {
+export function choicesFor(code: string) {
   const rule = code === "DF"
     ? [{ id: "rule", label: "Accept when notice is at least 14 days", text: "accept if notice is at least 14 days" }]
     : [];
