@@ -1585,6 +1585,7 @@ class PendingPayment(Contract):
     received: Money  # what the distributor paid on it
     source: Literal["portal", "bank"]  # bank: found by "Check for new payments"
     received_at: datetime
+    run_id: str | None = None  # set when the owner's autopilot started the agents on it at once
 
 
 class PaymentSync(Contract):

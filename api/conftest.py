@@ -127,6 +127,12 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(autouse=True)
+def _own_state_dir(tmp_path, monkeypatch):
+    """Each test keeps the owner's settings (api/autopilot.py) in its own folder, never the real state/."""
+    monkeypatch.setenv("CLAWBACK_STATE_DIR", str(tmp_path / "state"))
+
+
+@pytest.fixture(autouse=True)
 def _no_live_keys(request, monkeypatch):
     for name in LIVE:
         monkeypatch.delenv(name, raising=False)

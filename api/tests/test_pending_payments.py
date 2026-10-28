@@ -32,6 +32,14 @@ def api(monkeypatch):
     return TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def _manual_runs():
+    """These tests are about a received payment that waits for "Run the agents": the owner's autopilot is off."""
+    from api import accounts, autopilot, suppliers
+
+    autopilot.save(suppliers.supplier_of(accounts.get(accounts.DEFAULT)), autopilot.Autopilot(run_on_arrival=False))
+
+
 def test_a_payment_sent_from_the_portal_waits_and_starts_nothing(api):
     sent = api.post("/portal/payments/peak-bar").json()
     assert (sent["account_id"], sent["distributor"], sent["source"]) == ("peak-bar", "Northmart", "portal")

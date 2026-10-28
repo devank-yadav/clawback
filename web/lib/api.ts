@@ -135,7 +135,7 @@ export const syncPayments = () => call<PaymentSync>("/payments/sync", { method: 
 
 /** A payment the distributor sent from its portal, waiting for "Run the agents" (api/contracts.py PendingPayment).
  * The bank's and QuickBooks' pollers start their runs on their own; these wait for the admin. */
-export type PendingPayment = { id: string; account_id: string; distributor: string; invoice_id: string; expected: Money; received: Money; source: "portal" | "bank"; received_at: string };
+export type PendingPayment = { id: string; account_id: string; distributor: string; invoice_id: string; expected: Money; received: Money; source: "portal" | "bank"; received_at: string; run_id?: string | null };
 export const fetchPendingPayments = () => call<PendingPayment[]>("/payments/pending");
 /** POST /portal/payments/{account}: the distributor's "Send payment" (nothing runs; it waits as received). */
 export const sendPortalPayment = (account: string) => call<PendingPayment>(`/portal/payments/${q(account)}`, { method: "POST" });
@@ -252,3 +252,26 @@ export const fetchCompanyOverview = () => call<CompanyOverview>("/overview");
 /** GET /audit?run_id=: one run's entries (the run's audit drawer). */
 export const fetchRunAudit = (runId: string) => call<AuditEntry[]>(`/audit?run_id=${q(runId)}`);
 export const verifyAudit = () => call<AuditVerify>("/audit/verify");
+
+/** The owner's Settings (api/autopilot.py): what the agents may do without asking, and the weekly summary. */
+export type Autopilot = {
+  run_on_arrival: boolean;
+  send_disputes_under: Money | null;
+  post_fair_under: Money | null;
+  digest_email: string | null;
+  digest_weekly: boolean;
+  digest_last_sent: string | null;
+  updated_by: string | null;
+  updated_at: string | null;
+};
+type Clearable = "send_disputes_under" | "post_fair_under" | "digest_email";
+export type AutopilotChange = Partial<Pick<Autopilot, "run_on_arrival" | "send_disputes_under" | "post_fair_under" | "digest_email" | "digest_weekly">> & { clear?: Clearable[] };
+export const fetchAutopilot = () => call<Autopilot>("/settings/autopilot");
+export const saveAutopilot = (change: AutopilotChange) => call<Autopilot>("/settings/autopilot", { method: "PUT", body: change });
+
+/** The weekly summary (api/digest.py), and sending it now. */
+export type DigestItem = { title: string; distributor: string; amount: number | null; level: string; actions: { label: string; url: string }[]; open_url: string };
+export type Digest = { to: string | null; subject: string; text: string; html: string; items: DigestItem[] };
+export type DigestSent = { status: "sent" | "not_sent"; to: string | null; detail: string; subject: string };
+export const previewDigest = () => call<Digest>("/digest/preview");
+export const sendDigest = () => call<DigestSent>("/digest/send", { method: "POST" });

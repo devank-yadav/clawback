@@ -10,7 +10,7 @@ export type Verdict = "dispute" | "split" | "fair" | "ask" | "skip";
 
 const VERDICT: Record<Verdict, { word: string; tone: "dispute" | "fair" | "wait" | "neutral" }> = {
   dispute: { word: "Claw back", tone: "dispute" },
-  split: { word: "Split", tone: "dispute" },
+  split: { word: "Part back", tone: "dispute" },
   fair: { word: "Fair", tone: "fair" },
   ask: { word: "Your call", tone: "wait" },
   skip: { word: "Can’t verify", tone: "neutral" },
@@ -115,13 +115,13 @@ export function Scoreboard({ back, fair, questions = 0, pips = [], current, labe
   return (
     <section className="cb-score" aria-label="Where the money stands">
       <div className="cb-score-main">
-        <span className="cb-score-label">{label ?? "Clawing back"}</span>
+        <span className="cb-score-label">{label ?? "Getting back"}</span>
         <strong className="cb-score-big">{money(Math.round(b))}</strong>
         {line && <span className="cb-score-line">{line}</span>}
       </div>
       <div className="cb-score-cells">
-        <div className="cb-score-cell is-fair"><span>Fair, accepted</span><b>{money(Math.round(f))}</b></div>
-        <div className="cb-score-cell is-wait"><span>Your call</span><b>{questions ? `${questions} question${questions === 1 ? "" : "s"}` : "None"}</b></div>
+        <div className="cb-score-cell is-fair"><span>Fair charges</span><b>{money(Math.round(f))}</b></div>
+        <div className="cb-score-cell is-wait"><span>Questions for you</span><b>{questions ? `${questions} question${questions === 1 ? "" : "s"}` : "None"}</b></div>
       </div>
       {pips.length > 0 && (
         <div className="cb-score-pips">

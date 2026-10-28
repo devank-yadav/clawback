@@ -21,12 +21,16 @@ def built(monkeypatch, tmp_path):
     accounts.clear()
     monkeypatch.setenv("DEMO_STORY", "on")
     monkeypatch.setenv("CLAWBACK_STATE_DIR", str(tmp_path))
+    from api import autopilot, suppliers  # these tests follow a payment that waits for "Run the agents"
+
+    autopilot.save(suppliers.supplier_of(accounts.get(accounts.DEFAULT)), autopilot.Autopilot(run_on_arrival=False))
     pipeline.reset(), disputes.reset()
     started = time.monotonic()
     result = story.build()
     yield result, time.monotonic() - started
     pipeline.reset(), disputes.reset()
     accounts.clear()
+
 
 
 def test_the_history_is_replayed_quickly_and_once(built):

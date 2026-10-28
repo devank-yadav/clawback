@@ -16,7 +16,8 @@ from api.routes import remittance as remittance_routes
 from api.routes import auth as auth_routes
 from api.routes import dispute_mail
 from api.routes import drive as drive_routes
-from api import dispute_email, drive, story
+from api.routes import settings as settings_routes
+from api import digest, dispute_email, drive, story
 
 load_dotenv()
 log = logging.getLogger("clawback")
@@ -40,6 +41,8 @@ async def lifespan(_app: FastAPI):
         log.info("google drive poller started")
     if dispute_email.start_poller():
         log.info("gmail poller started (dispute replies and Sent)")
+    if digest.start_weekly():
+        log.info("weekly summary loop started (Mondays)")
     yield
     if dispute_email.poller:
         dispute_email.poller.stop()
@@ -67,6 +70,7 @@ app.include_router(remittance_routes.router)  # bring in a remittance advice (ap
 app.include_router(auth_routes.router)  # sign-in (api/users.py)
 app.include_router(drive_routes.router)  # Google Drive: Sync now, status (api/drive.py)
 app.include_router(dispute_mail.router)  # dispute email: review, send, thread (api/dispute_email.py)
+app.include_router(settings_routes.router)  # the owner's autopilot limits and the weekly summary (api/autopilot.py, api/digest.py)
 
 
 @app.get("/health")

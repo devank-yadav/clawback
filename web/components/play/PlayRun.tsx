@@ -143,7 +143,7 @@ function PlayApproval() {
         <span className="cb-check-text"><span>Post fair charges like these automatically from now on</span><small>Memos up to {money(a.amount)} post without asking</small></span>
       </label>
       <div className="cb-approval-actions">
-        <button type="button" className="cx-btn is-blue" disabled={busy} onClick={() => { setBusy(true); decideApproval(true, null, autoPost); }}>{busy ? "Posting…" : `Approve ${money(a.amount)}`}</button>
+        <button type="button" className="cx-btn is-blue" disabled={busy} onClick={() => { setBusy(true); decideApproval(true, null, autoPost); }}>{busy ? "Sending…" : `Send ${money(a.amount)} to QuickBooks`}</button>
         <button type="button" className="cx-btn is-ghost" disabled={busy} onClick={() => { setBusy(true); decideApproval(false, `Held by ${cast.owner}`); }}>Not yet</button>
       </div>
     </section>
@@ -250,7 +250,7 @@ export function PlayRun({ pending, done, onOpen, head }: { pending: Stage[]; don
         questions={questions}
         pips={[...charges.map(verdictOf), ...Array<Verdict | null>(Math.max(0, (r?.charge_count ?? 0) - charges.length)).fill(null)]}
         current={current && !verdictOf(current) ? spot : undefined}
-        label={showDone ? "Disputed with proof" : "Clawing back"}
+        label={showDone ? "Disputed with proof" : "Getting back"}
         line={r ? `of the ${money(r.taken)} ${r.counterparty} kept` : undefined}
       />
       <div className="cb-run-stage">{stage}</div>

@@ -2,7 +2,7 @@
 
 // The app's one frame, on every page under /app: a finance-style left sidebar with the supplier's name, the
 // distributor you're looking at (a switcher listing only this supplier's distributors, each with its plain status),
-// the places (Agents, Distributors, History, Contracts, Saved, Connections), a Tools group, and the user menu with
+// four places (Home, Payments, Disputes, Settings; the rest open from Settings), and the user menu with
 // Sign out at the bottom. No top tab bar. On a phone the sidebar folds into a menu button. Signed-out visitors go to
 // /signin and come back. Every link keeps the account in the URL (withAccount). The name TopBar stays so every page
 // that rendered the old bar renders this frame unchanged.
@@ -11,8 +11,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  Bell, Bookmark, House, ChevronsUpDown, Gavel, ExternalLink, FileText, History as HistoryIcon,
-  KeyRound, Landmark, Layers, LogIn, LogOut, Menu, MessagesSquare, Plug, RotateCcw, Truck, UserRound, Workflow, X,
+  Bell, House, ChevronsUpDown, Gavel, Settings as SettingsIcon,
+  KeyRound, Landmark, Layers, LogIn, LogOut, Menu, MessagesSquare, RotateCcw, UserRound, Workflow, X,
 } from "lucide-react";
 import { Logo } from "@/components/console/ui";
 import { inkOn, withAccount } from "@/lib/accounts";
@@ -27,20 +27,19 @@ type Item = { key: string; href: string; label: string; icon: ReactNode; view?: 
 
 const MAIN: Item[] = [
   { key: "home", href: "/app", label: "Home", icon: <House /> },
-  { key: "agents", href: "/", label: "Agents", icon: <Workflow /> },
-  { key: "distributors", href: "/distributors", label: "Distributors", icon: <Truck /> },
-  { key: "history", href: "/history", label: "History", icon: <HistoryIcon /> },
+  { key: "agents", href: "/", label: "Payments", icon: <Workflow /> },
   { key: "disputes", href: "/disputes", label: "Disputes", icon: <Gavel /> },
-  { key: "contracts", href: "/contracts", label: "Contracts", icon: <FileText /> },
-  { key: "saved", href: "/saved", label: "Saved", icon: <Bookmark /> },
-  { key: "connections", href: "/connections", label: "Connections", icon: <Plug /> },
+  { key: "settings", href: "/settings", label: "Settings", icon: <SettingsIcon /> },
 ];
+/** Pages reached from Settings: the sidebar marks Settings while you're on one. */
+const UNDER_SETTINGS = ["settings", "distributors", "history", "contracts", "saved", "connections"];
 
 /** Which sidebar item the address is: /app → home, /app/history → history; a run's own pages are the agents'. */
 function activeKey(path: string): string | null {
   if (path === "/app") return "home";
   const seg = path.replace(/^\/app\/?/, "").split("/")[0];
-  if (["review", "activity", "approval", "upload"].includes(seg)) return "agents";
+  if (["review", "activity", "approval", "upload", "agents"].includes(seg)) return "agents";
+  if (UNDER_SETTINGS.includes(seg)) return "settings";
   return MAIN.some((i) => i.key === seg) ? seg : null;
 }
 
@@ -378,11 +377,6 @@ export default function TopBar({ account }: { account: Account | null; active?: 
         <Switcher account={account} onPick={close} />
         <nav className="sb-nav" aria-label="Clawback">
           {MAIN.map(link)}
-          {account && (
-            <a className="sb-link" href={withAccount("/portal", account.id)} target="_blank" rel="noreferrer" onClick={close}>
-              <ExternalLink /><span>{account.distributor.portal_name}</span>
-            </a>
-          )}
         </nav>
         <div className="sb-foot"><UserMenu account={account} /></div>
       </aside>

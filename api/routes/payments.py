@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from api import accounts, pipeline, tenancy
+from api import accounts, autopilot, pipeline, tenancy
 from api.auth import limit
 from api.contracts import FoundPayment, PaymentResponse, PaymentSync, PendingPayment
 from api.integrations import nessie, replay
@@ -74,10 +74,10 @@ def sync_payments(who: Caller = Depends(current_supplier)) -> PaymentSync:
                                               invoice_id=run.account.invoice.id, run_id=run.id))
     if not found:
         due = _next_due(who, story.NEXT_PAYMENT)
-        if due is not None:  # received, not started: it waits for "Run the agents" like a portal payment
-            _receive(due, "bank")
+        if due is not None:  # received; with run_on_arrival (Settings) the agents start at once, else it waits
+            got = _receive(due, "bank")
             found.append(FoundPayment(source="bank", account_id=due.id, distributor=due.distributor.name,
-                                      amount=due.invoice.received, invoice_id=due.invoice.id, run_id=None))
+                                      amount=due.invoice.received, invoice_id=due.invoice.id, run_id=got.run_id))
     if not found:
         return PaymentSync(checked=checked, found=[], message="No new payments.")
     names = ", ".join(f"{f.distributor} paid ${f.amount:,.2f} on {f.invoice_id}" if f.amount is not None
@@ -110,7 +110,11 @@ def account_pays(account: str, who: Caller = Depends(current_supplier)) -> Payme
 
 
 def _pays(account_id: str, who: Caller) -> PaymentResponse:
-    account = account_or_404(account_id, who)
+    return _start(account_or_404(account_id, who))
+
+
+def _start(account: accounts.Account) -> PaymentResponse:
+    """Start the agents on the account's payment: a Nessie deposit when the keys are set, else directly."""
     client = None if replay.demo_mode() else nessie.client()
     if client is None:
         run = pipeline.start(None, account=account)
@@ -151,6 +155,10 @@ def _receive(a: accounts.Account, source: str) -> PendingPayment:
                        invoice_id=a.invoice.id, expected=a.invoice.expected, received=a.invoice.received,
                        source=source, received_at=datetime.now(timezone.utc))
     _PENDING[p.id] = p
+    if autopilot.of_account(a).run_on_arrival:  # the owner's Settings: received payments start the agents at once
+        started = _start(a)
+        _PENDING.pop(p.id, None)
+        return p.model_copy(update={"run_id": started.run_id})
     return p
 
 

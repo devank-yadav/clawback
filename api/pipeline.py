@@ -161,6 +161,12 @@ def auto_post_of(account: accounts.Account | str | None, policy: eng.Policy) -> 
     account = accounts.resolve(account or accounts.DEFAULT)
     if account.id in AUTO_POST:
         return AUTO_POST[account.id]
+    from api import autopilot  # the owner's limit from Settings, for every one of the supplier's accounts
+
+    own = autopilot.of_account(account)
+    if own.post_fair_under is not None:
+        return AutoPost(limit=own.post_fair_under, set_by=own.updated_by or "the owner", approval_id="settings",
+                        set_at=own.updated_at or _now())
     if policy.auto_post_limit is None:
         return None
     return AutoPost(limit=policy.auto_post_limit, set_by="policy.yaml", approval_id="policy", set_at=_now())
@@ -717,10 +723,13 @@ def _file_dispute(run: Run, charge_ids: list[str], policy: eng.Policy) -> None:
     filed_before = len({e.data.id for e in run.events if e.type == "dispute"})
     dispute_id = f"D-{run.account.dispute_start(run.kind) + filed_before:04d}"
     # Every dispute starts as a draft the admin reviews and sends (api/dispute_email.py, POST /disputes/{id}/send);
-    # with policy.yaml auto_send on, one within the auto-dispute limit is filed and emailed at once.
+    # with policy.yaml auto_send on, or under the owner's Settings limit (api/autopilot.py), one within the
+    # auto-dispute limit is filed and emailed at once.
     from api import dispute_email  # it reads runs from here
 
-    auto = by_policy and dispute_email.auto_send()
+    from api import autopilot
+
+    auto = by_policy and (dispute_email.auto_send() or autopilot.sends_dispute(run.account, total))
     dispute = Dispute(id=dispute_id, remittance_id=next(iter(run.charges.values())).remittance_id or "",
                       counterparty=run.distributor, lines=lines, total=total,
                       status="filed" if auto else "ready_to_send", approved_by="policy" if auto else "owner",
@@ -764,13 +773,14 @@ def _request_credit_memo(run: Run, policy: eng.Policy, accepted: list[tuple[str,
         return
     standing = auto_post_of(run.account, policy)
     if standing and amount <= standing.limit:
+        where = "in Settings" if standing.approval_id == "settings" else f"when approving {standing.approval_id}"
         approved = approval.model_copy(update={
             "status": "approved", "decided_at": _now(), "posted_by_auto_post": standing,
             "note": f"Posted by {owner}'s auto-post rule: fair-charge memos up to ${standing.limit:,.0f} post without "
-                    f"asking (set when approving {standing.approval_id})."})
+                    f"asking (set {where})."})
         run.emit("approval", approved)
         run.log(f"Credit memo of ${amount:,.0f} is within {owner}'s auto-post rule (up to ${standing.limit:,.0f}, set "
-                f"when approving {standing.approval_id}): posting without asking.", "good", "bookkeeper")
+                f"{where}): posting without asking.", "good", "bookkeeper")
         _post_books(run, approved)
         return
     run.emit("approval", approval)

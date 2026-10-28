@@ -73,16 +73,19 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
 
 
   const next = pending[0] ?? null;
+  // The owner's Settings: with "start the agents when a payment comes in" on (the default), nothing waits for a click.
+  const settings = useFetched(useCallback(() => api.fetchAutopilot(), []));
+  const auto = settings.data?.run_on_arrival ?? true;
   const upload = (
     <button className="cx-btn is-ghost fl-upload" onClick={() => setPasting((v) => !v)} disabled={busy} aria-expanded={pasting}>
-      <Upload aria-hidden="true" />Upload a remittance
+      <Upload aria-hidden="true" />Upload a payment slip
     </button>
   );
 
   return (
     <div className="cb-run cb-start">
       <header className="cb-run-head">
-        <h1 className="cb-run-pay">Agents</h1>
+        <h1 className="cb-run-pay">Payments</h1>
         <p className="cb-run-sub">{cast.brand}{cast.distributor ? ` · ${cast.distributor}` : ""}</p>
       </header>
 
@@ -111,7 +114,9 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
             <>
               <span className="cx-pill is-green">Watching</span>
               <h2>No new payment from {cast.distributor} yet.</h2>
-              <p>When one comes in from the bank or QuickBooks, it shows up here, ready for the agents.</p>
+              <p>{auto
+                ? "When one comes in from the bank or QuickBooks, the agents start on their own. You’re only asked when the contract leaves something to you."
+                : "When one comes in from the bank or QuickBooks, it shows up here, ready for you to run the agents."}</p>
               <div className="cb-run-next"><CheckPayments account={account?.id} />{upload}</div>
             </>
           )}

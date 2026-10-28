@@ -113,13 +113,13 @@ export default function Dashboard() {
               onDone={() => { writeSeen(t.recovered); setLanded(false); }} />
           )}
           <div className="cb-score-main">
-            <span className="cb-score-label">Clawing back</span>
+            <span className="cb-score-label">Getting back</span>
             <strong className="cb-score-big">{t ? <Count value={t.disputed_awaiting_reply} /> : "–"}</strong>
             {t && <span className="cb-score-line">in {openCount} open dispute{openCount === 1 ? "" : "s"}, of {money(t.taken)} taken from payments</span>}
           </div>
           <div className="cb-score-cells">
-            <div className="cb-score-cell is-good"><span>Recovered</span><b className="hm-recovered">{t ? (rising && seen !== null ? <Count value={t.recovered} from={seen} hold={!landed} /> : <Count value={t.recovered} />) : "–"}</b></div>
-            <div className="cb-score-cell is-fair"><span>Fair, accepted</span><b>{t ? <Count value={t.fair} /> : "–"}</b></div>
+            <div className="cb-score-cell is-good"><span>Back in your account</span><b className="hm-recovered">{t ? (rising && seen !== null ? <Count value={t.recovered} from={seen} hold={!landed} /> : <Count value={t.recovered} />) : "–"}</b></div>
+            <div className="cb-score-cell is-fair"><span>Fair charges</span><b>{t ? <Count value={t.fair} /> : "–"}</b></div>
           </div>
         </section>
 
