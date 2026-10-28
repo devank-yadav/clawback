@@ -143,9 +143,9 @@ function FlowFor() {
                   <span className="fl-replay" role="status"><span className="fl-replay-tag">Replaying the run</span><button className="cx-btn is-ghost is-small" onClick={skipReplay}>Skip to the result</button></span>
                 ) : phase === "run" ? (
                   <Elapsed from={r?.received_at ?? state.feed[0]?.at ?? null} running={status === "started"} decidedIn={view.value?.seconds_to_decided ?? null} />
-                ) : (
+                ) : pending.length === 0 ? (
                   <button className="cx-btn is-ghost is-small" onClick={() => { setOpened(true); window.scrollTo({ top: 0 }); void replay(); }}>Replay</button>
-                )}
+                ) : null}
                 {/* Back to the start screen; the agents keep going on the server, and the run stays one click away. */}
                 <button className="cx-btn is-ghost is-small fl-back" onClick={restart}><ArrowLeft aria-hidden="true" />{phase === "done" ? "Back to the start" : "Back"}</button>
               </span>

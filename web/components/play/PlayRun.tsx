@@ -17,7 +17,7 @@ import type { Stage } from "@/components/flow/stages";
 import { money } from "@/lib/format";
 import { useChargeDetail } from "@/lib/useChargeDetail";
 import type { ChargeView } from "@/lib/workspace";
-import { CardQueue, DeductionCard, DecisionCard, Scoreboard, VerdictStamp, type Verdict } from "./PlayKit";
+import { CardQueue, DeductionCard, DecisionCard, Scoreboard, Spinner, VerdictStamp, type Verdict } from "./PlayKit";
 
 const HOLD_MS = 1500; // how long a stamped card stays before the next one is dealt
 
@@ -26,6 +26,49 @@ const VERDICT_OF: Record<string, Verdict | null> = {
 };
 
 const verdictOf = (c: ChargeView) => VERDICT_OF[c.status] ?? null;
+
+/** Each agent's work in plain words, for the card while it checks. The run's own line is used when it is short and
+ * plain; a long or technical log line ("1 terms agreed… a second Claude read") falls back to what that agent does. */
+const PLAIN: Record<string, (them: string) => string> = {
+  system: () => "Clawback is lining up the charges",
+  reader: () => "The deal readers are reading the contract and emails, word for word",
+  investigator: () => "The Investigator is checking the charge against the clause and the sales rows",
+  gate: () => "The rules are deciding: dispute, accept or ask you",
+  policy: () => "The rules are deciding: dispute, accept or ask you",
+  negotiator: (them) => `The Negotiator is predicting ${them}’s comeback before filing`,
+  bookkeeper: () => "The Bookkeeper is drafting the credit memo",
+};
+function plainLine(actor: string, text: string, them: string): string {
+  const technical = text.length > 80 || /[()]|Gemini|Claude|terms agreed|quote/i.test(text);
+  if (!technical) return `${ACTOR[actor] ?? actor}: ${text}`;
+  return (PLAIN[actor] ?? (() => `${ACTOR[actor] ?? actor} is working`))(them);
+}
+
+/** The first seconds of a run, before any charge is listed: the two readers on the contract, document by document. */
+function ReadingCard() {
+  const { state, cast } = useRun();
+  const read = state.stages.read;
+  const docs = state.stages.docs;
+  const total = read?.total ?? 0;
+  const done = read?.done ?? 0;
+  return (
+    <article className="cb-deduction is-checking cb-reading" aria-label="Reading the contract">
+      <i className="cb-scan" aria-hidden="true" />
+      <div className="cb-deduction-top"><span className="cx-tag">AI</span><span className="cb-deduction-meta">Claude and Gemini, separately</span></div>
+      <h3 className="cb-deduction-title">Reading {cast.distributor}’s contract</h3>
+      <p className="cb-reading-why">A term only counts if both readers agree and the sentence is in the contract word for word.</p>
+      {total > 0 && (
+        <ol className="cb-reading-docs" aria-label={`${done} of ${total} documents read`}>
+          {Array.from({ length: total }, (_, k) => <li key={k} className={k < done ? "is-done" : k === done ? "is-now" : ""} />)}
+        </ol>
+      )}
+      <div className="cb-deduction-work" role="status">
+        <Spinner />
+        <span>{docs.length ? `Read: ${docs.at(-1)!.label}` : read?.label ? `${read.label}…` : "Opening the contract and the emails…"}</span>
+      </div>
+    </article>
+  );
+}
 
 /** The charge in the spotlight: it waits on each stamped card for HOLD_MS, then deals the next. */
 function useSpotlight(charges: ChargeView[], runKey: string) {
@@ -148,7 +191,7 @@ export function PlayRun({ pending, done, onOpen, head }: { pending: Stage[]; don
   const people = pending.filter((s) => s.key === "approval" || s.key === "file");
   // The agent at work, in its own words: the newest line in the run's feed.
   const last = state.feed.at(-1);
-  const agentLine = last ? `${ACTOR[last.actor] ?? last.actor}: ${last.text}` : undefined;
+  const agentLine = last ? plainLine(last.actor, last.text, cast.distributor) : undefined;
 
   const cards = useMemo(() => charges.map((c) => ({ id: c.id, title: c.title, amount: c.amount, verdict: verdictOf(c) })), [charges]);
   // until every charge has arrived, the pips count the payment's charges, not just the ones read so far
@@ -156,9 +199,7 @@ export function PlayRun({ pending, done, onOpen, head }: { pending: Stage[]; don
 
   let stage: ReactNode;
   if (!charges.length) {
-    stage = (
-      <DeductionCard title={`${cast.distributor}’s charges`} amount={r?.taken ?? 0} state="checking" agent={agentLine ?? "The Payment reader is listing every deduction"} />
-    );
+    stage = <ReadingCard />;
   } else if (current && current.status === "Needs your input" && view.question && !view.question.answer) {
     stage = <PlayQuestion key={view.question.id} charge={current} />;
   } else if (allDecided && atEnd && people.length) {

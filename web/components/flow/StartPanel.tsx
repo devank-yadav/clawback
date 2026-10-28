@@ -15,9 +15,8 @@ import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
 import { money } from "@/lib/format";
 import { useFetched } from "@/lib/useFetched";
-import { PageHeader } from "@/components/ui/kit";
 import CheckPayments from "@/components/app/CheckPayments";
-import { ReceivedList, RunAgentsButton, useReceivedPayments } from "@/components/app/ReceivedPayments";
+import { RunAgentsButton, useReceivedPayments } from "@/components/app/ReceivedPayments";
 import { AgentRoster } from "./AgentRoster";
 
 /** The supplier's distributors whose payment the agents are checking right now, read again every 4 seconds. */
@@ -73,24 +72,52 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
   }
 
 
+  const next = pending[0] ?? null;
+  const upload = (
+    <button className="cx-btn is-ghost fl-upload" onClick={() => setPasting((v) => !v)} disabled={busy} aria-expanded={pasting}>
+      <Upload aria-hidden="true" />Upload a remittance
+    </button>
+  );
+
   return (
-    <div className="fl-hero">
-      <section className="fl-start" aria-label="Start a payment check">
-        <PageHeader
-          title="Agents"
-          line={pending.length > 0 ? undefined : <>
-            {elsewhere.length > 0
-              ? <>The agents are checking {elsewhere.map((d) => `${d.distributor.name}’s`).join(" and ")} payment now. <Link className="ph-link" href={withAccount("/", elsewhere[0].account_id, elsewhere[0].latest_run_id ? { run: elsewhere[0].latest_run_id } : undefined)}>Watch it</Link></>
-              : <>No new payment from {cast.distributor}. New payments show up here; once the bank or QuickBooks is connected, they start the agents on their own.</>}
-          </>}
-          actions={!reading && <>
-            <button className="cx-btn is-ghost fl-upload" onClick={() => setPasting((v) => !v)} disabled={busy} aria-expanded={pasting}>
-              <Upload aria-hidden="true" />Upload
-            </button>
-            {pending.length > 0 ? <RunAgentsButton received={received} /> : <CheckPayments account={account?.id} />}
-          </>}
-        />
-        <ReceivedList received={received} />
+    <div className="cb-run cb-start">
+      <header className="cb-run-head">
+        <h1 className="cb-run-pay">Agents</h1>
+        <p className="cb-run-sub">{cast.brand}{cast.distributor ? ` · ${cast.distributor}` : ""}</p>
+      </header>
+
+      {/* One card: the payment that's waiting, the run going on elsewhere, or that nothing has come in yet. */}
+      {!reading && (
+        <section className="cb-card cb-hero" aria-label="The next payment">
+          {next ? (
+            <>
+              <span className="cx-pill is-accent is-live">New payment received</span>
+              <h2>{next.distributor} paid {money(next.received)} of your {money(next.expected)} invoice.</h2>
+              <p>The agents check every charge they kept against the signed contract, one at a time.</p>
+              <div className="cb-run-next"><RunAgentsButton received={received} />{upload}</div>
+              {pending.length > 1 && <small className="cb-hero-more">{pending.length - 1} more payment{pending.length > 2 ? "s" : ""} waiting after this one</small>}
+            </>
+          ) : elsewhere.length > 0 ? (
+            <>
+              <span className="cx-pill is-accent is-live">Working</span>
+              <h2>The agents are checking {elsewhere.map((d) => `${d.distributor.name}’s`).join(" and ")} payment.</h2>
+              <p>You can watch it, or wait here for {cast.distributor}’s next payment.</p>
+              <div className="cb-run-next">
+                <Link className="cx-btn is-blue" href={withAccount("/", elsewhere[0].account_id, elsewhere[0].latest_run_id ? { run: elsewhere[0].latest_run_id } : undefined)}>Watch it</Link>
+                {upload}
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="cx-pill is-green">Watching</span>
+              <h2>No new payment from {cast.distributor} yet.</h2>
+              <p>When one comes in from the bank or QuickBooks, it shows up here, ready for the agents.</p>
+              <div className="cb-run-next"><CheckPayments account={account?.id} />{upload}</div>
+            </>
+          )}
+        </section>
+      )}
+
         {reading && (
           <div className="fl-drop is-busy">
             <span className="fl-reading" aria-live="polite">
@@ -126,18 +153,15 @@ export function StartPanel({ onStart, onOpenLast }: { onStart: () => void; onOpe
         {limited && <div className="fl-problem" role="status">{limited}</div>}
         {error && <div className="fl-problem" role="alert">{error}</div>}
 
-        {state.run && !waitingOnYou && last && (
-          <div className="fl-last">
-            <span>
-              Last payment: {state.run.status === "failed" ? "the agents stopped" : `${money(last.disputed)} disputed · ${money(last.accepted)} fair${last.questions ? ` · ${last.questions} question${last.questions === 1 ? "" : "s"}` : ""}`}
-            </span>
-            <button className="cx-btn is-ghost" onClick={onOpenLast}>See the result</button>
-          </div>
-        )}
+      {state.run && !waitingOnYou && last && (
+        <button type="button" className="cb-card cb-last" onClick={onOpenLast}>
+          <span>Last payment</span>
+          <strong>{state.run.status === "failed" ? "The agents stopped" : `${money(last.disputed)} disputed · ${money(last.accepted)} fair${last.questions ? ` · ${last.questions} question${last.questions === 1 ? "" : "s"}` : ""}`}</strong>
+          <em>See the result</em>
+        </button>
+      )}
 
-        <AgentRoster account={account?.id} working={starting || !!reading || !!runningId || elsewhere.length > 0} received={pending[0]?.distributor ?? null} />
-
-      </section>
+      <AgentRoster compact account={account?.id} working={starting || !!reading || !!runningId || elsewhere.length > 0} received={next?.distributor ?? null} />
     </div>
   );
 }

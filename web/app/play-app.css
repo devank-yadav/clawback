@@ -45,3 +45,74 @@ p a:not(.cx-btn):not([class*="cb-"]), small a:not(.cx-btn), .ph-link, .cx-link, 
 .hm2-door strong { font-family: var(--font-display); font-weight: 600; font-size: 20px; }
 .hm2-door span { grid-row: 2; color: var(--sub); font-weight: 700; font-size: 14px; }
 .hm2-door svg { grid-row: 1 / 3; grid-column: 2; width: 22px; height: 22px; }
+
+/* The Agents page, every phase in the same 980px column (no width jumps). */
+.cb-run { width: 100%; }
+.cb-queue { grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); }
+
+/* Start: one card for the next payment, the last payment as a single line, then the team. */
+.cb-start { padding-top: var(--space-8); padding-bottom: var(--space-12); }
+.cb-start .cb-run-pay { font-size: 40px; }
+.cb-hero { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-8); }
+.cb-hero h2 { font-family: var(--font-display); font-weight: 600; font-size: 34px; line-height: 1.1; letter-spacing: -0.01em; color: var(--ink); max-width: 22ch; }
+.cb-hero p { color: var(--sub); font-size: 17px; font-weight: 600; max-width: 52ch; }
+.cb-hero .cb-run-next { justify-content: flex-start; margin-top: var(--space-2); }
+.cb-hero .ck { display: inline-flex; align-items: center; gap: var(--space-2); }
+.cb-hero-more { color: var(--faint); font-weight: 800; }
+.cb-last { display: flex; align-items: center; gap: var(--space-4); width: 100%; padding: var(--space-4) var(--space-5); text-align: left; cursor: pointer; transition: transform var(--duration-quick) var(--ease-out), box-shadow var(--duration-quick) var(--ease-out); }
+.cb-last:hover { transform: translateY(-2px); box-shadow: var(--depth-2); }
+.cb-last span { color: var(--faint); font-size: 13px; font-weight: 900; }
+.cb-last strong { font-size: 16px; font-weight: 800; color: var(--ink); }
+.cb-last em { margin-left: auto; font-style: normal; font-weight: 800; color: var(--accent-ink); }
+
+.cb-team { display: flex; flex-direction: column; gap: var(--space-4); }
+.cb-team-h { font-family: var(--font-display); font-weight: 600; font-size: 22px; color: var(--ink); margin-bottom: var(--space-3); }
+.cb-team-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: var(--space-3); }
+.cb-agent-chip { position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: var(--border-chunky) solid var(--outline); border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow-chunky-sm); }
+.cb-agent-n { position: absolute; top: -9px; left: -9px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; border: var(--border-chunky) solid var(--outline); background: var(--card); color: var(--ink); font-size: 11px; font-weight: 900; }
+.cb-agent-icon { width: 38px; height: 38px; border-radius: var(--radius); display: grid; place-items: center; border: var(--border-chunky) solid var(--accent-ink); background: var(--accent-soft); color: var(--accent-ink); }
+.cb-agent-icon svg { width: 20px; height: 20px; }
+.cb-agent-text { display: flex; flex-direction: column; min-width: 0; }
+.cb-agent-text strong { font-weight: 900; color: var(--ink); }
+.cb-agent-text small { color: var(--sub); font-size: 13px; font-weight: 600; line-height: 1.35; }
+.cb-agent-chip .cx-tag { align-self: start; }
+.cb-agent-chip.is-working .cb-agent-icon { animation: cx-pulse var(--duration-pulse) ease-in-out infinite; }
+.cb-team-sources { display: flex; align-items: center; gap: var(--space-2) var(--space-4); flex-wrap: wrap; color: var(--sub); font-size: 14px; font-weight: 700; }
+.cb-team-sources > span:first-child { color: var(--faint); font-weight: 900; font-size: 13px; }
+.cb-src { display: inline-flex; align-items: center; gap: 6px; }
+.cb-src i { width: 9px; height: 9px; border-radius: 50%; background: var(--raised-2); border: 2px solid var(--sub); }
+.cb-src.is-live i { background: var(--green); border-color: var(--green-edge); }
+
+/* The first card of a run: the readers on the contract. */
+.cb-reading-why { color: var(--sub); font-size: 16px; font-weight: 600; }
+.cb-reading-docs { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; }
+.cb-reading-docs li { flex: 1; height: 12px; border-radius: var(--radius-pill); border: var(--border-chunky) solid var(--line-strong); background: var(--raised); }
+.cb-reading-docs li.is-done { background: var(--fair); border-color: var(--fair-edge); box-shadow: inset 0 2px 0 var(--shine); }
+.cb-reading-docs li.is-now { border-color: var(--accent); background: var(--accent-soft); animation: cx-pulse var(--duration-pulse) ease-in-out infinite; }
+
+/* The dispute email row and composer, in the game look (they come from components/disputes/DisputeMail.tsx). */
+.cb-play-dispute .cm-ready, .cm-ready { background: var(--card-2); border: var(--border-chunky) solid var(--outline); border-radius: var(--radius); box-shadow: var(--shadow-chunky-sm); }
+.cm-ready-text strong { font-weight: 800; }
+.cm-send, .cm-send.is-glow { min-height: 44px; padding: 0 var(--space-5); border: var(--border-chunky) solid var(--outline); border-radius: var(--radius-pill); background: var(--button-blue); color: #fff; font-weight: 800; box-shadow: inset 0 2px 0 var(--shine), 0 var(--edge) 0 var(--button-blue-edge); transition: transform var(--duration-press) var(--ease-press), box-shadow var(--duration-press) var(--ease-press); }
+.cm-send:hover:not(:disabled), .cm-send.is-glow:hover:not(:disabled) { transform: none; background: var(--button-blue-hover); box-shadow: inset 0 2px 0 var(--shine), 0 var(--edge) 0 var(--button-blue-edge); }
+.cm-send:active:not(:disabled) { transform: translateY(var(--edge)); box-shadow: inset 0 2px 0 var(--shine), 0 0 0 var(--button-blue-edge); }
+.cm-letter-wrap, .cm-letter { border-radius: var(--radius-card); }
+.cm-letter { border: var(--border-chunky) solid var(--outline); box-shadow: var(--shadow-chunky-sm); }
+
+@media (max-width: 720px) {
+  .cb-hero { padding: var(--space-5); }
+  .cb-hero h2 { font-size: 26px; }
+  .cb-start .cb-run-pay { font-size: 30px; }
+  .cb-last { flex-wrap: wrap; }
+  .cb-last em { margin-left: 0; }
+}
+
+/* "Check for new payments" (app/CheckPayments) in the same chunky blue as every hero button, not the old glow. */
+.ck .cx-btn.is-blue, .ck .cx-btn.is-blue:hover:not(:disabled) { transform: none; min-height: 50px; padding: 0 var(--space-6); border: var(--border-chunky) solid var(--outline); background: var(--button-blue); font-size: 16px; font-weight: 800; box-shadow: inset 0 2px 0 var(--shine), 0 var(--edge) 0 var(--button-blue-edge); }
+.ck .cx-btn.is-blue:hover:not(:disabled) { background: var(--button-blue-hover); }
+.ck .cx-btn.is-blue:active:not(:disabled) { transform: translateY(var(--edge)); box-shadow: inset 0 2px 0 var(--shine), 0 0 0 var(--button-blue-edge); }
+.ck .cx-btn.is-blue svg { width: 18px; height: 18px; }
+.cb-hero .fl-upload { min-height: 50px; padding: 0 var(--space-5); font-size: 15px; }
+.cb-agent-chip em.cx-tag { font-style: normal; }
+/* the card on the stage keeps a blue ring in the row, decided or not */
+.cb-qcard.is-current { outline: var(--border-heavy) solid var(--accent); outline-offset: 3px; }

@@ -34,7 +34,7 @@ function useNow() {
 
 const SOURCE_ICON: Record<string, React.ReactNode> = { bank: <Landmark />, quickbooks: <BookOpenCheck />, inbox: <Mail />, gmail: <Mail /> };
 
-export function AgentRoster({ account, working, received = null }: { account: string | null | undefined; working: boolean; received?: string | null }) {
+export function AgentRoster({ account, working, received = null, compact = false }: { account: string | null | undefined; working: boolean; received?: string | null; compact?: boolean }) {
   const now = useNow();
   const load = useCallback(() => Promise.all([
     api.fetchCompanyOverview().catch(() => null as CompanyOverview | null),
@@ -70,6 +70,37 @@ export function AgentRoster({ account, working, received = null }: { account: st
     { name: "Negotiator", tag: "AI", icon: <Gavel />, does: "Drafts each dispute with proof and answers the distributor’s replies", state: waitingEmail ? "Waiting on you" : "Idle", last: last(reply ? reply.text.replace(/\.$/, "").replace(/^./, (c) => c.toLowerCase()) : waitingEmail ? `drafted ${waitingEmail.title.split(":")[0]}` : null, reply?.at ?? waitingEmail?.since) },
     { name: "Bookkeeper", tag: "CODE", icon: <MessagesSquare />, does: "Drafts the credit memo for fair charges; posts only after your yes", state: waitingApproval ? "Waiting on you" : "Idle", last: last(waitingApproval ? `drafted a credit memo for ${waitingApproval.distributor}` : null, waitingApproval?.since) },
   ];
+
+  // The start screen's version: the seven agents as chips (what each does, AI or code, working or ready) and the
+  // payment sources on one line. No "last action" lines: those belong to other distributors' payments.
+  if (compact) {
+    return (
+      <div className="cb-team">
+        <section aria-labelledby="cb-team-h">
+          <h2 id="cb-team-h" className="cb-team-h">The agents that check each payment</h2>
+          <ol className="cb-team-list">
+            {roster.map((a, i) => (
+              <li key={a.name} className={`cb-agent-chip ${working ? "is-working" : ""}`}>
+                <span className="cb-agent-n" aria-hidden="true">{i + 1}</span>
+                <span className="cb-agent-icon" aria-hidden="true">{a.icon}</span>
+                <span className="cb-agent-text"><strong>{a.name.replace(" · Claude + Gemini", "")}</strong><small>{a.does}</small></span>
+                <em className={`cx-tag ${a.tag === "CODE" ? "is-code" : ""}`}>{a.tag === "CODE" ? "CODE" : "AI"}</em>
+              </li>
+            ))}
+          </ol>
+        </section>
+        {sources.length > 0 && (
+          <p className="cb-team-sources">
+            <span>Watching for payments</span>
+            {sources.map((c) => {
+              const live = c.status === "connected" || !!c.checked_at;
+              return <span key={c.id} className={`cb-src ${live ? "is-live" : ""}`}><i aria-hidden="true" />{c.name}{live ? "" : " (not connected)"}</span>;
+            })}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="ar">
