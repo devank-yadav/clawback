@@ -55,9 +55,11 @@ function writeFollowed(account: string | undefined, runId: string | null) {
 export default function Flow() {
   const { account } = useRun();
   const home = useSearchParams().get("home") === "1";
+  const run = useSearchParams().get("run");
   // A new account starts fresh: nothing "started in this tab" carries over. So does each click on the logo (home) or
-  // on Agents: the logo always opens the start screen, Agents the latest run.
-  return <FlowFor key={`${account?.id ?? "none"}:${home ? "home" : "agents"}`} />;
+  // on Agents: the logo always opens the start screen, Agents the latest run. Opening another payment by its link
+  // starts fresh too, so it opens on what needs you there.
+  return <FlowFor key={`${account?.id ?? "none"}:${home ? "home" : "agents"}:${run ?? ""}`} />;
 }
 
 function FlowFor() {

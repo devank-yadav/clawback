@@ -467,8 +467,21 @@ def test_the_admin_answers_pushback_in_their_own_words_through_the_same_filter()
     held = dispute_email.owner_reply(run, _dispute(run), "We'll settle for $999.99 if you pay this week.")
     assert held.status == "held" and held.written_by == "admin" and held.problems
     assert not [m for m in dispute_email.thread(run, "D-0417") if m.from_party == "clawback"]
-    # plain words that stick to the dispute go out on the same thread, answering their last message
-    ok = dispute_email.owner_reply(run, _dispute(run), "Section 3.2 caps the promo at 5,000 units. Please send the "
-                                                        "signed change if the cap moved.")
+    with pytest.raises(dispute_email.NotReady, match="already drafted"):  # fix the held one rather than start another
+        dispute_email.owner_reply(run, _dispute(run), "Another try.")
+    # fixed in plain words that stick to the dispute, it goes out on the same thread, answering their last message
+    fixed = dispute_email.edit(held, None, held.body.replace(
+        "We'll settle for $999.99 if you pay this week.",
+        "Section 3.2 caps the promo at 5,000 units. Please send the signed change if the cap moved."))
+    assert fixed.status == "ready"
+    ok = dispute_email.send_reply(fixed.id, by="owner")
     assert ok.status == "outbox" and ok.replying_to and ok.subject.startswith("Re: ")
     assert [m.from_party for m in dispute_email.thread(run, "D-0417")][-1] == "clawback"
+    assert any(e.type == "log" and e.data.actor == "owner" and "in their own words" in e.data.text for e in run.events)
+    # once answered it's their turn again: a second answer is refused until they reply
+    with pytest.raises(dispute_email.NotReady, match="hasn't replied"):
+        dispute_email.owner_reply(run, _dispute(run), "One more thing.")
+    # a clean answer to their next message is sent at once
+    disputes._message("D-0417", "northmart", "We still think the cap was lifted.", thread_of=run)
+    again = dispute_email.owner_reply(run, _dispute(run), "Please send the signed change that lifted it.")
+    assert again.status == "outbox" and again.id.endswith("-R2")

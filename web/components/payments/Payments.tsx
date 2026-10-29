@@ -7,10 +7,11 @@
 // "Checking now". Nothing here computes money: every amount is the API's.
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, Play, Upload } from "lucide-react";
 import CheckPayments from "@/components/app/CheckPayments";
-import { useReceivedPayments, type Received } from "@/components/app/ReceivedPayments";
+import { RECEIVED_EVENT, useReceivedPayments, type Received } from "@/components/app/ReceivedPayments";
 import { useRun } from "@/components/console/RunProvider";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
@@ -175,11 +176,19 @@ function Arrived({ received, accounts, filter }: { received: Received; accounts:
 export default function Payments() {
   const { account, accounts, accountsError } = useRun();
   const [tick, setTick] = useState(0);
-  const [filter, setFilter] = useState<Filter>({ kind: "all" });
-  // Look again every 15 seconds, so a payment the agents just started appears, and a finished one says so.
+  // ?distributor=<account> opens on one distributor's payments (the Distributors page links here).
+  const params = useSearchParams();
+  const [filter, setFilter] = useState<Filter>(() => {
+    const id = params.get("distributor");
+    return id ? { kind: "account", id } : { kind: "all" };
+  });
+  // Look again every 15 seconds, so a payment the agents just started appears, and a finished one says so; and at
+  // once when "Check for new payments" found some.
   useEffect(() => {
     const id = window.setInterval(() => setTick((n) => n + 1), 15_000);
-    return () => window.clearInterval(id);
+    const now = () => setTick((n) => n + 1);
+    window.addEventListener(RECEIVED_EVENT, now);
+    return () => { window.clearInterval(id); window.removeEventListener(RECEIVED_EVENT, now); };
   }, []);
 
   const ids = accounts?.map((a) => a.id).join(",") ?? "";

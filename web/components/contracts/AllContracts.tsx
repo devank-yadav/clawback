@@ -6,6 +6,7 @@
 // those passages highlighted. Nothing here computes money: the summaries are the agents' own term labels, reworded.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { FileText, Lock } from "lucide-react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
@@ -289,7 +290,9 @@ export default function AllContracts() {
     [accounts],
   );
   const all = useFetched(accounts ? load : null, ids);
-  const [filter, setFilter] = useState<string>("all");
+  // ?distributor=<account> opens on that distributor's contracts (the Distributors page links here).
+  const params = useSearchParams();
+  const [filter, setFilter] = useState<string>(() => params.get("distributor") ?? "all");
   const [open, setOpen] = useState<{ account: string; doc: string } | null>(null);
 
   // A distributor's name, with the brand added when two brands sell to the same distributor.

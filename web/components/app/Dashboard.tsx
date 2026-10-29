@@ -117,9 +117,16 @@ export default function Dashboard() {
     setBusy(true);
     setNote(null);
     try {
-      if (n.kind === "question") await api.answerQuestion(n.target_id, c.text, c.rule && remember);
-      else await api.decideApproval(n.target_id, true, null);
-      setNote({ text: n.kind === "question" ? `Done: “${c.label}” for ${n.distributor}.${c.rule ? " Saved as a rule." : ""}` : `Done: sent to QuickBooks for ${n.distributor}.` });
+      if (n.kind === "question") {
+        // Say what the API did, not what was asked: a rule answer that couldn't become a rule leaves the question open.
+        const r = await api.answerQuestion(n.target_id, c.text, c.rule && remember);
+        setNote(c.rule && !r.rule
+          ? { text: `That answer couldn’t become a rule for ${n.distributor}’s charge, so it’s still open. Pick “Accept this one” or “Dispute this one”.`, bad: true }
+          : { text: `Done: “${c.label}” for ${n.distributor}.${r.rule ? ` Saved as ${r.rule.label}.` : ""}` });
+      } else {
+        await api.decideApproval(n.target_id, true, null);
+        setNote({ text: `Done: sent to QuickBooks for ${n.distributor}.` });
+      }
       reload();
     } catch (e) {
       // Already answered or approved elsewhere (another tab, the weekly email), or replaced by a newer check: say so

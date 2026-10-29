@@ -163,6 +163,11 @@ def answer_question(question_id: str, req: AnswerRequest, who: Caller = Depends(
     if not (tenancy.can_see_run(who, in_run[0]) if in_run else tenancy.can_see(who, accounts.DEFAULT)):
         raise HTTPException(404, f"no open question {question_id}")
     if question_id in pipeline.QUESTIONS:
+        q = pipeline.RUNS[in_run[0]].questions.get(question_id)
+        # In the app, a second answer is a stale screen (answered by text, the weekly email or another tab): say so
+        # instead of a 200 that changes nothing. UNDO still works, as it does by text.
+        if q is not None and q.answer is not None and req.text.strip().upper() != "UNDO":
+            raise HTTPException(409, f"{question_id} was already answered: “{q.answer}”")
         try:
             ans, rule = pipeline.answer(question_id, req.text, req.from_role, save_rule=req.save_rule)
         except pipeline.QuestionClosed as e:

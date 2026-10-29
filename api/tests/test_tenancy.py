@@ -75,6 +75,8 @@ def peak_bar_routes(run, qid):
         ("POST", "/scenario?account=peak-bar", {"clause": "x", "charge": {}}),
         ("GET", "/db/cap?account=peak-bar", None),
         ("POST", "/suppliers/peak-bar/tracking", {"account_id": "peak-bar", "tracked": False}),
+        ("POST", "/accounts/peak-bar/rules/rule-1/undo", None),
+        ("POST", f"/disputes/{dispute}/replies", {"text": "Please send the signed change."}),
         ("GET", f"/portal/disputes/{dispute}", "public"),
     ]
 
@@ -99,7 +101,7 @@ def test_another_supplier_gets_404_on_every_peak_bar_route_and_id(site):
         e.type == "ledger_post" for e in run.events)  # nothing Teresa sent moved Peak Bar's money
 
 
-@pytest.mark.parametrize("i", range(31))
+@pytest.mark.parametrize("i", range(33))
 def test_each_route_is_404_for_another_supplier(site, i):
     app, run, qid = site
     method, path, body = peak_bar_routes(run, qid)[i]
@@ -232,3 +234,16 @@ def test_the_demo_id_testuser_signs_in_as_dana(monkeypatch):
     assert client.post("/auth/login", json={"username": "testuser", "password": "fake-pass-for-tests"}).status_code == 200
     assert client.post("/auth/login", json={"email": "testuser", "password": "wrong"}).status_code == 401
     assert client.post("/auth/login", json={"email": "testuser2", "password": "fake-pass-for-tests"}).status_code == 401
+
+
+def test_the_owner_undoes_their_own_rule_once(site):
+    app, run, _ = site
+    dana = signed_in(app, DANA, "peak-pass")
+    r = dana.post("/accounts/peak-bar/rules/rule-1/undo")
+    assert r.status_code == 200 and r.json()["status"] == "undone"
+    assert dana.post("/accounts/peak-bar/rules/rule-1/undo").status_code == 404  # already undone
+    # the question was answered when the run finished: answering it again from a stale screen is refused, not "done"
+    q = next(iter(run.questions))
+    assert dana.post(f"/questions/{q}/answer", json={"text": "dispute it"}).status_code == 409
+    # it isn't the distributor's turn on D-0417 (nothing came back yet): the answer route refuses, it doesn't send
+    assert dana.post("/disputes/D-0417/replies", json={"text": "Hello"}).status_code == 409

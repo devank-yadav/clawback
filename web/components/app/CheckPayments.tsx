@@ -24,6 +24,8 @@ export default function CheckPayments({ account }: { account: string | null | un
       const r = await api.syncPayments();
       const started = r.found.filter((f) => f.run_id);
       if (started.length > 1) {
+        window.dispatchEvent(new Event(RECEIVED_EVENT));  // Payments, if it's open, looks again now
+        setNote(`${started.length} new payments: the agents are on them.`);
         router.push(withAccount("/payments", account));
         return;
       }

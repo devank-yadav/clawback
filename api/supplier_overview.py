@@ -173,7 +173,11 @@ def _needs_you(runs: list[pipeline.Run]) -> list[NeedsYou]:
             m = thread[last_theirs]
             d = _latest_disputes(run)[dispute_id][0]
             out.append(NeedsYou(kind="reply_email", account_id=a.id, distributor=them,
-                                title=f"{them} pushed back on your {_usd(d.total)} dispute. Answer them?",
+                                title=(f"{them} pushed back on your {_usd(d.total)} dispute. Answer them?"
+                                       if m.classification == "claim_without_document" else
+                                       f"{them} sent a document about your {_usd(d.total)} dispute. Answer them?"
+                                       if m.classification == "new_document" else
+                                       f"{them} replied on your {_usd(d.total)} dispute. Answer them?"),
                                 detail=f"“{_short(m.text)}”", amount=d.total, risk_level="medium",
                                 since=m.created_at, link=OverviewLink(page="dispute", run_id=run.id,
                                                                       dispute_id=dispute_id)))

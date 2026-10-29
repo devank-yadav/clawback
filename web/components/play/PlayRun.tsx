@@ -74,7 +74,7 @@ function ReadingCard() {
  * already finished when the page opened (its events arrive in one burst, so it's done within OPENED_MS) skips the
  * deal and opens on what needs you: the charge with the open question, or the end (the approval, the dispute). */
 const OPENED_MS = 3000;
-function useSpotlight(charges: ChargeView[], runKey: string, done: boolean) {
+function useSpotlight(charges: ChargeView[], runKey: string, done: boolean, questionOpen: boolean) {
   const [spot, setSpot] = useState(0);
   const [key, setKey] = useState(runKey);
   const [justOpened, setJustOpened] = useState(true);
@@ -92,7 +92,8 @@ function useSpotlight(charges: ChargeView[], runKey: string, done: boolean) {
     }
   }
   const current = charges[spot];
-  const decided = !!current && verdictOf(current) !== null;
+  // A charge waiting on your answer holds the spotlight until you answer; the rest move on after their stamp.
+  const decided = !!current && verdictOf(current) !== null && !(questionOpen && current.status === "Needs your input");
   useEffect(() => {
     if (!decided || spot >= charges.length - 1) return;
     const t = window.setTimeout(() => setSpot((s) => Math.min(s + 1, charges.length - 1)), HOLD_MS);
@@ -201,7 +202,7 @@ export function PlayRun({ pending, done, onOpen, head, after }: { pending: Stage
   const { state, view, cast } = useRun();
   const charges = view.charges;
   const runKey = state.run?.run_id ?? "none";
-  const { spot, atEnd } = useSpotlight(charges, runKey, done);
+  const { spot, atEnd } = useSpotlight(charges, runKey, done, !!view.question && !view.question.answer);
   const t = view.totals;
   const r = view.remittance;
   const current = charges[spot] ?? null;
@@ -231,7 +232,7 @@ export function PlayRun({ pending, done, onOpen, head, after }: { pending: Stage
       <section className="cb-card cb-play-done">
         <span className="cx-pill is-green">Done</span>
         <h2>Every charge is decided.</h2>
-        <p>{unverified ? `Nothing to dispute. ${unverified} charge${unverified === 1 ? "" : "s"} couldn’t be checked against the contract: open ${unverified === 1 ? "it" : "them"} below to see why.` : "Nothing to dispute: every charge is one the contract allows."} {view.postingLabel === "Awaiting approval" ? "They wait for your OK to go to QuickBooks." : view.postingLabel.startsWith("Refused") ? "You held them back from QuickBooks." : postingSentence(view)}</p>
+        <p>{questions ? `One charge waits on your answer before this payment is settled.` : unverified ? `Nothing to dispute. ${unverified} charge${unverified === 1 ? "" : "s"} couldn’t be checked against the contract: open ${unverified === 1 ? "it" : "them"} below to see why.` : "Nothing to dispute: every charge is one the contract allows."} {view.postingLabel === "Awaiting approval" ? "They wait for your OK to go to QuickBooks." : view.postingLabel.startsWith("Refused") ? "You held them back from QuickBooks." : postingSentence(view)}</p>
       </section>
     );
   } else if (current) {

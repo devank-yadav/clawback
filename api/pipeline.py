@@ -598,7 +598,9 @@ def _question_risk(run: Run, charge_id: str, term, split) -> tuple[QuestionRisk,
         notice_date=c.notice_date, notice_days=a.facts.get("notice_days"), days_left=days_left, file_by=file_by,
         readers_disagree=split is not None,
         disagreement=run.disagreements.get(split.type.value) if split is not None else None,
-        rule_label=None if split is not None else f"Rule #{len(rules) + 1}",
+        # A rule hangs on a discretion clause (_answer); without one the answer settles this charge only.
+        rule_label=f"Rule #{len(rules) + 1}" if split is None and any(gate.uses_discretion(t, load_policy())
+                                                                        for t in a.terms) else None,
         discretion_words=tuple(sorted(load_policy().discretion_words, key=len, reverse=True)))
     r = question_risk.assess(facts)
     return (QuestionRisk(level=r.level, kind=r.kind, reason=r.reason),
@@ -664,7 +666,7 @@ def undo_rule(rule_id: str, account_id: str, by: str | None = None) -> Rule | No
         if rule is None:
             return None
         undone = rule.model_copy(update={"status": "undone"})
-        RULES[:] = [undone if r.id == rule_id else r for r in RULES]
+        RULES[RULES.index(rule)] = undone  # in place: a rule appended meanwhile isn't lost
     saved_state.save_rule(undone, account_id)  # a restart keeps it undone
     run = next((r for r in reversed(list(RUNS.values())) if r.account.id == account_id), None)
     if run is not None:

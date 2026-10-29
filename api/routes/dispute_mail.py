@@ -125,7 +125,9 @@ def send_reply(dispute_id: str, email_id: str, req: DisputeSendRequest | None = 
         raise HTTPException(404, f"unknown email {email_id}")
     req = req or DisputeSendRequest()
     try:
-        return dispute_email.send_reply(email_id, req.subject, req.body)
+        mine_email = next(e for e in dispute_email.emails_of(run.id, dispute_id) if e.id == email_id)
+        return dispute_email.send_reply(email_id, req.subject, req.body,
+                                        by="owner" if mine_email.written_by == "admin" else "negotiator")
     except dispute_email.NotReady as e:
         raise HTTPException(409, str(e)) from e
     except KeyError:

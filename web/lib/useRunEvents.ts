@@ -260,7 +260,10 @@ export function useRunEvents(account: string | null, runId: string = "latest", {
     };
   }, [eventsUrl, key, followedId]);
 
-  const fail = useCallback((e: Error) => setError(`Clawback didn't accept that action (${e.message}).`), []);
+  const fail = useCallback((e: Error) => setError(
+    e instanceof api.ApiError && e.status === 409
+      ? "That was already taken care of (by text, the weekly email or another tab). This page shows where it stands now."
+      : "That didn’t go through. Try again in a moment."), []);
 
   /** The admin's answer; saveRule false settles this charge only. The API checks the session. */
   const answerQuestion = useCallback(

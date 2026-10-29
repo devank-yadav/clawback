@@ -20,6 +20,9 @@ def every_account(monkeypatch):
     ("peak-bar-unfi", "unfi-clearvue-supplier-agreement-2010-peak-bar", "UNFI ClearVue supplier agreement, 2010"),
     ("peak-bar-kehe", "peak-bar-kehe-promotion-2026-03", "KeHE Distributors promotion, March 2026"),
     ("peak-bar", "spring-promo", "Spring promo"),
+    ("peak-bar", "drive-peak-bar-promo-calendar-2026-13", "Promo calendar 2026 13"),  # not a date: kept, no error
+    ("peak-bar", "northmart-deal-2026-02-30", "Northmart deal 2026 02 30"),
+    ("peak-bar", "drive-peak-bar-display-fee-2026-04-12", "Display fee, Apr 12, 2026"),
 ])
 def test_a_file_name_reads_as_a_name(every_account, account_id, doc_id, name):
     assert library.readable_name(doc_id, accounts.get(account_id)) == name

@@ -11,15 +11,17 @@ export type Fetched<T> = { data: T | null; error: string | null; loading: boolea
  * State changes only happen in promise callbacks.
  */
 export function useFetched<T>(load: (() => Promise<T>) | null, key = ""): Fetched<T> {
-  const [result, setResult] = useState<{ n: number; data: T | null; error: string | null } | null>(null);
+  const [result, setResult] = useState<{ n: number; data: T | null; error: string | null; load?: unknown; key?: string } | null>(null);
   const [n, setN] = useState(0);
 
   useEffect(() => {
     if (!load) return;
     let cancelled = false;
     load().then(
-      (data) => !cancelled && setResult({ n, data, error: null }),
-      (e: Error) => !cancelled && setResult({ n, data: null, error: unreachable(e) }),
+      (data) => !cancelled && setResult({ n, data, error: null, load, key }),
+      // A failed reload of the same thing keeps what was on screen (and anything typed into it); the error is
+      // still reported. A failed load of something else shows nothing old.
+      (e: Error) => !cancelled && setResult((prev) => ({ n, data: prev && prev.load === load && prev.key === key ? prev.data : null, error: unreachable(e), load, key })),
     );
     return () => {
       cancelled = true;

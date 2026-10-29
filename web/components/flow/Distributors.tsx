@@ -58,7 +58,7 @@ function RowMenu({ d, busy, onStop }: { d: DistributorItem; busy: boolean; onSto
       <button className="ds-menu-btn" aria-haspopup="menu" aria-expanded={open} aria-label={`More for ${d.distributor.name}`} onClick={() => setOpen((v) => !v)}><MoreHorizontal /></button>
       {open && (
         <div className="tb-menu ds-menu-list" role="menu">
-          <Link role="menuitem" className="tb-row" href={withAccount("/contracts", d.account_id)}><span><strong>Signed deal</strong></span></Link>
+          <Link role="menuitem" className="tb-row" href={withAccount("/contracts", d.account_id, { distributor: d.account_id })}><span><strong>Contracts</strong></span></Link>
           <button role="menuitem" className="tb-row is-danger" disabled={busy} onClick={() => (sure ? onStop() : setSure(true))}>
             <span><strong>{sure ? `Stop tracking ${d.distributor.name}?` : "Stop tracking"}</strong>{sure && <small>Click again to stop. Its payments won’t be checked.</small>}</span>
           </button>
@@ -95,7 +95,7 @@ export default function Distributors() {
     <div className="fl">
       <TopBar account={account} active="distributors" />
       <main className="fl-main bp bp-ds">
-        <PageHeader title="Distributors" line={supplier ? `${tracked.length} tracked. Open one to see its payments and the agents’ work.` : undefined} />
+        <PageHeader title="Distributors" line={supplier ? `${tracked.length} tracked. Open one to see its payments.` : undefined} />
         {fetched.error && <div className="fl-problem" role="alert">{fetched.error}</div>}
 
         <section className="bp-frame" aria-label="Distributors you track">
@@ -109,7 +109,7 @@ export default function Distributors() {
               return (
                 <li key={d.account_id}>
                   <div className={`bp-row ${d.account_id === account?.id ? "is-current" : ""}`}>
-                    <Link className="bp-row-open" href={withAccount("/", d.account_id)} aria-label={`Open ${d.distributor.name}`} />
+                    <Link className="bp-row-open" href={withAccount("/payments", d.account_id, { distributor: d.account_id })} aria-label={`${d.distributor.name}’s payments`} />
                     <span className="bp-who">
                       <DistributorMark name={d.distributor.name} color={d.distributor.colors.primary} size={30} />
                       <span><strong>{d.distributor.name}</strong></span>

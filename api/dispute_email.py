@@ -307,34 +307,44 @@ def _reply_email(run: pipeline.Run, dispute: Dispute, text: str, written_by: str
                  in_reply_to: str | None, charge_ids: list[str], evidence_ids: list[str]) -> DisputeEmail:
     """A reply on the dispute's email thread, checked by the outbound filter: ready, or held with the problems."""
     first = next((x for x in emails_of(run.id, dispute.id) if x.kind == "dispute"), None)
-    n = sum(1 for x in emails_of(run.id, dispute.id) if x.kind == "reply") + 1
     subject = first.subject if first else email_writer.subject(dispute, run.account)
     body = "\n\n".join([email_writer.greeting(run.account), text.strip(),
                         email_writer.signature(run.account, portal_url(run, dispute.id))])
-    e = DisputeEmail(id=f"{_email_id(run, dispute.id)}-R{n}", kind="reply", run_id=run.id,
+    e = DisputeEmail(id="", kind="reply", run_id=run.id,
                      account_id=run.account.id, dispute_id=dispute.id, to=run.account.distributor.desk_email,
                      from_addr=from_addr(run.account), reply_to=reply_to(run, dispute.id),
                      subject=subject if subject.lower().startswith("re:") else f"Re: {subject}", body=body,
                      in_reply_to=in_reply_to, status="ready", written_by=written_by, charge_ids=charge_ids,
                      evidence_ids=evidence_ids, replying_to=replying_to)
     problems = _check(e, run, dispute)
-    return _put(e.model_copy(update={"problems": problems, "status": "held" if problems else "ready"}))
+    with _lock:  # the number and the save together, so the Gmail poller and the admin can't both take -R{n}
+        n = sum(1 for x in emails_of(run.id, dispute.id) if x.kind == "reply") + 1
+        return _put(e.model_copy(update={"id": f"{_email_id(run, dispute.id)}-R{n}", "problems": problems,
+                                         "status": "held" if problems else "ready"}))
 
 
 def owner_reply(run: pipeline.Run, dispute: Dispute, text: str) -> DisputeEmail:
     """The admin's own answer to the distributor's last message, for when no drafted answer waits (the Negotiator held
     it, or it came in before the agents were watching). Same thread, same outbound filter as the Negotiator's: sent at
     once when it passes, held with the problems when it doesn't, so the admin can fix the figure and send."""
-    theirs = [m for m in thread(run, dispute.id) if m.from_party == "northmart"]
+    if dispute.status in ("resolved", "withdrawn"):
+        raise NotReady(f"this dispute with {run.distributor} is closed; there's nothing to answer")
+    if any(x.kind == "reply" and x.status in ("ready", "held") for x in emails_of(run.id, dispute.id)):
+        raise NotReady("an answer is already drafted: edit or send that one")
+    messages = thread(run, dispute.id)
+    if not messages or messages[-1].from_party == "clawback":
+        raise NotReady(f"{run.distributor} hasn't replied since the last message")
+    theirs = [m for m in messages if m.from_party == "northmart"]
     sent = [x for x in emails_of(run.id, dispute.id) if x.message_id]
     e = _reply_email(run, dispute, text, "admin", theirs[-1].id if theirs else None,
                      theirs[-1].email_message_id if theirs and theirs[-1].email_message_id else
                      (sent[-1].message_id if sent else None),
                      [ln.charge_id for ln in dispute.lines], [x for ln in dispute.lines for x in ln.evidence_ids])
-    return e if e.status == "held" else send_reply(e.id)
+    return e if e.status == "held" else send_reply(e.id, by="owner")
 
 
-def send_reply(email_id: str, subject: str | None = None, body: str | None = None) -> DisputeEmail:
+def send_reply(email_id: str, subject: str | None = None, body: str | None = None, by: str = "negotiator") -> DisputeEmail:
+    """Send a drafted reply. `by` is who wrote it, for the log: the Negotiator, or the owner in their own words."""
     with _lock:
         e = EMAILS.get(email_id)
         if e is None or e.kind != "reply":
@@ -356,7 +366,11 @@ def send_reply(email_id: str, subject: str | None = None, body: str | None = Non
                                  channel="email", email_message_id=e.message_id, thread_of=run)
         run.emit("portal_message", ours)
         _save_message(run, ours)
-    run.log(f"Answered {run.distributor} on {dispute.id} by email.", "good", "negotiator")
+    if by == "owner":
+        run.log(f"{run.name('owner')} answered {run.distributor} on {dispute.id} by email, in their own words.", "good",
+                "owner")
+    else:
+        run.log(f"Answered {run.distributor} on {dispute.id} by email.", "good", "negotiator")
     return e
 
 

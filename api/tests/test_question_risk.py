@@ -90,3 +90,16 @@ def test_the_northmart_c6_question_is_high_relationship_with_its_details():
 def test_thresholds_come_from_policy_yaml():
     t = qr.load_thresholds()
     assert (t.high_usd, t.high_pct_of_payment, t.medium_usd, t.deadline_days) == (D("1000"), D("5"), D("250"), 14)
+
+
+def test_only_a_question_that_can_become_a_rule_says_so():
+    can = qr.assess(facts(quote="Northmart may charge a display fee at its discretion", clause_ref="§5.4",
+                          term_type="fee_discretion", discretionary=True, rule_label="Rule #1"), T)
+    assert can.reason.endswith("your answer becomes a rule for every future fee.")
+    assert ("What your answer does", "Becomes Rule #1: applied to every future display fee from Northmart, without "
+                                     "asking again") in can.details
+    # a promo overcharge asked for its size, not its wording: no clause to hang a rule on (pipeline leaves the label off)
+    cannot = qr.assess(facts(amount=D("6000"), quote="Supplier will fund $1.00 per unit", clause_ref="§3.1",
+                             term_type="promo_rate", what="promo charge"), T)
+    assert "becomes a rule" not in cannot.reason
+    assert ("What your answer does", "Settles this charge only") in cannot.details

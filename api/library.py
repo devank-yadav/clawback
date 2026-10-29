@@ -153,6 +153,10 @@ def readable_name(doc_id: str, account: accounts.Account) -> str:
     "Walmart fine, Mar 26, 2026". The brand's own name is dropped (every document here is theirs) and the
     distributor's is spelled as the distributor spells it."""
     words = doc_id.split("-")
+    # Drive and inbox copies are named drive-<account>-<file> and inbound-…: the file's own name is what to show.
+    for prefix in (["drive", *account.id.split("-")], ["inbound"]):
+        if words[:len(prefix)] == prefix and len(words) > len(prefix):
+            words = words[len(prefix):]
     brand = [w for w in _slug(account.brand.name).split("-") if w not in ("co", "inc", "llc")]
     if brand and words[:len(brand)] == brand:
         words = words[len(brand):]
@@ -168,9 +172,12 @@ def readable_name(doc_id: str, account: accounts.Account) -> str:
     m = re.search(r"(?:^|-)((?:19|20)\d\d)(?:-(\d\d))?(?:-(\d\d))?(?:-|$)", "-".join(words))
     if m:
         y, mo, d = m.group(1), m.group(2), m.group(3)
-        when = (f"{datetime(int(y), int(mo), int(d)):%b} {int(d)}, {y}" if d
-                else datetime(int(y), int(mo), 1).strftime("%B %Y") if mo else y)
-        words = [w for w in words if w not in {y, mo, d}]
+        try:  # a file name like "calendar-2026-13" holds numbers that aren't a date: leave them as they are
+            when = (f"{datetime(int(y), int(mo), int(d)):%b} {int(d)}, {y}" if d
+                    else datetime(int(y), int(mo), 1).strftime("%B %Y") if mo else y)
+            words = [w for w in words if w not in {y, mo, d}]
+        except ValueError:
+            when = ""
     excerpt = "excerpt" in words
     words = [ACRONYMS.get(w, w) for w in words if w != "excerpt"]
     name = " ".join(words)

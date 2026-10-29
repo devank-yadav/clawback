@@ -182,7 +182,7 @@ export async function runEventsOnce(runId: string): Promise<RunEvent[]> {
 /** POST /questions/{id}/answer: the admin's reply (the signed-in session); the rule and new decisions arrive as events.
  * saveRule false settles this charge only: no rule is saved, so the next charge like it asks again. */
 export const answerQuestion = (questionId: string, text: string, saveRule = true) =>
-  call<unknown>(`/questions/${q(questionId)}/answer`, { method: "POST", body: { text, from_role: "owner", save_rule: saveRule } });
+  call<{ answer: unknown; rule: Rule | null }>(`/questions/${q(questionId)}/answer`, { method: "POST", body: { text, from_role: "owner", save_rule: saveRule } });
 
 /** POST /approvals/{id}: the admin's yes or no (the signed-in session). Refusing posts nothing and keeps the note.
  * autoPost with a yes: fair-charge memos up to this one's amount post without asking from now on. */

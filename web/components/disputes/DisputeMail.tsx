@@ -303,7 +303,7 @@ export function DisputeThread({ disputeId, runId, distributor, refreshKey = "", 
       {theirTurn && <AnswerThem disputeId={disputeId} runId={runId} distributor={distributor} onDone={reload} />}
       {drafts.map((d) => (
         <section key={d.id} className="dm-draft" aria-label={d.written_by === "admin" ? "Your answer, waiting for a fix" : "The Negotiator's reply, waiting for you"}>
-          <h4 className="dm-draft-h">{d.written_by === "admin" ? "Your answer, held: fix it, then send" : "The Negotiator’s reply, ready for you to send"}</h4>
+          <h4 className="dm-draft-h">{d.status === "failed" ? "This answer didn’t go out: send it again" : d.written_by === "admin" ? "Your answer, held: fix it, then send" : "The Negotiator’s reply, ready for you to send"}</h4>
           <EmailEditor email={d} busy={busy === d.id} problem={problem?.id === d.id ? problem.text : null} sendLabel="Send reply" onSend={(s, b) => void sendReply(d, s, b)} />
         </section>
       ))}
