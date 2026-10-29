@@ -161,3 +161,6 @@ One line per decision, written the moment it's made: `date time · decision · w
 - 2026-10-28 22:10 · The owner can answer a distributor's pushback in their own words; it passes the same outbound check as the Negotiator's and is held, not sent, when a figure isn't backed · Devank
 - 2026-10-28 22:10 · Rules can be undone from the Rules page (same effect as texting UNDO for that rule); a second answer to a question from the app is refused (409), not silently accepted · Devank
 - 2026-10-28 22:10 · Owner-facing words: no dispute codes or charge ids in headlines, "payment slip" for remittance, "Part back" for split; a question promises a rule only when the deal has a discretion clause · Devank
+- 2026-10-28 23:15 · Messages to a distributor name charges by the distributor's own references, never our charge ids (swapped in code after the outbound check, so AI requests and their replays don't change) · Devank
+- 2026-10-28 23:15 · "Won back" (agreed or credited) instead of "Back in your account"; "being disputed" instead of "on its way back"; the automation limits read "up to", as the engine applies them · Devank
+- 2026-10-28 23:15 · A rule saved from one answer closes the other open questions it settles ("Decided by Rule #N"); a payment's "kept" is its own slip's figure, with older charges checked alongside it named separately · Devank
