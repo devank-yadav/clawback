@@ -1,0 +1,49 @@
+/* The brand (components/console/BrandMark.tsx): the claw-ring mark and the "clawback" wordmark as one lockup, and the
+   one definition of the links that hold it (sb-logo in the app's sidebar and phone header, st-logo on the public
+   pages). Loaded by every layout that shows it.
+   Sizing: the ring is about 1.3x the wordmark's cap height, its stroke heavy enough to sit with Fredoka Bold, and its
+   centre between the cap-height and x-height middles (Fredoka at line-height 1 centres the box on the ascender band,
+   so the mark drops 0.05em), with a fixed gap.
+     sm  footer               16px text, 14px mark,  8px gap
+     md  sidebar, phone top   20px text, 18px mark,  8px gap
+     lg  sign-in, landing top 24px text, 22px mark, 10px gap */
+
+.cb-brand { display: inline-flex; align-items: center; gap: 8px; flex: none; font-family: var(--font-display); font-weight: 700;
+  line-height: 1; letter-spacing: -0.02em; white-space: nowrap; color: var(--ink); }
+.cb-brand.is-sm { font-size: 16px; }
+.cb-brand.is-md { font-size: 20px; }
+.cb-brand.is-lg { font-size: 24px; gap: 10px; }
+.cb-brand-mark { display: block; flex: none; position: relative; top: 0.05em; overflow: visible; }
+.cb-brand.is-sm .cb-brand-mark { width: 14px; height: 14px; }
+.cb-brand.is-md .cb-brand-mark { width: 18px; height: 18px; }
+.cb-brand.is-lg .cb-brand-mark { width: 22px; height: 22px; }
+.cb-brand-ring, .cb-brand-dot { transform-box: fill-box; transform-origin: center; }
+.cb-brand-ring { stroke: var(--logo, #777cff); }
+.cb-brand-dot { fill: var(--logo, #777cff); }
+
+/* The links: a padded, rounded hit area for the focus ring that doesn't move the lockup (the margin gives the padding
+   back). The claw's hover turn is the link's hover state. */
+.sb-logo, .st-logo { display: inline-flex; flex: none; vertical-align: top; margin: -6px; padding: 6px; border-radius: 10px;
+  color: var(--ink); text-decoration: none; }
+
+/* Arrival, once per page load (BrandMark drops `is-arriving` afterwards): the ring draws in from nothing to its resting
+   gap while it turns the last quarter into place, then the coin pops in with a small overshoot. ~0.8 s. */
+@keyframes cb-brand-draw {
+  from { stroke-dashoffset: 45; transform: rotate(-90deg); }
+  to { stroke-dashoffset: 0; transform: none; }
+}
+@keyframes cb-brand-pop {
+  0% { transform: scale(0); animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+  55% { transform: scale(1.15); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  100% { transform: none; }
+}
+.cb-brand.is-arriving .cb-brand-ring { animation: cb-brand-draw 760ms var(--ease-out, cubic-bezier(0.2, 0.8, 0.2, 1)) both; }
+.cb-brand.is-arriving .cb-brand-dot { animation: cb-brand-pop 420ms 360ms both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cb-brand-ring, .cb-brand-dot { animation: none !important; }
+}
+@media (forced-colors: active) {
+  .cb-brand-ring { stroke: CanvasText; }
+  .cb-brand-dot { fill: CanvasText; }
+}

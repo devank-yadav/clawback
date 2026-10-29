@@ -6,7 +6,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { Logo } from "@/components/console/ui";
+import { BrandMark } from "@/components/console/ui";
 import { ApiError } from "@/lib/api";
 import { signIn, signOut, useSession } from "@/lib/session";
 import { safeNext } from "@/lib/signin-route";
@@ -57,7 +57,7 @@ export default function SignInPage() {
   return (
     <div className="st-auth">
       <header className="st-auth-top">
-        <Link href="/" className="st-logo" aria-label="Clawback home"><Logo /> clawback</Link>
+        <Link href="/" className="st-logo" aria-label="Clawback home"><BrandMark size="lg" /></Link>
       </header>
       <main className="st-auth-main">
         <section className="st-auth-card" aria-labelledby="signin-title">

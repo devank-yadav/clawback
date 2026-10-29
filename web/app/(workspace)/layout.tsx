@@ -16,6 +16,7 @@ import "../redesign.css";
 import "../craft.css";
 import "../game-tokens.css";
 import "../game.css";
+import "../brand.css";
 
 // One app with the agents' flow at `/`: the same tokens (theme.css), the same parts (flow.css) and the same type.
 

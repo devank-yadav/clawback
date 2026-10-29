@@ -21,8 +21,6 @@ body.st { margin: 0; font-family: var(--font-inter), ui-sans-serif, system-ui, s
 
 /* the top bar */
 .st-top { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 16px; padding: 12px 32px; background: color-mix(in srgb, var(--bg) 84%, transparent); backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid transparent; }
-.st-logo { display: inline-flex; align-items: center; gap: 8px; font-size: 19px; font-weight: 700; letter-spacing: -0.6px; color: var(--ink); }
-.st-logo.is-small { font-size: 15px; }
 .st-top-links { display: flex; gap: 4px; margin: 0 auto; }
 .st-top-links a { padding: 8px 12px; border-radius: 999px; font-size: 14px; color: var(--sub); }
 .st-top-links a:hover { color: var(--ink); }

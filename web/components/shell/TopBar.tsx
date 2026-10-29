@@ -18,7 +18,7 @@ import {
   Bell, BookCheck, Building2, FileText, House, ChevronsUpDown, Gavel, Settings as SettingsIcon, Wallet,
   KeyRound, Landmark, LogIn, LogOut, Menu, MessagesSquare, RotateCcw, X,
 } from "lucide-react";
-import { Logo } from "@/components/console/ui";
+import { BrandMark } from "@/components/console/ui";
 import { inkOn, withAccount } from "@/lib/accounts";
 import { RECEIVED_EVENT } from "@/components/app/ReceivedPayments";
 import { askAdminToken, signOut, useSession } from "@/lib/session";
@@ -414,13 +414,13 @@ export default function TopBar({ account }: { account: Account | null; active?: 
     <>
       <header className="sb-mobile">
         <button className="sb-menu-btn" aria-label="Open the menu" aria-expanded={open} aria-controls="sb" onClick={() => setOpen(true)}><Menu /></button>
-        <Link href={withAccount("/app", account?.id)} className="sb-logo" aria-label="Clawback home"><Logo /> clawback</Link>
+        <Link href={withAccount("/app", account?.id)} className="sb-logo" aria-label="Clawback home"><BrandMark size="md" /></Link>
         <span className="sb-mobile-who">{supplierName.trim()}</span>
       </header>
       {open && <div className="sb-backdrop" onClick={close} role="presentation" />}
       <aside id="sb" className={`sb ${open ? "is-open" : ""}`} aria-label="App">
         <div className="sb-head">
-          <Link href={withAccount("/app", account?.id)} className="sb-logo" aria-label="Clawback home" onClick={close}><Logo /> clawback</Link>
+          <Link href={withAccount("/app", account?.id)} className="sb-logo" aria-label="Clawback home" onClick={close}><BrandMark size="md" /></Link>
           <span className="sb-head-right">
             <Notifications account={account} onPick={close} />
             <button className="sb-close" aria-label="Close the menu" onClick={close}><X /></button>
