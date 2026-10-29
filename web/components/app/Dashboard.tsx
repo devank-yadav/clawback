@@ -122,7 +122,11 @@ export default function Dashboard() {
       setNote({ text: n.kind === "question" ? `Done: “${c.label}” for ${n.distributor}.${c.rule ? " Saved as a rule." : ""}` : `Done: sent to QuickBooks for ${n.distributor}.` });
       reload();
     } catch (e) {
-      setNote({ text: (e as Error).message, bad: true });
+      // Already answered or approved elsewhere (another tab, the weekly email), or replaced by a newer check: say so
+      // and show the list as it is now. Anything else: a plain retry note, not the API's words.
+      const gone = e instanceof api.ApiError && (e.status === 404 || e.status === 409);
+      setNote(gone ? { text: "That one was already taken care of. Here’s what’s left." } : { text: "That didn’t go through. Try again in a moment.", bad: true });
+      if (gone) reload();
     } finally {
       setBusy(false);
     }
