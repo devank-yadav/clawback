@@ -21,7 +21,7 @@ import { useChargeDetail } from "@/lib/useChargeDetail";
 import { postingSentence, type ChargeView } from "@/lib/workspace";
 import { CardQueue, DeductionCard, DecisionCard, Scoreboard, Spinner, VerdictStamp, type Verdict } from "./PlayKit";
 
-const HOLD_MS = 1500; // how long a stamped card stays before the next one is dealt
+const HOLD_MS = 600; // how long a stamped card stays before the next one is dealt
 
 const VERDICT_OF: Record<string, Verdict | null> = {
   "Reviewing": null, "Split decision": "split", "Disputed": "dispute", "Accepted": "fair", "Needs your input": "ask", "Can’t verify": "skip",

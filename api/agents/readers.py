@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from itertools import zip_longest
 
 import anthropic
@@ -108,6 +108,25 @@ def read_both(doc_id: str, base_terms: Sequence[Term] = (), client: anthropic.An
     terms, notes = merge(text, a.doc, a.terms, b.terms)
     unclear = list(dict.fromkeys(a.unclear + b.unclear))
     return Merged(a.doc, terms, unclear, ("claude", b.model), notes, a, b)
+
+
+def recheck(m: Merged, base_terms: Sequence[Term]) -> Merged:
+    """A read_both made without base_terms, checked and merged again with them: the same Merged read_both(doc_id,
+    base_terms) gives. base_terms isn't in the readers' requests, so a run reads every document at once and then
+    checks them in document order (api/pipeline._read_terms), each with the deal terms read before it."""
+    if not base_terms:
+        return m
+    _, text = documents.load(m.doc.id)
+
+    def again(r: ReaderResult | None) -> ReaderResult | None:
+        if r is None or r.output is None:
+            return r
+        terms = reader._check(r.output, r.doc, text, base_terms)
+        return replace(r, terms=terms if r.model == "claude" else reader_b._relabel(terms, r.model))
+
+    a, b = again(m.a), again(m.b)
+    terms, notes = merge(text, a.doc, a.terms, b.terms)
+    return replace(m, terms=terms, disagreements=notes, a=a, b=b)
 
 
 def read_text_both(text: str, client: anthropic.Anthropic | None = None, gemini=None) -> Merged:

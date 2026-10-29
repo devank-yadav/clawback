@@ -132,6 +132,7 @@ class ReaderResult:
     errors: list[str] = field(default_factory=list)
     model: str = "claude"  # who read it: "claude" (Reader A), "gemini" or "claude-b" (Reader B)
     model_id: str | None = None  # the exact model, when it matters (which Gemini answered)
+    output: ReaderOutput | None = None  # the answer before the quote check, so readers.recheck can check it again
 
 
 def _user_message(doc: Document, text: str) -> str:
@@ -182,7 +183,7 @@ def read_document(doc_id: str, base_terms: Sequence[Term] = (), client: anthropi
                             ans.source, ans.attempts, ans.errors)
     output = ans.value
     return ReaderResult(doc, _check(output, doc, text, base_terms), output.unclear, ans.source, ans.attempts,
-                        ans.errors)
+                        ans.errors, output=output)
 
 
 def read_text(text: str, client: anthropic.Anthropic | None = None) -> ReaderResult:
