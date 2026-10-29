@@ -171,12 +171,17 @@ export function selectWorkspace(state: RunState, account: Account | null): Works
     }),
     postingLabel: postingLabel(approval, state.ledger),
     postingProblem: postingProblem(state.ledger),
+    // Where the dispute stands, in words (its code stays out of sight; the Disputes page shows it small).
     disputeLabel:
       dispute?.status === "filed" || dispute?.status === "answered"
-        ? `Dispute ${dispute.id} filed on ${distributor}’s portal`
-        : dispute
-          ? `Dispute ${dispute.id} · ${dispute.status}`
-          : "Disputes are filed once every charge is checked",
+        ? `Your ${money(dispute.total)} dispute is with ${distributor}`
+        : dispute?.status === "ready_to_send" || dispute?.status === "draft"
+          ? `Your ${money(dispute.total)} dispute is ready for you to send`
+          : dispute?.status === "resolved"
+            ? `Your dispute with ${distributor} is settled`
+            : dispute
+              ? `Your dispute with ${distributor} is closed`
+              : "Disputes are filed once every charge is checked",
     disputeId: dispute?.id ?? null,
     value: state.totals?.value ?? null,
   };

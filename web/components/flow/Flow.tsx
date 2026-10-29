@@ -149,7 +149,7 @@ function FlowFor() {
         </main>
       )}
 
-      <SlideOver open={!!charge} onClose={closeDrawer} title={charge ? `${charge.id} · ${charge.title}` : ""} wide>
+      <SlideOver open={!!charge} onClose={closeDrawer} title={charge ? charge.title : ""} wide>
         {charge && <ChargeDrawer charge={charge} onClose={closeDrawer} source="live" runId={state.run?.run_id} key={charge.id} />}
       </SlideOver>
       <SessionDialogs account={account} />

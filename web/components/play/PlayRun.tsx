@@ -16,7 +16,7 @@ import { ACTOR } from "@/components/flow/parts";
 import type { Stage } from "@/components/flow/stages";
 import { money } from "@/lib/format";
 import { useChargeDetail } from "@/lib/useChargeDetail";
-import type { ChargeView } from "@/lib/workspace";
+import { postingSentence, type ChargeView } from "@/lib/workspace";
 import { CardQueue, DeductionCard, DecisionCard, Scoreboard, Spinner, VerdictStamp, type Verdict } from "./PlayKit";
 
 const HOLD_MS = 1500; // how long a stamped card stays before the next one is dealt
@@ -207,6 +207,7 @@ export function PlayRun({ pending, done, onOpen, head, after }: { pending: Stage
   const current = charges[spot] ?? null;
   const allDecided = charges.length > 0 && charges.every((c) => verdictOf(c) !== null);
   const questions = charges.filter((c) => c.status === "Needs your input").length;
+  const unverified = charges.filter((c) => c.status === "Can’t verify").length;
   const people = pending.filter((s) => s.key === "approval" || s.key === "file");
   // The agent at work, in its own words: the newest line in the run's feed.
   const last = state.feed.at(-1);
@@ -230,7 +231,7 @@ export function PlayRun({ pending, done, onOpen, head, after }: { pending: Stage
       <section className="cb-card cb-play-done">
         <span className="cx-pill is-green">Done</span>
         <h2>Every charge is decided.</h2>
-        <p>{view.disputeLabel}{view.postingLabel ? ` ${view.postingLabel}` : ""}</p>
+        <p>{unverified ? `Nothing to dispute. ${unverified} charge${unverified === 1 ? "" : "s"} couldn’t be checked against the contract: open ${unverified === 1 ? "it" : "them"} below to see why.` : "Nothing to dispute: every charge is one the contract allows."} {view.postingLabel === "Awaiting approval" ? "They wait for your OK to go to QuickBooks." : view.postingLabel.startsWith("Refused") ? "You held them back from QuickBooks." : postingSentence(view)}</p>
       </section>
     );
   } else if (current) {

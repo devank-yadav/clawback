@@ -22,7 +22,7 @@ export function Pill({ tone = "", live = false, children }: { tone?: "accent" | 
 
 const STATUS: Record<ChargeStatus, { label: string; tone: "accent" | "green" | "amber" | "dispute" | "fair" | "" }> = {
   Reviewing: { label: "Checking", tone: "" },
-  "Split decision": { label: "Split", tone: "dispute" },
+  "Split decision": { label: "Part back", tone: "dispute" },
   Disputed: { label: "Dispute", tone: "dispute" },
   Accepted: { label: "Fair", tone: "fair" },
   "Needs your input": { label: "Ask owner", tone: "amber" },
