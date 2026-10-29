@@ -122,7 +122,7 @@ def read_document(doc_id: str, base_terms: Sequence[Term] = (), client: anthropi
                                                 reader.timeout_for(text))
         if output is not None:
             return ReaderResult(doc, _relabel(reader._check(output, doc, text, base_terms), "gemini"), output.unclear,
-                                source, 1 + len(errors), errors, model="gemini", model_id=model)
+                                source, 1 + len(errors), errors, model="gemini", model_id=model, output=output)
     ans = claude.ask(CLAUDE_B_SERVICE, system, user, schema, check, client, live_first=live_first,
                      timeout=reader.timeout_for(text), doc_id=doc_id)
     errors += ans.errors
@@ -130,7 +130,7 @@ def read_document(doc_id: str, base_terms: Sequence[Term] = (), client: anthropi
         return ReaderResult(doc, [], [f"{doc_id}: Reader B's output failed validation twice; needs a person"],
                             ans.source, ans.attempts, errors, model="claude-b")
     return ReaderResult(doc, _relabel(reader._check(ans.value, doc, text, base_terms), "claude-b"), ans.value.unclear,
-                        ans.source, ans.attempts, errors, model="claude-b")
+                        ans.source, ans.attempts, errors, model="claude-b", output=ans.value)
 
 
 def _relabel(terms: list[Term], who: str) -> list[Term]:

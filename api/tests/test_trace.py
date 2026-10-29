@@ -75,17 +75,17 @@ def test_march_trace_lists_every_ai_call_in_order(wired):
     assert all(e.run_id == run.id and e.status == "live" and e.attempts == 1 and e.error is None for e in t)
     assert all(e.model == claude.MODEL and isinstance(e.at, datetime) and e.latency_ms >= 0 for e in t)
 
-    # Both readers on each deal document, one document after the other (the two of a pair run side by side).
+    # Both readers on each deal document; the documents are read at once, so in the order they finish.
     reads, rest = t[:6], t[6:]
-    for n, doc in enumerate(run.account.config.deal_docs):
-        pair = reads[2 * n:2 * n + 2]
-        assert {e.agent for e in pair} == READERS and {e.input["doc_id"] for e in pair} == {doc}
+    for doc in run.account.config.deal_docs:
+        pair = [e for e in reads if e.input["doc_id"] == doc]
+        assert {e.agent for e in pair} == READERS and len(pair) == 2
         assert all(e.charge_id is None and e.output["terms"] for e in pair)
-    # Then each charge in turn: the Investigator, and the comeback for every charge it would dispute.
-    expected = []
+    # Then every charge (several at a time): the Investigator, then the comeback for every charge it would dispute.
     for cid in run.charges:
-        expected += [("Investigator", cid)] + ([("Negotiator: comeback", cid)] if cid in run.rehearsals else [])
-    assert flow(rest) == expected
+        mine = [e for e in flow(rest) if e[1] == cid]
+        assert mine == [("Investigator", cid)] + ([("Negotiator: comeback", cid)] if cid in run.rehearsals else [])
+    assert len(rest) == len(run.charges) + len(run.rehearsals)
     assert sorted(run.rehearsals) == ["C1", "C2", "C4", "C5"]
 
     # What the trace shows is what the Investigator was sent (the engine's numbers) and what it answered.
@@ -125,8 +125,10 @@ def test_charge_context_names_the_charge_of_calls_that_dont_carry_one(wired, mon
     assert [e.prompt for e in after_answer] == ["Moss upsert", "Moss query"] and after_answer[0].model is None
 
     april = pipeline.start("april", fake, background=False)
-    assert flow(trace.trace_for(april.id)[6:]) == [("Investigator", "A1"), ("Rule memory (Moss)", "A1"),
-                                                   ("Investigator", "A2"), ("Rule memory (Moss)", "A2")]
+    checks = flow(trace.trace_for(april.id)[6:])  # the Investigators run at once; Moss asks in charge order
+    assert [e for e in checks if e[1] == "A1"] == [("Investigator", "A1"), ("Rule memory (Moss)", "A1")]
+    assert [e for e in checks if e[1] == "A2"] == [("Investigator", "A2"), ("Rule memory (Moss)", "A2")]
+    assert [e for e in checks if e[0] == "Rule memory (Moss)"] == [("Rule memory (Moss)", "A1"), ("Rule memory (Moss)", "A2")]
     query = trace.trace_for(april.id, "A1")[1]
     assert query.input["op"] == "query" and query.output[0]["id"] == "rule-1"
     assert all(d.rule_id == "rule-1" for d in april.shown.values())

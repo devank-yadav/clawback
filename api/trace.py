@@ -5,7 +5,8 @@ GET /runs/{run_id}/trace serves them (api/routes/trace.py). A call made outside 
 The store is in memory: the newest MAX_RUNS runs, the first MAX_PER_RUN calls of each, gone after a restart.
 
 One entry per call_outside (so a validation retry, or a Gemini model that didn't answer, is its own entry):
-    seq         1, 2, 3 ... in the order the calls finished (the two readers of a document run side by side)
+    seq         1, 2, 3 ... in the order the calls finished (a run reads its documents, two readers each, and
+                checks its charges several at a time: api/pipeline.READ_WORKERS, CHECK_WORKERS)
     at          when the call started
     agent       "Deal reader (Claude)", "Investigator", "Negotiator: comeback", "QuickBooks", ...
     service     the call_outside service name (claude-reader, gemini-reader, moss, qbo, ...)
@@ -27,7 +28,8 @@ Where the pipeline enters the contexts (Devank wires these; until then nothing i
     api/pipeline.decide_approval  (the admin's yes: the QuickBooks writes)
     api/disputes.post             (the portal: Negotiator's reply, or the readers on an attached document)
     api/scenario.run              (the scenario box)
-- charge_context(c.id) around each turn of the per-charge loop in api/pipeline._process.
+- charge_context(c.id) around each charge's agents in api/pipeline._process (on a ContextPool worker) and around
+  its turn of the per-charge loop there (the gate, Moss).
 - api/agents/readers.read_both runs the two readers on a thread pool, and a new thread starts with no context:
   that pool is a ContextPool (below), not a plain ThreadPoolExecutor, so the readers' calls are recorded.
 A charge_id the request itself carries (the Investigator's and the comeback's do) is used when no charge

@@ -4,6 +4,9 @@ docs/design.md, "DEMO_MODE":
 - RECORD_FIXTURES=1 saves every response to data/fixtures/<service>/<key>.json, keyed by a hash of the request.
 - DEMO_MODE=true serves the saved response instead of calling out, after a short delay so cards still stream.
 - live_first=True (scenario box, judge's portal replies) tries live even in DEMO_MODE, then falls back.
+- CLAWBACK_CACHE_FIRST=1 (the live site, off by default): an AI call whose exact request has a recording replays it at
+  once; any other goes live and its answer is saved to $CLAWBACK_STATE_DIR/fixtures/ (a docker volume on the VM), so
+  the same run again takes seconds. Recordings are looked up there first, then in data/fixtures/.
 
 The request passed in is the logical request (model, prompt, schema, entity), never headers or credentials:
 it is hashed into the key and saved next to the response. Recording refuses to write any secret from the
@@ -22,6 +25,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -35,6 +39,8 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, Iterator, Mapping
 
 from api import trace
+
+log = logging.getLogger("clawback.replay")
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "data" / "fixtures"
@@ -113,6 +119,22 @@ def record_missing() -> bool:
 
 def recording() -> bool:
     return _flag("RECORD_FIXTURES")
+
+
+def cache_first() -> bool:
+    """CLAWBACK_CACHE_FIRST=1: replay an AI call's recording when there is one, else go live and save the answer."""
+    return _flag("CLAWBACK_CACHE_FIRST")
+
+
+def cache_dir() -> Path:
+    """Where cache-first saves the answers it got live, and looks first: the state folder, not the image."""
+    return Path(os.getenv("CLAWBACK_STATE_DIR", "state")) / "fixtures"
+
+
+def _cached(service: str, key: str, fixtures_dir: Path | None) -> Any | None:
+    """The recording cache-first replays: the state folder's, else the one in fixtures_dir (data/fixtures/)."""
+    saved = load_fixture(service, key, cache_dir())
+    return saved if saved is not None else load_fixture(service, key, fixtures_dir)
 
 
 def _default(value: Any) -> Any:
@@ -216,7 +238,9 @@ def _trace_call(service: str, request: Any, result: CallResult, at: datetime, st
         pass
 
 
-_pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="outside-call")
+# A run reads its documents 4 at a time (8 reader calls) and checks 4 charges at a time (api/pipeline.py), and a call's
+# timeout starts when it's queued here, so there's room for two runs at once.
+_pool = ThreadPoolExecutor(max_workers=16, thread_name_prefix="outside-call")
 
 
 def _live_once(fn: Callable[[Any, float], Any], request: Any, timeout: float) -> Any:
@@ -252,9 +276,10 @@ def call_outside(
     key = request_key(service, request)
     started = time.monotonic()
     result = CallResult(service, key, None, "fixture")
+    cache = cache_first() and not record and service.startswith(trace.AI_SERVICES)
 
     def from_fixture(why: str) -> CallResult:
-        saved = load_fixture(service, key, fixtures_dir)
+        saved = _cached(service, key, fixtures_dir) if cache else load_fixture(service, key, fixtures_dir)
         if saved is None and equivalent is not None:
             saved = _equivalent_fixture(service, request, equivalent, fixtures_dir)
         if saved is None:
@@ -270,6 +295,8 @@ def call_outside(
             return from_fixture("DEMO_MODE is on")
         if record and record_missing() and load_fixture(service, key, fixtures_dir) is not None:
             return from_fixture("recorded already")
+        if cache and _cached(service, key, fixtures_dir) is not None:
+            return from_fixture("answered before")
 
         for _ in range(1 + max(0, retries)):
             result.attempts += 1
@@ -282,6 +309,11 @@ def call_outside(
                 response, result.usage, result.model = response.response, response.usage, response.model
             if record:
                 save_fixture(service, key, request, response, fixtures_dir)
+            elif cache:
+                try:
+                    save_fixture(service, key, request, response, cache_dir())
+                except Exception as e:  # noqa: BLE001 - not saving only costs the next run a live call
+                    log.warning("cache-first couldn't save %s/%s: %s", service, key, e)
             result.response, result.source = response, "live"
             result.latency_ms = int((time.monotonic() - started) * 1000)
             return result

@@ -47,6 +47,10 @@ log = logging.getLogger("clawback.pipeline")
 # the same payment files D-0417 again and the portal finds the newest one, and April's never takes D-0417.
 
 
+READ_WORKERS = 4  # documents read at once, two reader calls each: 8, replay._pool's share for one run
+CHECK_WORKERS = 4  # charges whose Investigator and comeback run at once
+
+
 class UnknownMonth(ValueError):
     """The account has no charges/<month>.csv for this kind of run."""
 
@@ -315,10 +319,15 @@ def _read_terms(run: Run, client) -> list[Term]:
     names = _doc_names(docs)
     run.emit("stage", StageInfo(stage="read", status="started", total=len(docs),
                                 label=f"Two readers on each of {len(docs)} document{'s' if len(docs) != 1 else ''}"))
+    # Every document is read at once (base_terms isn't in the readers' requests); the quote check and merge then
+    # run in document order, each with the deal terms read before it, exactly as reading them one by one did.
+    pool = trace.ContextPool(max_workers=READ_WORKERS, thread_name_prefix="read")
+    reads = [pool.submit(readers.read_both, doc_id, client=client) for doc_id in docs]
+    pool.shutdown(wait=False)  # takes no more work; the reads already submitted still run
     for i, doc_id in enumerate(docs):
         run.emit("stage", StageInfo(stage="read", status="progress", done=i, total=len(docs),
                                     label=f"Reading {names[doc_id]}"))
-        r = readers.read_both(doc_id, base_terms=[t for t in terms if t.source_doc_id in deals], client=client)
+        r = readers.recheck(reads[i].result(), [t for t in terms if t.source_doc_id in deals])
         if r.doc.kind == "deal":
             deals.append(doc_id)
         run.reader_models = r.models
@@ -361,6 +370,12 @@ def _rule_evidence(rule: Rule, account: accounts.Account) -> Evidence:
     return Evidence(id=f"ev-{rule.id}", kind="rule", label=rule.label,
                     summary=f"{rule.summary} Learned from {account.first_name('owner')}'s answer.", rule_id=rule.id,
                     person=f"{account.brand.owner.name} (owner)")
+
+
+def _rehearses(a: eng.Allowance, policy: eng.Policy) -> bool:
+    """A charge with a finding is rehearsed before filing when it's over the deal, on no discretion clause, and the
+    deal covers it."""
+    return a.delta > policy.match_tolerance and not gate.discretion_terms(a, policy) and not a.missing
 
 
 def _process(run: Run, client) -> None:
@@ -421,32 +436,46 @@ def _process(run: Run, client) -> None:
     checking = charges + older
     run.emit("stage", StageInfo(stage="check", status="started", total=len(checking),
                                 label=f"{len(checking)} charge{'s' if len(checking) != 1 else ''} to check"))
-    for i, c in enumerate(checking):
+    def agents(c: Charge) -> tuple[eng.Allowance, Any, Finding | None, Rehearsal | None]:
+        """One charge's engine numbers, Investigator and comeback, on a worker: it returns them and writes nothing
+        the run shares, so the requests are exactly what checking the charges one by one sent."""
         with trace.charge_context(c.id):  # the trace files each AI call under its charge
-            run.emit("stage", StageInfo(stage="check", status="progress", done=i, total=len(checking), charge_id=c.id,
-                                        label=f"Checking {c.id}: {c.description}"))
-            run.emit("charge", c)
-            run.log(f"Checking {c.id}: {c.description}, ${c.amount:,.0f} taken.", actor="investigator", charge_id=c.id)
             a = compute_allowed(eng_charges[c.id], eng_terms, sales, payments, ops=eng_ops, fees=fee_data)
-            run.allowances[c.id] = a
             if investigator_ops.handles(c):  # shortage, price and spoilage: deliveries and price lists, not the promo
                 found = investigator_ops.investigate(c, a, run.evidence, client, brand=account.brand.name,
                                                      distributor=them)
             else:
                 found = investigator.investigate(c, a, run.evidence, client, account=account)
+            f = r = None
             if found.output:
                 f = Finding(**found.output.model_dump(), id=f"F-{c.id}", expected=a.allowed, taken=a.taken, delta=a.delta,
                             math=evidence_mod.math_parts(a.steps, a.terms, c, run.terms, run.evidence))
+                if _rehearses(a, policy):
+                    r = negotiator.rehearse(c, f, a, run.evidence, run.terms, client, account=account)
+            return a, found, f, r
+
+    # The charges' agents run CHECK_WORKERS at a time; each is shown, stored and decided here in charge order, as
+    # before (the gate, Moss, the owner's question and the meters stay on this thread).
+    pool = trace.ContextPool(max_workers=CHECK_WORKERS, thread_name_prefix="check")
+    work = [pool.submit(agents, c) for c in checking]
+    pool.shutdown(wait=False)  # takes no more work; the charges already submitted still run
+    for i, c in enumerate(checking):
+        with trace.charge_context(c.id):
+            run.emit("stage", StageInfo(stage="check", status="progress", done=i, total=len(checking), charge_id=c.id,
+                                        label=f"Checking {c.id}: {c.description}"))
+            run.emit("charge", c)
+            run.log(f"Checking {c.id}: {c.description}, ${c.amount:,.0f} taken.", actor="investigator", charge_id=c.id)
+            a, found, f, r = work[i].result()
+            run.allowances[c.id] = a
+            if f:
                 run.findings[c.id] = f
                 run.emit("finding", f)
                 kinds = {run.evidence[i].kind for i in f.evidence_ids} - {"charge"}
             else:
                 run.log(f"Couldn't explain {c.id} from the evidence, so a person decides.", "warn", "investigator", c.id)
                 kinds = set()
-            discretion = bool(gate.discretion_terms(a, policy))
-            if found.output and a.delta > policy.match_tolerance and not discretion and not a.missing:
+            if f and _rehearses(a, policy):
                 run.log(f"Predicting {them}'s comeback before filing.", actor="negotiator", charge_id=c.id)
-                r = negotiator.rehearse(c, run.findings[c.id], a, run.evidence, run.terms, client, account=account)
                 run.rehearsals[c.id] = r
                 if r.answered:
                     run.emit("rehearsal", r)
