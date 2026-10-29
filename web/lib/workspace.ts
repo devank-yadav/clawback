@@ -91,10 +91,12 @@ function chargeView(c: Charge, state: RunState): ChargeView {
   };
 }
 
-/** The credit memo for this approval (a concession makes a newer memo), else the newest one. */
+/** The credit memo for this approval (a concession makes a newer memo). Never another approval's memo: until this
+ * one's post arrives there's nothing to show. Memos without an approval id (older runs) still count. */
 function memoPost(ledger: LedgerPost[], approvalId?: string | null) {
   const memos = ledger.filter((p) => p.qbo_entity === "credit_memo");
-  return (approvalId ? memos.find((p) => p.approval_id === approvalId) : undefined) ?? memos.at(-1);
+  if (!approvalId) return memos.at(-1);
+  return memos.find((p) => p.approval_id === approvalId) ?? memos.filter((p) => !p.approval_id).at(-1);
 }
 
 /** A ledger post with a "sim-" id was recorded by Clawback but never reached QuickBooks (no connection). */

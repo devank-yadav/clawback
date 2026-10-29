@@ -133,7 +133,7 @@ def _label(t) -> str:
     if t.type == "fee_schedule":
         basis, rate = p.get("basis"), p.get("rate")
         words = BASIS_WORDS.get(basis, str(basis or "").replace("_", " "))
-        how = (words or "as charged" if rate is None  # tiered or "as assessed": no single rate to show
+        how = ("as assessed" if basis == "as_assessed" else "as charged" if rate is None  # no single rate to show
                else f"{rate}%" if basis == "percent" else f"{rate}% a year" if basis == "annual_percent"
                else f"${rate} {words}".strip())
         return f"{p.get('fee_code')}: {how}"

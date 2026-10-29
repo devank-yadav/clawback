@@ -213,8 +213,10 @@ export function PlayRun({ pending, done, onOpen, head, after }: { pending: Stage
   const charges = view.charges;
   const runKey = state.run?.run_id ?? "none";
   // Each charge's own open question (a run can ask more than one; a replaced run's closed question doesn't count).
+  // Only a charge still waiting on you ("Needs your input"): one a rule settled meanwhile doesn't ask again.
   const openQuestion = (chargeId: string) =>
-    Object.values(state.questions).find((x) => x.charge_id === chargeId && !x.answer && !x.closed_at) ?? null;
+    charges.find((c) => c.id === chargeId)?.status !== "Needs your input" ? null
+      : Object.values(state.questions).find((x) => x.charge_id === chargeId && !x.answer && !x.closed_at) ?? null;
   const { spot, atEnd } = useSpotlight(charges, runKey, done, (id) => !!openQuestion(id));
   const t = view.totals;
   const r = view.remittance;

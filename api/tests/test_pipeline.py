@@ -292,6 +292,19 @@ def test_undo_on_the_rules_page_cancels_that_rule_for_next_time():
     assert len(april.questions) == 2  # asked again
 
 
+def test_a_rule_from_one_answer_closes_the_other_question_it_settles():
+    fake, run, qid = _march_waiting()
+    pipeline.answer(qid, "accept if notice is at least 14 days", client=fake)
+    pipeline.answer(qid, "UNDO", client=fake)
+    april = pipeline.start("april", fake, background=False)
+    first, second = april.questions.values()  # A1 and A2, both display fees
+    _, rule = pipeline.answer(first.id, "accept if notice is at least 14 days", client=fake)
+    assert rule and final(april) == {"A1": ("accept", D(0), D(1200)), "A2": ("dispute", D(800), D(0))}
+    closed = april.questions[second.id]
+    assert not pipeline.is_open(closed) and closed.rule_id == rule.id and closed.answer == f"Decided by {rule.label}"
+    assert any(e.type == "answer" and e.data.question_id == second.id for e in april.events)
+
+
 def test_reply_after_settled_changes_nothing():
     fake, run, qid = _march_waiting()
     pipeline.answer(qid, "accept if notice is at least 14 days", client=fake)

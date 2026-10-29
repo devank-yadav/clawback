@@ -32,5 +32,7 @@ export function useFetched<T>(load: (() => Promise<T>) | null, key = ""): Fetche
   const reload = useCallback(() => setN((v) => v + 1), []);
   // The result for this loader, key and reload; anything older is only shown while this one loads.
   const current = result?.n === n && result.load === load && result.key === key ? result : null;
-  return { data: current?.data ?? result?.data ?? null, error: current?.error ?? null, loading: !!load && !current, reload };
+  // While the same loader looks again, its last error stays up (no banner flicker on each tick when the server's down).
+  const error = current ? current.error : result && result.load === load ? result.error : null;
+  return { data: current?.data ?? result?.data ?? null, error, loading: !!load && !current, reload };
 }

@@ -10,6 +10,8 @@ gets a thank-you, and anything else, or an answer that fails its checks twice, i
 
 from __future__ import annotations
 
+import re
+
 from datetime import datetime
 from decimal import Decimal
 
@@ -82,6 +84,18 @@ def post(dispute_id: str, text: str, attachment_doc_id: str | None = None,
     return got
 
 
+def their_refs(run: pipeline.Run, text: str) -> str:
+    """A message to the distributor names its charges by the distributor's own references, never our ids: "line C5
+    (NM-2237)" and "NM-2237 (C5)" become "NM-2237", a bare "C5" becomes "NM-2237". Applied after the outbound check
+    (it only swaps names, no figure changes), so the AI request, and its DEMO_MODE replay, stay as they were."""
+    for cid, c in run.charges.items():
+        ref, id_ = re.escape(c.ref), re.escape(cid)
+        text = re.sub(rf"\b{id_}\s*\(({ref})\)", r"\1", text)
+        text = re.sub(rf"({ref})\s*\({id_}\)", r"\1", text)
+        text = re.sub(rf"(?<![\w-]){id_}(?![\w-])", c.ref, text)
+    return text
+
+
 def _agreed(run: pipeline.Run, dispute: Dispute, text: str, charge_ids: list[str], deliver=None) -> list[PortalMessage]:
     """The desk accepted these lines with the portal's Accept action: an agreement, by code, and a thank-you."""
     lines = {ln.charge_id: ln for ln in dispute.lines}
@@ -129,7 +143,7 @@ def _post(run: pipeline.Run, dispute: Dispute, text: str, attachment_doc_id: str
     if draft is None or draft.classification == "other" or not draft.answer:
         run.log(f"{them}'s reply on {dispute_id} needs a person: held for {owner}.", "warn", "negotiator")
         return [theirs]
-    ours = deliver(run, dispute, draft.answer, draft.charge_ids, draft.evidence_ids)
+    ours = deliver(run, dispute, their_refs(run, draft.answer), draft.charge_ids, draft.evidence_ids)
     if ours is None:
         return [theirs]
     if draft.classification == "agrees":

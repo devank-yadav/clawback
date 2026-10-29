@@ -916,6 +916,16 @@ def _answer(question_id: str, text: str, from_role: str = "owner",
     for cid, d in list(run.decisions.items()):
         if d.kind == eng.DecisionKind.ASK:
             _decide(run, cid, policy)
+            if run.decisions[cid].kind != eng.DecisionKind.ASK:
+                # The new rule settled this charge too: its own question is answered by the rule, so nothing (Home,
+                # the weekly email, the payment page) still asks it and a late answer can't undo the rule's decision.
+                for other_id, other in list(run.questions.items()):
+                    if other_id != question_id and other.charge_id == cid and is_open(other):
+                        said = f"Decided by {rule.label}"
+                        run.questions[other_id] = other.model_copy(update={"answer": said, "answered_at": now,
+                                                                           "rule_id": rule.id})
+                        run.emit("answer", Answer(question_id=other_id, from_role=from_role, text=said,
+                                                  answered_at=now, rule_id=rule.id))
     _after_decisions(run, policy)
     return ans, rule
 

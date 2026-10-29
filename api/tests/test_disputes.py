@@ -186,3 +186,11 @@ def test_every_run_numbers_its_own_disputes():
     april = pipeline.start("april", fake, background=False)
     assert [e.data.id for e in april.events if e.type == "dispute"] == ["D-0427"]
     assert disputes.find("D-0417")[0] is second
+
+
+def test_messages_to_the_distributor_use_their_references_not_our_ids():
+    run = finished_march(PortalClaude())
+    said = disputes.their_refs(run, "We're crediting back line C5 (NM-2237); NM-2236 (C4) stays disputed, as does C1. "
+                                    "C10 isn't ours; ABC-C5 stays.")
+    assert said == ("We're crediting back line NM-2237; NM-2236 stays disputed, as does NM-2229. "
+                    "C10 isn't ours; ABC-C5 stays.")

@@ -98,7 +98,7 @@ function Form({ initial }: { initial: api.Autopilot }) {
       if (where === "auto" && saved.post_fair_under != null) {
         const waiting = (await api.fetchCompanyOverview().catch(() => null))?.needs_you
           .filter((n) => n.kind === "approval" && n.amount != null && n.amount <= saved.post_fair_under!).length ?? 0;
-        if (waiting) text = `Saved. New fair-charge memos up to that limit go to QuickBooks on their own; ${waiting === 1 ? "the one already waiting still needs" : `the ${waiting} already waiting still need`} your OK once, on Home.`;
+        if (waiting) text = `Saved. New fair-charge memos up to that limit go to QuickBooks on their own (a limit you set for one distributor when approving a memo still applies to it); ${waiting === 1 ? "the one already waiting still needs" : `the ${waiting} already waiting still need`} your OK once, on Home.`;
       }
       setNote({ where, text });
       setPreviewKey((n) => n + 1);
