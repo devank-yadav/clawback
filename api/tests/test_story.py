@@ -163,3 +163,26 @@ def test_a_payment_summary_keeps_its_own_kept_apart_from_older_charges(built):
     (fb,) = [r for r in history.runs(accounts.get("peak-bar-five-below")) if not r.replaced]
     # the list showed $6,184.25 "kept" while the payment slip took $5,139.25: an older charge was checked with it
     assert fb.kept == D("5139.25") and fb.older_charges == 1 and fb.taken == D("6184.25")
+
+
+def test_a_reset_answers_only_once_the_history_is_rebuilt(built, monkeypatch):
+    """The presenter's "Reset the demo" reloads Home as soon as this answers, so the history must already be back."""
+    from api.main import app
+
+    slow = story.steps
+    monkeypatch.setattr(story, "steps", lambda: (time.sleep(0.3), slow())[1])  # a replay that takes a moment
+    r = TestClient(app).post("/demo/reset").json()
+    assert (r["ok"], r["ready"], "story" in r) == (True, True, False)
+    assert {"peak-bar-five-below", "peak-bar-unfi", "peak-bar-sams"} <= {x.account.id for x in pipeline.RUNS.values()}
+    assert story.status["state"] == "built"
+
+
+def test_a_reset_says_when_the_history_couldnt_be_rebuilt(built, monkeypatch):
+    from api.main import app
+
+    def broken():
+        raise RuntimeError("no recording")
+
+    monkeypatch.setattr(story, "steps", broken)
+    r = TestClient(app).post("/demo/reset").json()
+    assert (r["ok"], r["ready"]) == (True, False) and "no recording" in r["story"]

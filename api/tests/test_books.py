@@ -349,7 +349,7 @@ def test_reset_route_with_the_stand_in(api):
     r = api.post("/demo/reset").json()
     assert r["ok"] and [(u["entity"], u["simulated"]) for u in r["quickbooks"]] == [
         ("Payment", True), ("CreditMemo", True), ("Invoice", True)]
-    assert api.post("/demo/reset").json() == {"ok": True, "stub": False, "quickbooks": []}
+    assert api.post("/demo/reset").json() == {"ok": True, "stub": False, "ready": True, "quickbooks": []}
 
 
 def test_the_deployed_reset_needs_the_admin_token(api, monkeypatch):

@@ -1,7 +1,9 @@
 """Demo controls. A reset undoes Clawback's QuickBooks writes (the sandbox goes back to INV-3102 with $6,850 open;
 in DEMO_MODE or without keys, the stand-in forgets its own), then clears the in-memory portal thread, approvals,
 runs, open questions and saved rules, and forgets the saved runs (their rows leave the events table), so GET
-/runs/latest finds none until the next run. The seeded tables aren't touched.
+/runs/latest finds none until the next run. The seeded tables aren't touched. It answers once Peak Bar's history is
+replayed again (api/story.py), so the presenter's reload opens on a full Home: `ready` says whether it was (false if the
+replay failed or took longer than STORY_WAIT_S; `story` says why).
 
 With CLAWBACK_ADMIN_TOKEN set (the deployed site), a reset needs `Authorization: Bearer <token>`, so nobody with
 the public URL can wipe the demo mid-pitch. Laptops leave it unset."""
@@ -19,6 +21,8 @@ from api.integrations import qbo, qbo_source
 from api.routes import approvals, payments, portal
 
 router = APIRouter(tags=["demo"])
+
+STORY_WAIT_S = 20.0  # a replay takes a few seconds; past this the reset answers anyway, with ready: false
 
 
 @router.post("/demo/reset")
@@ -41,6 +45,12 @@ def reset(request: Request, authorization: str | None = Header(default=None)) ->
     if qbo_source.poller:  # a reseeded invoice gets a new Id: look every invoice up again
         qbo_source.poller.forget_invoices()
     drive.reset()  # and Drive's versions and page token: the next look walks the folder again
-    story.build_later()  # then Peak Bar's history again, replayed (api/story.py), so Home isn't empty
-    return {"ok": error is None, "stub": False, "quickbooks": [asdict(u) for u in undone],
-            **({"error": error} if error else {})}
+    building = story.build_later()  # then Peak Bar's history again, replayed (api/story.py), so Home isn't empty
+    if building is None:  # DEMO_STORY=off: no history to wait for
+        ready, why = True, None
+    else:
+        building.join(STORY_WAIT_S)
+        ready = not building.is_alive() and story.status["state"] == "built"
+        why = None if ready else ("still building" if building.is_alive() else story.status["detail"] or "not built")
+    return {"ok": error is None, "stub": False, "ready": ready, "quickbooks": [asdict(u) for u in undone],
+            **({"error": error} if error else {}), **({"story": why} if why else {})}

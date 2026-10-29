@@ -197,8 +197,13 @@ export const answerQuestion = (questionId: string, text: string, saveRule = true
 export const decideApproval = (approvalId: string, approve: boolean, note: string | null, autoPost = false) =>
   call<{ approval: Approval; ledger_post: LedgerPost | null }>(`/approvals/${q(approvalId)}`, { method: "POST", body: { approve, note, auto_post: autoPost } });
 
-/** POST /demo/reset. On the deployed site it needs the admin token; a 401 surfaces as ApiError(401) so the screen can ask for it. */
-export const resetWorkspace = () => call<unknown>("/demo/reset", { method: "POST", admin: true, timeoutMs: 30_000 });
+/** POST /demo/reset's answer: ok is false when QuickBooks couldn't be undone (error says why); ready is false when
+ * Peak Bar's history didn't come back in time (story says why). */
+export type ResetResult = { ok: boolean; stub: boolean; ready: boolean; quickbooks: unknown[]; error?: string; story?: string };
+
+/** POST /demo/reset. On the deployed site it needs the admin token; a 401 surfaces as ApiError(401) so the screen can ask for it.
+ * It answers once every distributor's history is back (up to about 20 s). */
+export const resetWorkspace = () => call<ResetResult>("/demo/reset", { method: "POST", admin: true, timeoutMs: 45_000 });
 
 // ---- Evidence and the decision trace
 /** GET /charges/{id}: the evidence behind one row. */
