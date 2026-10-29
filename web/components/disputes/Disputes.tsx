@@ -144,7 +144,8 @@ export default function Disputes() {
   const list = useFetched(accounts ? load : null, `${state.dispute?.status ?? ""}:${replies}`);
 
   // One entry per dispute and account: the newest run's (the API lists newest first), with the runs it replaced
-  // folded under it. Only the newest can be sent; an earlier run's is shown for the record. Newest dispute first.
+  // folded under it. Only the newest can be sent; an earlier run's is shown for the record. The ones that need you
+  // first (so the page opens on one), then newest first.
   const groups = useMemo(() => {
     const out: Group[] = [];
     for (const it of list.data?.items ?? []) {
@@ -153,8 +154,8 @@ export default function Disputes() {
       else out.push({ head: it, earlier: [] });
     }
     return out
-      .map((g, n) => ({ g, n, at: latest(g.head.t) }))
-      .sort((a, b) => (b.at === a.at ? a.n - b.n : b.at - a.at))
+      .map((g, n) => ({ g, n, at: latest(g.head.t), needs: standing(g.head).bucket === "needs" ? 1 : 0 }))
+      .sort((a, b) => b.needs - a.needs || (b.at === a.at ? a.n - b.n : b.at - a.at))
       .map((x) => x.g);
   }, [list.data]);
 

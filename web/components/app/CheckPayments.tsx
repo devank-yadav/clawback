@@ -1,7 +1,9 @@
 "use client";
 
 // "Check for new payments": asks the connected sources now (POST /payments/sync) instead of waiting for their next
-// look. A payment found is shown as received, with "Run the agents"; otherwise "No new payments".
+// look. One payment the agents started on opens straight away; several open Payments, where each one is listed. A
+// payment found but not started (autopilot off) is shown as received, with "Run the agents"; otherwise "No new
+// payments".
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -20,9 +22,13 @@ export default function CheckPayments({ account }: { account: string | null | un
     setNote(null);
     try {
       const r = await api.syncPayments();
-      const found = r.found.find((f) => f.run_id) ?? null;
-      if (found?.run_id) {
-        router.push(withAccount("/", found.account_id || account, { run: found.run_id }));
+      const started = r.found.filter((f) => f.run_id);
+      if (started.length > 1) {
+        router.push(withAccount("/payments", account));
+        return;
+      }
+      if (started[0]?.run_id) {
+        router.push(withAccount("/", started[0].account_id || account, { run: started[0].run_id }));
         return;
       }
       if (r.found.length) {  // received: it waits for "Run the agents", which takes this button's place

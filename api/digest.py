@@ -167,7 +167,8 @@ def build(who: tenancy.Caller) -> Digest:
     if items:
         lines.append("Needs you:" if len(items) == 1 else f"Needs you ({len(items)}):")
         for it in items:
-            lines.append(f"- {it.distributor}: {it.title}")
+            # titles name the distributor already ("Northmart kept $1,200 for ..."); prefix only one that doesn't
+            lines.append(f"- {it.title}" if it.distributor in it.title else f"- {it.distributor}: {it.title}")
             for a in it.actions:
                 lines.append(f"    {a.label}: {a.url}")
             if not it.actions:

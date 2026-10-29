@@ -186,3 +186,4 @@ p a:not(.cx-btn):not([class*="cb-"]), small a:not(.cx-btn), .ph-link, .cx-link, 
   .nx { grid-template-columns: minmax(0, 1fr); grid-template-areas: "label" "title" "go"; }
   .nx-go { justify-self: start; }
 }
+.hm2-note:focus { outline: none; } .hm2-note:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }

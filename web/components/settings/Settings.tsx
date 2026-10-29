@@ -13,7 +13,6 @@ import { useRun } from "@/components/console/RunProvider";
 import { PageHeader } from "@/components/ui/kit";
 import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
-import { money } from "@/lib/format";
 import { useFetched } from "@/lib/useFetched";
 
 function Check({ checked, onChange, label, hint }: { checked: boolean; onChange: (on: boolean) => void; label: string; hint?: string }) {
@@ -166,7 +165,7 @@ function Form({ initial }: { initial: api.Autopilot }) {
                 <ul>
                   {preview.data.items.map((it, i) => (
                     <li key={i}>
-                      <span>{it.distributor}: {it.title}{it.amount != null ? ` (${money(it.amount)})` : ""}</span>
+                      <span>{it.title.includes(it.distributor) ? it.title : `${it.distributor}: ${it.title}`}</span>
                       {it.actions.length > 0
                         ? <span className="st2-taps">{it.actions.map((a) => <em key={a.label}>{a.label}</em>)}</span>
                         : <span className="st2-taps"><em className="is-open">Open in Clawback</em></span>}

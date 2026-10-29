@@ -6,7 +6,7 @@
 // is the API's: "recovered" counts only what evidence shows came back.
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AlertTriangle, ArrowRight, CircleAlert, MinusCircle } from "lucide-react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
@@ -102,8 +102,12 @@ export default function Dashboard() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ text: string; bad?: boolean } | null>(null);
   const { reload } = fetched;
+  // The answered card leaves; keyboard focus goes to the note saying what was done, not back to the page top.
+  const noteRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    if (!note || note.bad) return;
+    if (!note) return;
+    noteRef.current?.focus();
+    if (note.bad) return;
     const t = window.setTimeout(() => setNote(null), 5000);
     return () => window.clearTimeout(t);
   }, [note]);
@@ -154,7 +158,7 @@ export default function Dashboard() {
         {/* 2. The one thing that needs you next. */}
         <section className="hm2-next-wrap" aria-labelledby="hm2-next">
           <h2 id="hm2-next" className="hm2-h">Next for you</h2>
-          {note && <p className={`hm2-note ${note.bad ? "is-bad" : ""}`} role={note.bad ? "alert" : "status"}>{note.text}</p>}
+          {note && <p ref={noteRef} tabIndex={-1} className={`hm2-note ${note.bad ? "is-bad" : ""}`} role={note.bad ? "alert" : "status"}>{note.text}</p>}
           {!o && !fetched.error && <div className="hm-skel" aria-hidden="true"><i /></div>}
           {o && !next && (
             <div className="cb-card hm2-calm"><strong>You’re all caught up.</strong><span>When a payment comes in short or a distributor replies, it shows up here.</span></div>

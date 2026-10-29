@@ -168,7 +168,7 @@ def readable_name(doc_id: str, account: accounts.Account) -> str:
     m = re.search(r"(?:^|-)((?:19|20)\d\d)(?:-(\d\d))?(?:-(\d\d))?(?:-|$)", "-".join(words))
     if m:
         y, mo, d = m.group(1), m.group(2), m.group(3)
-        when = (datetime(int(y), int(mo), int(d)).strftime("%b %-d, %Y") if d
+        when = (f"{datetime(int(y), int(mo), int(d)):%b} {int(d)}, {y}" if d
                 else datetime(int(y), int(mo), 1).strftime("%B %Y") if mo else y)
         words = [w for w in words if w not in {y, mo, d}]
     excerpt = "excerpt" in words
