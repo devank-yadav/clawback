@@ -12,7 +12,8 @@ The month it shows:
   is, the replay holds the reply for the owner and recovered stays 0.
 - Sam's Club: checked; its discretionary sampling fee is a question waiting on the admin, and so is its memo. Its
   dispute went out and Sam's desk pushed back without a document; the admin was told.
-- Northmart: not run. Its March payment is the next one to arrive (POST /payments/sync delivers it).
+- Northmart: not run. Its March payment is the next one to arrive: the presenter sends it (the distributor's
+  portal, or the presenter menu's simulated deposit).
 
 Each step uses the product's own paths (pipeline.start, pipeline.answer, pipeline.decide_approval,
 dispute_email.send_dispute, disputes.post), so everything it leaves behind is what those leave behind.
@@ -33,12 +34,10 @@ log = logging.getLogger("clawback.story")
 
 # Only accounts whose whole run is recorded: a replay with a missing answer would send that charge to Ask, and the
 # history would show the admin "accepting" what the agents never checked. KeHE has no recordings and Walmart's stop
-# where the recording budget ran out, so both wait for their payment instead (POST /payments/sync delivers them
-# after Northmart's, live).
+# where the recording budget ran out, so both wait for their payment instead (sent from their portals, live).
 SETTLED = ("peak-bar-five-below",)
 REPLIED = "peak-bar-unfi"
 WAITING = "peak-bar-sams"
-NEXT_PAYMENT = accounts.DEFAULT  # Northmart's March payment: the live moment
 # UNFI's desk accepts one line with its portal's Accept action (read by code, no AI): recovered, with evidence.
 AGREEMENT = {REPLIED: (["U5"], "Accepted: Peak Bar Peanut Butter wasn't part of the MCB deal. Deduction 60412326 will "
                               "be credited on the next remittance.")}

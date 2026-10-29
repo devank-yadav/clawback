@@ -40,8 +40,8 @@ def _bank(account: accounts.Account | None, demo: bool) -> Connection:
     live = nessie.configured() and not demo
     watching = bool(nessie.poller and nessie.poller.running)
     if not live:
-        detail = "Not connected yet: payments come in by upload, by email, or with “Check for new payments”" if not demo \
-            else "Demo: “Check for new payments” brings in the distributors’ payments and starts the agents"
+        detail = "Not connected yet: payments come in by upload or by email" if not demo \
+            else "Demo: payments come in from the distributors’ portals, by upload or by email"
     elif watching:
         named = f" (“{account.config.nessie_description}”)" if account else ""
         detail = f"Checked every {nessie.POLL_S:.0f} seconds; a deposit that names this invoice{named} starts the agents"

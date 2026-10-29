@@ -110,9 +110,9 @@ decision gate and approvals; Data model; API, live updates and integrations.
   with evidence (the distributor agreed in the thread); a concession is not a recovery. Nothing says "being
   recovered" or "still claimable"; lost_past_window / claimable_now are deprecated.
 - Startup history (api/story.py): Peak Bar's other five distributors replayed from recordings at startup and after
-  /demo/reset (background thread, replay.replaying(), DEMO_STORY=off in tests); Northmart is left for POST
-  /payments/sync, which runs the bank and QuickBooks pollers once and else delivers the supplier's next unchecked
-  payment. scripts/record_missing.py [--story] records only missing AI answers, under --cap dollars.
+  /demo/reset (background thread, replay.replaying(), DEMO_STORY=off in tests); Northmart is left for its
+  portal's "Send payment" (or the presenter's simulated deposit). POST /payments/sync runs the bank and QuickBooks
+  pollers once and reports only what they found; it never makes a payment up. scripts/record_missing.py [--story] records only missing AI answers, under --cap dollars.
 - One admin (api/auth.py): the brand's owner answers every question and approves every credit memo, in the app or by
   text to OWNER_PHONE (there is no controller; account.yaml's brand.controller is still accepted and unused). With
   OWNER_TOKEN set, the in-app answer and approval need it as X-Clawback-Role-Token; POST /questions/{id}/answer takes

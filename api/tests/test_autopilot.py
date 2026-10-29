@@ -53,8 +53,7 @@ def test_a_received_payment_starts_the_agents_at_once(api):
     sent = api.post("/portal/payments/peak-bar").json()
     assert sent["run_id"] and sent["run_id"] in pipeline.RUNS
     assert api.get("/payments/pending").json() == []  # nothing waits for "Run the agents"
-    found = api.post("/payments/sync").json()["found"]
-    assert all(f["run_id"] for f in found)
+    assert api.post("/payments/sync").json()["found"] == []  # the check never makes a payment up
     end = time.monotonic() + 60  # let the runs it started finish before the next test
     while time.monotonic() < end and not all(r.done or any(e.type == "run" and e.data.status in ("waiting", "finished", "failed")
                                                            for e in r.events) for r in pipeline.RUNS.values()):

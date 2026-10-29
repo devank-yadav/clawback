@@ -1,5 +1,6 @@
 """The history Home opens on (api/story.py), replayed from recordings: fast, free, idempotent, never calling out;
-Northmart's March payment is left for "Check for new payments" (POST /payments/sync) to deliver."""
+Northmart's March payment is left for its portal's "Send payment"; "Check for new payments" (POST /payments/sync)
+never makes one up."""
 
 import time
 from decimal import Decimal as D
@@ -72,19 +73,21 @@ def test_the_history_never_touches_the_live_books(built):
     assert mails and all("history" in (m.detail or "") for m in mails)
 
 
-def test_check_for_new_payments_delivers_northmarts_march_payment(built, monkeypatch):
+def test_check_for_new_payments_never_makes_one_up(built, monkeypatch):
+    """With no new deposit, the check says so every time; Northmart's March payment comes from its portal."""
     from api.main import app
 
     monkeypatch.setenv("DEMO_MODE", "true")  # the run itself replays its recordings in the test
     client = TestClient(app)
-    r = client.post("/payments/sync").json()
-    (f,) = r["found"]
-    assert (f["account_id"], f["distributor"], f["amount"], f["invoice_id"]) == ("peak-bar", "Northmart", 41350.0,
-                                                                                 "INV-3102")
-    assert f["run_id"] is None and r["message"] == "Northmart paid $41,350.00 on INV-3102. New payment received."
-    assert "demo" not in r["message"].lower() and "test" not in r["message"].lower()
+    runs = set(pipeline.RUNS)
+    for _ in range(3):  # pressed again and again: still nothing, and nothing started
+        r = client.post("/payments/sync").json()
+        assert r["found"] == [] and r["message"] == "No new payments."
+    assert client.get("/payments/pending").json() == [] and set(pipeline.RUNS) == runs
+    sent = client.post("/portal/payments/peak-bar").json()  # Northmart pays from its portal
+    assert (sent["account_id"], sent["distributor"], sent["invoice_id"]) == ("peak-bar", "Northmart", "INV-3102")
     (p,) = client.get("/payments/pending").json()  # received, waiting for "Run the agents"
-    assert (p["account_id"], p["source"], p["received"]) == ("peak-bar", "bank", 41350.0)
+    assert (p["account_id"], p["source"], p["received"]) == ("peak-bar", "portal", 41350.0)
     started = client.post(f"/payments/pending/{p['id']}/run").json()
     assert client.get("/payments/pending").json() == []
     run = pipeline.RUNS[started["run_id"]]
@@ -93,8 +96,7 @@ def test_check_for_new_payments_delivers_northmarts_march_payment(built, monkeyp
             break
         time.sleep(0.05)
     assert all(e.at for e in run.events)  # every event carries its time, so a finished run replays at its pace
-    again = client.post("/payments/sync").json()  # the next distributor waiting for its payment, never Northmart twice
-    assert [f["account_id"] for f in again["found"]] != ["peak-bar"] and len(again["found"]) == 1
+    assert client.post("/payments/sync").json()["found"] == []  # no other distributor's payment appears
 
 
 @pytest.mark.parametrize("preset", ["no-cap", "rate", "not-a-repeat", "agree-mint", "amendment"])

@@ -49,9 +49,8 @@ def _poller_run(deposit_id: str) -> pipeline.Run | None:
 @router.post("/payments/sync", response_model=PaymentSync, dependencies=[Depends(limit("runs"))])
 def sync_payments(who: Caller = Depends(current_supplier)) -> PaymentSync:
     """"Check for new payments": one look at the bank (Nessie) and QuickBooks, as their pollers do every few
-    seconds. A payment their pollers see starts its account's run. When they have nothing new for this supplier, the
-    next payment due arrives as received (its invoice's received amount) and waits for "Run the agents"."""
-    from api import story
+    seconds. A payment their pollers see starts its account's run. Nothing else counts: when they have nothing new,
+    the answer is "No new payments" (a demo payment comes from the distributor's portal or the presenter menu)."""
     from api.integrations import qbo_source
 
     checked: list[str] = []
@@ -73,30 +72,12 @@ def sync_payments(who: Caller = Depends(current_supplier)) -> PaymentSync:
                                               distributor=run.distributor, amount=getattr(p, "amount", None),
                                               invoice_id=run.account.invoice.id, run_id=run.id))
     if not found:
-        due = _next_due(who, story.NEXT_PAYMENT)
-        if due is not None:  # received; with run_on_arrival (Settings) the agents start at once, else it waits
-            got = _receive(due, "bank")
-            found.append(FoundPayment(source="bank", account_id=due.id, distributor=due.distributor.name,
-                                      amount=due.invoice.received, invoice_id=due.invoice.id, run_id=got.run_id))
-    if not found:
         return PaymentSync(checked=checked, found=[], message="No new payments.")
     names = ", ".join(f"{f.distributor} paid ${f.amount:,.2f} on {f.invoice_id}" if f.amount is not None
                       else f"{f.distributor} paid {f.invoice_id}" for f in found)
     started = any(f.run_id for f in found)
     return PaymentSync(checked=checked, found=found,
                        message=f"{names}. " + ("The agents are checking it." if started else "New payment received."))
-
-
-def _next_due(who: Caller, first: str) -> accounts.Account | None:
-    """The caller's next tracked distributor whose invoice-month payment hasn't been checked yet (Northmart first)."""
-    from api import suppliers
-
-    supplier = who.supplier_id or suppliers.supplier_of(accounts.get(first))  # scripts and laptops: Peak Bar's
-    mine = [a for a in accounts.every() if suppliers.supplier_of(a) == supplier and tenancy.can_see(who, a)
-            and a.id not in suppliers._off(supplier)]
-    mine.sort(key=lambda a: (a.id != first, a.id))
-    waiting = {p.account_id for p in _PENDING.values()}
-    return next((a for a in mine if pipeline.latest(a.invoice.month, a) is None and a.id not in waiting), None)
 
 
 @router.post("/payments/northmart", response_model=PaymentResponse, dependencies=[Depends(limit("runs"))])
