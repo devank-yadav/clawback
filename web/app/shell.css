@@ -7,7 +7,6 @@ body:has(.sb) { --sb-w: 252px; padding-left: var(--sb-w); }
 .sb { position: fixed; inset: 0 auto 0 0; z-index: 45; width: 252px; display: flex; flex-direction: column; gap: 14px;
   padding: 18px 14px 14px; background: var(--side); border-right: 1px solid var(--line); overflow-y: auto; overscroll-behavior: contain; }
 .sb-head { display: flex; align-items: center; justify-content: space-between; padding: 0 6px; }
-.sb-logo { display: inline-flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 700; letter-spacing: -0.5px; color: var(--ink); }
 .sb-close, .sb-menu-btn { display: none; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); cursor: pointer; }
 .sb-close:hover, .sb-menu-btn:hover { background: var(--raised); }
 .sb-close svg, .sb-menu-btn svg { width: 20px; height: 20px; }

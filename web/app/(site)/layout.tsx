@@ -6,6 +6,7 @@ import "./site.css";
 import "../claw.css";
 import "../game-tokens.css";
 import "./site-game.css";
+import "../brand.css";
 
 // The public pages: the landing page (/) and sign-in (/signin). No account, no run, no API calls until you sign in.
 

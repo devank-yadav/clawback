@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Calculator, FileCheck2, Landmark, MessageSquareReply, Scale, ShieldCheck } from "lucide-react";
-import { Logo } from "@/components/console/ui";
+import { BrandMark } from "@/components/console/ui";
 import RequestAccess from "./RequestAccess";
 import { HeroExplainer } from "./HeroExplainer";
 
@@ -69,7 +69,7 @@ function Sources({ list }: { list: Source[] }) {
 function TopNav() {
   return (
     <header className="st-top">
-      <Link href="/" className="st-logo" aria-label="Clawback home"><Logo /> clawback</Link>
+      <Link href="/" className="st-logo" aria-label="Clawback home"><BrandMark size="lg" /></Link>
       <nav className="st-top-links" aria-label="Page">
         <a href="#problem">The problem</a>
         <a href="#how">How it works</a>
@@ -187,7 +187,7 @@ export default function Landing() {
         </section>
       </main>
       <footer className="st-foot">
-        <span className="st-logo is-small"><Logo size={18} /> clawback</span>
+        <span className="st-logo"><BrandMark size="sm" animate={false} /></span>
         <span>Get paid what the contract says.</span>
         <Link href="/signin">Sign in</Link>
       </footer>

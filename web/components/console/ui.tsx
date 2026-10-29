@@ -38,14 +38,8 @@ export function StatusPill({ status }: { status: ChargeStatus }) {
   );
 }
 
-export function Logo({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" stroke="#777cff" strokeWidth="1.8" strokeDasharray="44 13" strokeLinecap="round" />
-      <circle cx="12" cy="12" r="3" fill="#777cff" />
-    </svg>
-  );
-}
+/** The brand lockup (mark + wordmark); a client component, so its arrival and hover turn can run. */
+export { BrandMark, type BrandSize } from "./BrandMark";
 
 const CHECK = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
