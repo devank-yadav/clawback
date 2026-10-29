@@ -147,7 +147,8 @@ def _fit(*parts: str) -> str:
 
 def reason(f: Facts, k: str) -> str:
     amt, ref = usd(f.amount), f.clause_ref or "the deal"
-    rule = "your answer becomes a rule for every future fee." if f.rule_label or k == "relationship" else ""
+    # A rule hangs on the deal's discretion clause; without a quoted one, the answer settles this charge only.
+    rule = "your answer becomes a rule for every future fee." if f.quote and (f.rule_label or k == "relationship") else ""
     if k == "legal" and f.readers_disagree:
         what = (f.term_type or "wording").replace("_", " ")
         return _fit(f"Clawback's two readers read {ref}'s {what} differently;", f"{amt} turns on your reading.")

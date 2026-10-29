@@ -1517,15 +1517,27 @@ class OverviewLink(Contract):
     dispute_id: str | None = None
 
 
+class QuickChoice(Contract):
+    """One answer to a needs-you item that can be given in one tap (Home, the weekly summary): a question's reply the
+    API reads (api/replies.py) and whether it saves a rule, or an approval's yes (text empty)."""
+
+    label: str
+    text: str = ""
+    rule: bool = False
+
+
 class NeedsYou(Contract):
     kind: Literal["question", "dispute_email", "reply_email", "approval"]
     account_id: str
     distributor: str
-    title: str
+    title: str  # one plain sentence: what happened and what's asked ("Northmart kept $1,200 for … Is that fair?")
+    detail: str | None = None  # the why, or the distributor's own words, in a second line
     amount: Money | None = None
     risk_level: Literal["high", "medium", "low"]
     since: datetime | None = None  # when it started waiting (the oldest first within a level)
     link: OverviewLink
+    target_id: str | None = None  # the question's or the approval's id, to answer it where it's shown
+    choices: list[QuickChoice] = []  # its one-tap answers; empty when it needs reading first (a dispute, a reply)
 
 
 class OpenDispute(Contract):

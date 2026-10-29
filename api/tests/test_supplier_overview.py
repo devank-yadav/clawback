@@ -68,7 +68,7 @@ def test_needs_you_is_high_medium_low_then_oldest():
     # the $4,120 dispute email (high, filed first), the $2,730 memo approval (high, later); no open question left
     assert kinds == [("dispute_email", "high"), ("approval", "high")]
     assert items[0].link == OverviewLink(page="dispute", run_id=run.id, dispute_id="D-0417")
-    assert items[0].amount == D(4120) and "ready to review and send" in items[0].title
+    assert items[0].amount == D(4120) and items[0].title == "Your $4,120 dispute to Northmart is ready to send"
 
     from datetime import datetime, timedelta, timezone
 
@@ -89,7 +89,12 @@ def test_an_open_question_is_listed_with_its_risk():
     run = pipeline.start("march", ScenarioClaude(), background=False)
     (q,) = [n for n in supplier_overview.overview(tenancy.EVERYONE).needs_you if n.kind == "question"]
     assert (q.risk_level, q.amount, q.link.page, q.link.run_id) == ("high", D(1200), "question", run.id)
-    assert q.title.startswith("$1,200 display fee rests on §5.4")
+    assert q.title == "Northmart kept $1,200 for “Display fee (notice Mar 11)”. Is that fair?"
+    assert q.detail.startswith("$1,200 display fee rests on §5.4")  # the why, on its own line
+    # answerable where it's shown: its question id and the same one-tap choices as the app and the weekly summary
+    assert q.target_id in run.questions
+    assert [(c.label, c.rule) for c in q.choices] == [("Accept when notice is at least 14 days", True),
+                                                      ("Accept this one", False), ("Dispute this one", False)]
 
 
 def test_recent_lists_the_run_and_the_reply():

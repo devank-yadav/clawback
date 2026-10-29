@@ -148,10 +148,19 @@ export type OverviewTotals = {
   evidence: RecoveredEvidence[];
 };
 export type OverviewLink = { page: "run" | "dispute" | "approval" | "question"; run_id: string | null; dispute_id: string | null };
+/** One answer to a needs-you item in one tap: a question's reply (text) and whether it saves a rule, or an approval's yes. */
+export type QuickChoice = { label: string; text: string; rule: boolean };
 export type NeedsYou = {
   kind: "question" | "dispute_email" | "reply_email" | "approval";
-  account_id: string; distributor: string; title: string; amount: Money | null;
+  account_id: string; distributor: string;
+  /** One plain sentence: what happened and what's asked. */
+  title: string;
+  /** The why, or the distributor's own words. */
+  detail?: string | null;
+  amount: Money | null;
   risk_level: "high" | "medium" | "low"; since: string | null; link: OverviewLink;
+  /** The question's or approval's id, and its one-tap answers (empty when it needs reading first). */
+  target_id?: string | null; choices?: QuickChoice[];
 };
 export type OpenDispute = {
   /** amount: what still awaits the distributor's reply; total: the whole dispute; agreed: what they agreed to pay. */

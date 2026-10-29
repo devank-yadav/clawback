@@ -456,3 +456,19 @@ def test_the_signed_amendment_by_gmail_concedes_1000(gm):
 
 def test_without_gmail_keys_nothing_polls():
     assert dispute_email.poll_once()["ok"] is False and dispute_email.start_poller() is False
+
+
+def test_the_admin_answers_pushback_in_their_own_words_through_the_same_filter():
+    fake = EmailClaude()
+    run = finished_march(fake)
+    dispute_email.send_dispute(run, _dispute(run), client=fake)
+    disputes._message("D-0417", "northmart", "There was no cap on that promo. The deduction stands.", thread_of=run)
+    # a figure nobody computed is held, not sent
+    held = dispute_email.owner_reply(run, _dispute(run), "We'll settle for $999.99 if you pay this week.")
+    assert held.status == "held" and held.written_by == "admin" and held.problems
+    assert not [m for m in dispute_email.thread(run, "D-0417") if m.from_party == "clawback"]
+    # plain words that stick to the dispute go out on the same thread, answering their last message
+    ok = dispute_email.owner_reply(run, _dispute(run), "Section 3.2 caps the promo at 5,000 units. Please send the "
+                                                        "signed change if the cap moved.")
+    assert ok.status == "outbox" and ok.replying_to and ok.subject.startswith("Re: ")
+    assert [m.from_party for m in dispute_email.thread(run, "D-0417")][-1] == "clawback"

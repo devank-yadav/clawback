@@ -14,6 +14,7 @@ import TopBar from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
 import { PageHeader } from "@/components/ui/kit";
 import { Claw, landPulse } from "@/components/ui/Claw";
+import { DecisionCard } from "@/components/play/PlayKit";
 import CheckPayments from "./CheckPayments";
 import { ReceivedList, RunAgentsButton, useReceivedPayments } from "./ReceivedPayments";
 import { withAccount } from "@/lib/accounts";
@@ -22,7 +23,8 @@ import { money } from "@/lib/format";
 import type { NeedsYou, OverviewLink } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
 
-const ACTION: Record<NeedsYou["kind"], string> = { question: "Answer", dispute_email: "Review and send", reply_email: "Send the reply", approval: "Approve" };
+const ACTION: Record<NeedsYou["kind"], string> = { question: "Answer", dispute_email: "Review and send", reply_email: "Answer them", approval: "Approve" };
+const LEVEL = { high: "High", medium: "Medium", low: "Low" } as const;
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 /** Where a link from the overview lands: a dispute's thread, or the run (its question or approval is on its result). */
@@ -95,6 +97,32 @@ export default function Dashboard() {
   const next = needs[0] ?? null;
   const rest = needs.slice(1);
   const openCount = o?.open_disputes.length ?? 0;
+  const disputesNeedingYou = needs.filter((n) => n.kind === "dispute_email" || n.kind === "reply_email").length;
+  // Answering in place: the question's choice or the memo's yes goes straight to the API, then the list moves on.
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<{ text: string; bad?: boolean } | null>(null);
+  const { reload } = fetched;
+  useEffect(() => {
+    if (!note || note.bad) return;
+    const t = window.setTimeout(() => setNote(null), 5000);
+    return () => window.clearTimeout(t);
+  }, [note]);
+  async function act(n: NeedsYou, pick: number, remember = true) {
+    const c = n.choices?.[pick];
+    if (!c || !n.target_id) return;
+    setBusy(true);
+    setNote(null);
+    try {
+      if (n.kind === "question") await api.answerQuestion(n.target_id, c.text, c.rule && remember);
+      else await api.decideApproval(n.target_id, true, null);
+      setNote({ text: n.kind === "question" ? `Done: “${c.label}” for ${n.distributor}.${c.rule ? " Saved as a rule." : ""}` : `Done: sent to QuickBooks for ${n.distributor}.` });
+      reload();
+    } catch (e) {
+      setNote({ text: (e as Error).message, bad: true });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="fl">
@@ -126,24 +154,46 @@ export default function Dashboard() {
         {/* 2. The one thing that needs you next. */}
         <section className="hm2-next-wrap" aria-labelledby="hm2-next">
           <h2 id="hm2-next" className="hm2-h">Next for you</h2>
+          {note && <p className={`hm2-note ${note.bad ? "is-bad" : ""}`} role={note.bad ? "alert" : "status"}>{note.text}</p>}
           {!o && !fetched.error && <div className="hm-skel" aria-hidden="true"><i /></div>}
           {o && !next && (
             <div className="cb-card hm2-calm"><strong>You’re all caught up.</strong><span>When a payment comes in short or a distributor replies, it shows up here.</span></div>
           )}
           <AnimatePresence initial={false} mode="popLayout">
             {next && (
-              <motion.article key={`${next.kind}-${next.account_id}-${next.link.run_id ?? ""}-${next.link.dispute_id ?? ""}`} className="cb-card hm2-next"
+              <motion.article key={`${next.kind}-${next.account_id}-${next.link.run_id ?? ""}-${next.link.dispute_id ?? ""}-${next.target_id ?? ""}`}
+                className={`hm2-next ${next.kind === "question" && next.choices?.length ? "is-decide" : "cb-card"}`}
                 initial={still ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={still ? { opacity: 0 } : { opacity: 0, x: 40 }} transition={{ duration: 0.25 }}>
                 <div className="hm2-next-top">
-                  <Level level={next.risk_level} />
+                  {!(next.kind === "question" && next.choices?.length) && <Level level={next.risk_level} />}
                   <span className="hm2-next-who">{next.distributor}{next.since ? ` · since ${when(next.since)}` : ""}</span>
                   {needs.length > 1 && <span className="hm2-next-count">1 of {needs.length}</span>}
                 </div>
-                <h3>{next.title}</h3>
-                <div className="hm2-next-go">
-                  {next.amount != null && <span className="hm2-next-amt">{money(next.amount)}</span>}
-                  <Link className="cx-btn is-blue" href={hrefOf(next.account_id, next.link)}>{ACTION[next.kind] ?? "Open"}<ArrowRight aria-hidden="true" /></Link>
-                </div>
+                {next.kind === "question" && next.choices?.length ? (
+                  <>
+                    <DecisionCard key={next.target_id ?? next.title} question={next.title} why={next.detail ?? undefined} level={LEVEL[next.risk_level]}
+                      amount={next.amount ?? undefined} busy={busy} rememberLabel={null} goLabel="Decide"
+                      choices={next.choices.map((c, i) => ({ value: String(i), label: c.label, consequence: c.rule ? "Saved as a rule: the agents decide fees like this from now on" : "This charge only" }))}
+                      onDecide={(v) => void act(next, Number(v))} />
+                    <Link className="hm2-next-more" href={hrefOf(next.account_id, next.link)}>See the contract and the proof<ArrowRight aria-hidden="true" /></Link>
+                  </>
+                ) : (
+                  <>
+                    <h3>{next.title}</h3>
+                    {next.detail && <p className="hm2-next-detail">{next.detail}</p>}
+                    <div className="hm2-next-go">
+                      {next.amount != null && <span className="hm2-next-amt">{money(next.amount)}</span>}
+                      {next.kind === "approval" && next.choices?.length ? (
+                        <>
+                          <Link className="cx-btn is-ghost" href={hrefOf(next.account_id, next.link)}>See what’s in it</Link>
+                          <button type="button" className="cx-btn is-blue" disabled={busy} onClick={() => void act(next, 0)}>{busy ? "Sending…" : next.choices[0].label}</button>
+                        </>
+                      ) : (
+                        <Link className="cx-btn is-blue" href={hrefOf(next.account_id, next.link)}>{ACTION[next.kind] ?? "Open"}<ArrowRight aria-hidden="true" /></Link>
+                      )}
+                    </div>
+                  </>
+                )}
               </motion.article>
             )}
           </AnimatePresence>
@@ -156,7 +206,7 @@ export default function Dashboard() {
                 <ol className="hm2-rest">
                   {rest.map((n, i) => (
                     <li key={`${n.kind}-${n.account_id}-${n.link.run_id ?? ""}-${n.link.dispute_id ?? i}`}>
-                      <Link href={hrefOf(n.account_id, n.link)}><Level level={n.risk_level} /><span>{n.distributor}: {ACTION[n.kind] ?? "Open"}</span><ArrowRight aria-hidden="true" /></Link>
+                      <Link href={hrefOf(n.account_id, n.link)}><Level level={n.risk_level} /><span>{n.title}</span><ArrowRight aria-hidden="true" /></Link>
                     </li>
                   ))}
                 </ol>
@@ -168,7 +218,7 @@ export default function Dashboard() {
         {/* 3. Two doors to the rest. */}
         <nav className="hm2-doors" aria-label="More">
           <Link className="cb-card hm2-door" href={withAccount("/disputes", account?.id)}>
-            <strong>Disputes</strong><span>{openCount} open, waiting for replies</span><ArrowRight aria-hidden="true" />
+            <strong>Disputes</strong><span>{openCount} open{disputesNeedingYou ? ` · ${disputesNeedingYou} need${disputesNeedingYou === 1 ? "s" : ""} you` : ", waiting for replies"}</span><ArrowRight aria-hidden="true" />
           </Link>
           <Link className="cb-card hm2-door" href={withAccount("/payments", account?.id)}>
             <strong>All payments</strong><span>Every payment from every distributor</span><ArrowRight aria-hidden="true" />

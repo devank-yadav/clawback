@@ -30,8 +30,6 @@ from pathlib import Path
 
 from api import accounts, autopilot, pipeline, suppliers, tenancy
 from api.contracts import Contract
-from api.engine import gate
-from api.engine.policy import load_policy
 
 log = logging.getLogger("clawback.digest")
 
@@ -126,17 +124,6 @@ def tap_url(payload: dict) -> str:
 
 # ---------------------------------------------------------------- what the email says
 
-# The same choices the app offers for a question (web/components/console/Review.tsx choicesFor): a display fee can
-# become a rule; anything else is settled for this charge only.
-def choices_for(code: str, has_clause: bool = True) -> list[tuple[str, str, str, bool]]:
-    """The one-tap answers. The notice rule is offered only when the deal has a verified discretion clause for the
-    fee (pipeline._answer hangs the rule on it): without one, that answer can't become a rule and the owner would
-    just be asked again."""
-    rule = [("rule", "Accept when notice is at least 14 days", "accept if notice is at least 14 days", True)] if code == "DF" and has_clause else []
-    return [*rule, ("accept", "Accept this one", "accept" if code == "DF" else "accept it this time", False),
-            ("dispute", "Dispute this one", "dispute it", False)]
-
-
 def _money(v) -> str:
     return f"${float(v):,.2f}"
 
@@ -151,27 +138,15 @@ def build(who: tenancy.Caller) -> Digest:
     o = so.overview(who)
     t = o.totals
     settings = autopilot.get(supplier_of(who))
-    runs = so._runs(so._tracked(who))
-    by_run = {r.id: r for r in runs}
     items: list[DigestItem] = []
-    policy = load_policy()
     for n in o.needs_you:
-        run = by_run.get(n.link.run_id or "")
         open_url = f"{_app_base()}/app"
-        actions: list[TapAction] = []
-        if n.kind == "question" and run:
-            q = next((q for q in run.questions.values() if pipeline.is_open(q)), None)
-            if q:
-                code = run.charges[q.charge_id].code if q.charge_id and q.charge_id in run.charges else ""
-                a = run.allowances.get(q.charge_id or "")
-                has_clause = a is not None and any(gate.uses_discretion(t, policy) for t in a.terms)
-                actions = [TapAction(label=label, url=tap_url({"k": "q", "id": q.id, "t": text, "r": rule, "l": label}))
-                           for _cid, label, text, rule in choices_for(code, has_clause)]
-        elif n.kind == "approval" and run:
-            ap = next((e.data for e in reversed(run.events) if e.type == "approval" and e.data.status == "pending"), None)
-            if ap:
-                actions = [TapAction(label=f"Send {_money(ap.amount)} to QuickBooks",
-                                     url=tap_url({"k": "a", "id": ap.id, "l": f"Send {_money(ap.amount)} to QuickBooks"}))]
+        actions: list[TapAction] = []  # the item's own one-tap choices (supplier_overview), as signed links
+        if n.kind == "question" and n.target_id:
+            actions = [TapAction(label=c.label, url=tap_url({"k": "q", "id": n.target_id, "t": c.text, "r": c.rule, "l": c.label}))
+                       for c in n.choices]
+        elif n.kind == "approval" and n.target_id:
+            actions = [TapAction(label=c.label, url=tap_url({"k": "a", "id": n.target_id, "l": c.label})) for c in n.choices]
         if n.link.dispute_id:
             open_url = f"{_app_base()}/app/disputes?account={n.account_id}&id={n.link.dispute_id}"
         items.append(DigestItem(title=n.title, distributor=n.distributor, amount=float(n.amount) if n.amount is not None else None,

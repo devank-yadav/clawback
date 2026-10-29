@@ -20,6 +20,7 @@ import { money, shortDate } from "@/lib/format";
 import type { Account, Dispute, DisputeThread as Thread } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
 import { DisputeThread, ReviewAndSend } from "./DisputeMail";
+import NextUp from "@/components/app/NextUp";
 
 type Item = { account: Account; t: Thread };
 type Group = { head: Item; earlier: Item[] };
@@ -318,6 +319,8 @@ function Detail({ item, head, replies, onSent }: { item: Item; head: boolean; re
         )}
         <DisputeThread key={key} disputeId={d.id} runId={t.run_id} distributor={name} refreshKey={`${d.status}:${replies}`} />
       </section>
+
+      <NextUp here={{ disputeId: d.id }} homeAccount={account.id} refresh={`${d.status}:${replies}`} />
 
       <a className="cx-btn is-ghost is-small dp-portal" href={withAccount("/portal", account.id, { dispute: d.id })} target="_blank" rel="noreferrer">
         Open {account.distributor.portal_name || `${name}’s portal`}<ArrowUpRight aria-hidden="true" />

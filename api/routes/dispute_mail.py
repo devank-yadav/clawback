@@ -6,11 +6,12 @@ the caller's newest run that filed the dispute.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import Field
 
 from api import dispute_email, tenancy
 from api.auth import require_role
 from api.contracts import (
-    DisputeEmail, DisputeEmailEdit, DisputeSendRequest, DisputeSendResponse, DisputeThread, SupplierNotification,
+    Contract, DisputeEmail, DisputeEmailEdit, DisputeSendRequest, DisputeSendResponse, DisputeThread, SupplierNotification,
 )
 from api.tenancy import Caller, current_supplier
 
@@ -95,6 +96,22 @@ def send(dispute_id: str, req: DisputeSendRequest | None = None, run_id: str | N
     except dispute_email.NotReady as e:
         raise HTTPException(409, str(e)) from e
     return DisputeSendResponse(dispute=filed, email=email)
+
+
+class OwnerReply(Contract):
+    text: str = Field(min_length=1, max_length=5000)
+
+
+@router.post("/disputes/{dispute_id}/replies", response_model=DisputeEmail, dependencies=[Depends(require_role("owner"))])
+def write_reply(dispute_id: str, req: OwnerReply, run_id: str | None = Query(default=None),
+                who: Caller = Depends(current_supplier)) -> DisputeEmail:
+    """The admin's own answer to the distributor, when no drafted one waits. Sent if it passes the outbound filter;
+    held with the problems if not (then edit and send it like a drafted reply)."""
+    run, dispute = _found(who, dispute_id, run_id)
+    try:
+        return dispute_email.owner_reply(run, dispute, req.text)
+    except dispute_email.NotReady as e:
+        raise HTTPException(409, str(e)) from e
 
 
 @router.post("/disputes/{dispute_id}/replies/{email_id}/send", response_model=DisputeEmail,

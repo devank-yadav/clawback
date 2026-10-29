@@ -81,6 +81,16 @@ function useTypeIn(id: string, text: string): string | null {
   return shown === null ? null : text.slice(0, shown);
 }
 
+/** The outbound check's findings (api/engine/outbound_filter.py: "- amount: '$999' (…)") in plain words. Anything
+ * it doesn't recognise is shown as it came. */
+function plainProblems(problem: string): string[] {
+  const found = [...problem.matchAll(/- (\w+): (['"])(.*?)\2 \(/g)].map(([, kind, , text]) =>
+    kind === "amount" ? `${text} isn’t a figure from this dispute or the contract. Use the dispute’s own numbers.`
+      : kind === "quote" ? `“${text}” isn’t a sentence from the contract or the findings.`
+        : `“${text}” reads like a ${kind}. Take it out: nothing is offered that your settings didn’t set.`);
+  return found.length ? found : [problem];
+}
+
 /** The editor shared by the dispute email and a reply draft: subject, body, attachments, problems, Send. */
 function EmailEditor({ email, sendLabel, onSend, onSave, busy, problem }: {
   email: DisputeEmail;
@@ -116,7 +126,7 @@ function EmailEditor({ email, sendLabel, onSend, onSave, busy, problem }: {
           <AlertTriangle aria-hidden="true" />
           <div>
             <strong>{email.status === "held" ? "Held: fix this before it can go out" : "Can’t send yet"}</strong>
-            <ul>{problem && <li>{problem}</li>}{email.problems.map((p) => <li key={p}>{p}</li>)}</ul>
+            <ul>{problem && <li>{problem}</li>}{email.problems.flatMap(plainProblems).map((p) => <li key={p}>{p}</li>)}</ul>
           </div>
         </div>
       )}
@@ -217,7 +227,7 @@ function Letter({ email, problem, busy, onEdit, onSend }: { email: DisputeEmail;
         )}
       </article>
       {(problem || email.problems.length > 0) && (
-        <div className="dm-problems" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>Fix this before it can go out</strong><ul>{problem && <li>{problem}</li>}{email.problems.map((p) => <li key={p}>{p}</li>)}</ul></div></div>
+        <div className="dm-problems" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>Fix this before it can go out</strong><ul>{problem && <li>{problem}</li>}{email.problems.flatMap(plainProblems).map((p) => <li key={p}>{p}</li>)}</ul></div></div>
       )}
       <div className="cm-actions">
         <span className="dm-writer">{WRITER[email.written_by]}</span>
@@ -252,6 +262,10 @@ export function DisputeThread({ disputeId, runId, distributor, refreshKey = "", 
   const drafts = emails.filter((e) => e.kind === "reply" && (e.status === "ready" || e.status === "held" || e.status === "failed"));
   const dispute = emails.find((e) => e.kind === "dispute" && (e.status === "sent" || e.status === "outbox"));
   const shown = limit ? messages.slice(-limit) : messages;
+  // The distributor had the last word and nothing is drafted: the admin answers in their own words.
+  const theirTurn = messages.length > 0 && messages[messages.length - 1].from_party !== "clawback" && drafts.length === 0;
+  // Messages the admin wrote (matched to their email) say "You", the rest are the Negotiator's.
+  const mine = new Set(emails.filter((e) => e.written_by === "admin" && e.message_id).map((e) => e.message_id));
 
   async function sendReply(email: DisputeEmail, subject: string, body: string) {
     setBusy(email.id);
@@ -277,7 +291,7 @@ export function DisputeThread({ disputeId, runId, distributor, refreshKey = "", 
           {shown.map((m: PortalMessage) => (
             <li key={m.id} className={m.from_party === "clawback" ? "is-us" : ""}>
               <div className="dm-who">
-                <b>{m.from_party === "clawback" ? "Negotiator" : distributor}</b>
+                <b>{m.from_party === "clawback" ? (m.email_message_id && mine.has(m.email_message_id) ? "You" : "Negotiator") : distributor}</b>
                 <span className="dm-chip">{m.channel === "email" ? "Email" : "Portal"}</span>
                 <time dateTime={m.created_at}>{when(m.created_at)}</time>
               </div>
@@ -286,12 +300,46 @@ export function DisputeThread({ disputeId, runId, distributor, refreshKey = "", 
           ))}
         </ol>
       )}
+      {theirTurn && <AnswerThem disputeId={disputeId} runId={runId} distributor={distributor} onDone={reload} />}
       {drafts.map((d) => (
-        <section key={d.id} className="dm-draft" aria-label="The Negotiator's reply, waiting for you">
-          <h4 className="dm-draft-h">The Negotiator’s reply, ready for you to send</h4>
+        <section key={d.id} className="dm-draft" aria-label={d.written_by === "admin" ? "Your answer, waiting for a fix" : "The Negotiator's reply, waiting for you"}>
+          <h4 className="dm-draft-h">{d.written_by === "admin" ? "Your answer, held: fix it, then send" : "The Negotiator’s reply, ready for you to send"}</h4>
           <EmailEditor email={d} busy={busy === d.id} problem={problem?.id === d.id ? problem.text : null} sendLabel="Send reply" onSend={(s, b) => void sendReply(d, s, b)} />
         </section>
       ))}
     </div>
+  );
+}
+
+/** The admin's own answer to the distributor's last message. It goes through the same outbound check as the
+ * Negotiator's: a figure the dispute doesn't back, or a promise, holds it for a fix instead of sending. */
+function AnswerThem({ disputeId, runId, distributor, onDone }: { disputeId: string; runId: string | null; distributor: string; onDone: () => void }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  async function send() {
+    setBusy(true);
+    setProblem(null);
+    try {
+      await api.writeDisputeReply(disputeId, runId, text.trim());
+      setText("");
+      onDone();
+    } catch (e) {
+      setProblem(failure(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <form className="dm-draft dm-answer" aria-label={`Answer ${distributor}`} onSubmit={(e) => { e.preventDefault(); if (text.trim()) void send(); }}>
+      <h4 className="dm-draft-h">Your turn: answer {distributor}</h4>
+      <p className="dm-answer-hint">It goes on the same email thread. Every figure is checked against the dispute first, so nothing new is promised by mistake.</p>
+      <textarea aria-label="Your answer" rows={4} value={text} onChange={(e) => setText(e.target.value)}
+        placeholder={`For example: The contract caps the promo at 5,000 units. Please send the signed change if the cap moved.`} />
+      {problem && <div className="dm-problems" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>Couldn’t send</strong><ul><li>{problem}</li></ul></div></div>}
+      <div className="dm-actions">
+        <button className="cx-btn is-blue" type="submit" disabled={busy || !text.trim()}><Send aria-hidden="true" />{busy ? "Sending…" : `Send to ${distributor}`}</button>
+      </div>
+    </form>
   );
 }

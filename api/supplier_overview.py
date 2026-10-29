@@ -23,9 +23,10 @@ from decimal import Decimal
 
 from api import accounts, dispute_email, pipeline, suppliers, tenancy
 from api.contracts import (
-    NeedsYou, OpenDispute, OverviewLink, OverviewTotals, RecentItem, RecoveredEvidence, SupplierOverview,
+    NeedsYou, OpenDispute, OverviewLink, QuickChoice, OverviewTotals, RecentItem, RecoveredEvidence, SupplierOverview,
 )
-from api.engine import question_risk, totals as totals_mod
+from api.engine import gate, question_risk, totals as totals_mod
+from api.engine.policy import load_policy
 
 RANK = {"high": 0, "medium": 1, "low": 2}
 RECENT = 8
@@ -105,8 +106,30 @@ def _level(amount: Decimal | None, payment: Decimal | None) -> str:
     return question_risk.base_level(f, question_risk.load_thresholds())
 
 
+def _usd(v: Decimal) -> str:
+    """$1,200 or $2,283.20: cents only when there are some (plain titles; the exact figure is in `amount`)."""
+    return f"${v:,.0f}" if v == v.to_integral_value() else f"${v:,.2f}"
+
+
+def _short(text: str, n: int = 140) -> str:
+    text = " ".join(text.split())
+    return text if len(text) <= n else text[: n - 1].rstrip() + "…"
+
+
+# The same choices the app offers for a question (web/components/console/Review.tsx choicesFor).
+def choices_for(code: str, has_clause: bool = True) -> list[QuickChoice]:
+    """A question's one-tap answers. The notice rule is offered only when the deal has a verified discretion clause
+    for the fee (pipeline._answer hangs the rule on it): without one, that answer can't become a rule and the owner
+    would just be asked again."""
+    rule = [QuickChoice(label="Accept when notice is at least 14 days", text="accept if notice is at least 14 days",
+                        rule=True)] if code == "DF" and has_clause else []
+    return [*rule, QuickChoice(label="Accept this one", text="accept" if code == "DF" else "accept it this time"),
+            QuickChoice(label="Dispute this one", text="dispute it")]
+
+
 def _needs_you(runs: list[pipeline.Run]) -> list[NeedsYou]:
     out: list[NeedsYou] = []
+    policy = load_policy()
     for run in runs:
         a, them = run.account, run.distributor
         payment = a.invoice.received if run.kind == a.invoice.month else None
@@ -114,8 +137,12 @@ def _needs_you(runs: list[pipeline.Run]) -> list[NeedsYou]:
             if not pipeline.is_open(q):
                 continue
             c = run.charges.get(q.charge_id) if q.charge_id else None
-            out.append(NeedsYou(kind="question", account_id=a.id, distributor=them,
-                                title=q.risk.reason if q.risk else q.text, amount=c.amount if c else None,
+            title = f"{them} kept {_usd(c.amount)} for “{c.description}”. Is that fair?" if c else q.text
+            allowed = run.allowances.get(q.charge_id or "")
+            has_clause = allowed is not None and any(gate.uses_discretion(t, policy) for t in allowed.terms)
+            out.append(NeedsYou(kind="question", account_id=a.id, distributor=them, title=title,
+                                target_id=q.id, choices=choices_for(c.code if c else "", has_clause),
+                                detail=q.risk.reason if q.risk else None, amount=c.amount if c else None,
                                 risk_level=q.risk.level if q.risk else _level(c.amount if c else None, payment),
                                 since=q.sent_at, link=OverviewLink(page="question", run_id=run.id)))
         for d, first_at in _latest_disputes(run).values():
@@ -124,9 +151,13 @@ def _needs_you(runs: list[pipeline.Run]) -> list[NeedsYou]:
             mail = next((x for x in dispute_email.emails_of(run.id, d.id) if x.kind == "dispute"), None)
             if mail and mail.status in ("sent", "outbox"):
                 continue
-            state = "held: needs your edit" if mail and mail.status == "held" else "ready to review and send"
-            out.append(NeedsYou(kind="dispute_email", account_id=a.id, distributor=them,
-                                title=f"Dispute {d.id} to {them}, ${d.total:,.2f}: {state}", amount=d.total,
+            held = bool(mail and mail.status == "held")
+            title = (f"Your {_usd(d.total)} dispute to {them} needs an edit before it can go" if held
+                     else f"Your {_usd(d.total)} dispute to {them} is ready to send")
+            lines = len(d.lines)
+            out.append(NeedsYou(kind="dispute_email", account_id=a.id, distributor=them, title=title,
+                                detail=f"{lines} charge{'s' if lines != 1 else ''} the contract doesn’t allow, each with "
+                                       "its proof. Nothing goes out until you send it.", amount=d.total,
                                 risk_level=_level(d.total, payment), since=first_at,
                                 link=OverviewLink(page="dispute", run_id=run.id, dispute_id=d.id)))
         replies = [x for d in _latest_disputes(run) for x in dispute_email.emails_of(run.id, d)
@@ -140,14 +171,17 @@ def _needs_you(runs: list[pipeline.Run]) -> list[NeedsYou]:
             if any(m.from_party == "clawback" for m in thread[last_theirs + 1:]):
                 continue
             m = thread[last_theirs]
+            d = _latest_disputes(run)[dispute_id][0]
             out.append(NeedsYou(kind="reply_email", account_id=a.id, distributor=them,
-                                title=f"{them} replied on {dispute_id}: needs your answer", risk_level="medium",
+                                title=f"{them} pushed back on your {_usd(d.total)} dispute. Answer them?",
+                                detail=f"“{_short(m.text)}”", amount=d.total, risk_level="medium",
                                 since=m.created_at, link=OverviewLink(page="dispute", run_id=run.id,
                                                                       dispute_id=dispute_id)))
         for x in replies:
             out.append(NeedsYou(kind="reply_email", account_id=a.id, distributor=them,
-                                title=f"Answer to {them} on {x.dispute_id}: "
-                                      + ("held: needs your edit" if x.status == "held" else "ready to send"),
+                                title=(f"Your answer to {them} needs an edit before it can go" if x.status == "held"
+                                       else f"Your answer to {them} is ready to send"),
+                                detail="The Negotiator drafted it from the contract and the data.",
                                 risk_level="medium", since=None,
                                 link=OverviewLink(page="dispute", run_id=run.id, dispute_id=x.dispute_id)))
         latest_ap = {}
@@ -157,7 +191,11 @@ def _needs_you(runs: list[pipeline.Run]) -> list[NeedsYou]:
         for ap in latest_ap.values():
             if ap.status != "pending":
                 continue
-            out.append(NeedsYou(kind="approval", account_id=a.id, distributor=them, title=ap.text, amount=ap.amount,
+            out.append(NeedsYou(kind="approval", account_id=a.id, distributor=them,
+                                title=f"Send {_usd(ap.amount)} of {them}’s fair charges to QuickBooks?",
+                                target_id=ap.id, choices=[QuickChoice(label=f"Send {_usd(ap.amount)} to QuickBooks")],
+                                detail="A credit memo for what the contract allows. The disputed money stays open.",
+                                amount=ap.amount,
                                 risk_level=_level(ap.amount, payment), since=ap.requested_at,
                                 link=OverviewLink(page="approval", run_id=run.id)))
     far = datetime.max.replace(tzinfo=None)

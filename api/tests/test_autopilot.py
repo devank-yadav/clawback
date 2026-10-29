@@ -114,7 +114,7 @@ def test_the_memo_link_approves_once(api):
     run = pipeline.start("march", background=False)
     pipeline.answer(next(iter(run.questions)), "accept if notice is at least 14 days")
     d = digest.build(tenancy.Caller(supplier_id=PEAK))
-    memo = next(i for i in d.items if i.actions and i.actions[0].label.startswith("Send $2,730.00"))
+    memo = next(i for i in d.items if i.actions and i.actions[0].label == "Send $2,730 to QuickBooks")
     token = memo.actions[0].url.rsplit("/", 1)[1]
     assert "Sent to QuickBooks" in api.post(f"/tap/{token}").text
     assert "Already decided" in api.post(f"/tap/{token}").text

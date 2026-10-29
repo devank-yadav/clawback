@@ -70,11 +70,27 @@ function ReadingCard() {
   );
 }
 
-/** The charge in the spotlight: it waits on each stamped card for HOLD_MS, then deals the next. */
-function useSpotlight(charges: ChargeView[], runKey: string) {
+/** The charge in the spotlight: it waits on each stamped card for HOLD_MS, then deals the next. A run that was
+ * already finished when the page opened (its events arrive in one burst, so it's done within OPENED_MS) skips the
+ * deal and opens on what needs you: the charge with the open question, or the end (the approval, the dispute). */
+const OPENED_MS = 3000;
+function useSpotlight(charges: ChargeView[], runKey: string, done: boolean) {
   const [spot, setSpot] = useState(0);
   const [key, setKey] = useState(runKey);
+  const [justOpened, setJustOpened] = useState(true);
+  const [jumped, setJumped] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setJustOpened(false), OPENED_MS);
+    return () => window.clearTimeout(t);
+  }, []);
   if (key !== runKey) { setKey(runKey); setSpot(0); } // a new run or a replay starts from the first card
+  if (!jumped && done && charges.length > 0 && charges.every((c) => verdictOf(c) !== null)) {
+    setJumped(true);
+    if (justOpened) {
+      const ask = charges.findIndex((c) => c.status === "Needs your input");
+      setSpot(ask >= 0 ? ask : charges.length - 1);
+    }
+  }
   const current = charges[spot];
   const decided = !!current && verdictOf(current) !== null;
   useEffect(() => {
@@ -181,11 +197,11 @@ function PlayDispute() {
   );
 }
 
-export function PlayRun({ pending, done, onOpen, head }: { pending: Stage[]; done: boolean; onOpen: (chargeId: string) => void; head?: ReactNode }) {
+export function PlayRun({ pending, done, onOpen, head, after }: { pending: Stage[]; done: boolean; onOpen: (chargeId: string) => void; head?: ReactNode; after?: ReactNode }) {
   const { state, view, cast } = useRun();
   const charges = view.charges;
   const runKey = state.run?.run_id ?? "none";
-  const { spot, atEnd } = useSpotlight(charges, runKey);
+  const { spot, atEnd } = useSpotlight(charges, runKey, done);
   const t = view.totals;
   const r = view.remittance;
   const current = charges[spot] ?? null;
@@ -257,6 +273,7 @@ export function PlayRun({ pending, done, onOpen, head }: { pending: Stage[]; don
         line={r ? `of the ${money(r.taken)} ${r.counterparty} kept` : undefined}
       />
       <div className="cb-run-stage">{stage}</div>
+      {after}
       {charges.length > 0 && <CardQueue cards={cards} current={current && !showDone ? current.id : undefined} onPick={onOpen} label="Charges in this payment: open a decided one to see its proof" />}
       {state.feed.length > 0 && (
         <details className="cb-card cb-steps">

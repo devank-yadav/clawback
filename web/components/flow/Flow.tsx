@@ -19,6 +19,7 @@ import { useRun } from "@/components/console/RunProvider";
 import { Elapsed } from "./parts";
 import { StartPanel } from "./StartPanel";
 import { PlayRun } from "@/components/play/PlayRun";
+import NextUp from "@/components/app/NextUp";
 import { buildStages, type Stage, type StageKey } from "./stages";
 
 const noop = () => () => {};
@@ -128,6 +129,9 @@ function FlowFor() {
       {(phase === "run" || phase === "done") && (
         <main className="fl-main fl-play">
           <PlayRun pending={pending} done={phase === "done"} onOpen={setDrawer}
+            after={phase === "done" && !replaying && runId
+              ? <NextUp here={{ runId }} homeAccount={account?.id} refresh={`${state.feed.length}:${view.approval?.status ?? ""}:${state.dispute?.status ?? ""}:${view.question?.answer ?? ""}`} />
+              : null}
             head={
               <span className="fl-pay-actions">
                 {replaying ? (

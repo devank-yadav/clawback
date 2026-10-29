@@ -234,6 +234,10 @@ export const sendDispute = (id: string, runId: string | null | undefined, subjec
 /** POST /disputes/{id}/replies/{email_id}/send (admin): sends the Negotiator's drafted answer, optionally edited. */
 export const sendDisputeReply = (id: string, emailId: string, runId: string | null | undefined, subject: string, body: string) =>
   call<DisputeEmail>(`/disputes/${q(id)}/replies/${q(emailId)}/send${runQ(runId)}`, { method: "POST", body: { subject, body }, timeoutMs: 30_000 });
+/** POST /disputes/{id}/replies (admin): the admin's own answer when no drafted one waits. Sent if it passes the
+ * outbound filter; held with the problems if not (it then shows as a draft to fix and send). */
+export const writeDisputeReply = (id: string, runId: string | null | undefined, text: string) =>
+  call<DisputeEmail>(`/disputes/${q(id)}/replies${runQ(runId)}`, { method: "POST", body: { text }, timeoutMs: 30_000 });
 export const fetchNotifications = () => call<SupplierNotification[]>("/notifications");
 
 
