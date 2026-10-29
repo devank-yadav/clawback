@@ -92,7 +92,7 @@ def _agreed(run: pipeline.Run, dispute: Dispute, text: str, charge_ids: list[str
         run.log(f"{run.distributor}'s reply on {dispute.id} names no line of it: held for {run.name('owner')}.", "warn",
                 "negotiator")
         return [theirs]
-    named = ", ".join(f"{lines[c].ref} ({c})" for c in cids)
+    named = ", ".join(lines[c].ref for c in cids)  # their own references, not our charge ids
     total = totals.total_of(lines[c].amount for c in cids)
     ours = _send(run, dispute, f"Thank you for accepting {named}, ${total:,.2f} of {dispute.id}.", cids,
                  [i for c in cids for i in lines[c].evidence_ids][:3], deliver)
@@ -187,7 +187,7 @@ def _new_document(run: pipeline.Run, dispute: Dispute, doc_id: str, client, deli
     run.emit("dispute", dispute.model_copy(update={"lines": lines, "total": total,
                                                    "status": dispute.status if keep_status else "answered"}))
     cap = next((t.params.get("max_units") for t in new_terms if t.type == "unit_cap"), None)
-    parts = [f"we withdraw ${amt:,.0f} of {run.charges[cid].ref} ({cid}) and keep "
+    parts = [f"we withdraw ${amt:,.0f} of {run.charges[cid].ref} and keep "
              f"${run.decisions[cid].disputed:,.0f} disputed" for cid, amt in conceded]
     msg = (f"Thanks for the signed amendment{f', which raises the cap to {int(cap):,} units' if cap else ''}. "
            f"Under it, {'; '.join(parts)}. {dispute.id} now totals ${total:,.0f}.")

@@ -122,7 +122,7 @@ def test_signed_amendment_concedes_1000_and_keeps_540():
     dispute = [e.data for e in run.events if e.type == "dispute"][-1]
     assert (dispute.total, dispute.status) == (D(3120), "answered")
     assert {ln.charge_id: ln.amount for ln in dispute.lines}["C4"] == D(540)
-    assert "withdraw $1,000 of NM-2236 (C4)" in ours.text and "$540 disputed" in ours.text and "$3,120" in ours.text
+    assert "withdraw $1,000 of NM-2236 and keep" in ours.text and "$540 disputed" in ours.text and "$3,120" in ours.text
     memo = [e.data for e in run.events if e.type == "approval"][-1]
     assert (memo.amount, memo.status, [ln.charge_id for ln in memo.lines]) == (D(1000), "approved", ["C4"])  # within policy
     assert run.findings["C4"].expected == D(1000)

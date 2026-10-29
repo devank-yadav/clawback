@@ -164,7 +164,7 @@ export default function Dashboard() {
             {t && <span className="cb-score-line">in {openCount} open dispute{openCount === 1 ? "" : "s"}, of {money(t.taken)} taken from payments</span>}
           </div>
           <div className="cb-score-cells">
-            <div className="cb-score-cell is-good"><span>Back in your account</span><b className="hm-recovered">{t ? (rising && seen !== null ? <Count value={t.recovered} from={seen} hold={!landed} /> : <Count value={t.recovered} />) : "–"}</b></div>
+            <div className="cb-score-cell is-good"><span title="Money the distributor agreed to pay back or already credited">Won back</span><b className="hm-recovered">{t ? (rising && seen !== null ? <Count value={t.recovered} from={seen} hold={!landed} /> : <Count value={t.recovered} />) : "–"}</b></div>
             <div className="cb-score-cell is-fair"><span>Fair charges</span><b>{t ? <Count value={t.fair} /> : "–"}</b></div>
           </div>
         </section>

@@ -154,13 +154,14 @@ def build(who: tenancy.Caller) -> Digest:
 
     back, got, fair = _money(t.disputed_awaiting_reply), _money(t.recovered), _money(t.fair)
     open_n = len(o.open_disputes)
-    subject = (f"Clawback: {back} on its way back, {len(items)} thing{'s' if len(items) != 1 else ''} for you"
-               if items else f"Clawback: {back} on its way back, nothing needs you")
+    # "Getting back" is what's disputed and not yet settled (sent or ready to send), not money already on its way.
+    subject = (f"Clawback: {back} being disputed, {len(items)} thing{'s' if len(items) != 1 else ''} for you"
+               if items else f"Clawback: {back} being disputed, nothing needs you")
     lines = [
         "Here’s where your money stands this week.",
         "",
         f"Getting back: {back} in {open_n} open dispute{'s' if open_n != 1 else ''}",
-        f"Back in your account: {got}",
+        f"Won back (agreed or credited): {got}",
         f"Fair charges, accepted: {fair}",
         "",
     ]
@@ -201,7 +202,7 @@ def build(who: tenancy.Caller) -> Digest:
         f'<div style="font-size:40px;font-weight:900;color:#c22f2e;line-height:1.1">{back}</div>'
         f'<div style="color:#43566a;font-weight:600">in {open_n} open dispute{"s" if open_n != 1 else ""}</div>'
         '<table style="border-collapse:separate;border-spacing:8px 12px;margin:0 -8px"><tr>'
-        + stat("Back in your account", got, "#0d7150") + stat("Fair charges", fair, "#1d5fb0") + "</tr></table>"
+        + stat("Won back", got, "#0d7150") + stat("Fair charges", fair, "#1d5fb0") + "</tr></table>"
         + (f'<h2 style="font-size:20px;margin:18px 0 4px">Needs you</h2>{rows}' if items
            else '<p style="font-weight:700">Nothing needs you. The agents keep checking every payment that comes in.</p>')
         + f'<p><a href="{escape(_app_base())}/app" style="color:#1a5fc8;font-weight:800">Open Clawback</a></p>'

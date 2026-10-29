@@ -91,8 +91,16 @@ function Form({ initial }: { initial: api.Autopilot }) {
       } else {
         change = email.trim() ? { digest_email: email.trim(), digest_weekly: weekly } : { digest_weekly: weekly, clear: ["digest_email"] };
       }
-      setS(await api.saveAutopilot(change));
-      setNote({ where, text: "Saved." });
+      const saved = await api.saveAutopilot(change);
+      setS(saved);
+      // A new limit applies to what comes next: memos already waiting still wait for one OK. Say so, not "Saved." alone.
+      let text = "Saved.";
+      if (where === "auto" && saved.post_fair_under != null) {
+        const waiting = (await api.fetchCompanyOverview().catch(() => null))?.needs_you
+          .filter((n) => n.kind === "approval" && n.amount != null && n.amount <= saved.post_fair_under!).length ?? 0;
+        if (waiting) text = `Saved. New fair-charge memos up to that limit go to QuickBooks on their own; ${waiting === 1 ? "the one already waiting still needs" : `the ${waiting} already waiting still need`} your OK once, on Home.`;
+      }
+      setNote({ where, text });
       setPreviewKey((n) => n + 1);
     } catch (e) {
       setNote({ where, text: (e as Error).message, bad: true });
@@ -128,12 +136,12 @@ function Form({ initial }: { initial: api.Autopilot }) {
               hint="When this is off, each payment waits for you to press Run the agents." />
           </div>
           <div className="st2-row">
-            <Check checked={sendOn} onChange={setSendOn} label="Send disputes without asking me when the total is under"
+            <Check checked={sendOn} onChange={setSendOn} label="Send disputes without asking me when the total is up to"
               hint="Every figure and quote is still checked before it leaves. Bigger disputes wait for you." />
             <Amount value={sendAmt} onChange={setSendAmt} disabled={!sendOn} label="Dispute limit" />
           </div>
           <div className="st2-row">
-            <Check checked={postOn} onChange={setPostOn} label="Send fair charges to QuickBooks without asking me when under"
+            <Check checked={postOn} onChange={setPostOn} label="Send fair charges to QuickBooks without asking me when up to"
               hint="The credit memo for charges the contract allows. Bigger ones wait for your yes." />
             <Amount value={postAmt} onChange={setPostAmt} disabled={!postOn} label="QuickBooks limit" />
           </div>

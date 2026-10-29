@@ -124,7 +124,7 @@ def test_the_portal_accept_action_is_read_by_code(monkeypatch):
     pipeline.start("march", background=False)
     theirs, ours = disputes.post("D-0417", "Accepted.", agree_charge_ids=["C5", "C9"])
     assert (theirs.classification, theirs.charge_ids) == ("agrees", ["C5"])  # C9 isn't on the dispute
-    assert ours.text == "Thank you for accepting NM-2237 (C5), $1,000.00 of D-0417."
+    assert ours.text == "Thank you for accepting NM-2237, $1,000.00 of D-0417."
     assert supplier_overview.overview(tenancy.EVERYONE).totals.recovered == D(1000)
     pipeline.reset(), disputes.reset()
 

@@ -127,7 +127,7 @@ def template(dispute: Dispute, account: accounts.Account, portal_url: str | None
             f" The deal says: \"{ln.quote}\"" if ln.quote else "")
         # The finding goes in as written, quoted: it's the line's own reason, so the outbound filter checks it as a
         # quote of the finding rather than reading its words ("within 90 days") as our promise or deadline.
-        paras.append(f"{ln.ref} ({ln.charge_id}), {usd(ln.amount)} disputed. Our finding: \"{ln.reason.rstrip('.')}\"."
+        paras.append(f"{ln.ref}, {usd(ln.amount)} disputed. Our finding: \"{ln.reason.rstrip('.')}\"."
                      f"{clause} Calculation: {_math(ln.math)}".rstrip())
     closing = ("Please review the attached packet and reverse the disputed amounts. If you see any line differently, "
                "reply with the signed document that supports it.")

@@ -36,7 +36,7 @@ const DO: Record<Rule["decision"], string> = { accept: "Accept it as fair", disp
 const ALWAYS_ASK = [
   { title: "Anything the contract leaves to judgment", line: "Words like “at its discretion” or “reasonable”, until you answer once and it becomes a rule here." },
   { title: "When the two contract readers disagree", line: "Two different AI models read every contract. If they don’t agree on a term, a person decides, not the agents." },
-  { title: "Disputes over your limit", line: "Every dispute waits for your OK before it goes out, unless you set a limit in Settings and it’s under it." },
+  { title: "Disputes over your limit", line: "Every dispute waits for your OK before it goes out, unless you set a limit in Settings and it’s within it." },
 ];
 
 export default function Rules() {

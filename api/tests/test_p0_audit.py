@@ -155,7 +155,7 @@ def test_f9_each_preset_gets_the_right_answer_and_only_the_amendment_moves_money
     amendment = next(p for p in disputes.PRESETS if p.attachment_doc_id == "amendment-1")
     _, ours = api.post("/portal/disputes/D-0417/messages",
                        json={"text": amendment.text, "attachment_doc_id": "amendment-1"}).json()
-    assert "withdraw $1,000 of NM-2236 (C4)" in ours["text"] and "$540 disputed" in ours["text"]
+    assert "withdraw $1,000 of NM-2236 and keep" in ours["text"] and "$540 disputed" in ours["text"]
     assert final(run)["C4"] == ("split", D(540), D(1000))
     assert {cid: v for cid, v in final(run).items() if cid != "C4"} == {cid: v for cid, v in before.items() if cid != "C4"}
 

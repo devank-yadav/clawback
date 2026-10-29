@@ -86,7 +86,7 @@ def test_the_summary_answers_a_question_in_one_tap_once(api):
     item = next(i for i in d.items if i.actions)
     labels = [a.label for a in item.actions]
     assert labels == ["Accept when notice is at least 14 days", "Accept this one", "Dispute this one"]
-    assert "$4,120.00 on its way back" not in d.subject or True
+    assert d.subject.startswith("Clawback: $") and "being disputed" in d.subject
     url = item.actions[0].url
     assert url.startswith("https://clawback.test/api/tap/")
     token = url.rsplit("/", 1)[1]
