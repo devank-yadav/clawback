@@ -140,7 +140,7 @@ function PaymentItem({ p }: { p: Payment }) {
 /** Payments that arrived but the agents haven't started on (autopilot usually starts them on its own). */
 function Arrived({ received, accounts, filter }: { received: Received; accounts: Account[]; filter: Filter }) {
   const list = received.pending.filter((p) => filter.kind !== "account" || p.account_id === filter.id);
-  if (filter.kind === "needs" || (!list.length && !received.problem)) return null;
+  if (filter.kind === "needs" || (!list.length && !received.problem && !received.started)) return null;
   return (
     <section className="pm-section" aria-label="Payments that just arrived">
       <h2 className="pm-h">Just arrived</h2>
@@ -172,6 +172,7 @@ function Arrived({ received, accounts, filter }: { received: Received; accounts:
         })}
       </ol>
       {received.problem && <div className="fl-problem" role="alert">{received.problem}</div>}
+      {received.started && !list.length && <p className="ck-note" role="status">{received.started}</p>}
     </section>
   );
 }

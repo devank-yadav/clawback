@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/console/ui";
 import { inkOn, withAccount } from "@/lib/accounts";
+import { RECEIVED_EVENT } from "@/components/app/ReceivedPayments";
 import { askAdminToken, signOut, useSession } from "@/lib/session";
 import { adminToken } from "@/lib/tokens";
 import { signInHref } from "@/lib/signin-route";
@@ -81,19 +82,16 @@ function usePresenter(account: Account | null) {
     if (!account) return;
     setNote(`Posting ${account.distributor.name}’s payment…`);
     try {
-      const paid = await api.accountPays(account.id);
-      // Through the bank the run starts when the deposit is seen (about 5 s): find it, then open that run.
-      let runId = paid.run_id;
-      for (let i = 0; !runId && i < 20; i++) {
-        await new Promise((r) => setTimeout(r, 1000));
-        runId = (await api.latestRun(account.id))?.run_id ?? null;
-      }
-      setNote(null);
-      router.push(withAccount("/", account.id, runId ? { run: runId } : undefined));
+      await api.accountPays(account.id);
+      // The agents start in the background (through the bank, when the deposit is seen): the payment shows on
+      // Payments and Home and opens only when clicked.
+      window.dispatchEvent(new Event(RECEIVED_EVENT));
+      setNote(`${account.distributor.name}’s payment arrived: the agents are checking it.`);
+      window.setTimeout(() => setNote(null), 6_000);
     } catch (e) {
       setNote(`The payment didn’t go through (${(e as Error).message}).`);
     }
-  }, [account, router]);
+  }, [account]);
   /** The distributor answers the newest dispute on its portal with a preset reply (the "no cap" claim when there is
    * one), the way a real reply arrives. The dispute goes out first (to the outbox, with no mail account) if it hasn't. */
   const reply = useCallback(async () => {

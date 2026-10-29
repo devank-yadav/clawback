@@ -2,12 +2,11 @@
 
 // Payments a distributor sent from its portal, waiting for "Run the agents" (GET /payments/pending, read again every
 // 4 seconds). The Agents tab and Home show them in place of "Check for new payments"; "Run the agents" starts the
-// payment's run (POST /payments/pending/{id}/run) and opens it. Nothing here computes money.
+// payment's run (POST /payments/pending/{id}/run) in the background: it shows on Payments and opens only when
+// clicked. Nothing here computes money.
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Play } from "lucide-react";
-import { withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
 import { money } from "@/lib/format";
 import { useFetched } from "@/lib/useFetched";
@@ -24,12 +23,13 @@ export type Received = {
   pending: api.PendingPayment[];
   runningId: string | null;
   problem: string | null;
+  /** What just started, in a sentence ("The agents are checking Northmart’s payment."). */
+  started: string | null;
   run: (p: api.PendingPayment) => Promise<void>;
 };
 
 /** The payments waiting for "Run the agents", and starting one. */
 export function useReceivedPayments(): Received {
-  const router = useRouter();
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const bump = () => setTick((n) => n + 1);
@@ -41,21 +41,25 @@ export function useReceivedPayments(): Received {
   const pending = useFetched(load, String(tick)).data ?? [];
   const [runningId, setRunningId] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const [started, setStarted] = useState<string | null>(null);
 
   async function run(p: api.PendingPayment) {
     if (runningId) return;
     setRunningId(p.id);
     setProblem(null);
+    setStarted(null);
     try {
-      const r = await api.runPendingPayment(p.id);
-      router.push(withAccount("/", p.account_id, r.run_id ? { run: r.run_id } : undefined));
+      await api.runPendingPayment(p.id);
+      setStarted(`The agents are checking ${p.distributor}’s payment.`);
+      window.dispatchEvent(new Event(RECEIVED_EVENT));  // the payment leaves "received" and shows on Payments
     } catch (e) {
       setProblem(`The agents couldn’t start on ${p.distributor}’s payment (${(e as Error).message}).`);
+    } finally {
       setRunningId(null);
     }
   }
 
-  return { pending, runningId, problem, run };
+  return { pending, runningId, problem, started, run };
 }
 
 /** The blue button that takes "Check for new payments"' place while a payment waits: it runs the oldest. */
@@ -71,8 +75,8 @@ export function RunAgentsButton({ received }: { received: Received }) {
 
 /** Each payment received: who paid, how much of the invoice, when; a later one has its own "Run the agents". */
 export function ReceivedList({ received }: { received: Received }) {
-  const { pending, runningId, problem, run } = received;
-  if (!pending.length && !problem) return null;
+  const { pending, runningId, problem, started, run } = received;
+  if (!pending.length && !problem && !started) return null;
   return (
     <>
       {pending.length > 0 && (
@@ -90,6 +94,7 @@ export function ReceivedList({ received }: { received: Received }) {
         </ul>
       )}
       {problem && <div className="fl-problem" role="alert">{problem}</div>}
+      {started && !pending.length && <p className="ck-note" role="status">{started} It’s on Payments.</p>}
     </>
   );
 }

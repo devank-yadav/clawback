@@ -17,7 +17,7 @@ import { Claw, landPulse } from "@/components/ui/Claw";
 import { DecisionCard } from "@/components/play/PlayKit";
 import { consequenceOf } from "@/components/console/Review";
 import CheckPayments from "./CheckPayments";
-import { ReceivedList, RunAgentsButton, useReceivedPayments } from "./ReceivedPayments";
+import { RECEIVED_EVENT, ReceivedList, RunAgentsButton, useReceivedPayments } from "./ReceivedPayments";
 import { withAccount } from "@/lib/accounts";
 import { needsHref } from "@/lib/needs";
 import * as api from "@/lib/api";
@@ -74,8 +74,10 @@ export default function Dashboard() {
   const [showAll, setShowAll] = useState(false);
   // Home looks again every 15 seconds, so an answered item leaves and a new reply arrives without a reload.
   useEffect(() => {
-    const id = window.setInterval(() => setTick((n) => n + 1), 15_000);
-    return () => window.clearInterval(id);
+    const bump = () => setTick((n) => n + 1);
+    const id = window.setInterval(bump, 15_000);
+    window.addEventListener(RECEIVED_EVENT, bump);  // a payment just arrived: show it now
+    return () => { window.clearInterval(id); window.removeEventListener(RECEIVED_EVENT, bump); };
   }, []);
   const load = useCallback(() => api.fetchCompanyOverview(), []);
   const fetched = useFetched(load, String(tick));
