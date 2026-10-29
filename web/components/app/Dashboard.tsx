@@ -94,6 +94,8 @@ export default function Dashboard() {
   const next = needs[0] ?? null;
   const rest = needs.slice(1);
   const openCount = o?.open_disputes.length ?? 0;
+  // Disputes drafted but not sent are counted in "Getting back" too: say how many, so the figure isn't read as sent.
+  const unsentCount = o?.open_disputes.filter((d) => d.status === "ready_to_send" || d.status === "draft").length ?? 0;
   const actions = (
     <>
       <Link className="cx-btn is-ghost" href={withAccount("/upload", account?.id)}>Upload a payment slip</Link>
@@ -161,7 +163,7 @@ export default function Dashboard() {
           <div className="cb-score-main">
             <span className="cb-score-label">Getting back</span>
             <strong className="cb-score-big">{t ? <Count value={t.disputed_awaiting_reply} /> : "–"}</strong>
-            {t && <span className="cb-score-line">in {openCount} open dispute{openCount === 1 ? "" : "s"}, of {money(t.taken)} taken from payments</span>}
+            {t && <span className="cb-score-line">in {openCount} open dispute{openCount === 1 ? "" : "s"}{unsentCount ? ` (${unsentCount} not sent yet)` : ""}, of {money(t.taken)} taken from payments</span>}
           </div>
           <div className="cb-score-cells">
             <div className="cb-score-cell is-good"><span title="Money the distributor agreed to pay back or already credited">Won back</span><b className="hm-recovered">{t ? (rising && seen !== null ? <Count value={t.recovered} from={seen} hold={!landed} /> : <Count value={t.recovered} />) : "–"}</b></div>
