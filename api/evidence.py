@@ -10,7 +10,7 @@ from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from decimal import Decimal
 
-from api import documents, rows
+from api import accounts, documents, rows
 from api.contracts import (
     Charge, DeliveryRow, Evidence, MathPart, OpsTerm, PriceRow, PriorPayment, Quote, SalesRow, Term,
 )
@@ -113,15 +113,27 @@ def from_terms(terms: Iterable[Term]) -> dict[str, Evidence]:
     return out
 
 
+# Accounts whose recorded agent requests were made when every evidence line said "Northmart": they keep that wording so
+# their recordings still match. Every other account (Cocoa Ridge) names its own distributor.
+_SAYS_NORTHMART = {"peak-bar", "peak-bar-kehe", "peak-bar-walmart", "peak-bar-five-below", "peak-bar-unfi", "peak-bar-sams",
+                   "lantern-hill", "birchbank", "ridgefire", "fernwell", "copperline", "fizzwick"}
+
+
+def _them() -> str:
+    a = accounts.current()
+    return "Northmart" if a.id in _SAYS_NORTHMART else a.distributor.name
+
+
 def from_notices() -> dict[str, Evidence]:
     out = {}
     for n in rows.notices():
         doc, text = documents.load(n.doc_id)
-        m = re.search(r"Northmart will charge[^.]*\.", text, re.S)
+        them = _them()
+        m = re.search(rf"{re.escape(them)} will charge[^.]*\.", text, re.S)
         quote = quote_in(doc.id, text, m.start(), m.end(), " ".join(m.group().split())) if m else None
         out[f"ev-{n.doc_id}"] = Evidence(
             id=f"ev-{n.doc_id}", kind="notice", label=f"Notice {day(n.notice_date)}",
-            summary=f"Northmart gave written notice of a ${n.amount:,.2f} fee on {day(n.notice_date, year=True)}.",
+            summary=f"{them} gave written notice of a ${n.amount:,.2f} fee on {day(n.notice_date, year=True)}.",
             quote=quote, sender=doc.sender,
             rows=[{"notice_date": n.notice_date.isoformat(), "charge_ref": n.ref, "amount": float(n.amount)}])
     return out
@@ -153,7 +165,7 @@ def from_sales(rows: Sequence[SalesRow], deal_products: Iterable[str]) -> dict[s
 
 def from_charges(charges: Iterable[Charge]) -> dict[str, Evidence]:
     return {f"ev-charge-{c.id}": Evidence(id=f"ev-charge-{c.id}", kind="charge", label=f"Charge {c.id} ({c.ref})",
-                                          summary=f"Northmart's remittance line {c.ref}: {c.description}, ${c.amount:,.2f}.",
+                                          summary=f"{_them()}'s remittance line {c.ref}: {c.description}, ${c.amount:,.2f}.",
                                           rows=[c.model_dump(mode="json")])
             for c in charges}
 
@@ -161,7 +173,7 @@ def from_charges(charges: Iterable[Charge]) -> dict[str, Evidence]:
 def from_payments(payments: Iterable[PriorPayment]) -> dict[str, Evidence]:
     return {f"ev-payment-{p.ref}": Evidence(
         id=f"ev-payment-{p.ref}", kind="prior_payment", label=f"Paid {day(p.paid_on)} ({p.ref})",
-        summary=f"Northmart already took ${p.amount:,.2f} for {p.units:,} units sold {day(p.period_start)} to "
+        summary=f"{_them()} already took ${p.amount:,.2f} for {p.units:,} units sold {day(p.period_start)} to "
                 f"{day(p.period_end)}, on {day(p.paid_on)}.",
         rows=[p.model_dump(mode="json")]) for p in payments}
 

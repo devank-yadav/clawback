@@ -1,0 +1,5 @@
+charge_id,decision,disputed,accepted,why
+B1,split,600.00,600.00,"The deal pays $1.00 a bar (Section 2.1); Brightway took $2.00 on 600 bars: $600 is fair, $600 comes back."
+B2,accept,0.00,800.00,"800 bars at $1.00: 1,400 bars in all, within the 1,500 the signed amendment allows (the original cap was 1,000)."
+B3,dispute,300.00,0.00,"Mint Bar isn't one of the promoted bars in Section 2.1."
+B4,ask,0.00,0.00,"A display fee at Brightway's discretion (Section 3.1): the owner decides."

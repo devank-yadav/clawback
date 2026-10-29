@@ -38,6 +38,26 @@ PRESETS = [
                  text="The cap was raised to 6,000 units. The signed amendment is attached."),
 ]
 
+# Quick replies for the other demo accounts' portals (the list above is Peak Bar's Northmart story).
+PRESETS_BY_ACCOUNT: dict[str, list[PortalPreset]] = {
+    "cocoaridge": [
+        PortalPreset(id="cr-rate", label="The rate was $2.00", expect="claim_without_document", charge_ids=["B1"],
+                     text="We agreed $2.00 a bar for the first two weeks of the promo, so BW-101 is correct."),
+        PortalPreset(id="cr-mint", label="Mint was in the promo", expect="claim_without_document", charge_ids=["B3"],
+                     text="Mint Bar was part of the spring promotion too. BW-103 stands."),
+        PortalPreset(id="cr-agree-mint", label="Agree on Mint", expect="agrees", charge_ids=["B3"],
+                     text="Agreed, Mint Bar wasn't in the promotion. We'll credit BW-103 back."),
+    ],
+}
+
+
+def presets_for(account_id: str | None) -> list[PortalPreset]:
+    """The portal's quick replies: Peak Bar's Northmart story by default, an account's own when it has some."""
+    if account_id is None or account_id == accounts.DEFAULT:
+        return PRESETS
+    return PRESETS_BY_ACCOUNT.get(account_id, [])
+
+
 THREADS: dict[tuple[str, str], list[PortalMessage]] = {}  # (run id, dispute id): every run numbers from D-0417
 
 

@@ -1,0 +1,39 @@
+id: cocoaridge
+supplier: cocoaridge
+brand:
+  name: Cocoa Ridge Chocolate Co.
+  kind: Chocolate bars
+  city: Portland, OR
+  initials: CR
+  colors:
+    primary: "#5B3A29"
+    accent: "#E8B86D"
+  owner:
+    name: Ava Brooks
+    email: ava@cocoaridge.example
+  controller:
+    name: Sam Ortiz
+distributor:
+  name: Brightway Grocers
+  desk_email: deductions@brightwaygrocers.example
+  portal_name: Brightway Supplier Portal
+  colors:
+    primary: "#1F6F5C"
+    accent: "#A7E0C9"
+invoice:
+  id: CR-1001
+  expected: 20000.00
+  received: 17300.00
+  month: march
+  period_start: "2026-03-01"
+  period_end: "2026-03-31"
+deal_docs:
+  - cocoaridge-promo-2026-03
+  - cocoaridge-amendment-1-2026-03-20
+approved_senders:
+  - ava@cocoaridge.example
+dispute_start: 300
+qbo:
+  customer: Brightway Grocers
+  invoice_no: CR-1001
+nessie_description: Brightway Grocers remittance CR-1001

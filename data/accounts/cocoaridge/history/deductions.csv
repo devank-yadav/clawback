@@ -1,0 +1,5 @@
+month,ref,code,description,amount,outcome,recovered,deducted_on,product,units,rate,period_start,period_end,line_ref
+2026-03,BW-101,PA,Spring promo Mar 1 to 14,1200.00,open,0.00,2026-04-20,Cocoa Ridge Dark Bar+Cocoa Ridge Milk Bar,600,2.00,2026-03-01,2026-03-14,
+2026-03,BW-102,PA,Spring promo Mar 15 to 28,800.00,open,0.00,2026-04-20,Cocoa Ridge Dark Bar+Cocoa Ridge Milk Bar,800,1.00,2026-03-15,2026-03-28,
+2026-03,BW-103,PA,Spring promo Mint Bar,300.00,open,0.00,2026-04-20,Cocoa Ridge Mint Bar,300,1.00,2026-03-01,2026-03-28,
+2026-03,BW-104,DF,Display fee (notice Mar 10),400.00,open,0.00,2026-04-20,none,1,400.00,2026-03-01,2026-03-31,

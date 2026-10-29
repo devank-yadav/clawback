@@ -18,3 +18,9 @@ users:
     role: admin
     password_env: [DEMO_USER2_PASSWORD]
     phone_env: DEMO_USER2_PHONE
+  - email: ava@cocoaridge.example
+    name: Ava Brooks
+    supplier: cocoaridge
+    role: admin
+    password_env: [DEMO_USER3_PASSWORD]
+    aliases: [cocoaridge]  # the showcase's sign-in ID

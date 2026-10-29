@@ -50,8 +50,8 @@ def _thread(dispute_id: str) -> list[PortalMessage]:
 
 
 @router.get("/portal/presets", response_model=list[PortalPreset])
-def presets() -> list[PortalPreset]:
-    return disputes.PRESETS
+def presets(account: str | None = None) -> list[PortalPreset]:
+    return disputes.presets_for(account)
 
 
 @router.get("/portal/disputes/{dispute_id}", response_model=Dispute)

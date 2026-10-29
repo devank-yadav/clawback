@@ -1,0 +1,5 @@
+charge_id,ref,code,description,product,units,rate,amount,period_start,period_end
+B1,BW-101,PA,Spring promo Mar 1 to 14,Cocoa Ridge Dark Bar+Cocoa Ridge Milk Bar,600,2.00,1200.00,2026-03-01,2026-03-14
+B2,BW-102,PA,Spring promo Mar 15 to 28,Cocoa Ridge Dark Bar+Cocoa Ridge Milk Bar,800,1.00,800.00,2026-03-15,2026-03-28
+B3,BW-103,PA,Spring promo Mint Bar,Cocoa Ridge Mint Bar,300,1.00,300.00,2026-03-01,2026-03-28
+B4,BW-104,DF,Display fee (notice Mar 10),none,1,400.00,400.00,2026-03-01,2026-03-31
