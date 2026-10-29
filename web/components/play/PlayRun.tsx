@@ -9,7 +9,8 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRun } from "@/components/console/RunProvider";
-import { choicesFor } from "@/components/console/Review";
+import { choicesFor, consequenceOf } from "@/components/console/Review";
+import { mainClause } from "@/components/console/agents";
 import { DisputeThread, ReviewAndSend } from "@/components/disputes/DisputeMail";
 import { Money } from "@/components/console/ui";
 import { ACTOR } from "@/components/flow/parts";
@@ -108,7 +109,7 @@ function PlayQuestion({ charge }: { charge: ChargeView }) {
   const detail = useChargeDetail(charge.id, state.run?.run_id, source);
   const [busy, setBusy] = useState(false);
   const q = view.question!;
-  const clause = detail?.evidence.find((e) => e.kind === "clause") ?? null;
+  const clause = mainClause(charge.id, state, detail?.evidence ?? []);
   const level = q.risk?.level ? (String(q.risk.level).charAt(0).toUpperCase() + String(q.risk.level).slice(1).toLowerCase()) as "High" | "Medium" | "Low" : null;
   // The rule needs a discretion clause in the deal to hang on (the "Clause" detail). Older runs' questions carry no
   // details; then it stays on offer as before.
@@ -116,7 +117,7 @@ function PlayQuestion({ charge }: { charge: ChargeView }) {
   const choices = choicesFor(charge.code, hasClause).map((c) => ({
     value: c.id,
     label: c.label,
-    consequence: c.id === "dispute" ? `${money(charge.amount)} goes in the dispute` : c.id === "accept" ? `${money(charge.amount)} counts as fair` : "The agents check the notice and decide",
+    consequence: consequenceOf(c.id as "rule" | "accept" | "dispute", charge.amount),
   }));
   const why = q.risk?.reason ?? "The contract leaves this to judgment, so the agents won’t guess your policy.";
   return (
@@ -129,6 +130,7 @@ function PlayQuestion({ charge }: { charge: ChargeView }) {
       quoteSource={clause?.label}
       choices={choices}
       busy={busy}
+      rememberLabel={null}
       goLabel="Decide"
       onDecide={(value, remember) => {
         const pick = choicesFor(charge.code, hasClause).find((c) => c.id === value);
@@ -172,7 +174,7 @@ function PlayApproval() {
 
 /** The dispute: a stamp, one sentence, one blue button (the real composer); once sent, the thread with the replies. */
 function PlayDispute() {
-  const { state, account, cast, link } = useRun();
+  const { state, view, account, cast, link } = useRun();
   const d = state.dispute;
   if (!d) return null;
   const runId = state.run?.run_id ?? null;
@@ -187,6 +189,14 @@ function PlayDispute() {
           <p>{d.lines.length} charge{d.lines.length === 1 ? "" : "s"}, each with the contract sentence, the data and the math. {unsent ? `Nothing goes to ${cast.distributor} until you send it.` : "Their reply lands here the moment it comes in."}</p>
         </div>
       </div>
+      {/* The other half of the payment: the fair charges, once you've OK'd (or held) them. */}
+      {view.approval && view.approval.status !== "pending" && (
+        <p className={`cb-play-posted ${view.approval.status === "refused" ? "is-held" : ""}`} role="status">
+          {view.approval.status === "refused"
+            ? `You held the ${money(view.approval.amount)} of fair charges back from QuickBooks.`
+            : `Fair charges: ${money(view.approval.amount)} OK’d. ${postingSentence(view)}`}
+        </p>
+      )}
       {unsent
         ? <ReviewAndSend disputeId={d.id} runId={runId} distributor={cast.distributor} />
         : <DisputeThread disputeId={d.id} runId={runId} distributor={cast.distributor} refreshKey={`${d.status}:${replies}`} limit={4} />}
@@ -271,7 +281,7 @@ export function PlayRun({ pending, done, onOpen, head, after }: { pending: Stage
         questions={questions}
         pips={[...charges.map(verdictOf), ...Array<Verdict | null>(Math.max(0, (r?.charge_count ?? 0) - charges.length)).fill(null)]}
         current={current && !verdictOf(current) ? spot : undefined}
-        label={showDone ? "Disputed with proof" : "Getting back"}
+        label="Getting back"
         line={r ? `of the ${money(r.taken)} ${r.counterparty} kept` : undefined}
       />
       <div className="cb-run-stage">{stage}</div>

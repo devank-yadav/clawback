@@ -140,7 +140,7 @@ function EmailEditor({ email, sendLabel, onSend, onSave, busy, problem }: {
 }
 
 /** "Review and send": the dispute's email, drafted on the first look. `onSent` runs once it was sent or outboxed. */
-export function ReviewAndSend({ disputeId, runId, distributor, onSent }: { disputeId: string; runId: string | null; distributor?: string; onSent?: () => void }) {
+export function ReviewAndSend({ disputeId, runId, distributor, onSent, startOpen = false }: { disputeId: string; runId: string | null; distributor?: string; onSent?: () => void; startOpen?: boolean }) {
   const load = useCallback(() => api.fetchDisputeEmail(disputeId, runId), [disputeId, runId]);
   const fetched = useFetched(load);
   const [email, setEmail] = useState<DisputeEmail | null>(null);
@@ -163,7 +163,7 @@ export function ReviewAndSend({ disputeId, runId, distributor, onSent }: { dispu
     }
   }
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [editing, setEditing] = useState(false);
   const close = useCallback(() => { setOpen(false); setEditing(false); }, []);
 
@@ -333,9 +333,9 @@ function AnswerThem({ disputeId, runId, distributor, onDone }: { disputeId: stri
   return (
     <form className="dm-draft dm-answer" aria-label={`Answer ${distributor}`} onSubmit={(e) => { e.preventDefault(); if (text.trim()) void send(); }}>
       <h4 className="dm-draft-h">Your turn: answer {distributor}</h4>
-      <p className="dm-answer-hint">It goes on the same email thread. Every figure is checked against the dispute first, so nothing new is promised by mistake.</p>
+      <p className="dm-answer-hint">It goes on the same email thread. Dollar amounts and quotes are checked against the dispute first, and nothing can be promised; other numbers, like unit counts, aren’t checked, so copy them from the dispute itself.</p>
       <textarea aria-label="Your answer" rows={4} value={text} onChange={(e) => setText(e.target.value)}
-        placeholder={`For example: The contract caps the promo at 5,000 units. Please send the signed change if the cap moved.`} />
+        placeholder="For example: The signed contract doesn’t allow this charge. If it was changed, please send the signed change." />
       {problem && <div className="dm-problems" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>Couldn’t send</strong><ul><li>{problem}</li></ul></div></div>}
       <div className="dm-actions">
         <button className="cx-btn is-blue" type="submit" disabled={busy || !text.trim()}><Send aria-hidden="true" />{busy ? "Sending…" : `Send to ${distributor}`}</button>

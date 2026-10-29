@@ -332,7 +332,7 @@ def _read_terms(run: Run, client) -> list[Term]:
             if r.models[1] == "claude-b":  # the key set means Gemini was tried and failed, not that it's missing
                 second += " (Gemini didn't answer)" if os.getenv("GEMINI_API_KEY") else " (Gemini isn't set up)"
             run.log(f"Read {doc_id} with {READER_NAMES[r.models[0]]} and {second}: "
-                    f"{len(verified)} terms agreed, every quote found word for word."
+                    f"{len(verified)} term{'' if len(verified) == 1 else 's'} agreed, every quote found word for word."
                     + (f" {len(rejected)} rejected: quote not found." if rejected else ""),
                     "good" if verified and not rejected and not disputed else "warn", "reader")
         for note in r.disagreements:

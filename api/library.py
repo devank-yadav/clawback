@@ -131,13 +131,19 @@ def _label(t) -> str:
     if t.type == "amendment":
         return f"+{p.get('extra_units')} units, {t.effective_from} to {t.effective_to}"
     if t.type == "fee_schedule":
-        return f"{p.get('fee_code')}: {p.get('rate')}{'%' if p.get('basis') == 'percent' else ''} {p.get('basis', '')}".strip()
+        basis, rate = p.get("basis"), p.get("rate")
+        how = (f"{rate}%" if basis == "percent" else f"{rate}% a year" if basis == "annual_percent"
+               else f"${rate} {BASIS_WORDS.get(basis, str(basis or '').replace('_', ' '))}".strip())
+        return f"{p.get('fee_code')}: {how}"
     if t.type == "dispute_window":
         return f"{p.get('days')} days to dispute"
     if t.type == "notice_period":
         return f"{p.get('days')} days' notice"
     return t.type.replace("_", " ")
 
+
+# How a fee schedule's rate applies (api/engine/allowed.py), in words: "$100 per PO".
+BASIS_WORDS = {"per_po": "per PO", "flat": "flat", "per_unit": "per unit", "per_carton": "per carton"}
 
 TITLE = {"deal": "Signed deal", "amendment": "Signed amendment", "email": "Email", "notice": "Notice",
          "draft": "Next deal (draft)"}

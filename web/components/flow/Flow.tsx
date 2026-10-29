@@ -141,7 +141,7 @@ function FlowFor() {
                 ) : phase === "run" ? (
                   <Elapsed from={r?.received_at ?? state.feed[0]?.at ?? null} running={status === "started"} decidedIn={view.value?.seconds_to_decided ?? null} />
                 ) : pending.length === 0 ? (
-                  <button className="cx-btn is-ghost is-small" onClick={() => { setOpened(true); window.scrollTo({ top: 0 }); void replay(); }}>Replay</button>
+                  <button className="cx-btn is-ghost is-small" title="Play the agents’ work on this payment again, card by card" onClick={() => { setOpened(true); window.scrollTo({ top: 0 }); void replay(); }}>Watch it again</button>
                 ) : null}
                 {/* Back to every payment; the agents keep going on the server, and this payment stays one click away. */}
                 <Link className="cx-btn is-ghost is-small fl-back" href={withAccount("/payments", account?.id)}><ArrowLeft aria-hidden="true" />All payments</Link>
@@ -152,7 +152,7 @@ function FlowFor() {
       )}
 
       <SlideOver open={!!charge} onClose={closeDrawer} title={charge ? charge.title : ""} wide>
-        {charge && <ChargeDrawer charge={charge} onClose={closeDrawer} source="live" runId={state.run?.run_id} key={charge.id} />}
+        {charge && <ChargeDrawer charge={charge} onClose={closeDrawer} source="live" runId={state.run?.run_id} key={charge.id} inSheet />}
       </SlideOver>
       <SessionDialogs account={account} />
     </div>

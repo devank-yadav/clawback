@@ -15,23 +15,20 @@ import { useRun } from "@/components/console/RunProvider";
 import { PageHeader } from "@/components/ui/kit";
 import { Claw, landPulse } from "@/components/ui/Claw";
 import { DecisionCard } from "@/components/play/PlayKit";
+import { consequenceOf } from "@/components/console/Review";
 import CheckPayments from "./CheckPayments";
 import { ReceivedList, RunAgentsButton, useReceivedPayments } from "./ReceivedPayments";
 import { withAccount } from "@/lib/accounts";
+import { needsHref } from "@/lib/needs";
 import * as api from "@/lib/api";
 import { money } from "@/lib/format";
-import type { NeedsYou, OverviewLink } from "@/lib/types";
+import type { NeedsYou } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
 
 const ACTION: Record<NeedsYou["kind"], string> = { question: "Answer", dispute_email: "Review and send", reply_email: "Answer them", approval: "Approve" };
 const LEVEL = { high: "High", medium: "Medium", low: "Low" } as const;
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
-/** Where a link from the overview lands: a dispute's thread, or the run (its question or approval is on its result). */
-function hrefOf(account: string, link: OverviewLink): string {
-  if (link.page === "dispute" && link.dispute_id) return withAccount("/disputes", account, { id: link.dispute_id, ...(link.run_id ? { run: link.run_id } : {}) });
-  return withAccount("/", account, link.run_id ? { run: link.run_id } : undefined);
-}
 
 /** An amount that counts up when it first appears (whole dollars on the way, the exact figure at the end). `from` is
  * where it starts; `hold` keeps it there until the moment it should move (the claw's coin landing).
@@ -180,17 +177,17 @@ export default function Dashboard() {
                 className={`hm2-next ${next.kind === "question" && next.choices?.length ? "is-decide" : "cb-card"}`}
                 initial={still ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={still ? { opacity: 0 } : { opacity: 0, x: 40 }} transition={{ duration: 0.25 }}>
                 <div className="hm2-next-top">
-                  {!(next.kind === "question" && next.choices?.length) && <Level level={next.risk_level} />}
+                  {next.kind !== "approval" && !(next.kind === "question" && next.choices?.length) && <Level level={next.risk_level} />}
                   <span className="hm2-next-who">{next.distributor}{next.since ? ` · since ${when(next.since)}` : ""}</span>
-                  {needs.length > 1 && <span className="hm2-next-count">1 of {needs.length}</span>}
+                  {needs.length > 1 && <span className="hm2-next-count">{needs.length} waiting</span>}
                 </div>
                 {next.kind === "question" && next.choices?.length ? (
                   <>
                     <DecisionCard key={next.target_id ?? next.title} question={next.title} why={next.detail ?? undefined} level={LEVEL[next.risk_level]}
                       amount={next.amount ?? undefined} busy={busy} rememberLabel={null} goLabel="Decide"
-                      choices={next.choices.map((c, i) => ({ value: String(i), label: c.label, consequence: c.rule ? "Saved as a rule: the agents decide fees like this from now on" : "This charge only" }))}
+                      choices={next.choices.map((c, i) => ({ value: String(i), label: c.label, consequence: consequenceOf(c.rule ? "rule" : /dispute/i.test(c.text) ? "dispute" : "accept", next.amount) }))}
                       onDecide={(v) => void act(next, Number(v))} />
-                    <Link className="hm2-next-more" href={hrefOf(next.account_id, next.link)}>See the contract and the proof<ArrowRight aria-hidden="true" /></Link>
+                    <Link className="hm2-next-more" href={needsHref(next)}>See the contract and the proof<ArrowRight aria-hidden="true" /></Link>
                   </>
                 ) : (
                   <>
@@ -200,11 +197,11 @@ export default function Dashboard() {
                       {next.amount != null && <span className="hm2-next-amt">{money(next.amount)}</span>}
                       {next.kind === "approval" && next.choices?.length ? (
                         <>
-                          <Link className="cx-btn is-ghost" href={hrefOf(next.account_id, next.link)}>See what’s in it</Link>
+                          <Link className="cx-btn is-ghost" href={needsHref(next)}>See what’s in it</Link>
                           <button type="button" className="cx-btn is-blue" disabled={busy} onClick={() => void act(next, 0)}>{busy ? "Sending…" : next.choices[0].label}</button>
                         </>
                       ) : (
-                        <Link className="cx-btn is-blue" href={hrefOf(next.account_id, next.link)}>{ACTION[next.kind] ?? "Open"}<ArrowRight aria-hidden="true" /></Link>
+                        <Link className="cx-btn is-blue" href={needsHref(next)}>{ACTION[next.kind] ?? "Open"}<ArrowRight aria-hidden="true" /></Link>
                       )}
                     </div>
                   </>
@@ -221,7 +218,7 @@ export default function Dashboard() {
                 <ol className="hm2-rest">
                   {rest.map((n, i) => (
                     <li key={`${n.kind}-${n.account_id}-${n.link.run_id ?? ""}-${n.link.dispute_id ?? i}`}>
-                      <Link href={hrefOf(n.account_id, n.link)}><Level level={n.risk_level} /><span>{n.title}</span><ArrowRight aria-hidden="true" /></Link>
+                      <Link href={needsHref(n)}><Level level={n.risk_level} /><span>{n.title}</span><ArrowRight aria-hidden="true" /></Link>
                     </li>
                   ))}
                 </ol>

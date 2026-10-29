@@ -9,8 +9,8 @@ import { useState, useSyncExternalStore } from "react";
 import { SlideOver } from "@/components/ui/SlideOver";
 import { money, shortDate } from "@/lib/format";
 import { useChargeDetail } from "@/lib/useChargeDetail";
-import type { ChargeView } from "@/lib/workspace";
-import { agentSteps, doneCount } from "./agents";
+import { postingSentence, type ChargeView, type WorkspaceView } from "@/lib/workspace";
+import { agentSteps, doneCount, mainClause } from "./agents";
 import { useRun } from "./RunProvider";
 import { Shell } from "./Shell";
 import { KindTag, Money, Pill, StatusPill, StepDot } from "./ui";
@@ -112,23 +112,27 @@ export default function Review() {
   );
 }
 
-export function ChargeDrawer({ charge, onClose, source, runId }: { charge: ChargeView; onClose: () => void; source: "fixture" | "live"; runId: string | undefined }) {
+/** `inSheet`: shown inside a SlideOver, which has its own title and close button, so this doesn't repeat them. */
+export function ChargeDrawer({ charge, onClose, source, runId, inSheet = false }: { charge: ChargeView; onClose: () => void; source: "fixture" | "live"; runId: string | undefined; inSheet?: boolean }) {
   const { state, view, link } = useRun();
   const detail = useChargeDetail(charge.id, runId, source);
   const steps = agentSteps(charge.id, state, detail);
-  const clause = detail?.evidence.find((e) => e.kind === "clause") ?? null;
+  const clause = mainClause(charge.id, state, detail?.evidence ?? []);
   const decided = charge.accepted !== null;
 
   return (
     <aside className="cx-drawer" aria-label={`${charge.title} detail`}>
       <div className="cx-head" style={{ alignItems: "center" }}>
         <span className="cx-tiny">{charge.ref}</span>
-        <button className="cx-drawer-close" onClick={onClose} aria-label="Back to the first charge">✕</button>
+        {!inSheet && <button className="cx-drawer-close" onClick={onClose} aria-label="Back to the first charge">✕</button>}
+        {inSheet && <StatusPill status={charge.status} />}
       </div>
-      <div className="cx-head" style={{ alignItems: "center" }}>
-        <h2>{charge.title}</h2>
-        <StatusPill status={charge.status} />
-      </div>
+      {!inSheet && (
+        <div className="cx-head" style={{ alignItems: "center" }}>
+          <h2>{charge.title}</h2>
+          <StatusPill status={charge.status} />
+        </div>
+      )}
       <p className="cx-muted" style={{ fontSize: 13 }}>{charge.finding}</p>
 
       <div className="cx-split">
@@ -168,7 +172,7 @@ export function ChargeDrawer({ charge, onClose, source, runId }: { charge: Charg
 
       <div className="cx-next">
         <strong style={{ fontSize: 13, fontWeight: 500 }}>{nextTitle(charge)}</strong>
-        <p className="cx-small cx-muted">{nextLine(charge, view.disputeLabel)}</p>
+        <p className="cx-small cx-muted">{nextLine(charge, view)}</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Link className="cx-btn" href={link("/activity", { charge: charge.id })}>See every agent step</Link>
           {charge.accepted ? <Link className="cx-btn is-ghost" href={link("/approval")}>Accounting approval</Link> : null}
@@ -184,15 +188,27 @@ function nextTitle(c: ChargeView) {
   if (c.status === "Needs your input") return "Decided by your rule";
   return "Dispute prepared with proof";
 }
-function nextLine(c: ChargeView, disputeLabel: string) {
+/** What happens next to this charge's money: where the dispute stands, and the fair part's way to QuickBooks. */
+function nextLine(c: ChargeView, view: Pick<WorkspaceView, "disputeLabel" | "approval" | "postingLabel" | "postingProblem">) {
   if (c.status === "Reviewing") return "Each step fills in as its agent finishes.";
-  if (c.status === "Accepted") return "Goes into the credit memo. Credit memos over $1,000 wait for your approval.";
-  return `${disputeLabel}. The fair part goes to QuickBooks once you OK it.`;
+  const fair = view.approval?.status === "approved" ? postingSentence(view)
+    : view.approval?.status === "refused" ? "You held the fair charges back from QuickBooks."
+      : view.approval ? "It goes to QuickBooks with the fair charges once you OK them."
+        : "It goes into the credit memo for QuickBooks.";
+  if (c.status === "Accepted") return fair;
+  return c.accepted ? `${view.disputeLabel}. The fair part: ${fair.charAt(0).toLowerCase()}${fair.slice(1)}` : `${view.disputeLabel}.`;
 }
 
 /** The owner's choices: the replies the API reads (api/replies.py). A rule is saved and remembered; "this one" settles
  * only this charge. The display-fee rule is the wording the recorded demo expects, word for word. It's offered only
  * when the deal has a discretion clause for the fee (hasClause): without one, the answer can't become a rule. */
+/** What a choice does, in the same words on Home and on the payment page. */
+export function consequenceOf(kind: "rule" | "accept" | "dispute", amount: number | null | undefined): string {
+  if (kind === "rule") return "Saved as a rule: the agents decide fees like this from now on";
+  const amt = amount != null ? money(amount) : "it";
+  return kind === "accept" ? `This charge only: ${amt} counts as fair` : `This charge only: ${amt} goes in the dispute`;
+}
+
 export function choicesFor(code: string, hasClause = true) {
   const rule = code === "DF" && hasClause
     ? [{ id: "rule", label: "Accept when notice is at least 14 days", text: "accept if notice is at least 14 days" }]
@@ -207,7 +223,7 @@ export function OwnerDecision({ charge }: { charge: ChargeView }) {
   const detail = useChargeDetail(charge.id, state.run?.run_id, source);
   const [choice, setChoice] = useState<string | null>(null);
   const finding = state.findings[charge.id];
-  const clause = detail?.evidence.find((e) => e.kind === "clause") ?? null;
+  const clause = mainClause(charge.id, state, detail?.evidence ?? []);
   const choices = choicesFor(charge.code);
   const [own, setOwn] = useState("");
   const [saveRule, setSaveRule] = useState(true);

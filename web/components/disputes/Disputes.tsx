@@ -8,7 +8,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Mail, Paperclip } from "lucide-react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
@@ -57,6 +57,11 @@ function standing(i: Item): Standing {
   const partly = replies.some((m) => m.classification === "new_document");
   if (unsent(d)) return { label: "Ready for you to send", tone: "is-amber", bucket: "needs", stamp: "is-wait", word: "To send" };
   if (d.status === "withdrawn") return { label: "Closed", tone: "", bucket: "settled", stamp: "is-neutral", word: "Closed" };
+  // They agreed to some lines only (UNFI's one line of four): the rest of the dispute is still open with them.
+  const agreedIds = new Set(replies.filter((m) => m.classification === "agrees").flatMap((m) => m.charge_ids ?? []));
+  if (d.status !== "resolved" && agreed && agreedIds.size > 0 && d.lines.some((l) => !agreedIds.has(l.charge_id))) {
+    return { label: `${name} agreed to part · the rest is open`, tone: "is-fair", bucket: "waiting", stamp: "is-dispute", word: "Partly agreed" };
+  }
   if (d.status === "resolved" || agreed) {
     return partly
       ? { label: "Partly agreed", tone: "is-fair", bucket: "settled", stamp: "is-fair", word: "Partly agreed" }
@@ -92,11 +97,15 @@ function emailCounts(t: Thread) {
   };
 }
 
-function emailWords(t: Thread): string {
+/** "2 emails sent · 1 received", or, with no mailbox connected, "Filed on their portal · email not sent (no mailbox
+ * connected)": never a count that reads as if nothing happened. */
+function emailWords(t: Thread, distributor: string): string {
   const c = emailCounts(t);
-  const parts = [`${c.sent} sent`, `${c.received} received`];
-  if (c.kept) parts.push(`${c.kept} kept here (no mailbox connected)`);
-  return parts.join(" · ");
+  const parts: string[] = [];
+  if (c.sent) parts.push(`${c.sent} email${c.sent === 1 ? "" : "s"} sent`);
+  if (c.kept) parts.push(`Filed on ${distributor}’s portal · email not sent (no mailbox connected)`);
+  if (c.received) parts.push(`${c.received} received`);
+  return parts.length ? parts.join(" · ") : "No emails yet";
 }
 
 function ListItem({ i, current, replaced = false }: { i: Item; current: boolean; replaced?: boolean }) {
@@ -233,7 +242,7 @@ export default function Disputes() {
                 ))}
               </nav>
 
-              {open && <Detail item={open} head={isHead} replies={replies} onSent={list.reload} />}
+              {open && <Detail item={open} head={isHead} replies={replies} onSent={list.reload} review={params.get("send") === "1" && !!wantId && matches(open)} picked={!!wantId} />}
             </div>
           </>
         )}
@@ -245,7 +254,8 @@ export default function Disputes() {
 
 /** The open dispute: a compact header (what it disputes, where it stands, its emails), then Review and send while
  * it's unsent, then the whole thread in time order. */
-function Detail({ item, head, replies, onSent }: { item: Item; head: boolean; replies: number; onSent: () => void }) {
+/** `review`: opened from "Review and send" elsewhere (?send=1): the letter opens at once, one click from sending. */
+function Detail({ item, head, replies, onSent, review = false, picked = false }: { item: Item; head: boolean; replies: number; onSent: () => void; review?: boolean; picked?: boolean }) {
   const { t, account } = item;
   const d = t.dispute;
   const name = dist(item);
@@ -259,18 +269,23 @@ function Detail({ item, head, replies, onSent }: { item: Item; head: boolean; re
     { key: "settled", word: s.bucket === "settled" ? s.label : "Settled", when: null, done: s.bucket === "settled" },
   ];
   const key = `${account.id}:${t.run_id}:${d.id}`;
+  // On a narrow screen the open dispute sits below the list: one you picked scrolls into view, so the tap shows it.
+  const here = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (picked && window.matchMedia("(max-width: 960px)").matches) here.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [picked, key]);
   // The dispute email as it went out (the thread below shows only that it went, then the replies).
   const letter = t.emails.find((e) => e.kind === "dispute" && (e.status === "sent" || e.status === "outbox")) ?? null;
 
   return (
-    <article className="cb-card dp-detail" aria-label={`${dist(item)}: ${titleOf(item)}`}>
+    <article ref={here} className="cb-card dp-detail" aria-label={`${dist(item)}: ${titleOf(item)}`}>
       <header className="dp-head">
         <div className="dp-head-text">
           <span className="dp-head-who">{name}<small> · {d.id}{head ? "" : " · replaced by a newer check"}</small></span>
           <h2>{titleOf(item)}</h2>
           <div className="dp-head-meta">
             <span className={`cx-pill ${head ? s.tone : ""}`}>{head ? s.label : "Replaced by a newer check"}</span>
-            <span className="cx-pill dp-emails" title="Every email the app sent or received about this dispute"><Mail aria-hidden="true" />Emails · {emailWords(t)}</span>
+            <span className="cx-pill dp-emails" title="Every email the app sent or received about this dispute"><Mail aria-hidden="true" />{emailWords(t, name)}</span>
           </div>
         </div>
         <span className={`cb-stamp is-still ${s.stamp}`} aria-hidden="true"><b>{s.word}</b><span className="cb-stamp-amt">{money(d.total)}</span></span>
@@ -300,7 +315,7 @@ function Detail({ item, head, replies, onSent }: { item: Item; head: boolean; re
       {unsent(d) && head && (
         <section className="dp-section" aria-label="Review and send">
           <h3>Review and send</h3>
-          <ReviewAndSend key={key} disputeId={d.id} runId={t.run_id} distributor={name} onSent={onSent} />
+          <ReviewAndSend key={key} disputeId={d.id} runId={t.run_id} distributor={name} onSent={onSent} startOpen={review} />
         </section>
       )}
 

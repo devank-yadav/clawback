@@ -24,6 +24,17 @@ export type AgentStep = {
 
 const label = (e: Evidence) => e.label;
 
+/** The clause a charge's decision rests on: the one its dispute line names (a cap charge cites §3.2, not the rate's
+ * §3.1), else the first the finding cites, else the first in the evidence. The others stay listed as evidence. */
+export function mainClause(chargeId: string, state: Pick<RunState, "dispute" | "findings">, evidence: Evidence[]): Evidence | null {
+  const clauses = evidence.filter((e) => e.kind === "clause");
+  const ref = state.dispute?.lines.find((l) => l.charge_id === chargeId)?.clause_ref;
+  const cited = state.findings[chargeId]?.evidence_ids ?? [];
+  return (ref ? clauses.find((c) => c.label.includes(ref)) : undefined)
+    ?? clauses.find((c) => cited.includes(c.id))
+    ?? clauses[0] ?? null;
+}
+
 export function agentSteps(chargeId: string, state: RunState, detail: ChargeDetail | null): AgentStep[] {
   const finding = state.findings[chargeId] ?? null;
   const decision = state.decisions[chargeId] ?? null;
@@ -31,7 +42,8 @@ export function agentSteps(chargeId: string, state: RunState, detail: ChargeDeta
   const question = Object.values(state.questions).find((q) => q.charge_id === chargeId) ?? null;
   const rule = decision?.rule_id ? (state.rules[decision.rule_id] ?? null) : null;
   const evidence = detail?.evidence ?? [];
-  const clauses = evidence.filter((e) => e.kind === "clause");
+  const main = mainClause(chargeId, state, evidence);
+  const clauses = [...(main ? [main] : []), ...evidence.filter((e) => e.kind === "clause" && e !== main)];
   const sources = evidence.filter((e) => e.kind !== "clause" && e.kind !== "charge");
   const lines = state.feed.filter((l) => l.charge_id === chargeId);
   const readerLine = state.feed.find((l) => l.actor === "reader") ?? null;
@@ -82,7 +94,9 @@ export function agentSteps(chargeId: string, state: RunState, detail: ChargeDeta
           : "No arithmetic needed for this charge.",
       evidence: [],
       at: at("investigator"),
-      detail: finding?.math.length ? [finding.math.map((m) => m.text).join("")] : undefined,
+      // The parts are fragments of sentences; where one sentence ends and the next starts ("period.Cap"), add the
+      // space. A period after a letter only, so "$1.00" stays as it is.
+      detail: finding?.math.length ? [finding.math.map((m) => m.text).join("").replace(/(?<=[a-z)\]])\.(?=[A-Z0-9])/g, ". ")] : undefined,
     },
     {
       agent: "Policy check",
@@ -90,7 +104,7 @@ export function agentSteps(chargeId: string, state: RunState, detail: ChargeDeta
       state: decision ? "done" : question && !question.answer ? "person" : "waiting",
       result: decision
         ? rule
-          ? `${decision.reason} (${rule.label})`
+          ? (decision.reason.includes(rule.label) ? decision.reason : `${decision.reason} (${rule.label})`)
           : decision.reason
         : question && !question.answer
           ? "The deal leaves this to judgment, so the owner decides. One question, asked once."

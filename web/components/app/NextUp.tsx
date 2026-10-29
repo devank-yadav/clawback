@@ -8,16 +8,12 @@ import Link from "next/link";
 import { useCallback, useEffect } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { withAccount } from "@/lib/accounts";
+import { needsHref } from "@/lib/needs";
 import * as api from "@/lib/api";
 import type { NeedsYou } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
 
 const VERB: Record<NeedsYou["kind"], string> = { question: "Answer", dispute_email: "Review and send", reply_email: "Answer them", approval: "Approve" };
-
-function hrefOf(n: NeedsYou): string {
-  if (n.link.page === "dispute" && n.link.dispute_id) return withAccount("/disputes", n.account_id, { id: n.link.dispute_id, ...(n.link.run_id ? { run: n.link.run_id } : {}) });
-  return withAccount("/", n.account_id, n.link.run_id ? { run: n.link.run_id } : undefined);
-}
 
 /** `here`: the payment (run) or dispute on screen. `refresh` reloads the list (the page's own state moved on). */
 export default function NextUp({ here, refresh = "", homeAccount }: { here: { runId?: string | null; disputeId?: string | null }; refresh?: string; homeAccount?: string }) {
@@ -40,7 +36,7 @@ export default function NextUp({ here, refresh = "", homeAccount }: { here: { ru
         <>
           <span className="nx-label">Next for you{o.data.needs_you.length > 1 ? ` · ${o.data.needs_you.length} left` : ""}</span>
           <strong className="nx-title">{next.title}</strong>
-          <Link className="cx-btn is-blue is-small nx-go" href={hrefOf(next)}>{VERB[next.kind]}<ArrowRight aria-hidden="true" /></Link>
+          <Link className="cx-btn is-blue is-small nx-go" href={needsHref(next)}>{VERB[next.kind]}<ArrowRight aria-hidden="true" /></Link>
         </>
       ) : (
         <>

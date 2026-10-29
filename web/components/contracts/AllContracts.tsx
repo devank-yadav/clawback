@@ -207,7 +207,7 @@ function DocCard({ d, distributor, onOpen }: { d: Doc; distributor: string | nul
         </span>
         <strong className="ct-card-title">{titleOf(d, h)}</strong>
         {(date || who) && <span className="ct-card-meta">{[date, who].filter(Boolean).join(" · ")}</span>}
-        {sum ? <span className="ct-card-sum">{sum}</span> : <span className="ct-card-sum is-none">Nothing in it the agents check payments against.</span>}
+        {sum ? <span className="ct-card-sum">{sum}</span> : <span className="ct-card-sum is-none">Not used in the latest check of {distributor ?? "this distributor"}’s payments.</span>}
       </button>
     </li>
   );

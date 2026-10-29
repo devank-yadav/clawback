@@ -125,7 +125,7 @@ function Form({ initial }: { initial: api.Autopilot }) {
           <h2 id="st2-auto">What the agents do on their own</h2>
           <div className="st2-row">
             <Check checked={arrive} onChange={setArrive} label="Start the agents when a payment comes in"
-              hint="Off: each payment waits for you to press Run the agents." />
+              hint="When this is off, each payment waits for you to press Run the agents." />
           </div>
           <div className="st2-row">
             <Check checked={sendOn} onChange={setSendOn} label="Send disputes without asking me when the total is under"
