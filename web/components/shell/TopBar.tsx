@@ -120,14 +120,28 @@ function usePresenter(account: Account | null) {
       setNote(`The reply didn’t go through (${(e as Error).message}).`);
     }
   }, [account, router]);
+  // The reset answers once every distributor's history is back, so the reload opens on a full Home. This browser's
+  // memory of announced payments and the recovered amount goes too, or an old "…'s payment is checked" note pops up.
+  const [failed, setFailed] = useState(false);
   const reset = useCallback(async () => {
-    setNote("Resetting every distributor…");
+    setFailed(false);
+    setNote("Resetting the demo…");
+    const later = window.setTimeout(() => setNote("Getting every distributor ready…"), 1_200);
+    try { window.sessionStorage.removeItem(DECIDED_KEY); } catch { /* nothing remembered */ }
+    try { window.localStorage.removeItem(RECOVERED_SEEN_KEY); } catch { /* nothing remembered */ }
+    let why: string;
     try {
-      await api.resetWorkspace();
-      window.location.reload();
+      const r = await api.resetWorkspace();
+      if (r.ok && r.ready) { window.location.reload(); return; }
+      why = !r.ok ? `QuickBooks couldn’t be undone: ${r.error ?? "no reason given"}`
+        : `the distributors’ history didn’t come back: ${r.story ?? "no reason given"}`;
     } catch (e) {
-      setNote(`The reset didn’t go through (${(e as Error).message}).`);
+      why = (e as Error).message;
+    } finally {
+      window.clearTimeout(later);
     }
+    setNote(`The reset didn’t finish (${why}).`);
+    setFailed(true);
   }, []);
   // Alt+Shift+P: simulate the payment (asks for the admin token first when this tab has none).
   useEffect(() => {
@@ -140,7 +154,7 @@ function usePresenter(account: Account | null) {
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
   }, [simulate]);
-  return { simulate, reply, reset, note };
+  return { simulate, reply, reset, note, failed };
 }
 
 /** The company using Clawback, not a person: its mark and name. The menu opens upward with the company's details,
@@ -217,7 +231,12 @@ function UserMenu({ account }: { account: Account | null }) {
           {status === "in" && <button role="menuitem" className="tb-row" onClick={() => void signOut().then(() => router.push("/"))}><LogOut aria-hidden="true" /><span><strong>Sign out</strong></span></button>}
         </div>
       )}
-      {presenter.note && <p className="sb-note" role="status">{presenter.note}</p>}
+      {presenter.note && (
+        <p className="sb-note" role="status">
+          {presenter.note}
+          {presenter.failed && <> <button type="button" className="sb-retry" onClick={() => void presenter.reset()}>Try again</button></>}
+        </p>
+      )}
     </div>
   );
 }
@@ -291,6 +310,8 @@ const COUNTED: Record<string, CompanyOverview["needs_you"][number]["kind"][]> = 
 // The payments already announced in this tab, so moving between pages doesn't announce them again, and one that
 // finished while you were on another page is announced on the next.
 const DECIDED_KEY = "clawback:decided-seen";
+/** What Recovered showed the last time this browser saw Home (Dashboard.tsx); a reset forgets it with DECIDED_KEY. */
+export const RECOVERED_SEEN_KEY = "clawback:recovered-seen";
 const readDecided = (): Set<string> | null => {
   try { const raw = window.sessionStorage.getItem(DECIDED_KEY); return raw ? new Set(JSON.parse(raw) as string[]) : null; } catch { return null; }
 };

@@ -12,7 +12,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AlertTriangle, ArrowRight, Check, CircleAlert, MinusCircle } from "lucide-react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
-import TopBar from "@/components/shell/TopBar";
+import TopBar, { RECOVERED_SEEN_KEY } from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
 import { PageHeader } from "@/components/ui/kit";
 import { Claw, landPulse } from "@/components/ui/Claw";
@@ -54,7 +54,7 @@ function Count({ value, from = 0, hold = false }: { value: number; from?: number
 }
 
 // What Recovered showed the last time this browser saw Home, so the claw drops a coin only when it has gone up.
-const SEEN = "clawback:recovered-seen";
+const SEEN = RECOVERED_SEEN_KEY;
 const noSub = () => () => {};
 function readSeen(): string | null {
   try { return window.localStorage.getItem(SEEN); } catch { return null; }
