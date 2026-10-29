@@ -79,8 +79,11 @@ def status(a: accounts.Account) -> tuple[str, str, str | None]:
             disputes[e.data.id] = e.data
     open_ = [d for d in disputes.values() if d.status in ("filed", "answered")]
     if open_:
-        names = ", ".join(d.id for d in open_)
-        return "dispute_open", f"Dispute {names} open, awaiting reply", now.run_id
+        if len(open_) == 1:
+            t = open_[0].total
+            amount = f"${t:,.0f}" if t == t.to_integral_value() else f"${t:,.2f}"
+            return "dispute_open", f"{amount} dispute open, waiting for their reply", now.run_id
+        return "dispute_open", f"{len(open_)} disputes open, waiting for their replies", now.run_id
     return "settled", "All settled", now.run_id
 
 

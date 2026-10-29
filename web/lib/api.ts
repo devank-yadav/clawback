@@ -4,7 +4,7 @@
 
 import type {
   Account, Approval, Lookback, AuditEntry, AuditVerify, ChargeDetail, CoachResponse, CompanyOverview, Dispute, DisputeEmail, DisputeThread, SupplierNotification, EvalReport, Evidence, LedgerPost,
-  Money, Overview, PortalMessage, RunEvent, ScenarioExample, ScenarioRequest, ScenarioResponse, SupplierItem, RunSummary, SavedOverview, DocumentText, Connection, ContractLibrary, TraceStep, TraceSummary,
+  Money, Overview, PortalMessage, Rule, RunEvent, ScenarioExample, ScenarioRequest, ScenarioResponse, SupplierItem, RunSummary, SavedOverview, DocumentText, Connection, ContractLibrary, TraceStep, TraceSummary,
 } from "./types";
 import { adminToken } from "./tokens";
 import { goSignIn } from "./signin-route";
@@ -98,6 +98,9 @@ export const fetchConnections = (account?: string) =>
 export const fetchContract = (account: string) => call<ContractLibrary>(`/accounts/${q(account)}/contract`);
 export const fetchRuns = (account: string) => call<RunSummary[]>(`/accounts/${q(account)}/runs`);
 export const fetchSaved = (account: string) => call<SavedOverview>(`/accounts/${q(account)}/saved`);
+/** POST /accounts/{id}/rules/{rule}/undo (admin): the rule stops applying from the next charge on. */
+export const undoRule = (account: string, ruleId: string) =>
+  call<Rule>(`/accounts/${q(account)}/rules/${q(ruleId)}/undo`, { method: "POST" });
 export const fetchDocument = (account: string, doc: string) => call<DocumentText>(`/accounts/${q(account)}/documents/${q(doc)}`);
 export const setTracked = (supplier: string, accountId: string, tracked: boolean) =>
   call<SupplierItem>(`/suppliers/${q(supplier)}/tracking`, { method: "POST", body: { account_id: accountId, tracked } });

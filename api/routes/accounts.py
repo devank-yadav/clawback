@@ -6,8 +6,9 @@ from fastapi import Depends, APIRouter, HTTPException
 
 from api import accounts, history, library, lookback as lookback_mod, overview as overview_mod, suppliers
 from api.contracts import (
-    AccountListItem, AccountOverview, Connection, SupplierOverview, ContractLibrary, DocumentText, Lookback, RunSummary, SavedDocument, SavedOverview, SavedRecords,
+    AccountListItem, AccountOverview, Connection, SupplierOverview, ContractLibrary, DocumentText, Lookback, Rule, RunSummary, SavedDocument, SavedOverview, SavedRecords,
 )
+from api.auth import require_role
 from api.routes.runs import account_or_404, latest_run_id
 from api import tenancy
 from api.tenancy import Caller, current_supplier
@@ -45,14 +46,25 @@ def account_runs(account_id: str, who: Caller = Depends(current_supplier)) -> li
     return history.runs(account_or_404(account_id, who))
 
 
-def _title(doc) -> str:
-    stem = doc.id.replace("-", " ")
-    return {"deal": "Signed deal", "amendment": "Signed amendment", "email": "Email", "notice": "Notice",
-            "draft": "Next deal (draft)"}.get(doc.kind, "Document") + f" · {stem}"
+def _title(doc, account) -> str:
+    """The document's kind and a readable name ("Signed deal · Five Below vendor agreement, 2023 (excerpt)")."""
+    return f"{library.TITLE.get(doc.kind, 'Document')} · {library.readable_name(doc.id, account)}"
 
 
 def _locked(doc) -> bool:
     return doc.kind in ("deal", "amendment") or doc.signed_by_both
+
+
+@router.post("/accounts/{account_id}/rules/{rule_id}/undo", response_model=Rule, dependencies=[Depends(require_role("owner"))])
+def undo_rule(account_id: str, rule_id: str, who: Caller = Depends(current_supplier)) -> Rule:
+    """Undo one saved rule (the Rules page): the agents ask again the next time a charge like it comes in."""
+    from api import pipeline
+
+    a = account_or_404(account_id, who)
+    undone = pipeline.undo_rule(rule_id, a.id, who.user.name if who.user else None)
+    if undone is None:
+        raise HTTPException(404, f"no active rule {rule_id} for {account_id}")
+    return undone
 
 
 @router.get("/accounts/{account_id}/saved", response_model=SavedOverview)
@@ -69,7 +81,7 @@ def account_saved(account_id: str, who: Caller = Depends(current_supplier)) -> S
                 doc, text = documents.load(doc_id)
             except Exception:  # noqa: BLE001 - a file that can't be read isn't listed
                 continue
-            docs.append(SavedDocument(id=doc.id, kind=doc.kind, title=_title(doc), sender=doc.sender,
+            docs.append(SavedDocument(id=doc.id, kind=doc.kind, title=_title(doc, a), sender=doc.sender,
                                       locked=_locked(doc), chars=len(text)))
     records = [
         SavedRecords(label="Store sales", rows=len(rows.sales(account=a))),
@@ -93,7 +105,7 @@ def account_document(account_id: str, doc_id: str, who: Caller = Depends(current
         raise HTTPException(404, f"{doc_id} isn't one of {a.id}'s documents")
     with accounts.using(a):
         doc, text = documents.load(doc_id)
-    return DocumentText(id=doc.id, title=_title(doc), kind=doc.kind, locked=_locked(doc), text=text)
+    return DocumentText(id=doc.id, title=_title(doc, a), kind=doc.kind, locked=_locked(doc), text=text)
 
 
 @router.get("/connections", response_model=list[Connection])

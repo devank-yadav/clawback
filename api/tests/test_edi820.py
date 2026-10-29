@@ -189,5 +189,5 @@ def test_route_serves_the_sample_820():
 
 def test_connections_show_the_820_as_ready_not_coming_soon():
     cards = {c["id"]: c for c in client.get("/connections?account=peak-bar").json()}
-    assert cards["edi"]["status"] == "ready" and "RMR and ADX segments (no AI)" in cards["edi"]["detail"]
+    assert cards["edi"]["status"] == "ready" and "code reads it line by line (no AI)" in cards["edi"]["detail"]
     assert [c for c, v in cards.items() if v["status"] == "coming_soon"] == ["portals"]  # Google Drive is a real source now (api/drive.py)

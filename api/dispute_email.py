@@ -42,7 +42,7 @@ from email.message import EmailMessage
 from api import accounts, disputes, lookback, packet, pipeline
 from api.agents import email_writer
 from api.contracts import Dispute, DisputeEmail, PortalMessage, SupplierNotification
-from api.engine import outbound_filter
+from api.engine import outbound_filter, totals
 from api.integrations import gmail, mailgun, replay, sms
 
 log = logging.getLogger("clawback.dispute_email")
@@ -447,17 +447,25 @@ def notify_reply(run: pipeline.Run, dispute: Dispute, got: list[PortalMessage], 
         return None
     answered = any(m.from_party == "clawback" for m in got)
     now = latest(run, dispute.id) or dispute
+    them, total = run.distributor, _usd(dispute.total)
     if theirs.classification == "new_document" and now.total != dispute.total:
-        what = f"sent a signed document; {dispute.id} now totals ${now.total:,.0f}"
+        text = f"{them} sent a signed document: your dispute now totals ${now.total:,.0f}."
     elif theirs.classification == "agrees":
-        what = f"agree on {', '.join(theirs.charge_ids) or 'a line'}"
+        agreed = totals.total_of(ln.amount for ln in dispute.lines if ln.charge_id in theirs.charge_ids)
+        text = (f"{them} agreed to pay back {_usd(agreed)} of your {total} dispute." if agreed
+                else f"{them} agreed to part of your {total} dispute.")
     elif theirs.classification == "claim_without_document":
-        what = ("pushed back without a document; " + ("an answer is drafted for you to send" if drafted else
-                "the agents answered with the evidence" if answered else "it needs your answer"))
+        text = f"{them} pushed back on your {total} dispute: " + (
+            "an answer is drafted for you to send." if drafted else
+            "the agents answered with the proof." if answered else "it needs your answer.")
     else:
-        what = "need a person to answer"
-    return notify(run, dispute.id, f"{run.distributor} replied to {dispute.id} by {via}: they {what}.",
-                  log_it=via != "the portal")
+        text = f"{them} replied on your {total} dispute: it needs your answer."
+    return notify(run, dispute.id, text, log_it=via != "the portal")
+
+
+def _usd(v) -> str:
+    """$4,120 or $2,283.20: cents only when there are some."""
+    return f"${v:,.0f}" if v == v.to_integral_value() else f"${v:,.2f}"
 
 
 # ---------------------------------------------------------------- 4. telling the supplier

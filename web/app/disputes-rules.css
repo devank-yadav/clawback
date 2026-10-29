@@ -133,3 +133,11 @@
   .rl-always li { padding: var(--space-3) var(--space-4); }
   .rl-facts div { grid-template-columns: minmax(0, 1fr); gap: 0; }
 }
+
+/* Undo on a rule card (components/rules/Rules.tsx): a quiet button, then one plain confirm. */
+.rl-undo { align-self: flex-start; margin-top: var(--space-2); }
+.rl-undo-ask { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); padding: var(--space-3) var(--space-4); border: 2px solid var(--red); border-radius: var(--radius-md, 14px); background: var(--red-bg); }
+.rl-undo-ask p { margin: 0; color: var(--ink); font-size: 15px; font-weight: 600; line-height: 1.45; }
+.rl-undo-ask div { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.rl-undo-yes { background: var(--red); color: #fff; border-color: var(--outline); }
+.rl-undo-problem { color: var(--red) !important; font-weight: 800 !important; }

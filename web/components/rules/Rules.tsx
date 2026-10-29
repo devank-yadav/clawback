@@ -5,7 +5,7 @@
 // short fixed list of what the agents always bring to you. Contracts, records and the audit trail live elsewhere.
 
 import Link from "next/link";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
@@ -18,7 +18,8 @@ import type { Rule, TermType } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
 
 /** A rule and the distributors it was saved for (the same rule can come back from more than one account). */
-type Learned = { rule: Rule; covers: string[] };
+/** accountId: the account the rule was saved under (Undo goes there). */
+type Learned = { rule: Rule; covers: string[]; accountId: string };
 type Loaded = { rules: Learned[]; undone: number; failed: string[] };
 
 const ABOUT: Record<TermType, string> = {
@@ -47,10 +48,10 @@ export default function Rules() {
     const per = await Promise.all(
       all.map((a) =>
         api.fetchSaved(a.id).then(
-          (s) => s.rules.map((rule) => ({ rule, distributor: a.distributor.name })),
+          (s) => s.rules.map((rule) => ({ rule, distributor: a.distributor.name, accountId: a.id })),
           () => {
             failed.push(a.distributor.name);
-            return [] as { rule: Rule; distributor: string }[];
+            return [] as { rule: Rule; distributor: string; accountId: string }[];
           },
         ),
       ),
@@ -58,7 +59,7 @@ export default function Rules() {
     if (all.length > 0 && failed.length === all.length) throw new Error("no distributor's rules could be loaded");
     const byId = new Map<string, Learned>();
     let undone = 0;
-    for (const { rule, distributor } of per.flat()) {
+    for (const { rule, distributor, accountId } of per.flat()) {
       const known = byId.get(rule.id);
       if (known) {
         for (const name of [rule.counterparty, distributor]) if (name && !known.covers.includes(name)) known.covers.push(name);
@@ -68,7 +69,7 @@ export default function Rules() {
         undone += 1;
         continue;
       }
-      byId.set(rule.id, { rule, covers: [...new Set([rule.counterparty || distributor].filter(Boolean))] });
+      byId.set(rule.id, { rule, accountId, covers: [...new Set([rule.counterparty || distributor].filter(Boolean))] });
     }
     // Newest first.
     const rules = [...byId.values()].sort((a, b) => Date.parse(b.rule.learned_at) - Date.parse(a.rule.learned_at));
@@ -109,7 +110,7 @@ export default function Rules() {
           )}
           {data && count > 0 && (
             <ul className="rl-grid">
-              {data.rules.map(({ rule: r, covers }) => (
+              {data.rules.map(({ rule: r, covers, accountId }) => (
                 <li key={r.id} className="cb-card rl-card">
                   <div className="rl-card-top">
                     <span className="cx-tag is-rule">{r.label}</span>
@@ -134,6 +135,7 @@ export default function Rules() {
                     </div>
                   </dl>
                   {r.summary && r.pattern_text && <p className="rl-quote">When a contract says something like “{r.pattern_text}”</p>}
+                  <UndoRule rule={r} accountId={accountId} onDone={saved.reload} />
                 </li>
               ))}
             </ul>
@@ -157,6 +159,35 @@ export default function Rules() {
         </section>
       </main>
       <SessionDialogs account={account} />
+    </div>
+  );
+}
+
+/** Undo, with one confirm: the rule stops applying from the next charge; what it already decided stays decided. */
+function UndoRule({ rule, accountId, onDone }: { rule: Rule; accountId: string; onDone: () => void }) {
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  async function undo() {
+    setBusy(true);
+    setProblem(null);
+    try {
+      await api.undoRule(accountId, rule.id);
+      onDone();
+    } catch (e) {
+      setProblem((e as Error).message);
+      setBusy(false);
+    }
+  }
+  if (!asking) return <button type="button" className="cx-btn is-ghost is-small rl-undo" onClick={() => setAsking(true)}>Undo this rule</button>;
+  return (
+    <div className="rl-undo-ask" role="group" aria-label={`Undo ${rule.label}`}>
+      <p>Undo {rule.label}? The agents ask you again the next time a charge like this comes in. What it already decided stays decided.</p>
+      {problem && <p className="rl-undo-problem" role="alert">{problem}</p>}
+      <div>
+        <button type="button" className="cx-btn is-small rl-undo-yes" disabled={busy} onClick={() => void undo()}>{busy ? "Undoing…" : `Undo ${rule.label}`}</button>
+        <button type="button" className="cx-btn is-ghost is-small" disabled={busy} onClick={() => setAsking(false)}>Keep it</button>
+      </div>
     </div>
   );
 }

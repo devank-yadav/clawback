@@ -279,6 +279,19 @@ def test_undo_cancels_rule_1_for_next_time():
     assert len(april.questions) == 2
 
 
+def test_undo_on_the_rules_page_cancels_that_rule_for_next_time():
+    fake, run, qid = _march_waiting()
+    pipeline.answer(qid, "accept if notice is at least 14 days", client=fake)
+    assert pipeline.undo_rule("rule-1", "peak-bar-unfi") is None  # another account's rule is out of reach
+    undone = pipeline.undo_rule("rule-1", "peak-bar", by="Dana Okafor")
+    assert undone.status == "undone" and pipeline.RULES[0].status == "undone"
+    assert pipeline.undo_rule("rule-1", "peak-bar") is None  # already undone
+    assert final(run)["C6"] == ("accept", D(0), D(1200))  # what it decided stays decided
+    assert any("Dana Okafor undid Rule #1 on the Rules page" in t for t in logs(run))
+    april = pipeline.start("april", fake, background=False)
+    assert len(april.questions) == 2  # asked again
+
+
 def test_reply_after_settled_changes_nothing():
     fake, run, qid = _march_waiting()
     pipeline.answer(qid, "accept if notice is at least 14 days", client=fake)

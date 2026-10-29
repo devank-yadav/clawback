@@ -194,7 +194,7 @@ export default function Disputes() {
           <EmptyState
             title="No disputes yet."
             line="A dispute appears here when the agents find a charge the contract doesn’t allow."
-            action={<Link className="cx-btn" href={withAccount("/", account?.id)}>Go to the agents</Link>}
+            action={<Link className="cx-btn" href={withAccount("/payments", account?.id)}>See your payments</Link>}
           />
         ) : (
           <>

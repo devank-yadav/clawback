@@ -108,7 +108,7 @@ export default function Connections() {
                   <p className="bp-sync">{plainDetail(c.detail)}</p>
                   <Seen c={c} accountId={accountId} now={now} />
                   <div className="bp-card-links">
-                    {c.id === "bank" && <Link className="cx-btn is-ghost" href={withAccount("/", accountId)}>Go to the agents</Link>}
+                    {c.id === "bank" && <Link className="cx-btn is-ghost" href={withAccount("/payments", accountId)}>Go to Payments</Link>}
                     {c.id === "edi" ? (
                       <Link className="cx-btn is-ghost" href={uploadHref}>Upload an 820</Link>
                     ) : (

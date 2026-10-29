@@ -655,6 +655,28 @@ def _remember(run: Run, rule: Rule) -> None:
         run.log(f"Indexed {rule.label} in Moss, so a differently worded clause still finds it.", actor="gate")
 
 
+def undo_rule(rule_id: str, account_id: str, by: str | None = None) -> Rule | None:
+    """Undo on the Rules page: the same as texting UNDO, for one chosen rule. It stops applying from the next charge
+    on; decisions it already made keep theirs. None if that account has no such active rule."""
+    with _state:
+        rule = next((r for r in RULES if r.id == rule_id and r.status == "active"
+                     and RULE_ACCOUNTS.get(r.id, accounts.DEFAULT) == account_id), None)
+        if rule is None:
+            return None
+        undone = rule.model_copy(update={"status": "undone"})
+        RULES[:] = [undone if r.id == rule_id else r for r in RULES]
+    saved_state.save_rule(undone, account_id)  # a restart keeps it undone
+    run = next((r for r in reversed(list(RUNS.values())) if r.account.id == account_id), None)
+    if run is not None:
+        run.emit("rule", undone)
+        run.log(f"{by or run.name('owner')} undid {undone.label} on the Rules page: the agents ask again next time.",
+                actor="gate")
+        _forget(run, undone)
+    else:
+        moss.drop_rule(undone.id)
+    return undone
+
+
 def _forget(run: Run, rule: Rule) -> None:
     """Drop an undone rule from Moss. Only active rules can match, so a failure here changes no decision."""
     dropped = moss.drop_rule(rule.id)

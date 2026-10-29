@@ -18,11 +18,11 @@ import { EmptyState, PageHeader } from "@/components/ui/kit";
 import { inkOn, withAccount } from "@/lib/accounts";
 import * as api from "@/lib/api";
 import { money } from "@/lib/format";
-import type { Account, RunSummary } from "@/lib/types";
+import type { Account, NeedsYou, RunSummary } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
 
 type Row = RunSummary & { account: Account };
-type Payment = { head: Row; earlier: Row[]; flagged: boolean };
+type Payment = { head: Row; earlier: Row[]; flagged: boolean; asks: NeedsYou[] };
 type Filter = { kind: "all" } | { kind: "needs" } | { kind: "account"; id: string };
 
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -38,15 +38,16 @@ async function loadAll(accounts: Account[]): Promise<Row[]> {
 }
 
 /** One card per payment: the newest check of it, with any earlier ones folded under it. */
-function group(rows: Row[], flaggedRuns: Set<string>): Payment[] {
+function group(rows: Row[], asksByRun: Map<string, NeedsYou[]>): Payment[] {
   const out: Payment[] = [];
   for (const r of rows) {
     const g = out.find((x) => x.head.account.id === r.account.id && x.head.kind === r.kind && x.head.invoice_id === r.invoice_id);
     if (g) g.earlier.push(r);
-    else out.push({ head: r, earlier: [], flagged: false });
+    else out.push({ head: r, earlier: [], flagged: false, asks: [] });
   }
   for (const p of out) {
-    p.flagged = !p.head.replaced && (p.head.status === "waiting" || flaggedRuns.has(p.head.run_id) || p.earlier.some((r) => flaggedRuns.has(r.run_id)));
+    p.asks = [p.head, ...p.earlier].flatMap((r) => asksByRun.get(r.run_id) ?? []);
+    p.flagged = !p.head.replaced && (p.head.status === "waiting" || p.asks.length > 0);
   }
   return out;
 }
@@ -56,11 +57,22 @@ function Mark({ account }: { account: Account }) {
   return <span className="pm-mark" style={{ background: bg, color: inkOn(bg) }} aria-hidden="true">{initial(account.distributor.name)}</span>;
 }
 
+/** What a payment is waiting on you for, in a few words (its first item on your list, then how many more). */
+function askLine(asks: NeedsYou[]): string {
+  const n = asks[0];
+  const amt = n.amount != null ? money(n.amount) : null;
+  const first = n.kind === "question" ? `A question for you${amt ? ` about ${amt}` : ""}`
+    : n.kind === "approval" ? `Send ${amt ?? "the fair charges"} to QuickBooks?`
+      : n.kind === "dispute_email" ? `Your ${amt ? `${amt} ` : ""}dispute is ready to send`
+        : `${n.distributor} pushed back on your dispute`;
+  return asks.length > 1 ? `${first} · ${asks.length - 1} more` : first;
+}
+
 /** The status chip and the plain-words line under it. */
-function status(r: Row, flagged: boolean): { chip: string; tone: string; line: string | null } {
+function status(r: Row, flagged: boolean, asks: NeedsYou[] = []): { chip: string; tone: string; line: string | null } {
   if (r.status === "failed") return { chip: "Stopped", tone: "", line: "The agents stopped before they finished. Open it to see where." };
   if (flagged) {
-    return { chip: "Needs you", tone: "is-amber", line: r.waiting && r.waiting > 0 ? `${money(r.waiting)} waiting on your answer` : "The agents need your answer to finish" };
+    return { chip: "Needs you", tone: "is-amber", line: asks.length ? askLine(asks) : r.waiting && r.waiting > 0 ? `${money(r.waiting)} waiting on your answer` : "The agents are waiting on you" };
   }
   if (r.status === "started") return { chip: "Checking now", tone: "is-accent is-live", line: "The agents are going through each charge" };
   const parts: string[] = [];
@@ -81,8 +93,8 @@ function paidLine(r: Row): string | null {
   return kept ? kept.charAt(0).toUpperCase() + kept.slice(1) : null;
 }
 
-function PaymentCard({ r, flagged, small = false }: { r: Row; flagged: boolean; small?: boolean }) {
-  const s = r.replaced ? { chip: "Checked again later", tone: "", line: null } : status(r, flagged);
+function PaymentCard({ r, flagged, asks = [], small = false }: { r: Row; flagged: boolean; asks?: NeedsYou[]; small?: boolean }) {
+  const s = r.replaced ? { chip: "Checked again later", tone: "", line: null } : status(r, flagged, asks);
   const paid = paidLine(r);
   return (
     <Link className={`pm-card cb-card ${flagged ? "is-flagged" : ""} ${small ? "is-small" : ""}`} href={withAccount("/", r.account.id, { run: r.run_id })}>
@@ -108,7 +120,7 @@ function PaymentCard({ r, flagged, small = false }: { r: Row; flagged: boolean; 
 function PaymentItem({ p }: { p: Payment }) {
   return (
     <li className="pm-item">
-      <PaymentCard r={p.head} flagged={p.flagged} />
+      <PaymentCard r={p.head} flagged={p.flagged} asks={p.asks} />
       {p.earlier.length > 0 && (
         <details className="pm-earlier">
           <summary>Checked {p.earlier.length} time{p.earlier.length === 1 ? "" : "s"} before</summary>
@@ -178,9 +190,9 @@ export default function Payments() {
   const received = useReceivedPayments();
 
   const payments = useMemo(() => {
-    const flaggedRuns = new Set<string>();
-    for (const n of overview.data?.needs_you ?? []) if (n.link.run_id) flaggedRuns.add(n.link.run_id);
-    return group(rows.data ?? [], flaggedRuns);
+    const asksByRun = new Map<string, NeedsYou[]>();
+    for (const n of overview.data?.needs_you ?? []) if (n.link.run_id) asksByRun.set(n.link.run_id, [...(asksByRun.get(n.link.run_id) ?? []), n]);
+    return group(rows.data ?? [], asksByRun);
   }, [rows.data, overview.data]);
 
   const needs = payments.filter((p) => p.flagged);

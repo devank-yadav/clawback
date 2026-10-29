@@ -3,6 +3,8 @@ library (each distributor's signed deal, locked, with the terms the agents read 
 
 from __future__ import annotations
 
+import re
+
 from datetime import datetime, timezone
 
 from api import accounts, documents, drive, inbound_email, sources
@@ -38,13 +40,13 @@ def _bank(account: accounts.Account | None, demo: bool) -> Connection:
     live = nessie.configured() and not demo
     watching = bool(nessie.poller and nessie.poller.running)
     if not live:
-        detail = "Not connected: use “Send a test payment” on Agents" if not demo else \
-            "DEMO_MODE: “Send a test payment” starts the run directly"
+        detail = "Not connected yet: payments come in by upload, by email, or with “Check for new payments”" if not demo \
+            else "Demo: “Check for new payments” brings in the distributors’ payments and starts the agents"
     elif watching:
         named = f" (“{account.config.nessie_description}”)" if account else ""
         detail = f"Checked every {nessie.POLL_S:.0f} seconds; a deposit that names this invoice{named} starts the agents"
     else:
-        detail = "Connected, not watching (NESSIE_POLL=off): “Send a test payment” posts the deposit and starts the run"
+        detail = "Connected, but not watching for deposits right now: “Check for new payments” looks for them"
     return Connection(id="bank", name="Bank (Capital One)", brings="Deposits: a short payment starts the agents",
                       status="connected" if live else "not_connected", detail=detail,
                       **(_seen("bank", account) if live else {}))
@@ -54,10 +56,10 @@ def _inbox(account: accounts.Account | None) -> Connection:
     to = inbound_email.address(account) if account else None
     live = inbound_email.configured() and bool(to or not account)
     # shown as connected on every server (decided Oct 25); the address appears once the inbound route is set
-    detail = ("Forward remittance advice here (a PDF, text or EDI 820 attachment): it's read and checked like an "
-              "upload, and starts the agents if it adds up. A broker's email from an approved sender can change "
-              "the deal; anyone else's is a claim")
-    return Connection(id="inbox", name="Remittance inbox", brings="Remittances and broker emails, read automatically",
+    detail = ("Forward payment slips here (a PDF, text or EDI 820 attachment): each is read and checked like an "
+              "upload, and starts the agents if it adds up. An email from your broker can change a deal; anyone "
+              "else's is only a claim")
+    return Connection(id="inbox", name="Email inbox", brings="Payment slips and broker emails, read automatically",
                       status="connected", detail=detail, address=to if live else None,
                       **(_seen("inbox", account) if live else {}))
 
@@ -67,8 +69,8 @@ def _drive() -> Connection:
     if not drive.configured():
         return Connection(id="drive", name="Google Drive", brings="Contracts, promotions, remittances, correspondence",
                           status="not_connected",
-                          detail="Not connected: share your Clawback folder with the service account "
-                                 "(GOOGLE_SERVICE_ACCOUNT_JSON, DRIVE_ROOT_FOLDER_ID). Upload works meanwhile")
+                          detail="Not connected yet: once your Clawback folder in Google Drive is shared, new "
+                                 "contracts there are read on their own. Upload works meanwhile")
     s = drive.STATUS
     if s.changed_at:
         mins = int((datetime.now(timezone.utc) - s.changed_at).total_seconds() // 60)
@@ -85,13 +87,13 @@ def _drive() -> Connection:
 
 def _edi(account: accounts.Account | None) -> Connection:
     """The 820 needs no keys: it comes in through the upload or the inbox, and plain code reads it (api/edi820.py)."""
-    inbox = " or email it to the remittance inbox" if inbound_email.configured() and (
+    inbox = " or email it to the inbox" if inbound_email.configured() and (
         account is None or inbound_email.address(account)) else ""
     return Connection(id="edi", name="EDI 820", brings="Remittance advice lines straight from the distributor",
                       status="ready",
-                      detail=f"Upload the 820 file{inbox}: plain code reads its RMR and ADX segments (no AI), then "
-                             "every line is checked like any remittance and the run starts if they add up. A direct "
-                             "VAN or AS2 feed isn't connected")
+                      detail=f"Upload the 820 file{inbox}: code reads it line by line (no AI), every line is checked "
+                             "like any payment slip, and the agents start if they add up. A direct feed from the "
+                             "distributor isn't connected")
 
 
 def connections(account: accounts.Account | None = None) -> list[Connection]:
@@ -101,8 +103,8 @@ def connections(account: accounts.Account | None = None) -> list[Connection]:
     return [
         _quickbooks(account, demo),
         _bank(account, demo),
-        Connection(id="upload", name="Upload", brings="Remittance advice, contracts and records as files",
-                   status="ready", detail="PDF, CSV, text or an EDI 820; the Payment reader checks every line adds up"),
+        Connection(id="upload", name="Upload", brings="Payment slips, contracts and records as files",
+                   status="ready", detail="PDF, CSV, text or an EDI 820; every line is checked to add up first"),
         Connection(id="texts", name="Texts to you", brings="Your one question and approvals by WhatsApp or SMS",
                    status="connected" if sms.configured("owner") else "not_connected",
                    detail="A reply answers it" if sms.configured("owner") else "Not connected: decisions wait in the app"),
@@ -141,6 +143,45 @@ TITLE = {"deal": "Signed deal", "amendment": "Signed amendment", "email": "Email
          "draft": "Next deal (draft)"}
 
 
+def _slug(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", name.lower().replace("’", "").replace("'", "")).strip("-")
+
+
+def readable_name(doc_id: str, account: accounts.Account) -> str:
+    """A document's name from its file name, for one whose text has no heading to show: "five-below-vendor-agreement-
+    2023-excerpt-peak-bar" -> "Five Below vendor agreement, 2023 (excerpt)", "peak-bar-walmart-fine-2026-03-26" ->
+    "Walmart fine, Mar 26, 2026". The brand's own name is dropped (every document here is theirs) and the
+    distributor's is spelled as the distributor spells it."""
+    words = doc_id.split("-")
+    brand = [w for w in _slug(account.brand.name).split("-") if w not in ("co", "inc", "llc")]
+    if brand and words[:len(brand)] == brand:
+        words = words[len(brand):]
+    if brand and words[-len(brand):] == brand:
+        words = words[:-len(brand)]
+    them = account.distributor.name
+    full = _slug(them).split("-")
+    for cut in (full, full[:1]):
+        if cut and words[:len(cut)] == cut:
+            words = [them] + words[len(cut):]
+            break
+    when = ""
+    m = re.search(r"(?:^|-)((?:19|20)\d\d)(?:-(\d\d))?(?:-(\d\d))?(?:-|$)", "-".join(words))
+    if m:
+        y, mo, d = m.group(1), m.group(2), m.group(3)
+        when = (datetime(int(y), int(mo), int(d)).strftime("%b %-d, %Y") if d
+                else datetime(int(y), int(mo), 1).strftime("%B %Y") if mo else y)
+        words = [w for w in words if w not in {y, mo, d}]
+    excerpt = "excerpt" in words
+    words = [ACRONYMS.get(w, w) for w in words if w != "excerpt"]
+    name = " ".join(words)
+    name = name[:1].upper() + name[1:]
+    return name + (f", {when}" if when else "") + (" (excerpt)" if excerpt else "")
+
+
+ACRONYMS = {"mcb": "MCB", "ap": "AP", "ep": "EP", "q1": "Q1", "q2": "Q2", "q3": "Q3", "q4": "Q4", "po": "PO",
+            "clearvue": "ClearVue"}
+
+
 def library(account: accounts.Account) -> ContractLibrary:
     from api import pipeline
 
@@ -160,7 +201,7 @@ def library(account: accounts.Account) -> ContractLibrary:
             source = "drive" if doc_id in account.drive or v else "inbox" if doc_id in account.inbound else "data"
             out.append(LibraryDocument(
                 version=v.version if v else None, updated_at=v.seen_at if v else None, source=source,
-                id=doc.id, title=f"{TITLE.get(doc.kind, 'Document')} · {doc.id.replace('-', ' ')}", kind=doc.kind,
+                id=doc.id, title=readable_name(doc.id, account), kind=doc.kind,
                 locked=doc.kind in ("deal", "amendment") or doc.signed_by_both, sender=doc.sender,
                 approved_sender=doc.approved_sender, text=text,
                 terms=sorted({(m.char_start, m.char_end, m.type): m for m in mine}.values(), key=lambda m: m.char_start)))

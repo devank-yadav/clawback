@@ -100,7 +100,7 @@ function Result({ r, onReset }: { r: RemittanceRead; onReset: () => void }) {
   const h = r.header;
   return (
     <>
-      <section className="surface tool-card" aria-label="What the remittance says">
+      <section className="surface tool-card" aria-label="What the payment slip says">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2>{h?.payer ?? r.distributor}{h?.payment_ref ? ` · ${h.payment_ref}` : ""}</h2>
@@ -133,24 +133,24 @@ function Result({ r, onReset }: { r: RemittanceRead; onReset: () => void }) {
 
       <div className="grid min-w-0 gap-[18px] lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <section className="surface min-w-0 overflow-hidden" aria-label="Deduction lines">
-          <div className="list-heading"><div><h2>{kept} charge{kept === 1 ? "" : "s"} from {r.lines.length} line{r.lines.length === 1 ? "" : "s"}</h2><p>Each one is the exact line printed on the remittance.</p></div></div>
+          <div className="list-heading"><div><h2>{kept} charge{kept === 1 ? "" : "s"} from {r.lines.length} line{r.lines.length === 1 ? "" : "s"}</h2><p>Each one is the exact line printed on the payment slip.</p></div></div>
           {r.lines.length === 0
             ? <p className="muted p-4">No deduction lines were read.</p>
             : <ul className="m-0 list-none p-0">{r.lines.map((l) => <Line key={l.n} l={l} active={active === l.n} onPick={pick} />)}</ul>}
         </section>
-        <section className="surface tool-card min-w-0 lg:sticky lg:top-[76px] lg:self-start" aria-label="The remittance">
-          <div className="section-eyebrow !mt-0">The remittance, as read</div>
+        <section className="surface tool-card min-w-0 lg:sticky lg:top-[76px] lg:self-start" aria-label="The payment slip">
+          <div className="section-eyebrow !mt-0">The payment slip, as read</div>
           <RemittanceText text={r.text} lines={r.lines} active={active} onPick={pick} />
           <p className="muted mt-2 text-[12px]">Yellow: found word for word. Amber: a person decides. Anything not highlighted isn&apos;t a charge.</p>
         </section>
       </div>
 
       <section className="surface tool-card" aria-label="Confirm">
-        <h2>{r.can_run ? `Check these ${kept} charges against the deal?` : "Clawback won't run on this remittance"}</h2>
+        <h2>{r.can_run ? `Check these ${kept} charges against the deal?` : "Clawback won't run on this payment slip"}</h2>
         <p className="muted text-[14px]">
           {r.can_run
             ? `Nothing here is edited. Clawback checks each charge against the signed deal, the emails and the sales${toPerson ? `, and asks you about the ${toPerson} line${toPerson === 1 ? "" : "s"} it couldn't check` : ""}.`
-            : "The lines don't add up to what the payment is short. Upload the full remittance, or ask the distributor for it."}
+            : "The lines don't add up to what the payment is short. Upload the full payment slip, or ask the distributor for it."}
         </p>
         <div className="tool-actions mt-3">
           <button type="button" className="primary" disabled={!r.can_run || starting} onClick={confirm}>
@@ -186,7 +186,7 @@ export default function UploadApp({ account = api.ACCOUNT, distributor = "the di
   }
 
   async function sample() {
-    setBusy("Northmart's March remittance");
+    setBusy("Northmart's March payment slip");
     setError(null);
     try {
       const file = await api.sampleFile();
@@ -206,7 +206,7 @@ export default function UploadApp({ account = api.ACCOUNT, distributor = "the di
 
   return (
     <>
-      <section className="surface tool-card tool-form" aria-label="Bring in a remittance">
+      <section className="surface tool-card tool-form" aria-label="Upload a payment slip">
         <label
           htmlFor="remit-file"
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -214,7 +214,7 @@ export default function UploadApp({ account = api.ACCOUNT, distributor = "the di
           onDrop={(e) => { e.preventDefault(); setDragging(false); chosen(e.dataTransfer.files); }}
           className={`!m-0 flex cursor-pointer flex-col items-center gap-2 rounded-[12px] border-2 border-dashed px-4 py-9 text-center focus-within:outline focus-within:outline-2 focus-within:outline-[var(--violet)] ${dragging ? "border-[var(--violet)] bg-[var(--violet-soft)]" : "border-[var(--line)] bg-[var(--card)]"}`}
         >
-          <strong className="text-[17px]">Drop the remittance here</strong>
+          <strong className="text-[17px]">Drop the payment slip here</strong>
           <span className="muted text-[13px] font-normal">The PDF or text the distributor sent with the payment, or click to choose it</span>
           <input id="remit-file" type="file" className="sr-only" accept=".pdf,.txt,.csv,application/pdf,text/plain,text/csv"
             disabled={!!busy} onChange={(e) => { chosen(e.target.files); e.target.value = ""; }} />
@@ -225,7 +225,7 @@ export default function UploadApp({ account = api.ACCOUNT, distributor = "the di
         <div className="tool-actions">
           <button type="button" className="primary" disabled={!text.trim() || !!busy} onClick={() => read({ text }, "the pasted text")}>Read this text</button>
           {account === api.ACCOUNT && <>
-            <button type="button" className="secondary" disabled={!!busy} onClick={sample}>Use the March remittance from Northmart</button>
+            <button type="button" className="secondary" disabled={!!busy} onClick={sample}>Use Northmart’s March payment slip</button>
             <a className="text-button" href={api.sampleUrl()} download>Download it (PDF)</a>
           </>}
         </div>

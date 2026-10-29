@@ -196,7 +196,7 @@ def test_a_reply_to_the_dispute_address_is_answered_as_a_draft_and_the_admin_is_
     assert reply.subject.startswith("Re: Dispute: Peak Bar Co.") and "signed change" in reply.body
     assert not [m for m in dispute_email.thread(run, "D-0417") if m.from_party == "clawback"]  # waits for the admin
     (n,) = dispute_email.notifications()
-    assert "Northmart replied to D-0417" in n.text and "drafted for you to send" in n.text
+    assert n.text == "Northmart pushed back on your $4,120 dispute: an answer is drafted for you to send."
     sent_reply = dispute_email.send_reply(reply.id)
     assert sent_reply.status == "outbox"
     assert [m.channel for m in dispute_email.thread(run, "D-0417") if m.from_party == "clawback"] == ["email"]
@@ -412,7 +412,7 @@ def test_gmail_replies_match_by_in_reply_to_and_the_answer_is_sent_after_approva
         "email", "There was no unit cap on the Spring promo.", "claim_without_document")
     (reply,) = [x for x in dispute_email.emails_of(run.id, "D-0417") if x.kind == "reply"]
     assert reply.status == "ready" and "signed change" in reply.body and len(smtp.sent) == 1  # waits for the admin
-    assert "Northmart replied to D-0417" in dispute_email.notifications()[0].text
+    assert "Northmart pushed back on your $4,120 dispute" in dispute_email.notifications()[0].text
     sent = dispute_email.send_reply(reply.id)
     assert sent.status == "sent" and len(smtp.sent) == 2
     m = _parsed(smtp.sent[-1][2])

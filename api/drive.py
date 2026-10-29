@@ -437,10 +437,11 @@ def _open_disputes(account, doc_id: str, run_client) -> str:
         dispute_email.forget_draft(run, dispute.id)
     now = dispute_email.latest(run, dispute.id)
     if now and now.total != before:
-        text = (f"A new document in Google Drive ({doc_id}) changes {dispute.id}: it now totals ${now.total:,.0f}. "
-                "The answer to the distributor is drafted for you to send.")
+        text = (f"A new document in Google Drive changes your dispute with {run.distributor}: it now totals "
+                f"${now.total:,.0f}. The answer to them is drafted for you to send.")
     else:
-        text = f"A new document in Google Drive ({doc_id}) was checked against {dispute.id}; it changes no line."
+        text = (f"A new document in Google Drive was checked against your dispute with {run.distributor}: it changes "
+                "nothing.")
     dispute_email.notify(run, dispute.id, text)
     return f"; {dispute.id} {'recomputed' if now and now.total != before else 'unchanged'}"
 

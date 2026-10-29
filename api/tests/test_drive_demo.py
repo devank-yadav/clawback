@@ -151,6 +151,6 @@ def test_the_demo_drop_amendment_pdf_concedes_1000_on_d0417(every, monkeypatch):
     assert (t.disputed, t.accepted) == (D(3120), D(3730))
     d = dispute_email.latest(run, "D-0417")
     assert d.total == D(3120) and d.status == "ready_to_send"  # not sent yet: its email is redrafted
-    assert any("changes D-0417: it now totals $3,120" in n.text for n in dispute_email.notifications())
+    assert any("changes your dispute with Northmart: it now totals $3,120" in n.text for n in dispute_email.notifications())
     lib = {x.id: x for x in __import__("api.library", fromlist=["library"]).library(accounts.get("peak-bar")).documents}
     assert lib["amendment-1"].version == 2 and lib["amendment-1"].source == "drive" and lib["amendment-1"].locked

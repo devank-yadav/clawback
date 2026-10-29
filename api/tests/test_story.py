@@ -52,8 +52,8 @@ def test_home_shows_a_month_of_work(built):
     (ev,) = t.evidence
     assert (ev.dispute_id, ev.charge_id, ev.amount) == ("D-1030", "U5", D("420.00")) and ev.message_id
     notes = [n.text for n in dispute_email.notifications()]
-    assert any(n.startswith("UNFI replied to D-1030 by the portal: they agree on U5") for n in notes)
-    assert any(n.startswith("Sam's Club replied to D-1040 by the portal") for n in notes)
+    assert "UNFI agreed to pay back $420 of your $2,320 dispute." in notes
+    assert any(n.startswith("Sam's Club replied on your $2,283.20 dispute") for n in notes)
     kinds = {(n.kind, n.distributor) for n in o.needs_you}
     assert ("question", "Sam's Club") in kinds and ("reply_email", "Sam's Club") in kinds
     q = next(n for n in o.needs_you if n.kind == "question")
@@ -112,7 +112,7 @@ def test_every_northmart_preset_replays_and_notifies_on_a_ready_to_send_dispute(
                                json={"text": p.text, "attachment_doc_id": p.attachment_doc_id}).json()
     assert [m["from_party"] for m in out] == ["northmart", "clawback"] and out[0]["classification"] == p.expect
     (n,) = dispute_email.notifications()
-    assert n.text.startswith("Northmart replied to D-0417 by the portal")
+    assert n.text.startswith("Northmart ") and ("your $4,120 dispute" in n.text or "now totals" in n.text)
     if preset == "amendment":
         assert dispute_email.latest(run, "D-0417").total == D(3120)
     pipeline.reset(), disputes.reset()
@@ -137,7 +137,7 @@ def test_the_story_has_one_closing_window_and_honest_statuses(built):
     assert windows["D-1020"] == 10 and windows["D-1030"] == 90  # filed 80 days ago; the 90-day window is the deal's
     (peak,) = [s for s in suppliers.items() if s.id == "peak-bar"]
     unfi = next(r for r in peak.distributors if r.account_id == "peak-bar-unfi")
-    assert (unfi.status, unfi.status_label) == ("dispute_open", "Dispute D-1030 open, awaiting reply")
+    assert (unfi.status, unfi.status_label) == ("dispute_open", "$2,320 dispute open, waiting for their reply")
     q = next(n for n in o.needs_you if n.kind == "question")
     assert "March" in q.title and "march" not in q.title
     assert all("march" not in r.text for r in o.recent)
