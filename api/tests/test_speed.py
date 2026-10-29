@@ -107,6 +107,7 @@ def cache(tmp_path, monkeypatch):
     monkeypatch.setenv("CLAWBACK_CACHE_FIRST", "1")
     monkeypatch.delenv("DEMO_MODE", raising=False)
     monkeypatch.delenv("RECORD_FIXTURES", raising=False)
+    monkeypatch.delenv("CLAWBACK_REPLAY_PACE_MS", raising=False)
     image = tmp_path / "image"
     image.mkdir()
     return image
@@ -158,3 +159,61 @@ def test_without_cache_first_nothing_changes(cache, monkeypatch):
     fn = Live()
     assert (call(fn, cache).source, fn.calls) == ("live", 1)  # live first, as always
     assert not replay.cache_dir().exists()
+
+
+# ---------------------------------------------------------------- the replay pace: a recorded run a viewer can follow
+
+@pytest.fixture
+def paused(monkeypatch):
+    """Every pause call_outside takes, noted instead of taken."""
+    pauses: list[float] = []
+    monkeypatch.setattr(replay.time, "sleep", pauses.append)
+    return pauses
+
+
+def _record_answer(image):
+    replay.save_fixture("claude-reader", replay.request_key("claude-reader", REQ), REQ, {"terms": ["recorded"]}, image)
+
+
+def test_replay_pace_holds_each_answer_cache_first_replays(cache, paused, monkeypatch):
+    monkeypatch.setenv("CLAWBACK_REPLAY_PACE_MS", "1500")
+    _record_answer(cache)
+    fn = Live()
+    res = call(fn, cache)
+    assert (res.response, res.source, fn.calls) == ({"terms": ["recorded"]}, "fixture", 0)
+    assert paused == [1.5]
+
+
+def test_replay_pace_is_off_unless_set(cache, paused, monkeypatch):
+    _record_answer(cache)
+    for pace in (None, "0", "", "soon", "-200"):
+        if pace is not None:
+            monkeypatch.setenv("CLAWBACK_REPLAY_PACE_MS", pace)
+        assert call(Live(), cache).source == "fixture"
+    assert paused == []
+
+
+def test_replay_pace_never_holds_a_live_call(cache, paused, monkeypatch):
+    monkeypatch.setenv("CLAWBACK_REPLAY_PACE_MS", "1500")
+    fn = Live()
+    assert (call(fn, cache).source, fn.calls) == ("live", 1)  # nothing recorded yet: live, then saved
+    for service in ("qbo", "moss"):  # not AI calls: cache-first leaves them live
+        assert call(Live(), cache, service).source == "live"
+    monkeypatch.delenv("CLAWBACK_CACHE_FIRST")  # without cache-first, a recording is no reason to pause
+    _record_answer(cache)
+    assert (call(fn, cache).source, fn.calls) == ("live", 2)
+    assert paused == []
+
+
+def test_replay_pace_leaves_the_forced_replay_and_demo_mode_alone(cache, paused, monkeypatch):
+    monkeypatch.setenv("CLAWBACK_REPLAY_PACE_MS", "1500")
+    _record_answer(cache)
+    with replay.replaying():  # the history built at startup: every answer at once, whatever `demo` says
+        assert call(Live(), cache).source == "fixture"
+        assert replay.call_outside("claude-reader", REQ, Live(), fixtures_dir=cache, delay=0, demo=False).source == "fixture"
+    assert paused == []
+    monkeypatch.setenv("DEMO_MODE", "true")  # its own delay only, also where cache-first answers a live_first call
+    for live_first in (False, True):
+        assert replay.call_outside("claude-reader", REQ, Live(), fixtures_dir=cache, delay=0.4,
+                                   live_first=live_first).source == "fixture"
+    assert paused == [0.4, 0.4]

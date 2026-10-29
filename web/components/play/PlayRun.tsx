@@ -4,6 +4,8 @@
 // Scoreboard, ONE stage (the charge being checked or just stamped, the one question, then the approval and the
 // dispute email), and the row of all the charges. The spotlight moves to the next charge only after the current one
 // has shown its stamp, so a fast run still reads card by card. Amounts and decisions come from the run's events.
+// While the agents work (and in a replay) the page passes `rail`, the seven steps under the Scoreboard, and `beside`,
+// the agent at work, shown beside the card (under it when there's no room for both).
 
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
@@ -208,7 +210,9 @@ function PlayDispute() {
   );
 }
 
-export function PlayRun({ pending, done, onOpen, head, after }: { pending: Stage[]; done: boolean; onOpen: (chargeId: string) => void; head?: ReactNode; after?: ReactNode }) {
+export function PlayRun({ pending, done, onOpen, head, after, rail, beside }: {
+  pending: Stage[]; done: boolean; onOpen: (chargeId: string) => void; head?: ReactNode; after?: ReactNode; rail?: ReactNode; beside?: ReactNode;
+}) {
   const { state, view, cast } = useRun();
   const charges = view.charges;
   const runKey = state.run?.run_id ?? "none";
@@ -290,7 +294,12 @@ export function PlayRun({ pending, done, onOpen, head, after }: { pending: Stage
         label="Getting back"
         line={r ? `of the ${money(r.taken)} ${r.counterparty} kept` : undefined}
       />
-      <div className="cb-run-stage">{stage}</div>
+      {rail && <div className="cb-run-rail">{rail}</div>}
+      {/* One wrapper either way, so the card isn't dealt again when the agent beside it goes. */}
+      <div className="cb-run-now">
+        <div className="cb-run-stage">{stage}</div>
+        {beside}
+      </div>
       {after}
       {charges.length > 0 && <CardQueue cards={cards} current={current && !showDone ? current.id : undefined} onPick={onOpen} label="Charges in this payment: open a decided one to see its proof" />}
       {state.feed.length > 0 && (

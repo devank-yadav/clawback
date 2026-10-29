@@ -7,6 +7,9 @@ docs/design.md, "DEMO_MODE":
 - CLAWBACK_CACHE_FIRST=1 (the live site, off by default): an AI call whose exact request has a recording replays it at
   once; any other goes live and its answer is saved to $CLAWBACK_STATE_DIR/fixtures/ (a docker volume on the VM), so
   the same run again takes seconds. Recordings are looked up there first, then in data/fixtures/.
+- CLAWBACK_REPLAY_PACE_MS (milliseconds, 0 = off, the default): each answer cache-first replays waits that long first,
+  so a recorded run shows each agent at work (a demo video) instead of finishing in two seconds. Never on a live call,
+  in DEMO_MODE (it has its own delay) or in replaying() (the history built at startup).
 
 The request passed in is the logical request (model, prompt, schema, entity), never headers or credentials:
 it is hashed into the key and saved next to the response. Recording refuses to write any secret from the
@@ -129,6 +132,15 @@ def cache_first() -> bool:
 def cache_dir() -> Path:
     """Where cache-first saves the answers it got live, and looks first: the state folder, not the image."""
     return Path(os.getenv("CLAWBACK_STATE_DIR", "state")) / "fixtures"
+
+
+def replay_pace() -> float:
+    """CLAWBACK_REPLAY_PACE_MS in seconds: how long cache-first holds a recorded answer. Unset, 0 or not a whole number
+    of milliseconds: off."""
+    try:
+        return max(0, int(os.getenv("CLAWBACK_REPLAY_PACE_MS", "").strip() or 0)) / 1000
+    except ValueError:
+        return 0.0
 
 
 def _cached(service: str, key: str, fixtures_dir: Path | None) -> Any | None:
@@ -296,6 +308,9 @@ def call_outside(
         if record and record_missing() and load_fixture(service, key, fixtures_dir) is not None:
             return from_fixture("recorded already")
         if cache and _cached(service, key, fixtures_dir) is not None:
+            pace = 0.0 if demo or _forced.get() else replay_pace()
+            if pace:  # a recorded run at a pace a viewer can follow
+                time.sleep(pace)
             return from_fixture("answered before")
 
         for _ in range(1 + max(0, retries)):

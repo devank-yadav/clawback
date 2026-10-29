@@ -20,9 +20,14 @@ import { Elapsed } from "./parts";
 import { StartPanel } from "./StartPanel";
 import { PlayRun } from "@/components/play/PlayRun";
 import NextUp from "@/components/app/NextUp";
-import { buildStages, type Stage, type StageKey } from "./stages";
+import { StageRail } from "./StageRail";
+import { StageHero } from "./StageHero";
+import { StageAgents } from "./AgentStrip";
+import { buildStages, focusStage, type Stage, type StageKey } from "./stages";
 
 const noop = () => () => {};
+/** A step of the rail opens what its agents did and concluded. */
+const stageAgents = (key: StageKey) => <StageAgents stage={key} />;
 // The decisions that wait on the admin, in the order to take them: the question first (its answer can change the
 // memo), then the credit memo's approval, then the dispute to send. The play screen shows them one at a time.
 const NEEDS: StageKey[] = ["owner", "approval", "file"];
@@ -109,6 +114,9 @@ function FlowFor() {
 
   const stages = buildStages(state, view, { distributor: cast.distributor, owner: cast.owner }, starting || (mine && !state.run));
   const pending = NEEDS.map((k) => stages.find((s) => s.key === k && s.state === "waiting")).filter((s): s is Stage => !!s);
+  // While the agents work, and while "Watch it again" plays a run back, the seven steps and the agent at work show
+  // with the cards. The result stays as it is.
+  const atWork = phase === "run" || replaying;
   const r = view.remittance;
   const charge = drawer ? view.charges.find((c) => c.id === drawer) ?? null : null;
 
@@ -131,6 +139,8 @@ function FlowFor() {
       {(phase === "run" || phase === "done") && (
         <main className="fl-main fl-play">
           <PlayRun pending={pending} done={phase === "done"} onOpen={setDrawer}
+            rail={atWork ? <StageRail stages={stages} compact details={stageAgents} /> : null}
+            beside={atWork ? <StageHero stage={focusStage(stages)} stages={stages} feed={state.feed} done={status === "finished"} compact /> : null}
             after={phase === "done" && !replaying && runId
               ? <NextUp here={{ runId }} homeAccount={account?.id} refresh={`${state.feed.length}:${view.approval?.status ?? ""}:${state.dispute?.status ?? ""}:${view.question?.answer ?? ""}`} />
               : null}

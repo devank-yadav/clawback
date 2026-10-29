@@ -29,6 +29,8 @@ textarea,.p-limit input{width:100%;border:1px solid var(--line);border-radius:10
 .p-limit input{flex:1;min-width:0;min-height:48px}
 .p-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}.p-check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:16px}.p-check input{width:22px;height:22px}
 .p-send{min-height:48px;padding:0 24px;border:0;border-radius:10px;background:var(--brand);color:var(--brand-ink);font:inherit;font-weight:600;cursor:pointer;margin-left:auto}.p-send:disabled{opacity:.5;cursor:not-allowed}
+/* the payment's run, once the agents started on it: a link that looks like the button it replaces */
+.p-watch{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding-block:10px;text-align:center;text-decoration:none}.p-watch:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 .p-limit{margin-top:14px;padding:12px 14px;border-radius:10px;background:var(--brand-soft)}.p-limit p{margin:0}
 .p-error{margin:12px 0 0;color:var(--red)}button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 @media (max-width:560px){.p-tag{display:none}.p-total{text-align:left}.p-send{width:100%}}

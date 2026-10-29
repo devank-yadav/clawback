@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
-import { inkOn, useCurrentAccount } from "@/lib/accounts";
+import { inkOn, useCurrentAccount, withAccount } from "@/lib/accounts";
 import { anyDay, daysLeftLabel, dollars, URGENT_DAYS } from "@/lib/format";
 import * as api from "@/lib/api";
 import { limitMessage } from "@/lib/session";
@@ -163,7 +163,9 @@ function PayCard({ account }: { account: Account }) {
       <div className="p-row">
         <p className="p-muted" role="status">
           {sent
-            ? `Sent ${when(sent.received_at)}: ${dollars(sent.received)} of ${dollars(sent.expected)}. ${account.brand.name} sees it as received; their agents check it.`
+            ? `Sent ${when(sent.received_at)}: ${dollars(sent.received)} of ${dollars(sent.expected)}. ` + (sent.run_id
+              ? `${account.brand.name}’s agents are checking it now.`
+              : `${account.brand.name} sees it as received; their agents check it.`)
             : invalid ? "Enter a number on each line."
             : total ? `Paying ${dollars(total.paid)} of ${dollars(total.expected)} · ${dollars(total.taken)} taken in ${total.lines.length} deduction${total.lines.length === 1 ? "" : "s"}.`
             : "Loading the invoice…"}
@@ -171,7 +173,14 @@ function PayCard({ account }: { account: Account }) {
         {!sent && base && shown?.edited && (
           <button type="button" className="p-reset" onClick={() => { setEdits(asEdits(base)); setShown(base); }}>Start over</button>
         )}
-        <button type="button" className="p-send" onClick={() => void pay()} disabled={busy || !!sent || !base || invalid}>{sent ? "Payment sent" : busy ? "Sending…" : "Send payment"}</button>
+        {sent?.run_id ? (
+          // The agents started the moment it arrived (the owner's setting): their run on the payment page, in this tab.
+          <a className="p-send p-watch" href={withAccount("/", account.id, { run: sent.run_id })}>
+            Watch {account.brand.name}’s agents check it <span aria-hidden="true">→</span>
+          </a>
+        ) : (
+          <button type="button" className="p-send" onClick={() => void pay()} disabled={busy || !!sent || !base || invalid}>{sent ? "Payment sent" : busy ? "Sending…" : "Send payment"}</button>
+        )}
       </div>
       {sent && (
         <div className="p-row"><button type="button" className="p-reset" onClick={() => { setSent(null); if (base) { setEdits(asEdits(base)); setShown(base); } }}>Send another payment</button></div>

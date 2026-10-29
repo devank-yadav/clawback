@@ -15,6 +15,12 @@
 .cb-play-dispute-head p { margin-top: 4px; color: var(--sub); font-weight: 600; }
 .cb-play-dispute .cb-run-next { justify-content: flex-start; }
 @media (max-width: 560px) { .cb-play-dispute-head { flex-direction: column; align-items: flex-start; } }
+/* while the agents work (and in a replay): the seven steps under the Scoreboard, and the agent at work beside the
+   card, dropping under it when the row has no room for both. Alone, the card sits centered as before. */
+.cb-run-rail { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.cb-run-now { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-4); }
+.cb-run-now > .cb-run-stage { flex: 3 1 440px; min-width: 0; }
+.cb-run-now > .sh { flex: 1 1 280px; min-width: 0; }
 
 /* Links: underlined only inside a sentence. Rows, cards, nav items and buttons that are links aren't. */
 a { text-decoration: none; }
