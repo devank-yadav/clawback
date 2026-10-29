@@ -1,4 +1,4 @@
-# Vultr deploy: api + web + caddy. Runbook: docs/deploy.md. Offline check: make deploy-check.
+# Production deploy (Oracle Cloud Always Free VM; was Vultr): api + web + caddy. Runbook: docs/deploy.md. Offline check: make deploy-check.
 # The database stays on Tiger Data, so DATABASE_URL in .env is the only database setting.
 services:
   api:

@@ -1,4 +1,37 @@
-# Deploy runbook: clawback.biz on a Vultr VM (F19)
+# Deploy runbook: clawback.biz (F19)
+
+## Current host: Oracle Cloud Always Free (since 2026-10-29)
+
+The Vultr VM went dark on Oct 29 and Vultr was dropped. clawback.biz now runs on an Oracle Cloud **Always Free** VM, on
+a Free Tier account that is limited to Always Free resources, so it can't be charged. Never upgrade the account to Pay As
+You Go or pick a shape that isn't marked "Always Free-eligible".
+
+| | |
+| --- | --- |
+| VM | `clawback`, VM.Standard.E2.1.Micro (1 OCPU, 1 GB memory), Ubuntu 24.04 x86, US East (Ashburn) AD-1 |
+| Address | `129.153.30.138` (ephemeral public IP on the VNIC; it stays through reboots) |
+| Login | `ssh -i ~/.ssh/clawback_oracle ubuntu@129.153.30.138`; Docker needs `sudo` |
+| App | `/opt/clawback` (same compose file, Caddyfile and `.env` layout as below) |
+
+What differs from the Vultr steps below:
+
+- **Memory:** 1 GB, so the VM has a 4 GB swap file (in `/etc/fstab`) and snapd is off. The images build on the VM; the web build is slow but fits.
+- **Firewall, twice:** the VCN's Default Security List allows TCP 80 and 443 from `0.0.0.0/0` (plus Oracle's default SSH rule), and Oracle's Ubuntu image has its own iptables `REJECT` rule: the 80/443 `ACCEPT` rules sit above it and are saved in `/etc/iptables/rules.v4`. Check with `sudo iptables -L INPUT -n --line-numbers`.
+- **Public IP:** the create form can't attach one to a brand-new VCN; it was added afterwards (VNIC → IP administration → Edit → Ephemeral public IP).
+- **Ampere:** the free VM.Standard.A1.Flex (2 OCPU, 12 GB) had no capacity in any Ashburn AD on Oct 29. Moving to it later is a better fit; the app runs on ARM unchanged.
+
+Deploy an update from a laptop (clean checkout of `main`):
+
+```bash
+git ls-files -z | rsync -az --from0 --files-from=- -e "ssh -i ~/.ssh/clawback_oracle" ./ ubuntu@129.153.30.138:/opt/clawback/
+ssh -i ~/.ssh/clawback_oracle ubuntu@129.153.30.138 'cd /opt/clawback && sudo docker compose up -d --build --no-deps api web'
+bash deploy/smoke.sh https://clawback.biz
+```
+
+The rest of this file is the original Vultr runbook; steps 3, 6 and 7 onwards apply unchanged, with `ubuntu@` and `sudo`
+in place of `root@`.
+
+## Original runbook (Vultr)
 
 Goal: judges' phones open the board at `https://clawback.biz`. Tracks: MLH Vultr (hosting) and MLH GoDaddy Registry
 (the `.biz` domain); the Devpost proof for both is the live URL.
