@@ -1570,6 +1570,31 @@ class RecentItem(Contract):
     link: OverviewLink
 
 
+class AutoUndo(Contract):
+    """What the owner can take back about something the agents did on their own (POST /autopilot/undo). It never
+    unsends an email or unposts a memo: it stops the next one (a limit cleared) or stops a rule applying."""
+
+    kind: Literal["disputes", "memos_settings", "memos_account", "rule"]
+    label: str  # the button: "Ask me first next time", "Undo Rule #1"
+    note: str  # what it does and doesn't do, in one sentence
+    account_id: str | None = None
+    rule_id: str | None = None
+
+
+class AutoAction(Contract):
+    """Done for you: one thing the agents did without asking the owner, and why they were allowed to."""
+
+    at: datetime
+    kind: Literal["dispute_sent", "memo_posted", "rule_applied"]
+    account_id: str
+    distributor: str
+    text: str  # "Sent your $4,120 dispute to Northmart"
+    why: str  # "Under the $5,000 limit you set in Settings"
+    amount: Money | None = None
+    link: OverviewLink
+    undo: AutoUndo | None = None  # None: nothing to take back here (policy.yaml set it, or the rule is already undone)
+
+
 class SupplierOverview(Contract):
     """GET /overview. Every amount is computed by the API from engine values; the web shows them as given."""
 
@@ -1579,6 +1604,34 @@ class SupplierOverview(Contract):
     needs_you: list[NeedsYou]
     open_disputes: list[OpenDispute]
     recent: list[RecentItem]
+    done_for_you: list[AutoAction] = []  # newest first, the last few
+
+
+class AutoUndoRequest(Contract):
+    """POST /autopilot/undo: one AutoUndo as Home offered it."""
+
+    kind: Literal["disputes", "memos_settings", "memos_account", "rule"]
+    account_id: str | None = None
+    rule_id: str | None = None
+
+
+class AutoUndoResult(Contract):
+    done: str  # one sentence saying what changed
+
+
+class SetupStep(Contract):
+    """GET /setup: one step of getting a new company going. demo: this server simulates it, so there's nothing to do."""
+
+    id: Literal["distributor", "contract", "books", "payments", "alerts"]
+    title: str
+    detail: str
+    state: Literal["done", "todo", "demo"]
+    href: str  # the app page that does it ("/settings")
+
+
+class SetupChecklist(Contract):
+    steps: list[SetupStep]
+    left: int  # steps still to do
 
 
 class FoundPayment(Contract):

@@ -6,10 +6,14 @@
 // the bottom. No top tab bar. On a phone the sidebar folds into a menu button. Signed-out visitors go to
 // /signin and come back. Every link keeps the account in the URL (withAccount). The name TopBar stays so every page
 // that rendered the old bar renders this frame unchanged.
+//
+// Payments start in the background, so the frame also says when the agents need you or have finished: Payments and
+// Disputes carry a count of what's waiting on you there (GET /overview needs_you), and a note pops up on any page when
+// a payment's check is done ("Northmart's payment is checked: 1 thing needs you"), with a link to it.
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Bell, BookCheck, Building2, FileText, House, ChevronsUpDown, Gavel, Settings as SettingsIcon, Wallet,
   KeyRound, Landmark, LogIn, LogOut, Menu, MessagesSquare, RotateCcw, X,
@@ -21,7 +25,7 @@ import { askAdminToken, signOut, useSession } from "@/lib/session";
 import { adminToken } from "@/lib/tokens";
 import { signInHref } from "@/lib/signin-route";
 import * as api from "@/lib/api";
-import type { Account, RelationshipStatus } from "@/lib/types";
+import type { Account, CompanyOverview, RelationshipStatus } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
 
 type Item = { key: string; href: string; label: string; icon: ReactNode; view?: string };
@@ -277,6 +281,77 @@ function Notifications({ account, onPick }: { account: Account | null; onPick: (
   );
 }
 
+/** Which needs-you items each sidebar place counts: questions and memos are on a payment's page; dispute emails and
+ * replies on Disputes. */
+const COUNTED: Record<string, CompanyOverview["needs_you"][number]["kind"][]> = {
+  payments: ["question", "approval"],
+  disputes: ["dispute_email", "reply_email"],
+};
+
+// The payments already announced in this tab, so moving between pages doesn't announce them again, and one that
+// finished while you were on another page is announced on the next.
+const DECIDED_KEY = "clawback:decided-seen";
+const readDecided = (): Set<string> | null => {
+  try { const raw = window.sessionStorage.getItem(DECIDED_KEY); return raw ? new Set(JSON.parse(raw) as string[]) : null; } catch { return null; }
+};
+const writeDecided = (ids: Set<string>) => {
+  try { window.sessionStorage.setItem(DECIDED_KEY, JSON.stringify([...ids])); } catch { /* this page only */ }
+};
+
+type Finished = { runId: string; accountId: string; distributor: string; waiting: number };
+
+/** GET /overview every 20 seconds while signed in (sooner after a payment arrives): the counts for the sidebar, and
+ * the payment whose check just finished. */
+function useWatch() {
+  const { status } = useSession();
+  const on = status === "in" || status === "open";
+  const [tick, setTick] = useState(0);
+  const [finished, setFinished] = useState<Finished | null>(null);
+  // Each look also says whether a payment finished since the last one (the first look in a tab only learns what's there).
+  const load = useCallback(async () => {
+    const o = await api.fetchCompanyOverview();
+    const decided = o.recent.filter((r) => r.kind === "run_decided" && r.link.run_id);
+    const seen = readDecided();
+    writeDecided(new Set([...(seen ?? []), ...decided.map((r) => r.link.run_id!)]));
+    const r = seen ? decided.find((d) => !seen.has(d.link.run_id!)) : undefined;  // newest first
+    if (r) setFinished({ runId: r.link.run_id!, accountId: r.account_id, distributor: r.distributor,
+      waiting: o.needs_you.filter((n) => n.link.run_id === r.link.run_id).length });
+    return o;
+  }, []);
+  const o = useFetched(on ? load : null, String(tick)).data;
+  useEffect(() => {
+    if (!on) return;
+    const t = window.setInterval(() => setTick((n) => n + 1), 20_000);
+    // A payment just arrived and the agents started on it: look again while they work.
+    const soon = () => [5_000, 12_000, 25_000].forEach((ms) => window.setTimeout(() => setTick((n) => n + 1), ms));
+    window.addEventListener(RECEIVED_EVENT, soon);
+    return () => { window.clearInterval(t); window.removeEventListener(RECEIVED_EVENT, soon); };
+  }, [on]);
+  const counts = useMemo(() => Object.fromEntries(Object.entries(COUNTED).map(([key, kinds]) =>
+    [key, o?.needs_you.filter((n) => kinds.includes(n.kind)).length ?? 0])), [o]);
+  const dismiss = useCallback(() => setFinished(null), []);
+  return { counts, finished, dismiss };
+}
+
+/** "Northmart's payment is checked", on whatever page you're on, for 12 seconds or until closed. */
+function FinishedNote({ finished, onClose }: { finished: Finished | null; onClose: () => void }) {
+  useEffect(() => {
+    if (!finished) return;
+    const t = window.setTimeout(onClose, 12_000);
+    return () => window.clearTimeout(t);
+  }, [finished, onClose]);
+  if (!finished) return null;
+  const { distributor, waiting } = finished;
+  return (
+    <div className="sb-toast" role="status">
+      <span><strong>{distributor}’s payment is checked.</strong>{" "}
+        {waiting ? `${waiting} thing${waiting === 1 ? " needs" : "s need"} you.` : "Nothing needs you."}</span>
+      <Link className="cx-btn is-blue is-small" href={withAccount("/", finished.accountId, { run: finished.runId })} onClick={onClose}>See it</Link>
+      <button className="sb-toast-x" aria-label="Close" onClick={onClose}><X aria-hidden="true" /></button>
+    </div>
+  );
+}
+
 /** Sends a signed-out visitor to /signin, and back here afterwards. */
 function useSignedInOnly() {
   const { status } = useSession();
@@ -292,6 +367,7 @@ export default function TopBar({ account }: { account: Account | null; active?: 
   useSignedInOnly();
   const active = activeKey(path);
   const close = () => setOpen(false);
+  const watch = useWatch();
   const supplierName = supplier?.name ?? account?.brand.name ?? " ";
 
   // The drawer closes on Escape; the page behind doesn't scroll while it's open.
@@ -303,11 +379,15 @@ export default function TopBar({ account }: { account: Account | null; active?: 
     return () => { document.removeEventListener("keydown", esc); document.body.classList.remove("sb-locked"); };
   }, [open]);
 
-  const link = (i: Item) => (
-    <Link key={i.key} href={withAccount(i.href, account?.id)} className="sb-link" aria-current={active === i.key ? "page" : undefined} onClick={close}>
-      {i.icon}<span>{i.label}</span>
-    </Link>
-  );
+  const link = (i: Item) => {
+    const n = watch.counts[i.key] ?? 0;
+    return (
+      <Link key={i.key} href={withAccount(i.href, account?.id)} className="sb-link" aria-current={active === i.key ? "page" : undefined} onClick={close}
+        aria-label={n ? `${i.label}, ${n} waiting on you` : undefined}>
+        {i.icon}<span>{i.label}</span>{n > 0 && <b className="sb-count" aria-hidden="true">{n > 9 ? "9+" : n}</b>}
+      </Link>
+    );
+  };
 
   return (
     <>
@@ -330,6 +410,7 @@ export default function TopBar({ account }: { account: Account | null; active?: 
         </nav>
         <div className="sb-foot"><UserMenu account={account} /></div>
       </aside>
+      <FinishedNote finished={watch.finished} onClose={watch.dismiss} />
     </>
   );
 }

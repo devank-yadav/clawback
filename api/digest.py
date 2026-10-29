@@ -132,14 +132,10 @@ def supplier_of(who: tenancy.Caller) -> str:
     return who.supplier_id or suppliers.supplier_of(accounts.get(accounts.DEFAULT))
 
 
-def build(who: tenancy.Caller) -> Digest:
-    from api import supplier_overview as so
-
-    o = so.overview(who)
-    t = o.totals
-    settings = autopilot.get(supplier_of(who))
+def items_of(needs) -> list[DigestItem]:
+    """Needs-you items (api/supplier_overview.py) as email items: one signed link per one-tap choice, else an Open link."""
     items: list[DigestItem] = []
-    for n in o.needs_you:
+    for n in needs:
         open_url = f"{_app_base()}/app"
         actions: list[TapAction] = []  # the item's own one-tap choices (supplier_overview), as signed links
         if n.kind == "question" and n.target_id:
@@ -151,7 +147,47 @@ def build(who: tenancy.Caller) -> Digest:
             open_url = f"{_app_base()}/app/disputes?account={n.account_id}&id={n.link.dispute_id}"
         items.append(DigestItem(title=n.title, distributor=n.distributor, amount=float(n.amount) if n.amount is not None else None,
                                 level=n.risk_level, actions=actions, open_url=open_url))
+    return items
 
+
+def item_lines(items: list[DigestItem]) -> list[str]:
+    """The plain-text email's lines for the items."""
+    lines = []
+    for it in items:
+        # titles name the distributor already ("Northmart kept $1,200 for ..."); prefix only one that doesn't
+        lines.append(f"- {it.title}" if it.distributor in it.title else f"- {it.distributor}: {it.title}")
+        for a in it.actions:
+            lines.append(f"    {a.label}: {a.url}")
+        if not it.actions:
+            lines.append(f"    Open it: {it.open_url}")
+    return lines
+
+
+def _btn(a: TapAction, primary: bool) -> str:
+    bg, fg = ("#1f6fe5", "#ffffff") if primary else ("#ffffff", "#001c2e")
+    return (f'<a href="{escape(a.url)}" style="display:inline-block;margin:4px 6px 4px 0;padding:10px 16px;'
+            f'border:2px solid #001c2e;border-radius:999px;background:{bg};color:{fg};font-weight:800;'
+            f'text-decoration:none;box-shadow:0 3px 0 #001c2e">{escape(a.label)}</a>')
+
+
+def item_rows(items: list[DigestItem]) -> str:
+    """The HTML email's cards for the items, each with its one-tap buttons."""
+    return "".join(
+        f'<div style="margin:14px 0;padding:16px;border:2px solid #001c2e;border-radius:16px;box-shadow:0 4px 0 #001c2e">'
+        f'<div style="font-size:12px;font-weight:900;color:#56697a">{escape(it.distributor)} · {escape(it.level.title())}</div>'
+        f'<div style="font-size:17px;font-weight:700;margin:6px 0 10px;color:#001c2e">{escape(it.title)}</div>'
+        + ("".join(_btn(a, i == 0) for i, a in enumerate(it.actions)) if it.actions
+           else _btn(TapAction(label="Open in Clawback", url=it.open_url), True))
+        + "</div>" for it in items)
+
+
+def build(who: tenancy.Caller) -> Digest:
+    from api import supplier_overview as so
+
+    o = so.overview(who)
+    t = o.totals
+    settings = autopilot.get(supplier_of(who))
+    items = items_of(o.needs_you)
     back, got, fair = _money(t.disputed_awaiting_reply), _money(t.recovered), _money(t.fair)
     open_n = len(o.open_disputes)
     # "Getting back" is what's disputed and not yet settled (sent or ready to send), not money already on its way.
@@ -167,31 +203,13 @@ def build(who: tenancy.Caller) -> Digest:
     ]
     if items:
         lines.append("Needs you:" if len(items) == 1 else f"Needs you ({len(items)}):")
-        for it in items:
-            # titles name the distributor already ("Northmart kept $1,200 for ..."); prefix only one that doesn't
-            lines.append(f"- {it.title}" if it.distributor in it.title else f"- {it.distributor}: {it.title}")
-            for a in it.actions:
-                lines.append(f"    {a.label}: {a.url}")
-            if not it.actions:
-                lines.append(f"    Open it: {it.open_url}")
+        lines += item_lines(items)
     else:
         lines.append("Nothing needs you. The agents keep checking every payment that comes in.")
     lines += ["", f"Open Clawback: {_app_base()}/app", "", "You get this every Monday. Turn it off in Settings."]
     text = "\n".join(lines)
 
-    def btn(a: TapAction, primary: bool) -> str:
-        bg, fg = ("#1f6fe5", "#ffffff") if primary else ("#ffffff", "#001c2e")
-        return (f'<a href="{escape(a.url)}" style="display:inline-block;margin:4px 6px 4px 0;padding:10px 16px;'
-                f'border:2px solid #001c2e;border-radius:999px;background:{bg};color:{fg};font-weight:800;'
-                f'text-decoration:none;box-shadow:0 3px 0 #001c2e">{escape(a.label)}</a>')
-
-    rows = "".join(
-        f'<div style="margin:14px 0;padding:16px;border:2px solid #001c2e;border-radius:16px;box-shadow:0 4px 0 #001c2e">'
-        f'<div style="font-size:12px;font-weight:900;color:#56697a">{escape(it.distributor)} · {escape(it.level.title())}</div>'
-        f'<div style="font-size:17px;font-weight:700;margin:6px 0 10px;color:#001c2e">{escape(it.title)}</div>'
-        + ("".join(btn(a, i == 0) for i, a in enumerate(it.actions)) if it.actions
-           else btn(TapAction(label="Open in Clawback", url=it.open_url), True))
-        + "</div>" for it in items)
+    rows = item_rows(items)
     stat = lambda label, v, color: (f'<td style="padding:12px;border:2px solid {color};border-radius:12px">'  # noqa: E731
                                     f'<div style="font-size:12px;font-weight:900;color:{color}">{label}</div>'
                                     f'<div style="font-size:22px;font-weight:900;color:{color}">{v}</div></td>')
@@ -211,27 +229,33 @@ def build(who: tenancy.Caller) -> Digest:
     return Digest(to=settings.digest_email, subject=subject, text=text, html=html, items=items)
 
 
-def send(who: tenancy.Caller) -> DigestSent:
+def deliver(to: str, subject: str, text: str, html: str) -> tuple[str, str]:
+    """Email one message from the supplier's Gmail: ("sent", detail) or ("not_sent", why). Nothing goes in DEMO_MODE."""
     from api.integrations import gmail, replay
 
+    if replay.demo_mode() or not gmail.configured():
+        return "not_sent", gmail.why_simulated() or "Gmail isn't connected on this server, so nothing was sent."
+    msg = EmailMessage()
+    msg["From"] = f"Clawback <{gmail.address()}>"
+    msg["To"] = to
+    msg["Subject"] = subject
+    msg.set_content(text)
+    msg.add_alternative(html, subtype="html")
+    try:
+        gmail.send(msg.as_bytes(), to)
+    except gmail.GmailError as e:
+        return "not_sent", str(e)
+    return "sent", "Sent from the supplier’s Gmail."
+
+
+def send(who: tenancy.Caller) -> DigestSent:
     d = build(who)
     if not d.to:
         return DigestSent(status="not_sent", to=None, detail="Add the email address to send it to, in Settings.", subject=d.subject)
-    if replay.demo_mode() or not gmail.configured():
-        return DigestSent(status="not_sent", to=d.to, subject=d.subject,
-                          detail=gmail.why_simulated() or "Gmail isn't connected on this server, so nothing was sent.")
-    msg = EmailMessage()
-    msg["From"] = f"Clawback <{gmail.address()}>"
-    msg["To"] = d.to
-    msg["Subject"] = d.subject
-    msg.set_content(d.text)
-    msg.add_alternative(d.html, subtype="html")
-    try:
-        gmail.send(msg.as_bytes(), d.to)
-    except gmail.GmailError as e:
-        return DigestSent(status="not_sent", to=d.to, detail=str(e), subject=d.subject)
-    autopilot.update(supplier_of(who), None, digest_last_sent=datetime.now(timezone.utc))
-    return DigestSent(status="sent", to=d.to, detail="Sent from the supplier’s Gmail.", subject=d.subject)
+    status, detail = deliver(d.to, d.subject, d.text, d.html)
+    if status == "sent":
+        autopilot.update(supplier_of(who), None, digest_last_sent=datetime.now(timezone.utc))
+    return DigestSent(status=status, to=d.to, detail=detail, subject=d.subject)
 
 
 # ---------------------------------------------------------------- acting on a tap

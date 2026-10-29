@@ -3,7 +3,7 @@
 // `npm run dev:mock` serves the same shapes from web/mock/.
 
 import type {
-  Account, Approval, Lookback, AuditEntry, AuditVerify, ChargeDetail, CoachResponse, CompanyOverview, Dispute, DisputeEmail, DisputeThread, SupplierNotification, EvalReport, Evidence, LedgerPost,
+  Account, Approval, AutoUndo, Lookback, AuditEntry, AuditVerify, ChargeDetail, CoachResponse, CompanyOverview, Dispute, DisputeEmail, DisputeThread, SupplierNotification, EvalReport, Evidence, LedgerPost,
   Money, Overview, PortalMessage, Rule, RunEvent, ScenarioExample, ScenarioRequest, ScenarioResponse, SupplierItem, RunSummary, SavedOverview, DocumentText, Connection, ContractLibrary, TraceStep, TraceSummary,
 } from "./types";
 import { adminToken } from "./tokens";
@@ -268,11 +268,12 @@ export type Autopilot = {
   digest_email: string | null;
   digest_weekly: boolean;
   digest_last_sent: string | null;
+  alert_on_check: boolean;
   updated_by: string | null;
   updated_at: string | null;
 };
 type Clearable = "send_disputes_under" | "post_fair_under" | "digest_email";
-export type AutopilotChange = Partial<Pick<Autopilot, "run_on_arrival" | "send_disputes_under" | "post_fair_under" | "digest_email" | "digest_weekly">> & { clear?: Clearable[] };
+export type AutopilotChange = Partial<Pick<Autopilot, "run_on_arrival" | "send_disputes_under" | "post_fair_under" | "digest_email" | "digest_weekly" | "alert_on_check">> & { clear?: Clearable[] };
 export const fetchAutopilot = () => call<Autopilot>("/settings/autopilot");
 export const saveAutopilot = (change: AutopilotChange) => call<Autopilot>("/settings/autopilot", { method: "PUT", body: change });
 
@@ -282,3 +283,12 @@ export type Digest = { to: string | null; subject: string; text: string; html: s
 export type DigestSent = { status: "sent" | "not_sent"; to: string | null; detail: string; subject: string };
 export const previewDigest = () => call<Digest>("/digest/preview");
 export const sendDigest = () => call<DigestSent>("/digest/send", { method: "POST" });
+
+/** GET /setup: what a new company still has to do (api/onboarding.py). "demo": simulated here, nothing to do. */
+export type SetupStep = { id: "distributor" | "contract" | "books" | "payments" | "alerts"; title: string; detail: string; state: "done" | "todo" | "demo"; href: string };
+export type SetupChecklist = { steps: SetupStep[]; left: number };
+export const fetchSetup = () => call<SetupChecklist>("/setup");
+
+/** POST /autopilot/undo (owner): stop the next one going without asking (a limit cleared), or undo the rule. */
+export const undoAuto = (undo: Pick<AutoUndo, "kind" | "account_id" | "rule_id">) =>
+  call<{ done: string }>("/autopilot/undo", { method: "POST", body: { kind: undo.kind, account_id: undo.account_id, rule_id: undo.rule_id } });

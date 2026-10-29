@@ -1,7 +1,7 @@
 "use client";
 
-// /app/settings: what the owner sets once (api/autopilot.py, GET/PUT /settings/autopilot), the weekly summary with
-// its one-tap answers (api/digest.py: GET /digest/preview, POST /digest/send), and doors to everything that used to
+// /app/settings: what the owner sets once (api/autopilot.py, GET/PUT /settings/autopilot), the emails (one when a
+// payment's check is done, api/alerts.py, and the weekly summary), both with one-tap answers (api/digest.py: GET /digest/preview, POST /digest/send), and doors to everything that used to
 // crowd the sidebar. Amounts here are limits the owner types; the app computes no money.
 
 import Link from "next/link";
@@ -65,6 +65,7 @@ function Form({ initial }: { initial: api.Autopilot }) {
   const [postAmt, setPostAmt] = useState(shown(initial.post_fair_under));
   const [email, setEmail] = useState(initial.digest_email ?? "");
   const [weekly, setWeekly] = useState(initial.digest_weekly);
+  const [onCheck, setOnCheck] = useState(initial.alert_on_check);
   const [note, setNote] = useState<{ where: "auto" | "digest"; text: string; bad?: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
@@ -89,7 +90,8 @@ function Form({ initial }: { initial: api.Autopilot }) {
         } else clear.push("post_fair_under");
         change.clear = clear;
       } else {
-        change = email.trim() ? { digest_email: email.trim(), digest_weekly: weekly } : { digest_weekly: weekly, clear: ["digest_email"] };
+        change = email.trim() ? { digest_email: email.trim(), digest_weekly: weekly, alert_on_check: onCheck }
+          : { digest_weekly: weekly, alert_on_check: onCheck, clear: ["digest_email"] };
       }
       const saved = await api.saveAutopilot(change);
       setS(saved);
@@ -153,13 +155,15 @@ function Form({ initial }: { initial: api.Autopilot }) {
         </section>
 
         <section className="cb-card st2-sec" aria-labelledby="st2-digest">
-          <h2 id="st2-digest">Weekly summary by email</h2>
-          <p className="st2-lead">Where your money stands, and what needs you, with one-tap answers. No need to open Clawback.</p>
+          <h2 id="st2-digest">Emails to you</h2>
+          <p className="st2-lead">What needs you, with one-tap answers, so you don’t have to open Clawback to find out.</p>
           <label className="st2-field">
-            <span>Send it to</span>
+            <span>Send them to</span>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@yourbrand.com" autoComplete="email" />
           </label>
-          <div className="st2-row"><Check checked={weekly} onChange={setWeekly} label="Every Monday morning" /></div>
+          <div className="st2-row"><Check checked={onCheck} onChange={setOnCheck} label="When a payment is checked"
+            hint="What the distributor kept, what’s being disputed, and anything that needs you. One email per payment." /></div>
+          <div className="st2-row"><Check checked={weekly} onChange={setWeekly} label="A summary every Monday morning" /></div>
           <div className="st2-go">
             <button className="cx-btn is-blue" onClick={() => void save("digest")} disabled={busy}>Save</button>
             <button className="cx-btn is-ghost" onClick={() => void sendNow()} disabled={busy || !settings.digest_email}>Send me this week’s summary now</button>

@@ -181,9 +181,10 @@ def reset() -> None:
     audit.reset()
     _deposit_runs.clear()
     sources.reset()
-    from api import dispute_email
+    from api import alerts, dispute_email
 
     dispute_email.reset()
+    alerts.reset()
 
 
 class QuestionClosed(ValueError):
@@ -679,6 +680,21 @@ def undo_rule(rule_id: str, account_id: str, by: str | None = None) -> Rule | No
     return undone
 
 
+def clear_auto_post(account_id: str, by: str | None = None) -> AutoPost | None:
+    """Turn off the auto-post limit the admin set when approving a memo ("Ask me first next time" on Home): the next
+    fair-charge memo waits for a yes. Memos it already posted stay posted. None if the account had none."""
+    with _state:
+        gone = AUTO_POST.pop(account_id, None)
+    if gone is None:
+        return None
+    saved_state.drop_auto_post(account_id)
+    run = next((r for r in reversed(list(RUNS.values())) if r.account.id == account_id), None)
+    if run is not None:
+        run.log(f"{by or run.name('owner')} turned off the auto-post limit (up to ${gone.limit:,.0f}, set when "
+                f"approving {gone.approval_id}): the next credit memo waits for a yes.", actor="owner")
+    return gone
+
+
 def _forget(run: Run, rule: Rule) -> None:
     """Drop an undone rule from Moss. Only active rules can match, so a failure here changes no decision."""
     dropped = moss.drop_rule(rule.id)
@@ -703,8 +719,11 @@ def _after_decisions(run: Run, policy: eng.Policy) -> None:
     disputed = [cid for cid, d in run.decisions.items() if d.disputed > 0 and cid not in filed]
     if disputed:  # the first pass files D-0417; a line settled later (an owner's DISPUTE) gets its own
         _file_dispute(run, disputed, policy)
+    from api import alerts  # the owner hears it's checked: once per run, the first time it's decided
+
     if any(d.kind == eng.DecisionKind.ASK for d in run.decisions.values()):
         run.emit("run", RunInfo(run_id=run.id, kind=run.kind, status="waiting", demo_mode=replay._flag("DEMO_MODE")))
+        alerts.on_decided(run)
         return
     if not any(e.type == "approval" for e in run.events):
         _request_credit_memo(run, policy)
@@ -713,6 +732,7 @@ def _after_decisions(run: Run, policy: eng.Policy) -> None:
                 else f"{len(run.questions)} question(s) asked.", "good" if not run.questions else "info", "gate")
     run.emit("run", RunInfo(run_id=run.id, kind=run.kind, status="finished", demo_mode=replay._flag("DEMO_MODE")))
     run.done = True
+    alerts.on_decided(run)
 
 
 # The clause a dispute line quotes, by what the finding is about: the cap for an over-cap charge, not the rate.

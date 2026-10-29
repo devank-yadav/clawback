@@ -2,13 +2,15 @@
 
 // /app: the company across all its distributors (GET /overview), kept to what a glance can take in: the money in three
 // numbers (being clawed back, recovered, fair), then the ONE thing that needs the admin next (the API ranks them:
-// highest risk, then the oldest) with its single button, and two doors to the rest (Disputes, Payments). Every amount
-// is the API's: "recovered" counts only what evidence shows came back.
+// highest risk, then the oldest) with its single button, what the agents did without asking ("Done for you", each with
+// why they could and what can be taken back), and two doors to the rest (Disputes, Payments). A new company sees its
+// setup steps first (GET /setup) until they're done. Every amount is the API's: "recovered" counts only what evidence
+// shows came back.
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { AlertTriangle, ArrowRight, CircleAlert, MinusCircle } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, CircleAlert, MinusCircle } from "lucide-react";
 import SessionDialogs from "@/components/shell/SessionDialogs";
 import TopBar from "@/components/shell/TopBar";
 import { useRun } from "@/components/console/RunProvider";
@@ -22,7 +24,7 @@ import { withAccount } from "@/lib/accounts";
 import { needsHref } from "@/lib/needs";
 import * as api from "@/lib/api";
 import { money } from "@/lib/format";
-import type { NeedsYou } from "@/lib/types";
+import type { AutoAction, NeedsYou } from "@/lib/types";
 import { useFetched } from "@/lib/useFetched";
 
 const ACTION: Record<NeedsYou["kind"], string> = { question: "Answer", dispute_email: "Review and send", reply_email: "Answer them", approval: "Approve" };
@@ -65,6 +67,97 @@ function Level({ level }: { level: NeedsYou["risk_level"] }) {
   if (level === "high") return <span className="dc-level is-high"><AlertTriangle aria-hidden="true" />High</span>;
   if (level === "medium") return <span className="dc-level is-medium"><CircleAlert aria-hidden="true" />Medium</span>;
   return <span className="dc-level is-low"><MinusCircle aria-hidden="true" />Low</span>;
+}
+
+// "Hide" on the setup card, remembered in this browser (it comes back by itself only if hidden storage is cleared).
+const SETUP_HIDDEN = "clawback:setup-hidden";
+const readSetupHidden = () => { try { return window.localStorage.getItem(SETUP_HIDDEN) ?? "0"; } catch { return "0"; } };
+const SETUP_GO: Record<api.SetupStep["id"], string> = { distributor: "Add one", contract: "Upload it", books: "Connect", payments: "Set it up", alerts: "Add email" };
+
+/** A new company's first steps (GET /setup), until none is left to do. Steps this server only simulates say "Demo". */
+function SetupCard({ tick, accountId }: { tick: string; accountId?: string }) {
+  const setup = useFetched(useCallback(() => api.fetchSetup(), []), tick).data;
+  const stored = useSyncExternalStore(noSub, readSetupHidden, () => "1");
+  const [hiddenNow, setHiddenNow] = useState(false);
+  if (!setup || setup.left === 0 || hiddenNow || stored === "1") return null;
+  const done = setup.steps.length - setup.left;
+  const hide = () => {
+    try { window.localStorage.setItem(SETUP_HIDDEN, "1"); } catch { /* hidden for this page only */ }
+    setHiddenNow(true);
+  };
+  return (
+    <section className="cb-card hm2-setup" aria-labelledby="hm2-setup">
+      <div className="hm2-setup-top">
+        <h2 id="hm2-setup">Get set up</h2>
+        <span className="hm2-setup-count">{done} of {setup.steps.length} done</span>
+        <button type="button" className="cx-btn is-ghost is-small" onClick={hide}>Hide</button>
+      </div>
+      <ol className="hm2-setup-steps">
+        {setup.steps.map((st, i) => (
+          <li key={st.id} className={`is-${st.state}`}>
+            <span className="hm2-setup-mark" aria-hidden="true">{st.state === "todo" ? i + 1 : <Check />}</span>
+            <span className="hm2-setup-text">
+              <strong>{st.title}{st.state === "demo" && <em>Demo</em>}</strong>
+              <small>{st.detail}</small>
+            </span>
+            <span className="sr-only">{st.state === "todo" ? "To do" : st.state === "demo" ? "Simulated on this demo" : "Done"}</span>
+            {st.state === "todo" && <Link className="cx-btn is-blue is-small" href={withAccount(st.href, accountId)}>{SETUP_GO[st.id]}</Link>}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+const autoHref = (a: AutoAction) => a.link.dispute_id
+  ? withAccount("/disputes", a.account_id, { id: a.link.dispute_id, ...(a.link.run_id ? { run: a.link.run_id } : {}) })
+  : withAccount("/", a.account_id, a.link.run_id ? { run: a.link.run_id } : undefined);
+
+/** What the agents did without asking, why they could, and the one thing the owner can take back for each: it never
+ * unsends or unposts; it makes the next one wait for them (or undoes the rule). */
+function DoneForYou({ items, onChanged }: { items: AutoAction[]; onChanged: () => void }) {
+  const [busy, setBusy] = useState<number | null>(null);
+  const [note, setNote] = useState<{ text: string; bad?: boolean } | null>(null);
+  if (!items.length) return null;
+  async function undo(i: number) {
+    const u = items[i].undo;
+    if (!u) return;
+    setBusy(i);
+    setNote(null);
+    try {
+      setNote({ text: (await api.undoAuto(u)).done });
+      onChanged();
+    } catch (e) {
+      const gone = e instanceof api.ApiError && e.status === 409;
+      setNote(gone ? { text: "That was already taken back." } : { text: "That didn’t go through. Try again in a moment.", bad: true });
+      if (gone) onChanged();
+    } finally {
+      setBusy(null);
+    }
+  }
+  return (
+    <section className="hm2-auto" aria-labelledby="hm2-auto">
+      <h2 id="hm2-auto" className="hm2-h">Done for you</h2>
+      <p className="hm2-auto-lead">What the agents did without asking you, and why they were allowed to. “Ask me first next time” doesn’t unsend anything: the next one waits for you.</p>
+      {note && <p className={`hm2-note ${note.bad ? "is-bad" : ""}`} role={note.bad ? "alert" : "status"}>{note.text}</p>}
+      <ul className="cb-card hm2-auto-list">
+        {items.map((a, i) => (
+          <li key={`${a.kind}-${a.link.run_id ?? ""}-${a.link.dispute_id ?? ""}-${a.at}`}>
+            <span className="hm2-auto-text">
+              <Link href={autoHref(a)}>{a.text}</Link>
+              <small>{a.why} · {when(a.at)}</small>
+              {a.undo?.kind === "rule" && <small className="hm2-auto-undo-note">{a.undo.note}</small>}
+            </span>
+            {a.undo && (
+              <button type="button" className="cx-btn is-ghost is-small" disabled={busy !== null} onClick={() => void undo(i)}>
+                {busy === i ? "One moment…" : a.undo.label}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }
 
 export default function Dashboard() {
@@ -154,6 +247,7 @@ export default function Dashboard() {
           actions={actions} />
         <ReceivedList received={received} />
         {fetched.error && <div className="fl-problem" role="alert">{fetched.error}</div>}
+        <SetupCard tick={String(tick)} accountId={account?.id} />
 
         {/* 1. The money, in three numbers. */}
         <section className="cb-score hm2-money cw-host" aria-label="The money" ref={setMoneyEl}>
@@ -237,10 +331,13 @@ export default function Dashboard() {
           )}
         </section>
 
+        {/* 3. What the agents did on their own. */}
+        <DoneForYou items={o?.done_for_you ?? []} onChanged={reload} />
+
         {/* On a phone the header's buttons come here, after the task (play-app.css hides the other copy). */}
         <div className="hm2-actions-low">{actions}</div>
 
-        {/* 3. Two doors to the rest. */}
+        {/* 4. Two doors to the rest. */}
         <nav className="hm2-doors" aria-label="More">
           <Link className="cb-card hm2-door" href={withAccount("/disputes", account?.id)}>
             <strong>Disputes</strong><span>{openCount} open{disputesNeedingYou ? ` · ${disputesNeedingYou} need${disputesNeedingYou === 1 ? "s" : ""} you` : ", waiting for replies"}</span><ArrowRight aria-hidden="true" />

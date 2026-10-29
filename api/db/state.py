@@ -119,6 +119,11 @@ def save_auto_post(auto_post: AutoPost, account_id: str) -> None:
                                               auto_post.set_at))
 
 
+def drop_auto_post(account_id: str) -> None:
+    if enabled():
+        events.write_later("DELETE FROM auto_post_limits WHERE account_id = %s", (account_id,))
+
+
 def save_audit(entry: AuditEntry) -> None:
     if enabled():
         events.write_later(SAVE_AUDIT_ROW, tuple(Jsonb(entry.evidence) if c == "evidence" else getattr(entry, c)

@@ -168,10 +168,18 @@ export type OpenDispute = {
   filed_at: string | null; file_by: string | null; days_left: number | null; total?: Money; agreed?: Money;
 };
 export type RecentItem = { at: string; kind: "run_decided" | "reply" | "sent"; account_id: string; distributor: string; text: string; link: OverviewLink };
+/** Something the agents did without asking, why they could, and what can be taken back (POST /autopilot/undo). */
+export type AutoUndo = { kind: "disputes" | "memos_settings" | "memos_account" | "rule"; label: string; note: string; account_id: string | null; rule_id: string | null };
+export type AutoAction = {
+  at: string; kind: "dispute_sent" | "memo_posted" | "rule_applied"; account_id: string; distributor: string;
+  text: string; why: string; amount: Money | null; link: OverviewLink; undo: AutoUndo | null;
+};
 export type CompanyOverview = {
   supplier: string | null; distributors: number; totals: OverviewTotals;
   /** Already sorted: highest risk first, then the oldest within a level. */
   needs_you: NeedsYou[]; open_disputes: OpenDispute[]; recent: RecentItem[];
+  /** Newest first, the last few. */
+  done_for_you?: AutoAction[];
 };
 
 export type Rule = {

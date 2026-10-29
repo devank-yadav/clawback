@@ -14,6 +14,9 @@ api/engine/totals.total_of, and every recovered dollar is a dispute line's amoun
   approval's level comes from its amount on the same thresholds as a question's (policy.yaml question_risk).
 - open_disputes: the newest version of each dispute not withdrawn or resolved, with the deal's dispute window.
 - recent: the last 8 things that happened across distributors: runs decided, distributor replies, disputes sent.
+- done_for_you: the last few things the agents did without asking, each with why they were allowed to (the owner's
+  Settings limit, a limit set when approving a memo, policy.yaml, a saved rule) and what the owner can take back
+  (POST /autopilot/undo): a limit cleared so the next one asks, or a rule undone. A sent email stays sent.
 """
 
 from __future__ import annotations
@@ -23,13 +26,15 @@ from decimal import Decimal
 
 from api import accounts, dispute_email, pipeline, suppliers, tenancy
 from api.contracts import (
-    NeedsYou, OpenDispute, OverviewLink, QuickChoice, OverviewTotals, RecentItem, RecoveredEvidence, SupplierOverview,
+    AutoAction, AutoUndo, NeedsYou, OpenDispute, OverviewLink, QuickChoice, OverviewTotals, RecentItem,
+    RecoveredEvidence, SupplierOverview,
 )
 from api.engine import gate, question_risk, totals as totals_mod
 from api.engine.policy import load_policy
 
 RANK = {"high": 0, "medium": 1, "low": 2}
 RECENT = 8
+DONE_FOR_YOU = 6
 
 
 def _tracked(who: tenancy.Caller) -> list[accounts.Account]:
@@ -245,8 +250,77 @@ def _recent(runs: list[pipeline.Run]) -> list[RecentItem]:
     return sorted(out, key=lambda r: r.at, reverse=True)[:RECENT]
 
 
+def _done_for_you(runs: list[pipeline.Run]) -> list[AutoAction]:
+    from api import autopilot
+
+    out: list[AutoAction] = []
+    for run in runs:
+        a, them = run.account, run.distributor
+        settings = autopilot.of_account(a)
+        stop = "It’s already done: this only means the next one waits for you."
+        sent = set()
+        for e in run.events:
+            d = e.data
+            if e.type != "dispute" or d.status != "filed" or d.approved_by != "policy" or d.id in sent:
+                continue
+            sent.add(d.id)
+            limit = settings.send_disputes_under
+            if limit is not None and d.total <= limit:
+                why, undo = (f"Under the {_usd(limit)} limit you set in Settings",
+                             AutoUndo(kind="disputes", label="Ask me first next time", note=stop))
+            elif dispute_email.auto_send():
+                why, undo = "This server sends disputes within policy on their own (policy.yaml)", None
+            else:
+                why, undo = "You let disputes this size send on their own then; now you’re asked first", None
+            out.append(AutoAction(at=e.at, kind="dispute_sent", account_id=a.id, distributor=them, amount=d.total,
+                                  text=f"Sent your {_usd(d.total)} dispute to {them}", why=why, undo=undo,
+                                  link=OverviewLink(page="dispute", run_id=run.id, dispute_id=d.id)))
+        latest_ap = {}
+        for e in run.events:
+            if e.type == "approval":
+                latest_ap[e.data.id] = (e.at, e.data)
+        for at, ap in latest_ap.values():
+            auto = ap.posted_by_auto_post
+            if ap.status != "approved" or auto is None:
+                continue
+            if auto.approval_id == "settings":
+                why = f"Under the {_usd(auto.limit)} limit you set in Settings"
+                undo = (AutoUndo(kind="memos_settings", label="Ask me first next time", note=stop)
+                        if settings.post_fair_under is not None else None)
+            elif auto.approval_id == "policy":
+                why, undo = f"Under the {_usd(auto.limit)} limit in policy.yaml", None
+            else:
+                why = f"Under the {_usd(auto.limit)} limit you set when you approved {auto.approval_id}"
+                undo = (AutoUndo(kind="memos_account", label="Ask me first next time", note=stop, account_id=a.id)
+                        if a.id in pipeline.AUTO_POST else None)
+            out.append(AutoAction(at=ap.decided_at or at, kind="memo_posted", account_id=a.id, distributor=them,
+                                  amount=ap.amount, text=f"Sent {_usd(ap.amount)} of {them}’s fair charges to QuickBooks",
+                                  why=why, undo=undo, link=OverviewLink(page="approval", run_id=run.id)))
+        rules = {r.id: r for r in pipeline.rules_of(a)}
+        decided = {}
+        for e in run.events:
+            if e.type == "decision":
+                decided[e.data.charge_id] = e.data  # the newest decision of each charge
+        asked = {q.charge_id for q in run.questions.values()}  # the owner answered these: not done without asking
+        for cid, d in decided.items():
+            rule = rules.get(d.rule_id or "")
+            if rule is None or d.decided_by != "gate" or cid in asked:
+                continue
+            c = run.charges[cid]
+            verb = "Disputed" if d.disputed > 0 else "Accepted"
+            undo = (AutoUndo(kind="rule", label=f"Undo {rule.label}", account_id=a.id, rule_id=rule.id,
+                             note="Decisions it already made keep theirs; the agents ask you again next time.")
+                    if rule.status == "active" else None)
+            out.append(AutoAction(at=d.decided_at, kind="rule_applied", account_id=a.id, distributor=them,
+                                  amount=c.amount, text=f"{verb} {them}’s {_usd(c.amount)} “{c.description}”",
+                                  why=f"By {rule.label}: {rule.summary}", undo=undo,
+                                  link=OverviewLink(page="run", run_id=run.id)))
+    return sorted(out, key=lambda x: x.at, reverse=True)[:DONE_FOR_YOU]
+
+
 def overview(who: tenancy.Caller) -> SupplierOverview:
     tracked = _tracked(who)
     runs = _runs(tracked)
     return SupplierOverview(supplier=who.supplier_id, distributors=len(tracked), totals=_totals(runs),
-                            needs_you=_needs_you(runs), open_disputes=_open_disputes(runs), recent=_recent(runs))
+                            needs_you=_needs_you(runs), open_disputes=_open_disputes(runs), recent=_recent(runs),
+                            done_for_you=_done_for_you(runs))

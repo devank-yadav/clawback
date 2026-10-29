@@ -32,6 +32,44 @@ p a:not(.cx-btn):not([class*="cb-"]), small a:not(.cx-btn), .ph-link, .cx-link, 
 .hm2-next-go { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; padding-bottom: var(--edge); }
 .hm2-next-amt { font-size: 32px; font-weight: 900; color: var(--ink); letter-spacing: -0.01em; }
 .hm2-calm { display: flex; flex-direction: column; gap: 4px; }
+/* a new company's first steps (GET /setup) */
+.hm2-setup { display: flex; flex-direction: column; gap: var(--space-3); }
+.hm2-setup-top { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.hm2-setup-top h2 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 20px; color: var(--ink); }
+.hm2-setup-count { color: var(--sub); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+.hm2-setup-top .cx-btn { margin-left: auto; }
+.hm2-setup-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.hm2-setup-steps li { display: flex; align-items: center; gap: var(--space-3); padding: 10px 0; border-top: 1px solid var(--line); }
+.hm2-setup-steps li:first-child { border-top: 0; }
+.hm2-setup-mark { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: var(--raised); color: var(--sub); font-weight: 800; font-size: 13px; font-variant-numeric: tabular-nums; }
+.hm2-setup-mark svg { width: 16px; height: 16px; }
+.hm2-setup-steps li.is-done .hm2-setup-mark { background: var(--green-bg); color: var(--green); }
+.hm2-setup-steps li.is-demo .hm2-setup-mark { background: var(--raised); color: var(--sub); }
+.hm2-setup-steps li.is-todo .hm2-setup-mark { background: var(--amber-bg); color: var(--amber); }
+.hm2-setup-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hm2-setup-text strong { color: var(--ink); font-weight: 700; }
+.hm2-setup-steps li.is-done .hm2-setup-text strong, .hm2-setup-steps li.is-demo .hm2-setup-text strong { color: var(--sub); }
+.hm2-setup-text em { margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: var(--raised); color: var(--sub); font-style: normal; font-size: 12px; font-weight: 700; }
+.hm2-setup-text small { color: var(--sub); font-weight: 600; font-size: 13.5px; }
+.hm2-setup-steps .cx-btn { flex: none; }
+/* what the agents did without asking ("Done for you") */
+.hm2-auto-lead { margin: -4px 0 var(--space-3); color: var(--sub); font-weight: 600; }
+.hm2-auto-list { list-style: none; margin: 0; padding: 4px 16px; display: flex; flex-direction: column; }
+.hm2-auto-list li { display: flex; align-items: center; gap: var(--space-3); padding: 12px 0; border-top: 1px solid var(--line); }
+.hm2-auto-list li:first-child { border-top: 0; }
+.hm2-auto-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hm2-auto-text a { color: var(--ink); font-weight: 700; }
+.hm2-auto-text a:hover { text-decoration: underline; }
+.hm2-auto-text small { color: var(--sub); font-weight: 600; font-size: 13.5px; }
+.hm2-auto-text small.hm2-auto-undo-note { color: var(--faint); font-weight: 500; }
+.hm2-auto-list .cx-btn { flex: none; }
+@media (max-width: 560px) {
+  .hm2-setup-steps li, .hm2-auto-list li { flex-wrap: wrap; }
+  .hm2-setup-text { flex-basis: calc(100% - 40px); }
+  .hm2-auto-text { flex-basis: 100%; }
+  .hm2-setup-steps .cx-btn { margin-left: 40px; }
+  .hm2-auto-list .cx-btn { width: 100%; justify-content: center; }
+}
 .hm2-calm strong { font-family: var(--font-display); font-weight: 600; font-size: 20px; color: var(--ink); }
 .hm2-calm span { color: var(--sub); font-weight: 600; }
 .hm2-more { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); margin-top: var(--space-3); padding-bottom: var(--edge); }

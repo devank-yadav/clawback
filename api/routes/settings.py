@@ -6,6 +6,8 @@ GET  /digest/preview              this week's summary, as it would be sent
 POST /digest/send                 send it now to the address in Settings
 GET  /tap/{token}                 a one-tap link from the email: a confirm page (no sign-in: the signed token is the key)
 POST /tap/{token}                 the confirm button: answers the question or approves the memo, once
+GET  /setup                       what a new company still has to do (api/onboarding.py), for Home's checklist
+POST /autopilot/undo              take back something the agents did on their own (Home's "Done for you")
 """
 
 from html import escape
@@ -14,9 +16,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import Field
 
-from api import autopilot, digest
+from api import autopilot, digest, onboarding, pipeline, tenancy
 from api.auth import limit, require_role
-from api.contracts import Contract, Money
+from api.contracts import AutoUndoRequest, AutoUndoResult, Contract, Money, SetupChecklist
 from api.tenancy import Caller, current_supplier
 
 router = APIRouter(tags=["settings"])
@@ -28,6 +30,7 @@ class AutopilotChange(Contract):
     post_fair_under: Money | None = None
     digest_email: str | None = Field(default=None, max_length=254, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     digest_weekly: bool | None = None
+    alert_on_check: bool | None = None
     # Explicit "turn this limit off": a null above means "leave as is".
     clear: list[str] = []
 
@@ -99,3 +102,31 @@ def tap_act(token: str) -> HTMLResponse:
     r = digest.act(payload)
     return _page(r.title, f"<h1>{escape(r.title)}</h1><p>{escape(r.detail)}</p>"
                  f'<a class="btn" href="{escape(digest._app_base())}/app">Open Clawback</a>')
+
+
+@router.get("/setup", response_model=SetupChecklist)
+def setup_checklist(who: Caller = Depends(current_supplier)) -> SetupChecklist:
+    return onboarding.checklist(who)
+
+
+@router.post("/autopilot/undo", response_model=AutoUndoResult, dependencies=[Depends(require_role("owner"))])
+def undo_auto(req: AutoUndoRequest, who: Caller = Depends(current_supplier)) -> AutoUndoResult:
+    """Never unsends or unposts: it clears the limit that let it happen (so the next one asks), or undoes the rule."""
+    by = who.user.name if who.user else None
+    if req.kind == "disputes":
+        autopilot.update(digest.supplier_of(who), by, send_disputes_under=None)
+        return AutoUndoResult(done="Done: from now on every dispute waits for you to review and send it.")
+    if req.kind == "memos_settings":
+        autopilot.update(digest.supplier_of(who), by, post_fair_under=None)
+        return AutoUndoResult(done="Done: from now on every credit memo waits for your yes.")
+    if not req.account_id:
+        raise HTTPException(422, "account_id is needed")
+    account = tenancy.account_or_404(who, req.account_id)
+    if req.kind == "memos_account":
+        if pipeline.clear_auto_post(account.id, by) is None:
+            raise HTTPException(409, "There's no auto-post limit on that distributor anymore.")
+        return AutoUndoResult(done=f"Done: {account.distributor.name}’s next credit memo waits for your yes.")
+    rule = pipeline.undo_rule(req.rule_id or "", account.id, by)
+    if rule is None:
+        raise HTTPException(409, "That rule isn't active anymore.")
+    return AutoUndoResult(done=f"Done: {rule.label} is undone. The agents ask you again next time.")

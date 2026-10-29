@@ -7,6 +7,8 @@
 - post_fair_under: a credit memo for fair charges at or under this posts to QuickBooks without asking (an account's own
   auto-post limit, set by ticking the box on an approval, still wins). None: always ask.
 - digest_email / digest_weekly: where the weekly summary goes (api/digest.py), and whether it goes every Monday.
+- alert_on_check: when the agents finish checking a payment, email that address at once (api/alerts.py): what came
+  back and what needs the owner, with the same one-tap answers. On by default; nothing goes without an address.
 
 Kept per supplier in a JSON file in the state folder (CLAWBACK_STATE_DIR, default ./state, a docker volume on the VM),
 so a restart or a redeploy keeps them. A demo reset leaves them alone: they are the owner's settings, not run state.
@@ -31,6 +33,7 @@ class Autopilot(Contract):
     digest_email: str | None = None
     digest_weekly: bool = True
     digest_last_sent: datetime | None = None
+    alert_on_check: bool = True
     updated_by: str | None = None
     updated_at: datetime | None = None
 
