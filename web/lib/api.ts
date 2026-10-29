@@ -141,7 +141,15 @@ export const syncPayments = () => call<PaymentSync>("/payments/sync", { method: 
 export type PendingPayment = { id: string; account_id: string; distributor: string; invoice_id: string; expected: Money; received: Money; source: "portal" | "bank"; received_at: string; run_id?: string | null };
 export const fetchPendingPayments = () => call<PendingPayment[]>("/payments/pending");
 /** POST /portal/payments/{account}: the distributor's "Send payment" (nothing runs; it waits as received). */
-export const sendPortalPayment = (account: string) => call<PendingPayment>(`/portal/payments/${q(account)}`, { method: "POST" });
+export const sendPortalPayment = (account: string, lines?: PortalLine[]) =>
+  call<PendingPayment>(`/portal/payments/${q(account)}`, { method: "POST", ...(lines ? { body: { lines } } : {}) });
+/** The distributor's payment as it edits it on its portal: every amount comes from the API. */
+export type PortalLine = { id: string; units: number; rate: number };
+export type DraftLine = { id: string; ref: string; code: string; description: string; product: string | null; units: number; rate: Money; amount: Money; fee: boolean };
+export type PaymentDraft = { account_id: string; distributor: string; brand: string; invoice_id: string; expected: Money; lines: DraftLine[]; taken: Money; paid: Money; edited: boolean };
+export const fetchPaymentDraft = (account: string) => call<PaymentDraft>(`/portal/payments/${q(account)}/draft`);
+export const previewPayment = (account: string, lines: PortalLine[]) =>
+  call<PaymentDraft>(`/portal/payments/${q(account)}/preview`, { method: "POST", body: { lines } });
 /** POST /payments/pending/{id}/run: "Run the agents" on a received payment. */
 export const runPendingPayment = (id: string) => call<PaymentStarted>(`/payments/pending/${q(id)}/run`, { method: "POST", timeoutMs: 20_000 });
 

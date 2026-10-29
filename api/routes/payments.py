@@ -12,13 +12,19 @@ for that deposit. Without keys, or in DEMO_MODE, the run starts directly: the bu
 """
 
 import time
+import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
+from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 
-from api import accounts, autopilot, pipeline, tenancy
+from api import accounts, autopilot, fee_accounts, pipeline, rows, tenancy
 from api.auth import limit
-from api.contracts import FoundPayment, PaymentResponse, PaymentSync, PendingPayment
+from api.contracts import (
+    Charge, DraftLine, FoundPayment, PaymentDraft, PaymentResponse, PaymentSync, PendingPayment, PortalPaymentRequest,
+)
+from api.engine import totals
 from api.integrations import nessie, replay
 from api.routes.runs import account_or_404
 from api.tenancy import Caller, current_supplier
@@ -29,12 +35,24 @@ POLLER_WAIT_S = 10.0  # the design's bar: a deposit starts the run within 10 sec
 
 # Payments sent from a distributor's portal, waiting for "Run the agents". In memory: a demo reset clears them.
 _PENDING: dict[str, PendingPayment] = {}
+_EDITED: dict[str, list[Charge]] = {}  # a waiting payment's lines, when the distributor edited them on its portal
 _sent = 0
+
+
+@dataclass(frozen=True)
+class PortalPayment:
+    """What the distributor sent from its portal with lines it edited: the run's arrival (pipeline._arrived)."""
+
+    id: str
+    amount: Decimal
+    description: str
+    source: str = "portal"
 
 
 def reset() -> None:
     global _sent
     _PENDING.clear()
+    _EDITED.clear()
     _sent = 0
 
 
@@ -90,12 +108,20 @@ def account_pays(account: str, who: Caller = Depends(current_supplier)) -> Payme
     return _pays(account, who)
 
 
-def _pays(account_id: str, who: Caller) -> PaymentResponse:
-    return _start(account_or_404(account_id, who))
+def _pays(account_id: str, who: Caller, edited: list[Charge] | None = None) -> PaymentResponse:
+    return _start(account_or_404(account_id, who), edited)
 
 
-def _start(account: accounts.Account) -> PaymentResponse:
-    """Start the agents on the account's payment: a Nessie deposit when the keys are set, else directly."""
+def _start(account: accounts.Account, edited: list[Charge] | None = None) -> PaymentResponse:
+    """Start the agents on the account's payment: a Nessie deposit when the keys are set, else directly. A payment the
+    distributor edited on its portal starts directly with its own lines and the amount they leave paid."""
+    if edited is not None:
+        paid = _paid(account, edited)
+        arrival = PortalPayment(id=f"portal-{uuid.uuid4().hex[:8]}", amount=paid,
+                                description=f"{len(edited)} deduction{'s' if len(edited) != 1 else ''} taken")
+        run = pipeline.start(None, account=account, charges=edited, deposit=arrival)
+        return PaymentResponse(via="direct", deposit_id=None, run_id=run.id,
+                               message=f"Run started for the ${paid:,.2f} payment sent from the portal.")
     client = None if replay.demo_mode() else nessie.client()
     if client is None:
         run = pipeline.start(None, account=account)
@@ -118,14 +144,73 @@ def _start(account: accounts.Account) -> PaymentResponse:
                            message="Deposit posted to Nessie; the run started for it.")
 
 
+# ---------------------------------------------------------------- the distributor's payment, as it edits it
+
+def _invoice_lines(a: accounts.Account) -> list[Charge]:
+    """The deductions the invoice month's payment carries as is (the run's own source, pipeline._process)."""
+    month = a.invoice.month
+    with accounts.using(a):
+        return fee_accounts.charges(a, month) if fee_accounts.has_fees(a) else rows.charges(month, account=a)
+
+
+def _is_fee(c: Charge) -> bool:
+    return c.units <= 1 and c.product in (None, "", "none")
+
+
+def _edited(a: accounts.Account, req: PortalPaymentRequest) -> list[Charge]:
+    """The invoice's lines as the distributor set them: units and rate per line, a line left out is not taken."""
+    base = {c.id: c for c in _invoice_lines(a)}
+    out, seen = [], set()
+    for ln in req.lines:
+        c = base.get(ln.id)
+        if c is None:
+            raise HTTPException(422, f"{a.distributor.name}'s invoice has no line {ln.id!r}")
+        if ln.id in seen:
+            raise HTTPException(422, f"line {ln.id} is listed twice")
+        seen.add(ln.id)
+        units = 1 if _is_fee(c) else ln.units
+        out.append(c.model_copy(update={"units": units, "rate": ln.rate, "amount": totals.line_amount(units, ln.rate)}))
+    return out
+
+
+def _paid(a: accounts.Account, lines: list[Charge]) -> Decimal:
+    return totals.total_of([a.invoice.expected, -totals.total_of(c.amount for c in lines)])
+
+
+def _draft(a: accounts.Account, lines: list[Charge]) -> PaymentDraft:
+    base = [(c.id, c.units, c.rate) for c in _invoice_lines(a)]
+    return PaymentDraft(
+        account_id=a.id, distributor=a.distributor.name, brand=a.brand.name, invoice_id=a.invoice.id,
+        expected=a.invoice.expected, taken=totals.total_of(c.amount for c in lines), paid=_paid(a, lines),
+        edited=[(c.id, c.units, c.rate) for c in lines] != base,
+        lines=[DraftLine(id=c.id, ref=c.ref, code=c.code, description=c.description, product=c.product, units=c.units,
+                         rate=c.rate, amount=c.amount, fee=_is_fee(c)) for c in lines])
+
+
+@router.get("/portal/payments/{account}/draft", response_model=PaymentDraft)
+def portal_draft(account: str) -> PaymentDraft:
+    """The payment the distributor's portal starts from: the invoice and the deductions it carries as is."""
+    a = account_or_404(account)  # the portal is the distributor's side: no supplier sign-in
+    return _draft(a, _invoice_lines(a))
+
+
+@router.post("/portal/payments/{account}/preview", response_model=PaymentDraft)
+def portal_preview(account: str, req: PortalPaymentRequest) -> PaymentDraft:
+    """The same payment with the distributor's edits: each line's amount and what's left paid, computed here."""
+    a = account_or_404(account)
+    return _draft(a, _edited(a, req))
+
+
 @router.post("/portal/payments/{account}", response_model=PendingPayment, dependencies=[Depends(limit("runs"))])
-def portal_pays(account: str) -> PendingPayment:
-    """The distributor's portal: "Send payment" on its invoice (the invoice's received amount, as the bank deposit
-    would carry). Nothing runs: the supplier sees it as received. A second press while it waits returns the same one."""
-    return _receive(account_or_404(account), "portal")  # the portal is the distributor's side: no supplier sign-in
+def portal_pays(account: str, req: PortalPaymentRequest | None = Body(None)) -> PendingPayment:
+    """The distributor's portal: "Send payment" on its invoice. Without a body it is the invoice's received amount, as
+    the bank deposit would carry; with the lines the distributor edited, exactly those lines and what they leave paid.
+    The supplier sees it as received. A second press while it waits returns the same one."""
+    a = account_or_404(account)  # the portal is the distributor's side: no supplier sign-in
+    return _receive(a, "portal", _edited(a, req) if req is not None else None)
 
 
-def _receive(a: accounts.Account, source: str) -> PendingPayment:
+def _receive(a: accounts.Account, source: str, edited: list[Charge] | None = None) -> PendingPayment:
     """The account's payment, received and waiting for "Run the agents"; one already waiting is returned as is."""
     global _sent
     waiting = next((p for p in _PENDING.values() if p.account_id == a.id), None)
@@ -133,12 +218,16 @@ def _receive(a: accounts.Account, source: str) -> PendingPayment:
         return waiting
     _sent += 1
     p = PendingPayment(id=f"PAY-{a.id}-{_sent}", account_id=a.id, distributor=a.distributor.name,
-                       invoice_id=a.invoice.id, expected=a.invoice.expected, received=a.invoice.received,
+                       invoice_id=a.invoice.id, expected=a.invoice.expected,
+                       received=_paid(a, edited) if edited is not None else a.invoice.received,
                        source=source, received_at=datetime.now(timezone.utc))
     _PENDING[p.id] = p
+    if edited is not None:
+        _EDITED[p.id] = edited
     if autopilot.of_account(a).run_on_arrival:  # the owner's Settings: received payments start the agents at once
-        started = _start(a)
+        started = _start(a, edited)
         _PENDING.pop(p.id, None)
+        _EDITED.pop(p.id, None)
         return p.model_copy(update={"run_id": started.run_id})
     return p
 
@@ -157,6 +246,7 @@ def run_pending(payment_id: str, who: Caller = Depends(current_supplier)) -> Pay
     p = _PENDING.get(payment_id)
     if p is None:
         raise HTTPException(404, f"no payment {payment_id!r} waiting")
-    started = _pays(p.account_id, who)  # 404s an account the caller can't see
+    started = _pays(p.account_id, who, _EDITED.get(payment_id))  # 404s an account the caller can't see
     _PENDING.pop(payment_id, None)
+    _EDITED.pop(payment_id, None)
     return started

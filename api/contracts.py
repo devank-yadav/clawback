@@ -1659,6 +1659,46 @@ class PendingPayment(Contract):
     run_id: str | None = None  # set when the owner's autopilot started the agents on it at once
 
 
+class PortalLine(Contract):
+    """One deduction line as the distributor set it on its portal: which line (by its charge id), how many units and
+    the rate per unit. A fee line has 1 unit at its amount. A line left out is not taken."""
+
+    id: str = Field(max_length=20)
+    units: int = Field(ge=0, le=10_000_000)
+    rate: Rate = Field(ge=0, le=1_000_000)
+
+
+class PortalPaymentRequest(Contract):
+    lines: list[PortalLine] = Field(max_length=200)
+
+
+class DraftLine(Contract):
+    id: str
+    ref: str
+    code: str
+    description: str
+    product: str | None
+    units: int
+    rate: Rate
+    amount: Money  # units × rate (api/engine/totals.line_amount)
+    fee: bool  # a fee: one amount to edit; otherwise units at a rate per unit
+
+
+class PaymentDraft(Contract):
+    """GET /portal/payments/{account}/draft and POST .../preview: the payment the distributor is about to send. Every
+    amount is the API's: paid = invoiced − taken."""
+
+    account_id: str
+    distributor: str
+    brand: str
+    invoice_id: str
+    expected: Money
+    lines: list[DraftLine]
+    taken: Money
+    paid: Money
+    edited: bool  # differs from the invoice's own deductions
+
+
 class PaymentSync(Contract):
     """POST /payments/sync ("Check for new payments"): what the bank and QuickBooks had, and the runs they started."""
 

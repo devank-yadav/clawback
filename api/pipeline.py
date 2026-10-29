@@ -1203,6 +1203,8 @@ def _arrived(arrival: Any, them: str, received: Decimal, invoice_id: str) -> str
                 f"(payment {arrival.id}).")
     if src == "email":
         return f"Remittance inbox: {them}'s remittance advice arrived by email ({arrival.description})."
+    if src == "portal":
+        return f"{them} paid ${received:,.0f} on invoice {invoice_id} from its portal ({arrival.description})."
     return f"Nessie: {them}'s deposit of ${received:,.0f} arrived (deposit {arrival.id})."
 
 

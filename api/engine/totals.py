@@ -14,6 +14,11 @@ def taken(charges: Iterable[Charge]) -> Decimal:
     return money(sum((c.amount for c in charges), ZERO))
 
 
+def line_amount(units: int, rate: Decimal) -> Decimal:
+    """A deduction line the distributor edits on its portal: units × the rate per unit (a fee is 1 × its amount)."""
+    return money(Decimal(units) * money(rate))
+
+
 def remittance_short(expected: Decimal, received: Decimal) -> Decimal:
     return money(money(expected) - money(received))
 

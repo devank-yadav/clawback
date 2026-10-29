@@ -46,19 +46,65 @@ export default function PortalApp() {
   return <Portal key={`${account.id}:${given}`} account={account} given={given} />;
 }
 
-/** The distributor pays its invoice from here. The payment shows on the supplier's Agents page as received; their
- * agents start only when they press "Run the agents" (POST /portal/payments/{account}). */
+/** One line as the distributor edits it: the number it types (units for a promo line, the amount for a fee). */
+type Edit = { id: string; value: string; rate: string };
+const asEdits = (d: api.PaymentDraft): Edit[] =>
+  d.lines.map((l) => ({ id: l.id, value: String(l.fee ? l.rate : l.units), rate: l.rate.toFixed(2) }));
+const num = (v: string) => (v.trim() === "" ? NaN : Number(v.replace(/[$,\s]/g, "")));
+
+/** The distributor pays its invoice from here, and can change the payment first: how many units each promo line
+ * charges and at what rate, what each fee is, or leave a line out. Every amount and the total come from the API
+ * (POST /portal/payments/{account}/preview); "Send payment" sends exactly what's on screen. The payment shows on the
+ * supplier's side as received, and their agents check it. */
 function PayCard({ account }: { account: Account }) {
-  const inv = account.invoice;
+  const [base, setBase] = useState<api.PaymentDraft | null>(null);
+  const [edits, setEdits] = useState<Edit[]>([]);
+  const [shown, setShown] = useState<api.PaymentDraft | null>(null);
   const [sent, setSent] = useState<api.PendingPayment | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
+  useEffect(() => {
+    let live = true;
+    api.fetchPaymentDraft(account.id)
+      .then((d) => { if (live) { setBase(d); setEdits(asEdits(d)); setShown(d); } })
+      .catch((e) => { if (live) setProblem(api.unreachable(e as Error)); });
+    return () => { live = false; };
+  }, [account.id]);
+
+  const fee = useCallback((id: string) => !!base?.lines.find((l) => l.id === id)?.fee, [base]);
+  const lines = useCallback((): api.PortalLine[] | null => {
+    const out: api.PortalLine[] = [];
+    for (const e of edits) {
+      const v = num(e.value), r = num(e.rate);
+      if (fee(e.id) ? !(v >= 0) : !(Number.isInteger(v) && v >= 0 && r >= 0)) return null;
+      out.push(fee(e.id) ? { id: e.id, units: 1, rate: v } : { id: e.id, units: v, rate: r });
+    }
+    return out;
+  }, [edits, fee]);
+
+  // The summary follows the edits: the API prices each line and totals them a moment after typing stops.
+  const timer = useRef<number | undefined>(undefined);
+  const [invalid, setInvalid] = useState(false);
+  useEffect(() => {
+    if (!base) return;
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => {
+      const ls = lines();
+      setInvalid(ls === null);
+      if (ls) api.previewPayment(account.id, ls).then(setShown).catch((e) => setProblem(api.unreachable(e as Error)));
+    }, 250);
+    return () => window.clearTimeout(timer.current);
+  }, [base, edits, lines, account.id]);
+
+  const set = (id: string, patch: Partial<Edit>) => setEdits((es) => es.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   async function pay() {
+    const ls = lines();
+    if (!ls) return;
     setBusy(true);
     setProblem(null);
     try {
-      setSent(await api.sendPortalPayment(account.id));
+      setSent(await api.sendPortalPayment(account.id, shown?.edited ? ls : undefined));
     } catch (e) {
       setProblem(api.unreachable(e as Error));
     } finally {
@@ -66,24 +112,70 @@ function PayCard({ account }: { account: Account }) {
     }
   }
 
+  const amountOf = (id: string) => shown?.lines.find((l) => l.id === id)?.amount;
+  const total = shown ?? base;
   return (
     <section className="p-card" aria-labelledby="pay-h">
       <div className="p-head">
         <div>
           <small>Invoice from {account.brand.name}</small>
-          <h2 id="pay-h">{inv.id}</h2>
-          <p>Invoiced {dollars(inv.expected)}</p>
+          <h2 id="pay-h">{account.invoice.id}</h2>
+          <p>Invoiced {dollars(account.invoice.expected)}</p>
         </div>
-        <div className="p-total"><small>Payment</small><strong>{dollars(inv.received)}</strong></div>
+        <div className="p-total"><small>You pay</small><strong>{total ? dollars(total.paid) : "–"}</strong></div>
       </div>
+
+      {base && !sent && (
+        <>
+          <ul className="p-lines" aria-label="Deductions taken from this payment">
+            {edits.map((e) => {
+              const l = base.lines.find((x) => x.id === e.id)!;
+              const amt = amountOf(e.id);
+              return (
+                <li key={e.id} className="p-line">
+                  <div className="p-line-what"><strong>{l.description}</strong><small>{l.ref} · {l.fee ? "fee" : l.product}</small></div>
+                  {l.fee ? (
+                    <label className="p-line-edit">
+                      <span className="p-sr">Amount for {l.description}</span>
+                      <span aria-hidden="true">$</span>
+                      <input inputMode="decimal" value={e.value} onChange={(ev) => set(e.id, { value: ev.target.value })} />
+                    </label>
+                  ) : (
+                    <span className="p-line-edit">
+                      <label><span className="p-sr">Units for {l.description}</span>
+                        <input inputMode="numeric" value={e.value} onChange={(ev) => set(e.id, { value: ev.target.value })} /></label>
+                      <span className="p-line-at">units at $</span>
+                      <label><span className="p-sr">Rate per unit for {l.description}</span>
+                        <input className="p-rate" inputMode="decimal" value={e.rate} onChange={(ev) => set(e.id, { rate: ev.target.value })} /></label>
+                    </span>
+                  )}
+                  <strong className="p-amt p-line-amt">{amt != null ? dollars(amt) : "–"}</strong>
+                  <button type="button" className="p-line-x" aria-label={`Don't take ${l.description}`} title="Don't take this one"
+                    onClick={() => setEdits((es) => es.filter((x) => x.id !== e.id))}>×</button>
+                </li>
+              );
+            })}
+          </ul>
+          {edits.length < base.lines.length && <p className="p-muted">{base.lines.length - edits.length} deduction{base.lines.length - edits.length === 1 ? "" : "s"} left out.</p>}
+        </>
+      )}
+
       <div className="p-row">
         <p className="p-muted" role="status">
           {sent
-            ? `Sent ${when(sent.received_at)}. ${account.brand.name} sees it as received; their agents start when they run them.`
-            : `Pays ${dollars(inv.received)} of the ${dollars(inv.expected)} invoiced; the rest is taken as deductions.`}
+            ? `Sent ${when(sent.received_at)}: ${dollars(sent.received)} of ${dollars(sent.expected)}. ${account.brand.name} sees it as received; their agents check it.`
+            : invalid ? "Enter a number on each line."
+            : total ? `Paying ${dollars(total.paid)} of ${dollars(total.expected)} · ${dollars(total.taken)} taken in ${total.lines.length} deduction${total.lines.length === 1 ? "" : "s"}.`
+            : "Loading the invoice…"}
         </p>
-        <button type="button" className="p-send" onClick={() => void pay()} disabled={busy || !!sent}>{sent ? "Payment sent" : busy ? "Sending…" : "Send payment"}</button>
+        {!sent && base && shown?.edited && (
+          <button type="button" className="p-reset" onClick={() => { setEdits(asEdits(base)); setShown(base); }}>Start over</button>
+        )}
+        <button type="button" className="p-send" onClick={() => void pay()} disabled={busy || !!sent || !base || invalid}>{sent ? "Payment sent" : busy ? "Sending…" : "Send payment"}</button>
       </div>
+      {sent && (
+        <div className="p-row"><button type="button" className="p-reset" onClick={() => { setSent(null); if (base) { setEdits(asEdits(base)); setShown(base); } }}>Send another payment</button></div>
+      )}
       {problem && <p className="p-error" role="alert">{problem}</p>}
     </section>
   );

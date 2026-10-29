@@ -40,3 +40,17 @@ textarea,.p-limit input{width:100%;border:1px solid var(--line);border-radius:10
 .p-packet:hover{background:var(--brand-soft)}.p-packet:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 /* the invoice the distributor pays from here (PayCard) */
 .p-head h2{margin:0;font-size:24px;font-weight:600}
+
+/* the payment, editable before it's sent */
+.p-lines{list-style:none;margin:16px 0 0;padding:0;border-top:1px solid var(--line)}
+.p-line{display:grid;grid-template-columns:minmax(0,1fr) auto 96px 36px;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.p-line-what{display:flex;flex-direction:column;min-width:0}.p-line-what strong{font-weight:600}.p-line-what small{color:var(--muted);font-size:13px}
+.p-line-edit{display:inline-flex;align-items:center;gap:6px;font-size:15px;color:var(--muted)}
+.p-line-edit input{width:96px;min-height:44px;padding:0 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:17px;font-weight:600;color:inherit;background:var(--card);font-variant-numeric:tabular-nums;text-align:right}
+.p-line-edit input.p-rate{width:72px}
+.p-line-at{white-space:nowrap}
+.p-line-amt{text-align:right;font-variant-numeric:tabular-nums}
+.p-line-x{width:36px;height:36px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:22px;line-height:1;cursor:pointer}.p-line-x:hover{background:var(--line);color:inherit}
+.p-reset{min-height:48px;padding:0 18px;border:1px solid var(--line);border-radius:10px;background:transparent;color:inherit;font:inherit;font-weight:600;cursor:pointer}
+.p-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (max-width:620px){.p-line{grid-template-columns:minmax(0,1fr) auto}.p-line-amt{white-space:nowrap}.p-line-edit{grid-column:1;flex-wrap:wrap}.p-line-amt{grid-column:2;grid-row:1;text-align:right}.p-line-x{grid-column:2;grid-row:2}}
