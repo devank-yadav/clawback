@@ -28,6 +28,8 @@ def _summary(run_id: str, events: list, replaced: bool) -> RunSummary | None:
         invoice_id=remittance.invoice_id if remittance else None,
         taken=t.taken if t else (remittance.taken if remittance else None),
         paid=remittance.received if remittance else None, invoiced=remittance.expected if remittance else None,
+        kept=remittance.taken if remittance else None,
+        older_charges=max(0, charges - remittance.charge_count) if remittance else 0,
         charges=remittance.charge_count if remittance else charges,
         disputed=t.disputed if t else None, accepted=t.accepted if t else None, waiting=t.waiting if t else None,
         questions=sum(1 for e in events if e.type == "question"))

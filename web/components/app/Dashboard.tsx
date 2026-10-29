@@ -94,6 +94,12 @@ export default function Dashboard() {
   const next = needs[0] ?? null;
   const rest = needs.slice(1);
   const openCount = o?.open_disputes.length ?? 0;
+  const actions = (
+    <>
+      <Link className="cx-btn is-ghost" href={withAccount("/upload", account?.id)}>Upload a payment slip</Link>
+      {received.pending.length ? <RunAgentsButton received={received} /> : <CheckPayments account={account?.id} />}
+    </>
+  );
   const disputesNeedingYou = needs.filter((n) => n.kind === "dispute_email" || n.kind === "reply_email").length;
   // Answering in place: the question's choice or the memo's yes goes straight to the API, then the list moves on.
   const [busy, setBusy] = useState(false);
@@ -141,7 +147,7 @@ export default function Dashboard() {
       <TopBar account={account} />
       <main className="fl-main hm2">
         <PageHeader title="Home" line={o ? `${account?.brand.name ?? "Your company"} across ${o.distributors} distributor${o.distributors === 1 ? "" : "s"}` : undefined}
-          actions={<><Link className="cx-btn is-ghost" href={withAccount("/upload", account?.id)}>Upload a payment slip</Link>{received.pending.length ? <RunAgentsButton received={received} /> : <CheckPayments account={account?.id} />}</>} />
+          actions={actions} />
         <ReceivedList received={received} />
         {fetched.error && <div className="fl-problem" role="alert">{fetched.error}</div>}
 
@@ -226,6 +232,9 @@ export default function Dashboard() {
             </div>
           )}
         </section>
+
+        {/* On a phone the header's buttons come here, after the task (play-app.css hides the other copy). */}
+        <div className="hm2-actions-low">{actions}</div>
 
         {/* 3. Two doors to the rest. */}
         <nav className="hm2-doors" aria-label="More">

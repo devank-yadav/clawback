@@ -191,12 +191,13 @@ function nextTitle(c: ChargeView) {
 /** What happens next to this charge's money: where the dispute stands, and the fair part's way to QuickBooks. */
 function nextLine(c: ChargeView, view: Pick<WorkspaceView, "disputeLabel" | "approval" | "postingLabel" | "postingProblem">) {
   if (c.status === "Reviewing") return "Each step fills in as its agent finishes.";
+  const it = c.status === "Accepted" ? "This charge" : "The fair part";
   const fair = view.approval?.status === "approved" ? postingSentence(view)
-    : view.approval?.status === "refused" ? "You held the fair charges back from QuickBooks."
-      : view.approval ? "It goes to QuickBooks with the fair charges once you OK them."
-        : "It goes into the credit memo for QuickBooks.";
+    : view.approval?.status === "refused" ? `You held ${it.toLowerCase()} back from QuickBooks.`
+      : view.approval ? `${it} goes to QuickBooks once you OK the fair charges.`
+        : `${it} goes into the credit memo for QuickBooks.`;
   if (c.status === "Accepted") return fair;
-  return c.accepted ? `${view.disputeLabel}. The fair part: ${fair.charAt(0).toLowerCase()}${fair.slice(1)}` : `${view.disputeLabel}.`;
+  return c.accepted ? `${view.disputeLabel}. ${fair}` : `${view.disputeLabel}.`;
 }
 
 /** The owner's choices: the replies the API reads (api/replies.py). A rule is saved and remembered; "this one" settles

@@ -132,8 +132,10 @@ def _label(t) -> str:
         return f"+{p.get('extra_units')} units, {t.effective_from} to {t.effective_to}"
     if t.type == "fee_schedule":
         basis, rate = p.get("basis"), p.get("rate")
-        how = (f"{rate}%" if basis == "percent" else f"{rate}% a year" if basis == "annual_percent"
-               else f"${rate} {BASIS_WORDS.get(basis, str(basis or '').replace('_', ' '))}".strip())
+        words = BASIS_WORDS.get(basis, str(basis or "").replace("_", " "))
+        how = (words or "as charged" if rate is None  # tiered or "as assessed": no single rate to show
+               else f"{rate}%" if basis == "percent" else f"{rate}% a year" if basis == "annual_percent"
+               else f"${rate} {words}".strip())
         return f"{p.get('fee_code')}: {how}"
     if t.type == "dispute_window":
         return f"{p.get('days')} days to dispute"

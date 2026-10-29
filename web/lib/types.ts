@@ -561,6 +561,8 @@ export type RunSummary = {
   run_id: string; kind: string; status: "started" | "waiting" | "finished" | "failed"; started_at: string; replaced: boolean;
   invoice_id: string | null; taken: Money | null; paid?: Money | null; invoiced?: Money | null; charges: number; disputed: Money | null; accepted: Money | null; waiting: Money | null;
   questions: number;
+  /** This payment's own deductions (taken also counts older charges checked with it), and how many older ones. */
+  kept?: Money | null; older_charges?: number;
 };
 export type SavedDocument = { id: string; kind: string; title: string; sender: string | null; locked: boolean; chars: number };
 export type SavedOverview = { documents: SavedDocument[]; rules: Rule[]; records: { label: string; rows: number }[] };

@@ -16,6 +16,7 @@ import { Money } from "@/components/console/ui";
 import { ACTOR } from "@/components/flow/parts";
 import type { Stage } from "@/components/flow/stages";
 import { money } from "@/lib/format";
+import type { Question } from "@/lib/types";
 import { useChargeDetail } from "@/lib/useChargeDetail";
 import { postingSentence, type ChargeView } from "@/lib/workspace";
 import { CardQueue, DeductionCard, DecisionCard, Scoreboard, Spinner, VerdictStamp, type Verdict } from "./PlayKit";
@@ -75,7 +76,7 @@ function ReadingCard() {
  * already finished when the page opened (its events arrive in one burst, so it's done within OPENED_MS) skips the
  * deal and opens on what needs you: the charge with the open question, or the end (the approval, the dispute). */
 const OPENED_MS = 3000;
-function useSpotlight(charges: ChargeView[], runKey: string, done: boolean, questionOpen: boolean) {
+function useSpotlight(charges: ChargeView[], runKey: string, done: boolean, waitsOnYou: (chargeId: string) => boolean) {
   const [spot, setSpot] = useState(0);
   const [key, setKey] = useState(runKey);
   const [justOpened, setJustOpened] = useState(true);
@@ -94,7 +95,7 @@ function useSpotlight(charges: ChargeView[], runKey: string, done: boolean, ques
   }
   const current = charges[spot];
   // A charge waiting on your answer holds the spotlight until you answer; the rest move on after their stamp.
-  const decided = !!current && verdictOf(current) !== null && !(questionOpen && current.status === "Needs your input");
+  const decided = !!current && verdictOf(current) !== null && !waitsOnYou(current.id);
   useEffect(() => {
     if (!decided || spot >= charges.length - 1) return;
     const t = window.setTimeout(() => setSpot((s) => Math.min(s + 1, charges.length - 1)), HOLD_MS);
@@ -104,11 +105,10 @@ function useSpotlight(charges: ChargeView[], runKey: string, done: boolean, ques
 }
 
 /** The admin's one question as a DecisionCard, wired to the same answer the old card sent. */
-function PlayQuestion({ charge }: { charge: ChargeView }) {
-  const { state, view, source, answerQuestion, cast } = useRun();
+function PlayQuestion({ charge, q }: { charge: ChargeView; q: Question }) {
+  const { state, source, answerQuestion, cast } = useRun();
   const detail = useChargeDetail(charge.id, state.run?.run_id, source);
   const [busy, setBusy] = useState(false);
-  const q = view.question!;
   const clause = mainClause(charge.id, state, detail?.evidence ?? []);
   const level = q.risk?.level ? (String(q.risk.level).charAt(0).toUpperCase() + String(q.risk.level).slice(1).toLowerCase()) as "High" | "Medium" | "Low" : null;
   // The rule needs a discretion clause in the deal to hang on (the "Clause" detail). Older runs' questions carry no
@@ -191,7 +191,7 @@ function PlayDispute() {
       </div>
       {/* The other half of the payment: the fair charges, once you've OK'd (or held) them. */}
       {view.approval && view.approval.status !== "pending" && (
-        <p className={`cb-play-posted ${view.approval.status === "refused" ? "is-held" : ""}`} role="status">
+        <p className={`cb-play-posted ${view.approval.status === "refused" || !/^(Posted to QuickBooks|Approved · QuickBooks not connected)$/.test(view.postingLabel) ? "is-held" : ""}`} role="status">
           {view.approval.status === "refused"
             ? `You held the ${money(view.approval.amount)} of fair charges back from QuickBooks.`
             : `Fair charges: ${money(view.approval.amount)} OK’d. ${postingSentence(view)}`}
@@ -212,7 +212,10 @@ export function PlayRun({ pending, done, onOpen, head, after }: { pending: Stage
   const { state, view, cast } = useRun();
   const charges = view.charges;
   const runKey = state.run?.run_id ?? "none";
-  const { spot, atEnd } = useSpotlight(charges, runKey, done, !!view.question && !view.question.answer);
+  // Each charge's own open question (a run can ask more than one; a replaced run's closed question doesn't count).
+  const openQuestion = (chargeId: string) =>
+    Object.values(state.questions).find((x) => x.charge_id === chargeId && !x.answer && !x.closed_at) ?? null;
+  const { spot, atEnd } = useSpotlight(charges, runKey, done, (id) => !!openQuestion(id));
   const t = view.totals;
   const r = view.remittance;
   const current = charges[spot] ?? null;
@@ -231,8 +234,9 @@ export function PlayRun({ pending, done, onOpen, head, after }: { pending: Stage
   let stage: ReactNode;
   if (!charges.length) {
     stage = <ReadingCard />;
-  } else if (current && current.status === "Needs your input" && view.question && !view.question.answer) {
-    stage = <PlayQuestion key={view.question.id} charge={current} />;
+  } else if (current && openQuestion(current.id)) {
+    const q = openQuestion(current.id)!;
+    stage = <PlayQuestion key={q.id} charge={current} q={q} />;
   } else if (allDecided && atEnd && people.length) {
     stage = people[0].key === "approval"
       ? <PlayApproval />
@@ -271,7 +275,7 @@ export function PlayRun({ pending, done, onOpen, head, after }: { pending: Stage
           {r ? <>{r.counterparty} paid {money(r.received)} and kept <b>{money(r.taken)}</b>.</> : <>Waiting for {cast.distributor}’s payment…</>}
         </p>
         <div className="cb-run-meta">
-          <span className="cb-run-sub">{cast.brand}{r ? ` · invoice ${r.invoice_id ?? ""} · ${r.charge_count} charges` : ""}</span>
+          <span className="cb-run-sub">{cast.brand}{r ? ` · invoice ${r.invoice_id ?? ""} · ${r.charge_count} charges` : ""}{r && charges.length > r.charge_count ? ` + ${charges.length - r.charge_count} older charge${charges.length - r.charge_count === 1 ? "" : "s"} from an earlier payment` : ""}</span>
           {head}
         </div>
       </header>

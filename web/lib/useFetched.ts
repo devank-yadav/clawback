@@ -19,9 +19,10 @@ export function useFetched<T>(load: (() => Promise<T>) | null, key = ""): Fetche
     let cancelled = false;
     load().then(
       (data) => !cancelled && setResult({ n, data, error: null, load, key }),
-      // A failed reload of the same thing keeps what was on screen (and anything typed into it); the error is
-      // still reported. A failed load of something else shows nothing old.
-      (e: Error) => !cancelled && setResult((prev) => ({ n, data: prev && prev.load === load && prev.key === key ? prev.data : null, error: unreachable(e), load, key })),
+      // A failed reload of the same loader keeps what was on screen (and anything typed into it); the error is
+      // still reported. `key` is often only a "look again" trigger, so it doesn't count; a different loader (another
+      // item) shows nothing old.
+      (e: Error) => !cancelled && setResult((prev) => ({ n, data: prev && prev.load === load ? prev.data : null, error: unreachable(e), load, key })),
     );
     return () => {
       cancelled = true;
@@ -29,6 +30,7 @@ export function useFetched<T>(load: (() => Promise<T>) | null, key = ""): Fetche
   }, [load, n, key]);
 
   const reload = useCallback(() => setN((v) => v + 1), []);
-  const current = result?.n === n ? result : null;
+  // The result for this loader, key and reload; anything older is only shown while this one loads.
+  const current = result?.n === n && result.load === load && result.key === key ? result : null;
   return { data: current?.data ?? result?.data ?? null, error: current?.error ?? null, loading: !!load && !current, reload };
 }

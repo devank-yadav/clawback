@@ -57,6 +57,12 @@ function standing(i: Item): Standing {
   const partly = replies.some((m) => m.classification === "new_document");
   if (unsent(d)) return { label: "Ready for you to send", tone: "is-amber", bucket: "needs", stamp: "is-wait", word: "To send" };
   if (d.status === "withdrawn") return { label: "Closed", tone: "", bucket: "settled", stamp: "is-neutral", word: "Closed" };
+  if (replyDrafts(i.t).length > 0) return { label: "Reply ready for you to send", tone: "is-amber", bucket: "needs", stamp: "is-wait", word: "Reply ready" };
+  // Their last message is unanswered and isn't an agreement: it's your turn (Home lists it too).
+  const last = i.t.messages.at(-1);
+  if (d.status !== "resolved" && last && last.from_party !== "clawback" && last.classification !== "agrees") {
+    return { label: `${name} replied`, tone: "is-accent", bucket: "needs", stamp: "is-dispute", word: "Disputing" };
+  }
   // They agreed to some lines only (UNFI's one line of four): the rest of the dispute is still open with them.
   const agreedIds = new Set(replies.filter((m) => m.classification === "agrees").flatMap((m) => m.charge_ids ?? []));
   if (d.status !== "resolved" && agreed && agreedIds.size > 0 && d.lines.some((l) => !agreedIds.has(l.charge_id))) {
@@ -67,8 +73,7 @@ function standing(i: Item): Standing {
       ? { label: "Partly agreed", tone: "is-fair", bucket: "settled", stamp: "is-fair", word: "Partly agreed" }
       : { label: "Agreed", tone: "is-green", bucket: "settled", stamp: "is-fair", word: "Agreed" };
   }
-  if (replyDrafts(i.t).length > 0) return { label: "Reply ready for you to send", tone: "is-amber", bucket: "needs", stamp: "is-wait", word: "Reply ready" };
-  if (d.status === "answered" || replies.length > 0) return { label: `${name} replied`, tone: "is-accent", bucket: "needs", stamp: "is-dispute", word: "Disputing" };
+  if (replies.length > 0) return { label: `Answered · waiting for ${name}`, tone: "", bucket: "waiting", stamp: "is-dispute", word: "Disputing" };
   return { label: `Sent · waiting for ${name}`, tone: "", bucket: "waiting", stamp: "is-dispute", word: "Disputing" };
 }
 
@@ -315,7 +320,7 @@ function Detail({ item, head, replies, onSent, review = false, picked = false }:
       {unsent(d) && head && (
         <section className="dp-section" aria-label="Review and send">
           <h3>Review and send</h3>
-          <ReviewAndSend key={key} disputeId={d.id} runId={t.run_id} distributor={name} onSent={onSent} startOpen={review} />
+          <ReviewAndSend key={`${key}:${review ? "open" : "closed"}`} disputeId={d.id} runId={t.run_id} distributor={name} onSent={onSent} startOpen={review} />
         </section>
       )}
 

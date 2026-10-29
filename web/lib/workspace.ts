@@ -91,8 +91,10 @@ function chargeView(c: Charge, state: RunState): ChargeView {
   };
 }
 
-function memoPost(ledger: LedgerPost[]) {
-  return ledger.find((p) => p.qbo_entity === "credit_memo");
+/** The credit memo for this approval (a concession makes a newer memo), else the newest one. */
+function memoPost(ledger: LedgerPost[], approvalId?: string | null) {
+  const memos = ledger.filter((p) => p.qbo_entity === "credit_memo");
+  return (approvalId ? memos.find((p) => p.approval_id === approvalId) : undefined) ?? memos.at(-1);
 }
 
 /** A ledger post with a "sim-" id was recorded by Clawback but never reached QuickBooks (no connection). */
@@ -101,7 +103,7 @@ export const reachedQuickBooks = (p: LedgerPost) => p.status === "posted" && !!p
 function postingLabel(approval: Approval | null, ledger: LedgerPost[]) {
   if (approval?.status === "refused") return "Refused · Not posted";
   if (approval?.status !== "approved") return "Awaiting approval";
-  const post = memoPost(ledger);
+  const post = memoPost(ledger, approval?.id);
   if (post && reachedQuickBooks(post)) return "Posted to QuickBooks";
   if (post?.status === "posted") return "Approved · QuickBooks not connected";
   if (post?.status === "failed") return "Posting failed";
@@ -115,6 +117,7 @@ export function postingSentence(ws: Pick<WorkspaceView, "postingLabel" | "postin
   if (ws.postingLabel === "Posted to QuickBooks") return "The credit memo is in QuickBooks.";
   if (ws.postingLabel.includes("not connected")) return "QuickBooks isn’t connected on this server, so the entry was recorded here only.";
   if (ws.postingProblem) return `${ws.postingLabel}: ${ws.postingProblem}`;
+  if (ws.postingLabel === "Posting voided") return "The credit memo was voided in QuickBooks.";
   return "Waiting for QuickBooks to confirm the entry.";
 }
 
@@ -127,8 +130,8 @@ export function approvedBy(ws: Pick<WorkspaceView, "approval">, owner: string): 
 }
 
 /** Why the API did not post the credit memo (its note), when it failed or is held. */
-export function postingProblem(ledger: LedgerPost[]): string | null {
-  const post = memoPost(ledger);
+export function postingProblem(ledger: LedgerPost[], approvalId?: string | null): string | null {
+  const post = memoPost(ledger, approvalId);
   return post && (post.status === "failed" || post.status === "held") ? (post.note ?? "QuickBooks did not take the entry.") : null;
 }
 
@@ -170,7 +173,7 @@ export function selectWorkspace(state: RunState, account: Account | null): Works
       return { chargeId: l.charge_id, label: `${c?.title ?? l.charge_id}${suffix}`, amount: l.amount };
     }),
     postingLabel: postingLabel(approval, state.ledger),
-    postingProblem: postingProblem(state.ledger),
+    postingProblem: postingProblem(state.ledger, approval?.id),
     // Where the dispute stands, in words (its code stays out of sight; the Disputes page shows it small).
     disputeLabel:
       dispute?.status === "filed" || dispute?.status === "answered"

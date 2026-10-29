@@ -30,7 +30,7 @@ export function mainClause(chargeId: string, state: Pick<RunState, "dispute" | "
   const clauses = evidence.filter((e) => e.kind === "clause");
   const ref = state.dispute?.lines.find((l) => l.charge_id === chargeId)?.clause_ref;
   const cited = state.findings[chargeId]?.evidence_ids ?? [];
-  return (ref ? clauses.find((c) => c.label.includes(ref)) : undefined)
+  return (ref ? clauses.find((c) => c.label === ref) : undefined)
     ?? clauses.find((c) => cited.includes(c.id))
     ?? clauses[0] ?? null;
 }
@@ -95,8 +95,9 @@ export function agentSteps(chargeId: string, state: RunState, detail: ChargeDeta
       evidence: [],
       at: at("investigator"),
       // The parts are fragments of sentences; where one sentence ends and the next starts ("period.Cap"), add the
-      // space. A period after a letter only, so "$1.00" stays as it is.
-      detail: finding?.math.length ? [finding.math.map((m) => m.text).join("").replace(/(?<=[a-z)\]])\.(?=[A-Z0-9])/g, ". ")] : undefined,
+      // space: a period after a letter before a capital or a digit ("period.Cap", "dates.0 units"), or after a digit
+      // before a capital ("$1,500.Written"). "$1.00" (digit, period, digit) stays as it is.
+      detail: finding?.math.length ? [finding.math.map((m) => m.text).join("").replace(/(?<=[a-z)\]])\.(?=[A-Z0-9])|(?<=[0-9])\.(?=[A-Z])/g, ". ")] : undefined,
     },
     {
       agent: "Policy check",

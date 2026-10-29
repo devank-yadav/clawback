@@ -144,6 +144,9 @@ def test_a_fee_with_no_notice_gets_no_notice_rule_and_an_honest_tap(monkeypatch)
     run = pipeline.start(account="peak-bar-sams", background=False)
     q = next(q for q in run.questions.values() if pipeline.is_open(q))
     assert "fee_discretion" in run.allowances[q.charge_id].missing  # the club sampling deal has no verified fee clause
+    # so the question doesn't promise a rule it can't make (pipeline leaves the rule label off without a clause)
+    assert "becomes a rule" not in q.risk.reason
+    assert {d.label: d.value for d in q.details}["What your answer does"] == "Settles this charge only"
     d = digest.build(tenancy.Caller(supplier_id=PEAK))
     item = next(i for i in d.items if i.distributor == "Sam's Club" and i.actions)
     assert [a.label for a in item.actions] == ["Accept this one", "Dispute this one"]

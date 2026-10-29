@@ -86,7 +86,10 @@ function status(r: Row, flagged: boolean, asks: NeedsYou[] = []): { chip: string
  * invoice when it's this payment's; else what was kept. */
 function paidLine(r: Row): string | null {
   const inv = r.account.invoice;
-  const kept = r.taken !== null ? `kept ${money(r.taken)}` : null;
+  // What this payment slip kept (the same figure its page shows), plus any older charges checked with it.
+  const own = r.kept ?? r.taken;
+  const older = r.older_charges ? ` + ${r.older_charges} older charge${r.older_charges === 1 ? "" : "s"}` : "";
+  const kept = own !== null && own !== undefined ? `kept ${money(own)}${older}` : null;
   if (r.paid != null && r.invoiced != null) return `Paid ${money(r.paid)} of ${money(r.invoiced)}${kept ? ` · ${kept}` : ""}`;
   if (inv && r.invoice_id && inv.id === r.invoice_id) {
     return `Paid ${money(inv.received)} of ${money(inv.expected)}${kept ? ` · ${kept}` : ""}`;

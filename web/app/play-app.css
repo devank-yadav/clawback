@@ -192,12 +192,10 @@ p a:not(.cx-btn):not([class*="cb-"]), small a:not(.cx-btn), .ph-link, .cx-link, 
 .cb-play-posted { margin: 0; padding: var(--space-2) var(--space-3); border: 2px solid var(--green); border-radius: var(--radius-md, 14px); background: var(--green-bg); color: var(--green); font-weight: 800; font-size: 15px; }
 .cb-play-posted.is-held { border-color: var(--outline); background: var(--card-2); color: var(--ink); }
 
-/* Home on a phone: the task comes first. The header's buttons (Upload, Check for new payments) move below "Next for
-   you", so the one thing to do is on the first screen. */
+/* Home on a phone: the task comes first. The header's buttons (Upload, Check for new payments) show below "Next for
+   you" instead (a second copy in the page, so what's seen and the Tab order match). */
+.hm2-actions-low { display: none; }
 @media (max-width: 560px) {
-  .hm2 > .ph { display: contents; }
-  .hm2 > .ph > .ph-text { order: -2; }
-  .hm2 > .hm2-next-wrap { order: -1; }
-  .hm2 > .ph > .ph-actions { order: 1; }
-  .hm2 > .hm2-doors { order: 2; }
+  .hm2 > .ph .ph-actions { display: none; }
+  .hm2-actions-low { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 }

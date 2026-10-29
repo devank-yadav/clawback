@@ -1394,6 +1394,10 @@ class RunSummary(Contract):
     taken: Money | None  # what the distributor kept from the payment
     paid: Money | None = None  # what the distributor paid (the payment's own remittance)
     invoiced: Money | None = None  # the invoice it paid
+    # This payment's own deductions (remittance.taken), and how many older charges from earlier payments were checked
+    # with it: `taken` above counts both, so a list showing "kept" from the payment slip says so.
+    kept: Money | None = None
+    older_charges: int = 0
     charges: int
     disputed: Money | None
     accepted: Money | None

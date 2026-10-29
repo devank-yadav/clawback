@@ -327,19 +327,20 @@ def owner_reply(run: pipeline.Run, dispute: Dispute, text: str) -> DisputeEmail:
     """The admin's own answer to the distributor's last message, for when no drafted answer waits (the Negotiator held
     it, or it came in before the agents were watching). Same thread, same outbound filter as the Negotiator's: sent at
     once when it passes, held with the problems when it doesn't, so the admin can fix the figure and send."""
-    if dispute.status in ("resolved", "withdrawn"):
-        raise NotReady(f"this dispute with {run.distributor} is closed; there's nothing to answer")
-    if any(x.kind == "reply" and x.status in ("ready", "held") for x in emails_of(run.id, dispute.id)):
-        raise NotReady("an answer is already drafted: edit or send that one")
-    messages = thread(run, dispute.id)
-    if not messages or messages[-1].from_party == "clawback":
-        raise NotReady(f"{run.distributor} hasn't replied since the last message")
-    theirs = [m for m in messages if m.from_party == "northmart"]
-    sent = [x for x in emails_of(run.id, dispute.id) if x.message_id]
-    e = _reply_email(run, dispute, text, "admin", theirs[-1].id if theirs else None,
-                     theirs[-1].email_message_id if theirs and theirs[-1].email_message_id else
-                     (sent[-1].message_id if sent else None),
-                     [ln.charge_id for ln in dispute.lines], [x for ln in dispute.lines for x in ln.evidence_ids])
+    with _lock:  # the checks and the new draft together, so two quick clicks can't both pass and make two
+        if dispute.status in ("resolved", "withdrawn"):
+            raise NotReady(f"this dispute with {run.distributor} is closed; there's nothing to answer")
+        if any(x.kind == "reply" and x.status in ("ready", "held", "failed") for x in emails_of(run.id, dispute.id)):
+            raise NotReady("an answer is already drafted or waiting to be sent again: edit or send that one")
+        messages = thread(run, dispute.id)
+        if not messages or messages[-1].from_party == "clawback":
+            raise NotReady(f"{run.distributor} hasn't replied since the last message")
+        theirs = [m for m in messages if m.from_party == "northmart"]
+        sent = [x for x in emails_of(run.id, dispute.id) if x.message_id]
+        e = _reply_email(run, dispute, text, "admin", theirs[-1].id if theirs else None,
+                         theirs[-1].email_message_id if theirs and theirs[-1].email_message_id else
+                         (sent[-1].message_id if sent else None),
+                         [ln.charge_id for ln in dispute.lines], [x for ln in dispute.lines for x in ln.evidence_ids])
     return e if e.status == "held" else send_reply(e.id, by="owner")
 
 

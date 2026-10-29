@@ -153,3 +153,11 @@ def test_no_cap_replays_its_answer_even_before_danas_answer(monkeypatch):
     theirs, ours = disputes.post("D-0417", p.text)
     assert theirs.classification == "claim_without_document" and "5,000 units" in ours.text
     pipeline.reset(), disputes.reset()
+
+
+def test_a_payment_summary_keeps_its_own_kept_apart_from_older_charges(built):
+    from api import accounts, history
+
+    (fb,) = [r for r in history.runs(accounts.get("peak-bar-five-below")) if not r.replaced]
+    # the list showed $6,184.25 "kept" while the payment slip took $5,139.25: an older charge was checked with it
+    assert fb.kept == D("5139.25") and fb.older_charges == 1 and fb.taken == D("6184.25")
