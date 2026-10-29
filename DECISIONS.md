@@ -153,3 +153,11 @@ One line per decision, written the moment it's made: `date time · decision · w
 - 2026-10-25 07:45 · Landing explainer: a larger box (1,200px) and the step numbers as small badges · Devank
 - 2026-10-25 07:43 · Agents page polish: code agents read as code, one live region, one name per pile (Waits on you), the waiting total is the API's own (the memo's approval waits under Needs you), a linked run opens without flashing the start screen; Home shows received payments with Run the agents · Devank
 - 2026-10-25 08:05 · A server can point a distributor's deductions desk at a real inbox (DESK_EMAIL_<ACCOUNT_ID>), so the live demo's dispute email reaches a real person without the address being in the repo · Devank
+- 2026-10-28 18:00 · Autopilot: a received payment starts the agents on its own; limits set once in Settings let fair-charge memos post and disputes go out without asking; everything else still asks · Devank
+- 2026-10-28 18:00 · Weekly summary email with one-tap answers: links are signed, expire in 14 days, open a confirm page, and act once · Devank
+- 2026-10-28 20:30 · The app is organized around payments and contracts: Home, Payments, Contracts, Disputes, Rules, Settings; no distributor switch (each page filters by distributor); History and Saved fold into Payments and Rules; each payment's run log replaces the audit tab · Devank
+- 2026-10-28 22:10 · The sidebar shows the company (its mark and name), not a person · Devank
+- 2026-10-28 22:10 · Home answers questions and approves fair-charge memos in place, with the same one-tap choices as the weekly email (the overview carries them); a finished payment opens on what needs you; a "Next for you" bar follows each action · Devank
+- 2026-10-28 22:10 · The owner can answer a distributor's pushback in their own words; it passes the same outbound check as the Negotiator's and is held, not sent, when a figure isn't backed · Devank
+- 2026-10-28 22:10 · Rules can be undone from the Rules page (same effect as texting UNDO for that rule); a second answer to a question from the app is refused (409), not silently accepted · Devank
+- 2026-10-28 22:10 · Owner-facing words: no dispute codes or charge ids in headlines, "payment slip" for remittance, "Part back" for split; a question promises a rule only when the deal has a discretion clause · Devank
